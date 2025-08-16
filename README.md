@@ -29,13 +29,14 @@ OnTerapi v4 é uma plataforma SaaS multi-tenant completa para gestão de clínic
 
 ### Stack Tecnológica
 - **Backend**: NestJS 10.3 + TypeScript 5.3
-- **Database**: PostgreSQL 16 + TypeORM 0.3
+- **Database**: Supabase (PostgreSQL hospedado) + TypeORM 0.3
 - **Cache**: Redis 7
 - **Queue**: Bull
 - **Mensageria**: EventEmitter + RabbitMQ
 - **Validação**: Zod 3.22
-- **Auth**: JWT + Passport
+- **Auth**: JWT + Passport + Supabase Auth
 - **Docs**: Swagger + Compodoc
+- **AI**: OpenAI + CrewAI
 
 ### Padrões Arquiteturais
 - **DDD** (Domain-Driven Design)
@@ -87,27 +88,50 @@ npm run dev
 
 ## ⚙️ Configuração
 
-### Variáveis de Ambiente
+### 🗄️ Banco de Dados - Supabase
+
+O projeto usa Supabase como banco de dados PostgreSQL hospedado na nuvem.
+
+#### Conexão Principal
 ```env
-# Database
-DB_HOST=localhost
+# Supabase Database
+DB_HOST=db.ogffdaemylaezxpunmop.supabase.co
 DB_PORT=5432
-DB_USERNAME=onterapi
-DB_PASSWORD=secure_password
-DB_DATABASE=onterapi_v4
+DB_USERNAME=postgres
+DB_PASSWORD=5lGR6N9OyfF1fcMc
+DB_DATABASE=postgres
+DB_SSL=true
+DB_SCHEMA=public
+```
 
-# Redis
-REDIS_HOST=localhost
-REDIS_PORT=6379
+#### APIs Supabase
+```env
+# URLs e Chaves
+SUPABASE_URL=https://ogffdaemylaezxpunmop.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_PROJECT_ID=ydctcvehdabvoyjunzrk
+```
 
+#### Outras Configurações
+```env
 # JWT
-JWT_SECRET=your_jwt_secret
+JWT_SECRET=your_jwt_secret_min_32_chars
 JWT_EXPIRES_IN=7d
+
+# OpenAI (para CrewAI)
+OPENAI_API_KEY=sk-proj-...
 
 # API
 PORT=3000
 NODE_ENV=development
 ```
+
+### ⚠️ Segurança Supabase
+- **Service Key**: NUNCA expor no frontend, apenas backend
+- **Anon Key**: Pode ser usada no frontend com RLS habilitado
+- **RLS**: Sempre habilitar Row Level Security em todas as tabelas
+- **SSL**: Sempre usar conexão SSL em produção
 
 ## 💻 Desenvolvimento
 
