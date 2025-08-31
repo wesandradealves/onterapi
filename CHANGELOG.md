@@ -7,6 +7,20 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
+### Added
+- Configuração completa para deploy na Vercel
+- Arquivo vercel.json para serverless functions
+- Handler otimizado main.vercel.ts para edge functions
+- Script vercel-build para processo de build
+- Arquivo .vercelignore para otimização de deploy
+
+## [0.2.1-alpha.1] - 2025-08-31
+
+### Added
+- Suporte completo para deploy serverless na Vercel
+- Configuração de edge functions otimizada
+- Documentação de variáveis de ambiente necessárias
+
 ## [0.2.0-alpha.1] - 2025-08-31
 
 ### Added
