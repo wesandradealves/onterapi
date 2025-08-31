@@ -7,12 +7,17 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
-### Added
-- Configuração completa para deploy na Vercel
-- Arquivo vercel.json para serverless functions
-- Handler otimizado main.vercel.ts para edge functions
-- Script vercel-build para processo de build
-- Arquivo .vercelignore para otimização de deploy
+## [0.2.2-alpha.1] - 2025-08-31
+
+### Fixed
+- Corrigido .vercelignore que estava removendo arquivos necessários (src, tsconfig)
+- Ajustado vercel.json para usar builds e routes corretos
+- Handler /api/index.ts otimizado para Vercel
+- Build da Vercel agora funciona corretamente
+
+### Changed
+- Simplificação do .vercelignore mantendo apenas arquivos desnecessários
+- vercel.json usa configuração de builds ao invés de rewrites
 
 ## [0.2.1-alpha.1] - 2025-08-31
 
