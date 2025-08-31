@@ -14,7 +14,7 @@
   },
   "scripts": {
     "prebuild": "rimraf dist",
-    "build": "nest build && tsc-alias -p tsconfig.json",
+    "build": "nest build",
     "dev": "nest start --watch",
     "start": "nest start",
     "start:dev": "nest start --watch",

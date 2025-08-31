@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TerminusModule } from '@nestjs/terminus';
-import { MessageBusModule } from '@shared/messaging/message-bus.module';
+import { MessageBusModule } from './shared/messaging/message-bus.module';
 import { HealthController } from './health.controller';
 
 @Module({
