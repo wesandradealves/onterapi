@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import { AppModule } from '../src/app.module';
 import { BootstrapFactory } from '../src/shared/bootstrap/bootstrap.factory';
-import * as express from 'express';
+import express from 'express';
 
 const server = express();
 let app: any;

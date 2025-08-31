@@ -11,3 +11,7 @@ coverage
 .husky
 *.md
 .github
+dist
+*.spec.ts
+.eslintrc.js
+.prettierrc
