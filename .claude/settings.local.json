@@ -1,8 +1,14 @@
 {
+  "outputStyle": "onterapi",
   "permissions": {
     "allow": [
       "Read(D:\\www\\Onterapi/**)",
-      "Bash(npm run build:*)"
+      "Read(D:\\www\\Onterapi\\.claude/**)",
+      "Read(D:\\www\\Onterapi\\.claude/**)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi\\.claude\\output-styles/**)",
+      "Read(D:\\www\\Onterapi/**)"
     ],
     "deny": [],
     "ask": []
