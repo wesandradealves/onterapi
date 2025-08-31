@@ -1,23 +1,12 @@
 {
   "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": ".",
   "framework": null,
-  "functions": {
-    "dist/main.vercel.js": {
-      "runtime": "@vercel/node@3.0.0",
-      "maxDuration": 30,
-      "includeFiles": "dist/**"
-    }
-  },
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/dist/main.vercel.js"
+      "destination": "/api/index"
     }
-  ],
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "installCommand": "npm install",
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }
