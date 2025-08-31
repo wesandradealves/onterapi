@@ -7,6 +7,10 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
+### Fixed
+- Erro de runtime na Vercel corrigido (sintaxe nodejs20.x removida)
+- Configuração vercel.json simplificada usando builds/routes padrão
+
 ## [0.2.3-alpha.1] - 2025-08-31
 
 ### Fixed
