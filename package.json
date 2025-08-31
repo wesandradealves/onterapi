@@ -14,7 +14,7 @@
   },
   "scripts": {
     "prebuild": "rimraf dist",
-    "build": "nest build",
+    "build": "nest build && tsc-alias -p tsconfig.json",
     "dev": "nest start --watch",
     "start": "nest start",
     "start:dev": "nest start --watch",
@@ -96,6 +96,7 @@
     "ts-jest": "^29.1.1",
     "ts-loader": "^9.5.1",
     "ts-node": "^10.9.2",
+    "tsc-alias": "^1.8.16",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.3.3"
   },

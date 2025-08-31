@@ -1,5 +1,4 @@
 {
-  "outputStyle": "onterapi",
   "permissions": {
     "allow": [
       "Read(D:\\www\\Onterapi/**)",
@@ -8,9 +7,13 @@
       "Read(D:\\www\\Onterapi/**)",
       "Read(D:\\www\\Onterapi/**)",
       "Read(D:\\www\\Onterapi\\.claude\\output-styles/**)",
-      "Read(D:\\www\\Onterapi/**)"
+      "Read(D:\\www\\Onterapi/**)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "outputStyle": "onterapi"
 }
