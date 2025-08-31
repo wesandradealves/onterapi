@@ -50,7 +50,10 @@ export const commonHeadersSchema = z.object({
  * Schema para endereço brasileiro
  */
 export const addressSchema = z.object({
-  zipCode: z.string().regex(/^\d{8}$/).describe('CEP sem formatação'),
+  zipCode: z
+    .string()
+    .regex(/^\d{8}$/)
+    .describe('CEP sem formatação'),
   street: z.string().min(1).max(255).describe('Logradouro'),
   number: z.string().min(1).max(20).describe('Número'),
   complement: z.string().max(100).optional().nullable().describe('Complemento'),
@@ -66,9 +69,16 @@ export const addressSchema = z.object({
  * Schema para dados de contato
  */
 export const contactSchema = z.object({
-  phone: z.string().regex(/^\d{10,11}$/).describe('Telefone/Celular'),
+  phone: z
+    .string()
+    .regex(/^\d{10,11}$/)
+    .describe('Telefone/Celular'),
   email: z.string().email().toLowerCase().describe('Email'),
-  whatsapp: z.string().regex(/^\d{10,11}$/).optional().describe('WhatsApp'),
+  whatsapp: z
+    .string()
+    .regex(/^\d{10,11}$/)
+    .optional()
+    .describe('WhatsApp'),
 });
 
 /**

@@ -7,52 +7,52 @@ export enum DomainEvents {
   PATIENT_UPDATED = 'patient.updated',
   PATIENT_DELETED = 'patient.deleted',
   PATIENT_TRANSFERRED = 'patient.transferred',
-  
+
   // Appointment Events
   APPOINTMENT_SCHEDULED = 'appointment.scheduled',
   APPOINTMENT_CONFIRMED = 'appointment.confirmed',
   APPOINTMENT_CANCELLED = 'appointment.cancelled',
   APPOINTMENT_RESCHEDULED = 'appointment.rescheduled',
   APPOINTMENT_COMPLETED = 'appointment.completed',
-  
+
   // Consultation Events
   CONSULTATION_STARTED = 'consultation.started',
   CONSULTATION_COMPLETED = 'consultation.completed',
   CONSULTATION_NOTES_UPDATED = 'consultation.notes.updated',
-  
+
   // Anamnesis Events
   ANAMNESIS_STARTED = 'anamnesis.started',
   ANAMNESIS_COMPLETED = 'anamnesis.completed',
   ANAMNESIS_ANALYZED = 'anamnesis.analyzed',
-  
+
   // Therapeutic Plan Events
   THERAPEUTIC_PLAN_CREATED = 'therapeutic.plan.created',
   THERAPEUTIC_PLAN_UPDATED = 'therapeutic.plan.updated',
   THERAPEUTIC_PLAN_APPROVED = 'therapeutic.plan.approved',
   THERAPEUTIC_PLAN_AI_GENERATED = 'therapeutic.plan.ai.generated',
-  
+
   // Payment Events
   PAYMENT_PROCESSED = 'payment.processed',
   PAYMENT_FAILED = 'payment.failed',
   PAYMENT_REFUNDED = 'payment.refunded',
   PAYMENT_SPLIT_COMPLETED = 'payment.split.completed',
-  
+
   // User Events
   USER_REGISTERED = 'user.registered',
   USER_ACTIVATED = 'user.activated',
   USER_DEACTIVATED = 'user.deactivated',
   USER_PASSWORD_CHANGED = 'user.password.changed',
-  
+
   // Clinic Events
   CLINIC_CREATED = 'clinic.created',
   CLINIC_UPDATED = 'clinic.updated',
   CLINIC_SUBSCRIPTION_CHANGED = 'clinic.subscription.changed',
-  
+
   // AI Events
   AI_ANALYSIS_REQUESTED = 'ai.analysis.requested',
   AI_ANALYSIS_COMPLETED = 'ai.analysis.completed',
   AI_FEEDBACK_RECEIVED = 'ai.feedback.received',
-  
+
   // Notification Events
   NOTIFICATION_SENT = 'notification.sent',
   NOTIFICATION_FAILED = 'notification.failed',
@@ -60,13 +60,13 @@ export enum DomainEvents {
   EMAIL_SENT = 'email.sent',
 }
 
-export interface EventPayload<T = any> {
+export interface EventPayload<T = unknown> {
   eventId: string;
   timestamp: Date;
   tenantId?: string;
   userId?: string;
   data: T;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 @Injectable()
@@ -92,10 +92,10 @@ export class MessageBus {
   /**
    * Publish an event to the message bus
    */
-  async publish<T = any>(
+  async publish<T = unknown>(
     event: DomainEvents,
     payload: T,
-    metadata?: Record<string, any>,
+    metadata?: Record<string, unknown>,
   ): Promise<void> {
     const eventPayload: EventPayload<T> = {
       eventId: this.generateEventId(),
@@ -121,7 +121,7 @@ export class MessageBus {
   /**
    * Subscribe to an event
    */
-  subscribe<T = any>(
+  subscribe<T = unknown>(
     event: DomainEvents,
     handler: (payload: EventPayload<T>) => void | Promise<void>,
   ): void {
@@ -132,7 +132,7 @@ export class MessageBus {
   /**
    * Subscribe to an event (once only)
    */
-  subscribeOnce<T = any>(
+  subscribeOnce<T = unknown>(
     event: DomainEvents,
     handler: (payload: EventPayload<T>) => void | Promise<void>,
   ): void {
@@ -145,7 +145,7 @@ export class MessageBus {
    */
   unsubscribe(
     event: DomainEvents,
-    handler: (payload: EventPayload<any>) => void | Promise<void>,
+    handler: (payload: EventPayload<unknown>) => void | Promise<void>,
   ): void {
     this.logger.log(`Unsubscribing from event: ${event}`);
     this.eventEmitter.off(event, handler);

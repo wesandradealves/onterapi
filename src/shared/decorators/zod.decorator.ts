@@ -22,7 +22,7 @@ enum ErrorPrefix {
 
 /**
  * Decorator para validação de requisições usando Zod
- * 
+ *
  * @example
  * ```typescript
  * @Post()

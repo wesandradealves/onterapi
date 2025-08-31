@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { TerminusModule } from '@nestjs/terminus';
 import { MessageBusModule } from '@shared/messaging/message-bus.module';
-import { ExampleModule } from '@modules/example/example.module';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [
@@ -24,20 +25,26 @@ import { ExampleModule } from '@modules/example/example.module';
       migrations: ['dist/infrastructure/database/migrations/*{.ts,.js}'],
       synchronize: false,
       logging: process.env.NODE_ENV === 'development',
-      ssl: process.env.DB_SSL === 'true' ? {
-        rejectUnauthorized: true,
-      } : false,
+      ssl:
+        process.env.DB_SSL === 'true'
+          ? {
+              rejectUnauthorized: true,
+            }
+          : false,
       extra: {
-        ssl: process.env.DB_SSL === 'true' ? {
-          rejectUnauthorized: false,
-        } : false,
+        ssl:
+          process.env.DB_SSL === 'true'
+            ? {
+                rejectUnauthorized: false,
+              }
+            : false,
       },
     }),
 
     MessageBusModule,
-    ExampleModule,
+    TerminusModule,
   ],
-  controllers: [],
+  controllers: [HealthController],
   providers: [],
 })
 export class AppModule {}
