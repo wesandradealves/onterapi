@@ -7,6 +7,25 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
+## [0.2.3-alpha.1] - 2025-08-31
+
+### Fixed
+- Import do Express corrigido de namespace para default import no api/index.ts
+- Configuração do Vercel atualizada para NestJS serverless
+- api/index.ts simplificado removendo dependência do BootstrapFactory
+- Build passando localmente e pronto para deploy
+
+### Changed
+- vercel.json reconfigurado com framework null e funções serverless
+- Runtime definido como nodejs20.x com limites apropriados
+- Configurações de produção inline no api/index.ts (helmet, validation)
+- Logger condicional baseado em NODE_ENV
+
+### Added
+- ValidationPipe global configurado no handler serverless
+- Helmet.js para segurança em produção
+- Documentação de variáveis de ambiente necessárias para Vercel
+
 ## [0.2.2-alpha.1] - 2025-08-31
 
 ### Fixed
