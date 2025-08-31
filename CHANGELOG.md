@@ -10,6 +10,16 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 ### Fixed
 - Erro de runtime na Vercel corrigido (sintaxe nodejs20.x removida)
 - Configuração vercel.json simplificada usando builds/routes padrão
+- Path aliases TypeScript resolvidos para produção (@shared, @domain, etc)
+- Erro "Cannot find module '@shared/messaging/message-bus.module'" corrigido
+
+### Added
+- tsconfig-paths/register no api/index.ts para resolver aliases em runtime
+- tsc-alias no processo de build para resolver paths em build time
+- tsconfig.build.json com configuração específica de paths
+
+### Changed
+- Script de build atualizado para incluir tsc-alias
 
 ## [0.2.3-alpha.1] - 2025-08-31
 
