@@ -7,6 +7,46 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-01-09
+
+### Added
+- **Módulo Users CRUD Completo** - Gestão completa de usuários
+  - Create, Read, Update, Delete com permissões granulares
+  - UserOwnerGuard: Admin ou próprio usuário podem editar/deletar
+  - Listagem de todos usuários restrita a admins
+  - Integração com Supabase Auth para criação de usuários
+  - Validação completa com Zod schemas
+  - Swagger documentation com exemplos para todos endpoints
+  - Suporte a filtros: role, tenantId, isActive
+  - Paginação em listagens
+  - Soft delete mantendo histórico
+
+- **Utilitários Centralizados**
+  - roles.util.ts: Funções centralizadas para verificação de roles
+  - SupabaseService: Serviço dedicado para integração com Supabase Auth
+
+### Changed
+- **Refatoração Massiva de Arquitetura** - Sistema 100% limpo
+  - Entidades do domain removidas (mantidas apenas no infrastructure)
+  - Validadores consolidados em auth.validators.ts único
+  - Hierarquia de roles centralizada em roles.util.ts
+  - Zero duplicação de código em todo o sistema
+
+### Removed
+- **Código Redundante Eliminado** - 616 linhas removidas
+  - MessageBus não utilizado (61 eventos nunca usados)
+  - Health controller duplicado
+  - Entidades duplicadas do domain layer
+  - Validadores duplicados (health.validators.ts)
+  - 8 arquivos desnecessários eliminados
+
+### Fixed
+- Circular dependency em DTOs do módulo Users
+- Imports após refatoração massiva
+- Build do Docker com nova estrutura
+
+## [0.3.1] - 2025-01-09
+
 ### Added
 - **Documentação Swagger Completa**
   - @ApiBody com types e examples em todos endpoints

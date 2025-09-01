@@ -269,7 +269,7 @@ GET /auth/me
 Headers: Authorization: Bearer {token}
 ```
 
-#### Arquitetura do Módulo
+#### Arquitetura do Módulo Auth
 ```
 modules/auth/
 ├── api/
@@ -330,6 +330,109 @@ async getPublicInfo() {
 async getProfile(@CurrentUser() user: ICurrentUser) {
   // user contém: id, email, name, role, tenantId
   return user;
+}
+```
+
+### 👥 Módulo de Usuários (Users)
+
+#### Visão Geral
+CRUD completo de usuários com permissões granulares, integração com Supabase Auth e validações rigorosas.
+
+#### Funcionalidades
+- ✅ **Create**: Cadastro público ou via admin
+- ✅ **Read**: Busca por ID (próprio ou admin)
+- ✅ **Update**: Atualização de dados (próprio ou admin)
+- ✅ **Delete**: Soft delete mantendo histórico
+- ✅ **List**: Listagem com filtros (apenas admin)
+- ✅ **Validações**: CPF único, email único, senha forte
+- ✅ **Integração Supabase**: Sincronização automática
+- ✅ **Paginação**: Em todas as listagens
+- ✅ **Filtros**: Por role, tenant, status ativo
+
+#### Permissões dos Endpoints
+
+| Endpoint | Método | Descrição | Permissão |
+|----------|--------|-----------|-----------|
+| `/users` | POST | Criar usuário | Público OU Admin |
+| `/users` | GET | Listar todos | APENAS Admin |
+| `/users/:id` | GET | Buscar por ID | Admin OU próprio usuário |
+| `/users/:id` | PATCH | Atualizar | Admin OU próprio usuário |
+| `/users/:id` | DELETE | Deletar | Admin OU próprio usuário |
+
+#### Endpoints da API
+
+##### Criar Usuário
+```http
+POST /users
+Body: {
+  email: string,
+  password: string,  // Mínimo 8 chars, maiúscula, minúscula, número, especial
+  name: string,
+  cpf: string,       // Apenas números, validado
+  phone?: string,    // Opcional, formato brasileiro
+  role: RolesEnum,
+  tenantId?: string  // UUID da clínica
+}
+```
+
+##### Listar Usuários (Admin Only)
+```http
+GET /users?page=1&limit=20&role=PATIENT&tenantId=uuid&isActive=true
+Headers: Authorization: Bearer {admin_token}
+```
+
+##### Buscar Usuário
+```http
+GET /users/:id
+Headers: Authorization: Bearer {token}
+```
+
+##### Atualizar Usuário
+```http
+PATCH /users/:id
+Headers: Authorization: Bearer {token}
+Body: {
+  name?: string,
+  phone?: string,
+  isActive?: boolean,
+  metadata?: object
+}
+```
+
+##### Deletar Usuário
+```http
+DELETE /users/:id
+Headers: Authorization: Bearer {token}
+```
+
+#### Arquitetura do Módulo Users
+```
+modules/users/
+├── api/
+│   ├── controllers/        # Endpoints REST
+│   ├── dtos/              # DTOs com Swagger
+│   └── schemas/           # Validação Zod
+├── use-cases/
+│   ├── create-user.use-case.ts
+│   ├── find-all-users.use-case.ts
+│   ├── find-user-by-id.use-case.ts
+│   ├── update-user.use-case.ts
+│   └── delete-user.use-case.ts
+├── guards/
+│   └── user-owner.guard.ts  # Verifica se é admin ou dono
+└── users.module.ts
+```
+
+#### UserOwnerGuard
+Guard especial que permite acesso se:
+- Usuário é admin (SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO)
+- Usuário está acessando seus próprios dados
+
+```typescript
+@Get(':id')
+@UseGuards(JwtAuthGuard, UserOwnerGuard)
+async findOne(@Param('id') id: string) {
+  // Admin ou próprio usuário podem acessar
 }
 ```
 
