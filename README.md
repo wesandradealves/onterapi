@@ -60,11 +60,15 @@ src/
 
 ### Pré-requisitos
 - Node.js >= 20.0.0
-- PostgreSQL >= 16
-- Redis >= 7
+- Docker >= 24.0.0 (opcional)
+- Docker Compose >= 2.20.0 (opcional)
+- PostgreSQL >= 16 (se não usar Docker)
+- Redis >= 7 (se não usar Docker)
 - npm >= 10.0.0
 
 ### Setup Inicial
+
+#### Opção 1: Instalação Local
 ```bash
 # Clonar repositório
 git clone https://github.com/onterapi/v4.git
@@ -82,8 +86,50 @@ npm run migration:run
 # Rodar seeds (dados iniciais)
 npm run seed:run
 
-# Iniciar desenvolvimento
+# Iniciar desenvolvimento (porta 3001)
 npm run dev
+```
+
+#### Opção 2: Usando Docker
+```bash
+# Clonar repositório
+git clone https://github.com/onterapi/v4.git
+cd onterapi-v4
+
+# Build da imagem Docker
+docker build -t onterapi-v4:latest .
+
+# Iniciar com Docker Compose
+docker compose up -d
+
+# Aplicação estará disponível em http://localhost:3001
+# Swagger em http://localhost:3001/api
+```
+
+### Scripts de Automação
+
+#### Windows (PowerShell)
+```powershell
+# Iniciar desenvolvimento
+.\docker-run.ps1 dev
+
+# Parar containers
+.\docker-run.ps1 stop
+
+# Limpar tudo
+.\docker-run.ps1 clean
+```
+
+#### Linux/Mac (Bash)
+```bash
+# Iniciar desenvolvimento
+./docker-run.sh dev
+
+# Parar containers
+./docker-run.sh stop
+
+# Limpar tudo
+./docker-run.sh clean
 ```
 
 ## ⚙️ Configuração
@@ -156,8 +202,180 @@ npm run check:quality # Verificar qualidade do código
 
 ## 📦 Módulos
 
-### Módulos Principais
-- **Auth**: Autenticação e autorização (RBAC)
+### 🔐 Módulo de Autenticação (Auth)
+
+#### Visão Geral
+Sistema completo de autenticação e autorização seguindo DDD e Clean Architecture, com suporte a multi-tenant, RBAC e 2FA.
+
+#### Funcionalidades
+- ✅ **Cadastro de usuários** com validação de CPF único
+- ✅ **Login** com suporte a 2FA (Two-Factor Authentication)
+- ✅ **Refresh token** para renovação automática
+- ✅ **Sistema RBAC** com 11 roles hierárquicos
+- ✅ **Multi-tenant** com isolamento por tenant
+- ✅ **Guards de autorização** (JWT, Roles, Tenant)
+- ✅ **Rate limiting** e proteção contra brute force
+- ✅ **Integração Supabase Auth**
+
+#### Sistema de Roles (RBAC)
+```typescript
+// Roles Internos (Plataforma)
+SUPER_ADMIN         // Acesso total
+ADMIN_FINANCEIRO    // Gestão financeira
+ADMIN_SUPORTE       // Customer success
+ADMIN_EDITOR        // Marketing/conteúdo
+MARKETPLACE_MANAGER // Produtos/parceiros
+
+// Roles Externos (Clientes)
+CLINIC_OWNER        // Proprietário da clínica
+PROFESSIONAL        // Terapeuta
+SECRETARY          // Secretária
+MANAGER            // Gestor sem especialidade
+PATIENT            // Paciente
+VISITOR            // Visitante não autenticado
+```
+
+#### Endpoints da API
+
+##### Autenticação
+```http
+POST /auth/sign-up
+Body: {
+  email: string,
+  password: string,
+  name: string,
+  cpf: string,
+  phone?: string,
+  role: RolesEnum,
+  tenantId?: string,
+  acceptTerms: boolean
+}
+
+POST /auth/sign-in
+Body: {
+  email: string,
+  password: string,
+  rememberMe?: boolean
+}
+
+POST /auth/two-factor/validate
+Body: {
+  tempToken: string,
+  code: string,
+  trustDevice?: boolean
+}
+
+POST /auth/refresh
+Body: {
+  refreshToken: string
+}
+
+POST /auth/sign-out
+Headers: Authorization: Bearer {token}
+Body: {
+  refreshToken?: string,
+  allDevices?: boolean
+}
+
+GET /auth/me
+Headers: Authorization: Bearer {token}
+```
+
+#### Arquitetura do Módulo
+```
+modules/auth/
+├── api/
+│   ├── controllers/        # Endpoints REST
+│   ├── dtos/              # DTOs com @ApiProperty
+│   └── schemas/           # Schemas Zod para validação
+├── use-cases/             # Casos de uso
+│   ├── sign-up.use-case.ts
+│   ├── sign-in.use-case.ts
+│   ├── validate-two-fa.use-case.ts
+│   ├── refresh-token.use-case.ts
+│   └── sign-out.use-case.ts
+├── guards/                # Guards de segurança
+│   ├── jwt-auth.guard.ts
+│   ├── roles.guard.ts
+│   └── tenant.guard.ts
+├── decorators/            # Decorators customizados
+│   ├── public.decorator.ts
+│   ├── roles.decorator.ts
+│   └── current-user.decorator.ts
+└── auth.module.ts         # Módulo NestJS
+```
+
+#### Uso nos Controllers
+
+##### Proteger rotas com autenticação
+```typescript
+@Controller('patients')
+@UseGuards(JwtAuthGuard) // Requer autenticação
+export class PatientsController {
+  // Todos os endpoints requerem token JWT
+}
+```
+
+##### Proteger com roles específicas
+```typescript
+@Post('create')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(RolesEnum.CLINIC_OWNER, RolesEnum.PROFESSIONAL)
+async createPatient() {
+  // Apenas CLINIC_OWNER e PROFESSIONAL podem acessar
+}
+```
+
+##### Rotas públicas
+```typescript
+@Get('public-info')
+@Public() // Não requer autenticação
+async getPublicInfo() {
+  // Endpoint público
+}
+```
+
+##### Obter usuário atual
+```typescript
+@Get('profile')
+@UseGuards(JwtAuthGuard)
+async getProfile(@CurrentUser() user: ICurrentUser) {
+  // user contém: id, email, name, role, tenantId
+  return user;
+}
+```
+
+#### Configuração Necessária
+
+##### Variáveis de Ambiente
+```env
+# JWT Secrets
+JWT_ACCESS_SECRET=your_access_secret_min_32_chars
+JWT_REFRESH_SECRET=your_refresh_secret_min_32_chars
+JWT_2FA_SECRET=your_2fa_secret_min_32_chars
+
+# Supabase Auth
+SUPABASE_URL=https://ogffdaemylaezxpunmop.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# App Config
+APP_URL=http://localhost:3000
+APP_NAME=OnTerapi
+```
+
+##### Dependências Necessárias
+```json
+{
+  "@supabase/supabase-js": "^2.x",
+  "speakeasy": "^2.x",      // Para 2FA TOTP
+  "qrcode": "^1.x",         // Para gerar QR Code
+  "bcryptjs": "^2.x",       // Hash de senhas
+  "@nestjs/jwt": "^10.x",   // JWT
+  "@nestjs/passport": "^10.x"
+}
+```
+
+### Outros Módulos Principais
 - **Patients**: Gestão de pacientes
 - **Appointments**: Sistema de agendamento
 - **Anamnesis**: Anamnese digital
@@ -170,7 +388,7 @@ npm run check:quality # Verificar qualidade do código
 ## 📊 API Documentation
 
 ### Swagger
-Disponível em desenvolvimento: `http://localhost:3000/api`
+Disponível em desenvolvimento: `http://localhost:3001/api`
 
 ### Endpoints Principais
 - `POST /auth/login` - Autenticação
@@ -193,6 +411,91 @@ npm run test:e2e     # End-to-end
 - Unitários: 80%
 - Integração: 70%
 - E2E: Fluxos críticos
+
+## 🐳 Docker
+
+### Configuração Docker
+O projeto está totalmente containerizado para facilitar desenvolvimento e deploy.
+
+#### Docker Compose
+```yaml
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: onterapi-app
+    ports:
+      - "3001:3000"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      NODE_OPTIONS: "--dns-result-order=ipv4first"
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app/src:delegated
+      - ./logs:/app/logs
+    depends_on:
+      - redis
+    networks:
+      - onterapi-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: onterapi-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD:-onterapi_redis_2024}
+    volumes:
+      - redis-data:/data
+    networks:
+      - onterapi-network
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+
+networks:
+  onterapi-network:
+    driver: bridge
+```
+
+#### Comandos Docker
+```bash
+# Build da imagem
+docker build -t onterapi-v4:latest .
+
+# Iniciar com Docker Compose
+docker compose up -d
+
+# Ver logs
+docker compose logs -f
+
+# Parar serviços
+docker compose stop
+
+# Remover tudo
+docker compose down -v
+
+# Executar comandos no container
+docker compose exec app npm run migration:run
+docker compose exec app npm test
+```
+
+### Troubleshooting Docker
+
+#### Erro IPv6
+Se encontrar erro `Error: connect ENETUNREACH 2600:...`, use o Supabase Pooler:
+```env
+# Use Pooler para IPv4
+DB_HOST=aws-0-sa-east-1.pooler.supabase.com
+DB_PORT=6543
+DB_USERNAME=postgres.ogffdaemylaezxpunmop
+NODE_OPTIONS=--dns-result-order=ipv4first
+```
 
 ## 🔄 CI/CD
 

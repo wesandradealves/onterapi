@@ -12,7 +12,20 @@
       "Bash(git commit:*)",
       "Bash(npm install:*)",
       "Bash(docker:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi\\dourado-dashboard-backend\\src/**)",
+      "Read(D:\\www\\Onterapi\\dourado-dashboard-backend\\src\\modules\\auth/**)",
+      "Read(D:\\www\\Onterapi\\dourado-dashboard-backend\\src\\modules\\auth\\use-cases/**)",
+      "Read(D:\\www\\Onterapi\\dourado-core-backend\\src/**)",
+      "Read(D:\\www\\Onterapi\\dourado-core-backend\\src\\shared\\utils/**)",
+      "Read(D:\\www\\Onterapi\\dourado-core-backend\\src\\modules\\companies\\use-cases/**)",
+      "Read(D:\\www\\Onterapi\\dourado-dashboard-backend\\src/**)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

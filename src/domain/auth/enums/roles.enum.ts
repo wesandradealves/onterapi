@@ -1,0 +1,62 @@
+/**
+ * Roles do sistema OnTerapi
+ * Hierarquia de permissões baseada no PRD
+ */
+export enum RolesEnum {
+  // Roles Internos (Plataforma)
+  SUPER_ADMIN = 'SUPER_ADMIN',
+  ADMIN_FINANCEIRO = 'ADMIN_FINANCEIRO',
+  ADMIN_SUPORTE = 'ADMIN_SUPORTE',
+  ADMIN_EDITOR = 'ADMIN_EDITOR',
+  MARKETPLACE_MANAGER = 'MARKETPLACE_MANAGER',
+
+  // Roles Externos (Clientes)
+  CLINIC_OWNER = 'CLINIC_OWNER',
+  PROFESSIONAL = 'PROFESSIONAL',
+  SECRETARY = 'SECRETARY',
+  MANAGER = 'MANAGER',
+  PATIENT = 'PATIENT',
+
+  // Público
+  VISITOR = 'VISITOR',
+}
+
+/**
+ * Agrupamento de roles por categoria
+ */
+export const INTERNAL_ROLES = [
+  RolesEnum.SUPER_ADMIN,
+  RolesEnum.ADMIN_FINANCEIRO,
+  RolesEnum.ADMIN_SUPORTE,
+  RolesEnum.ADMIN_EDITOR,
+  RolesEnum.MARKETPLACE_MANAGER,
+];
+
+export const CLINIC_ROLES = [
+  RolesEnum.CLINIC_OWNER,
+  RolesEnum.PROFESSIONAL,
+  RolesEnum.SECRETARY,
+  RolesEnum.MANAGER,
+];
+
+export const PUBLIC_ROLES = [
+  RolesEnum.PATIENT,
+  RolesEnum.VISITOR,
+];
+
+/**
+ * Hierarquia de roles (maior poder → menor poder)
+ */
+export const ROLE_HIERARCHY: Record<RolesEnum, number> = {
+  [RolesEnum.SUPER_ADMIN]: 100,
+  [RolesEnum.ADMIN_FINANCEIRO]: 90,
+  [RolesEnum.ADMIN_SUPORTE]: 85,
+  [RolesEnum.ADMIN_EDITOR]: 80,
+  [RolesEnum.MARKETPLACE_MANAGER]: 75,
+  [RolesEnum.CLINIC_OWNER]: 60,
+  [RolesEnum.MANAGER]: 50,
+  [RolesEnum.PROFESSIONAL]: 40,
+  [RolesEnum.SECRETARY]: 30,
+  [RolesEnum.PATIENT]: 10,
+  [RolesEnum.VISITOR]: 0,
+};

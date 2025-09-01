@@ -5,24 +5,47 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
-## [Unreleased]
-
-### Fixed
-- Conexão com banco de dados usando Supabase Pooler para garantir IPv4 (resolve problemas Docker/Vercel)
-- Configuração SSL duplicada no TypeORM removida
-- URL do Swagger configurada corretamente para Docker (porta 3001)
-- Endpoint `/ping` desnecessário removido, mantendo apenas `/health`
-
-### Changed
-- Migração para Supabase Pooler (aws-0-sa-east-1.pooler.supabase.com:6543) para compatibilidade IPv4
-- Timeouts de conexão aumentados para 10s para melhor estabilidade
-- Configuração SWAGGER_SERVER_URL adicionada para ambientes Docker e Vercel
+## [0.3.0] - 2025-09-01
 
 ### Added
-- Configuração Docker completa para desenvolvimento local
-- Scripts docker-run para Windows e Linux
-- Dockerfile otimizado com multi-stage build e usuário não-root
-- Docker Compose configurado com health checks e networking
+- **Módulo de Autenticação Completo** - Arquitetura DDD e Clean Architecture
+  - **Domain Layer**: Entidades puras, interfaces de use cases, repositórios e serviços
+  - **Infrastructure Layer**: Entidades TypeORM, integração com Supabase Auth, repositório com Query Builder
+  - **Application Layer**: Controllers REST, DTOs com Swagger, implementação dos use cases
+  - **Sistema de Roles (RBAC)**: 11 roles hierárquicos (SUPER_ADMIN, CLINIC_OWNER, PROFESSIONAL, etc.)
+  - **Multi-tenant**: Suporte completo com isolamento por tenant_id
+  - **Two-Factor Authentication (2FA)**: Suporte para TOTP, SMS e email
+  - **Segurança**: JWT tokens, refresh tokens, rate limiting, proteção contra brute force
+  - **Guards**: JwtAuthGuard, RolesGuard, TenantGuard
+  - **Decorators**: @Public, @Roles, @CurrentUser
+  - **Swagger Documentation**: Todos endpoints documentados com @ApiProperty
+
+- **Shared Utils**: Funções reutilizáveis seguindo padrões enterprise
+  - `db-connection.util.ts`: Savepoints para transações granulares
+  - `crypto.util.ts`: Hash com bcryptjs, criptografia AES-256
+  - `auth.validators.ts`: Validadores Zod para CPF, senha forte, telefone
+  - **Result Pattern**: Tratamento de erros consistente
+  - **Zod Validation Pipe**: Validação forte de tipos
+
+- **Docker Configuration**
+  - Dockerfile otimizado com multi-stage build e usuário não-root
+  - Docker Compose com Redis, health checks e networking
+  - Scripts de automação para Windows (PowerShell) e Linux (Bash)
+  - Documentação completa integrada no README
+  - Porta 3001 configurada para evitar conflitos
+
+### Fixed
+- Conexão com banco usando Supabase Pooler para IPv4 (Docker/Vercel)
+- TypeScript property initialization com definite assignment operator
+- Dependency injection com @Inject decorator para interfaces
+- Import bcryptjs ao invés de bcrypt para compatibilidade Docker
+- Configuração de ambiente correta (SUPABASE_SERVICE_ROLE_KEY)
+
+### Changed
+- Migração para Supabase Pooler (aws-0-sa-east-1.pooler.supabase.com:6543)
+- Porta padrão alterada de 3000 para 3001
+- Documentação Docker centralizada no README
+- Uso de apenas .env para configuração (sem .env.docker)
 
 ## [0.2.4] - 2025-09-01
 
