@@ -67,7 +67,7 @@ export class BootstrapFactory {
       .setVersion(version)
       .addBearerAuth()
       .addApiKey({ type: 'apiKey', name: 'x-api-key', in: 'header' })
-      .addServer(process.env.API_URL || `http://localhost:${port}`)
+      .addServer(process.env.SWAGGER_SERVER_URL || process.env.API_URL || `http://localhost:${port}`)
       .build();
 
     const document = SwaggerModule.createDocument(app, swaggerConfig);
