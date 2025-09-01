@@ -1,11 +1,11 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { DataSource, QueryRunner } from 'typeorm';
-import { ISignUpUseCase, SignUpInput, SignUpOutput } from '@domain/auth/interfaces/use-cases/sign-up.use-case.interface';
-import { IAuthRepository } from '@domain/auth/interfaces/repositories/auth.repository.interface';
-import { ISupabaseAuthService } from '@domain/auth/interfaces/services/supabase-auth.service.interface';
-import { Result } from '@shared/types/result.type';
-import { createSavepoint, rollbackToSavepoint, generateSavepointId } from '@shared/utils/db-connection.util';
-import { RolesEnum } from '@domain/auth/enums/roles.enum';
+import { ISignUpUseCase, SignUpInput, SignUpOutput } from '../../../domain/auth/interfaces/use-cases/sign-up.use-case.interface';
+import { IAuthRepository } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
+import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
+import { Result } from '../../../shared/types/result.type';
+import { createSavepoint, rollbackToSavepoint, generateSavepointId } from '../../../shared/utils/db-connection.util';
+import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
 
 @Injectable()
 export class SignUpUseCase implements ISignUpUseCase {

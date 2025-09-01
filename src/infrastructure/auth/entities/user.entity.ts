@@ -8,7 +8,7 @@ import {
   Index,
   OneToMany,
 } from 'typeorm';
-import { RolesEnum } from '@domain/auth/enums/roles.enum';
+import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
 import { UserSessionEntity } from './user-session.entity';
 import { UserPermissionEntity } from './user-permission.entity';
 

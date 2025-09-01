@@ -6,8 +6,8 @@ import {
   SignUpData,
   SupabaseUser,
   SupabaseSession,
-} from '@domain/auth/interfaces/services/supabase-auth.service.interface';
-import { Result } from '@shared/types/result.type';
+} from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
+import { Result } from '../../../shared/types/result.type';
 
 @Injectable()
 export class SupabaseAuthService implements ISupabaseAuthService {

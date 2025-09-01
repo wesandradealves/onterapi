@@ -1,6 +1,6 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { RolesEnum, INTERNAL_ROLES } from '@domain/auth/enums/roles.enum';
+import { RolesEnum, INTERNAL_ROLES } from '../../../domain/auth/enums/roles.enum';
 
 @Injectable()
 export class TenantGuard implements CanActivate {

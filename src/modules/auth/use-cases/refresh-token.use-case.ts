@@ -1,8 +1,8 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
-import { IRefreshTokenUseCase, RefreshTokenInput, RefreshTokenOutput } from '@domain/auth/interfaces/use-cases/refresh-token.use-case.interface';
-import { IAuthRepository } from '@domain/auth/interfaces/repositories/auth.repository.interface';
-import { IJwtService } from '@domain/auth/interfaces/services/jwt.service.interface';
-import { Result } from '@shared/types/result.type';
+import { IRefreshTokenUseCase, RefreshTokenInput, RefreshTokenOutput } from '../../../domain/auth/interfaces/use-cases/refresh-token.use-case.interface';
+import { IAuthRepository } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
+import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
+import { Result } from '../../../shared/types/result.type';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()

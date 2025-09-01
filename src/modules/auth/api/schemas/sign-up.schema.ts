@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { cpfSchema, passwordSchema, phoneSchema } from '@shared/validators/auth.validators';
-import { RolesEnum, CLINIC_ROLES, PUBLIC_ROLES } from '@domain/auth/enums/roles.enum';
+import { cpfSchema, passwordSchema, phoneSchema } from '../../../../shared/validators/auth.validators';
+import { RolesEnum, CLINIC_ROLES, PUBLIC_ROLES } from '../../../../domain/auth/enums/roles.enum';
 
 const allowedSignUpRoles = [...CLINIC_ROLES, ...PUBLIC_ROLES];
 

@@ -1,10 +1,10 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ISignInUseCase, SignInInput, SignInOutput } from '@domain/auth/interfaces/use-cases/sign-in.use-case.interface';
-import { IAuthRepository } from '@domain/auth/interfaces/repositories/auth.repository.interface';
-import { ISupabaseAuthService } from '@domain/auth/interfaces/services/supabase-auth.service.interface';
-import { IJwtService } from '@domain/auth/interfaces/services/jwt.service.interface';
-import { Result } from '@shared/types/result.type';
+import { ISignInUseCase, SignInInput, SignInOutput } from '../../../domain/auth/interfaces/use-cases/sign-in.use-case.interface';
+import { IAuthRepository } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
+import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
+import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
+import { Result } from '../../../shared/types/result.type';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()

@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, QueryRunner, EntityManager } from 'typeorm';
-import { IAuthRepository } from '@domain/auth/interfaces/repositories/auth.repository.interface';
-import { User } from '@domain/auth/entities/user.entity';
+import { IAuthRepository } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
+import { User } from '../../../domain/auth/entities/user.entity';
 import { UserEntity } from '../entities/user.entity';
 import { UserSessionEntity } from '../entities/user-session.entity';
 import { TwoFactorCodeEntity } from '../entities/two-factor-code.entity';

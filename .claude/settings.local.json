@@ -25,7 +25,12 @@
       "Read(D:\\www\\Onterapi\\dourado-core-backend\\src\\shared\\utils/**)",
       "Read(D:\\www\\Onterapi\\dourado-core-backend\\src\\modules\\companies\\use-cases/**)",
       "Read(D:\\www\\Onterapi\\dourado-dashboard-backend\\src/**)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npx tsc:*)",
+      "Bash(git reset:*)",
+      "Bash(find:*)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi/**)"
     ],
     "deny": [],
     "ask": []

@@ -15,11 +15,11 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 
 // Use Cases
-import { ISignUpUseCase } from '@domain/auth/interfaces/use-cases/sign-up.use-case.interface';
-import { ISignInUseCase } from '@domain/auth/interfaces/use-cases/sign-in.use-case.interface';
-import { ISignOutUseCase } from '@domain/auth/interfaces/use-cases/sign-out.use-case.interface';
-import { IRefreshTokenUseCase } from '@domain/auth/interfaces/use-cases/refresh-token.use-case.interface';
-import { IValidateTwoFAUseCase } from '@domain/auth/interfaces/use-cases/validate-two-fa.use-case.interface';
+import { ISignUpUseCase } from '../../../../domain/auth/interfaces/use-cases/sign-up.use-case.interface';
+import { ISignInUseCase } from '../../../../domain/auth/interfaces/use-cases/sign-in.use-case.interface';
+import { ISignOutUseCase } from '../../../../domain/auth/interfaces/use-cases/sign-out.use-case.interface';
+import { IRefreshTokenUseCase } from '../../../../domain/auth/interfaces/use-cases/refresh-token.use-case.interface';
+import { IValidateTwoFAUseCase } from '../../../../domain/auth/interfaces/use-cases/validate-two-fa.use-case.interface';
 
 // Guards and Decorators
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
@@ -33,7 +33,7 @@ import { ValidateTwoFAInputDTO, validateTwoFAInputSchema } from '../schemas/two-
 import { RefreshTokenInputDTO, refreshTokenInputSchema } from '../schemas/refresh.schema';
 
 // Pipes
-import { ZodValidationPipe } from '@shared/pipes/zod-validation.pipe';
+import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
 
 @ApiTags('Auth')
 @Controller('auth')

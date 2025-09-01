@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService as NestJwtService } from '@nestjs/jwt';
-import { IJwtService } from '@domain/auth/interfaces/services/jwt.service.interface';
-import { AuthTokenPayload, RefreshTokenPayload, TwoFactorTokenPayload } from '@domain/auth/types/auth.types';
-import { Result } from '@shared/types/result.type';
+import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
+import { AuthTokenPayload, RefreshTokenPayload, TwoFactorTokenPayload } from '../../../domain/auth/types/auth.types';
+import { Result } from '../../../shared/types/result.type';
 
 @Injectable()
 export class JwtService implements IJwtService {

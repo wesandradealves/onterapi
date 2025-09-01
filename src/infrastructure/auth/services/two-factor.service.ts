@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
-import { ITwoFactorService, TwoFactorSecret } from '@domain/auth/interfaces/services/two-factor.service.interface';
+import { ITwoFactorService, TwoFactorSecret } from '../../../domain/auth/interfaces/services/two-factor.service.interface';
 
 @Injectable()
 export class TwoFactorService implements ITwoFactorService {
