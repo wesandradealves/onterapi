@@ -144,18 +144,10 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Credenciais inválidas' })
   @ApiResponse({ status: 423, description: 'Conta bloqueada' })
   @UsePipes(new ZodValidationPipe(signInInputSchema))
-  async signIn(
-    @Body() dto: SignInInputDTO,
-    @Headers('user-agent') userAgent: string,
-    @Ip() ip: string,
-  ) {
+  async signIn(@Body() dto: SignInInputDTO) {
     const input = {
       ...dto,
-      deviceInfo: {
-        ...dto.deviceInfo,
-        userAgent: dto.deviceInfo?.userAgent || userAgent,
-        ip: dto.deviceInfo?.ip || ip,
-      },
+      deviceInfo: dto.deviceInfo || {},
     };
 
     const result = await this.signInUseCase.execute(input);
@@ -206,19 +198,11 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: 'Código inválido' })
   @UsePipes(new ZodValidationPipe(validateTwoFAInputSchema))
-  async validateTwoFA(
-    @Body() dto: ValidateTwoFAInputDTO,
-    @Headers('user-agent') userAgent: string,
-    @Ip() ip: string,
-  ) {
+  async validateTwoFA(@Body() dto: ValidateTwoFAInputDTO) {
     const input = {
       ...dto,
       userId: '', // Será extraído do tempToken
-      deviceInfo: {
-        ...dto.deviceInfo,
-        userAgent: dto.deviceInfo?.userAgent || userAgent,
-        ip: dto.deviceInfo?.ip || ip,
-      },
+      deviceInfo: dto.deviceInfo || {},
     };
 
     const result = await this.validateTwoFAUseCase.execute(input);
@@ -256,18 +240,10 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: 'Refresh token inválido' })
   @UsePipes(new ZodValidationPipe(refreshTokenInputSchema))
-  async refresh(
-    @Body() dto: RefreshTokenInputDTO,
-    @Headers('user-agent') userAgent: string,
-    @Ip() ip: string,
-  ) {
+  async refresh(@Body() dto: RefreshTokenInputDTO) {
     const input = {
       ...dto,
-      deviceInfo: {
-        ...dto.deviceInfo,
-        userAgent: dto.deviceInfo?.userAgent || userAgent,
-        ip: dto.deviceInfo?.ip || ip,
-      },
+      deviceInfo: dto.deviceInfo || {},
     };
 
     const result = await this.refreshTokenUseCase.execute(input);
@@ -318,10 +294,9 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Token inválido ou expirado' })
   async signOut(
     @CurrentUser() user: ICurrentUser,
-    @Headers('authorization') authorization: string,
     @Body() dto?: SignOutDto,
   ) {
-    const accessToken = authorization?.split(' ')[1] || '';
+    const accessToken = ''; // Será obtido do contexto do guard
 
     const result = await this.signOutUseCase.execute({
       userId: user.id,
