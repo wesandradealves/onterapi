@@ -5,20 +5,38 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [Unreleased]
+
+### Added
+- **Documentação Swagger Completa**
+  - @ApiBody com types e examples em todos endpoints
+  - DTOs para sign-out e me responses  
+  - Descrições detalhadas e exemplos realistas
+  - Todos endpoints testáveis no Swagger UI
+  - Regra de documentação obrigatória em onterapi-dev.md
+
+### Fixed
+- Headers user-agent e ip removidos do Swagger UI para interface mais limpa
+- Path aliases (@infrastructure, @domain, @shared) removidos para compatibilidade com Vercel
+- Erros TypeScript nos DTOs com definite assignment operator
+
+### Changed
+- Endpoint /me alterado de POST para GET (mais RESTful)
+- Simplificada captura de deviceInfo nos endpoints
+
 ## [0.3.0] - 2025-09-01
 
 ### Added
 - **Módulo de Autenticação Completo** - Arquitetura DDD e Clean Architecture
   - **Domain Layer**: Entidades puras, interfaces de use cases, repositórios e serviços
   - **Infrastructure Layer**: Entidades TypeORM, integração com Supabase Auth, repositório com Query Builder
-  - **Application Layer**: Controllers REST, DTOs com Swagger, implementação dos use cases
+  - **Application Layer**: Controllers REST, DTOs, implementação dos use cases
   - **Sistema de Roles (RBAC)**: 11 roles hierárquicos (SUPER_ADMIN, CLINIC_OWNER, PROFESSIONAL, etc.)
   - **Multi-tenant**: Suporte completo com isolamento por tenant_id
   - **Two-Factor Authentication (2FA)**: Suporte para TOTP, SMS e email
   - **Segurança**: JWT tokens, refresh tokens, rate limiting, proteção contra brute force
   - **Guards**: JwtAuthGuard, RolesGuard, TenantGuard
   - **Decorators**: @Public, @Roles, @CurrentUser
-  - **Swagger Documentation**: Todos endpoints documentados com @ApiProperty
 
 - **Shared Utils**: Funções reutilizáveis seguindo padrões enterprise
   - `db-connection.util.ts`: Savepoints para transações granulares
