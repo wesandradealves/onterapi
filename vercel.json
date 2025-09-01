@@ -12,9 +12,18 @@
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "api/index.ts"
+      "dest": "api/index.ts",
+      "headers": {
+        "cache-control": "no-cache, no-store, must-revalidate",
+        "x-powered-by": "OnTerapi"
+      }
     }
   ],
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 30
+    }
+  },
   "env": {
     "NODE_ENV": "production",
     "PORT": "3000",
