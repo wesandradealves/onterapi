@@ -8,6 +8,25 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 ## [Unreleased]
 
 ### Fixed
+- Conexão com banco de dados usando Supabase Pooler para garantir IPv4 (resolve problemas Docker/Vercel)
+- Configuração SSL duplicada no TypeORM removida
+- URL do Swagger configurada corretamente para Docker (porta 3001)
+- Endpoint `/ping` desnecessário removido, mantendo apenas `/health`
+
+### Changed
+- Migração para Supabase Pooler (aws-0-sa-east-1.pooler.supabase.com:6543) para compatibilidade IPv4
+- Timeouts de conexão aumentados para 10s para melhor estabilidade
+- Configuração SWAGGER_SERVER_URL adicionada para ambientes Docker e Vercel
+
+### Added
+- Configuração Docker completa para desenvolvimento local
+- Scripts docker-run para Windows e Linux
+- Dockerfile otimizado com multi-stage build e usuário não-root
+- Docker Compose configurado com health checks e networking
+
+## [0.2.4] - 2025-09-01
+
+### Fixed
 - Erro de runtime na Vercel corrigido (sintaxe nodejs20.x removida)
 - Configuração vercel.json simplificada usando builds/routes padrão
 - Erro "Cannot find module '@shared/messaging/message-bus.module'" definitivamente corrigido
