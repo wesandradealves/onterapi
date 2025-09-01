@@ -239,18 +239,6 @@ VISITOR            // Visitante não autenticado
 
 ##### Autenticação
 ```http
-POST /auth/sign-up
-Body: {
-  email: string,
-  password: string,
-  name: string,
-  cpf: string,
-  phone?: string,
-  role: RolesEnum,
-  tenantId?: string,
-  acceptTerms: boolean
-}
-
 POST /auth/sign-in
 Body: {
   email: string,

@@ -24,6 +24,12 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 - Endpoint /me alterado de POST para GET (mais RESTful)
 - Simplificada captura de deviceInfo nos endpoints
 
+### Removed
+- **Endpoint sign-up removido do módulo Auth**
+  - Cadastro de usuários será feito no módulo Users (a ser criado)
+  - SignUpUseCase e arquivos relacionados removidos
+  - Auth agora é exclusivamente para autenticação (login, logout, refresh, 2FA)
+
 ## [0.3.0] - 2025-09-01
 
 ### Added

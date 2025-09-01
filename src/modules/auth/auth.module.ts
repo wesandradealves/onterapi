@@ -23,12 +23,10 @@ import { IJwtService } from '../../domain/auth/interfaces/services/jwt.service.i
 import { ITwoFactorService } from '../../domain/auth/interfaces/services/two-factor.service.interface';
 
 // Use Cases
-import { SignUpUseCase } from './use-cases/sign-up.use-case';
 import { SignInUseCase } from './use-cases/sign-in.use-case';
 import { SignOutUseCase } from './use-cases/sign-out.use-case';
 import { RefreshTokenUseCase } from './use-cases/refresh-token.use-case';
 import { ValidateTwoFAUseCase } from './use-cases/validate-two-fa.use-case';
-import { ISignUpUseCase } from '../../domain/auth/interfaces/use-cases/sign-up.use-case.interface';
 import { ISignInUseCase } from '../../domain/auth/interfaces/use-cases/sign-in.use-case.interface';
 import { ISignOutUseCase } from '../../domain/auth/interfaces/use-cases/sign-out.use-case.interface';
 import { IRefreshTokenUseCase } from '../../domain/auth/interfaces/use-cases/refresh-token.use-case.interface';
@@ -66,10 +64,6 @@ const serviceProviders: Provider[] = [
 ];
 
 const useCaseProviders: Provider[] = [
-  {
-    provide: ISignUpUseCase,
-    useClass: SignUpUseCase,
-  },
   {
     provide: ISignInUseCase,
     useClass: SignInUseCase,

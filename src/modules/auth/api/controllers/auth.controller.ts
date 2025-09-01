@@ -15,14 +15,12 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 
 // DTOs
-import { SignUpDto, SignUpResponseDto } from '../dtos/sign-up.dto';
 import { SignInDto, SignInResponseDto } from '../dtos/sign-in.dto';
 import { ValidateTwoFADto, ValidateTwoFAResponseDto } from '../dtos/two-fa.dto';
 import { RefreshTokenDto, RefreshTokenResponseDto } from '../dtos/refresh.dto';
 import { SignOutDto, SignOutResponseDto, MeResponseDto } from '../dtos/sign-out.dto';
 
 // Use Cases
-import { ISignUpUseCase } from '../../../../domain/auth/interfaces/use-cases/sign-up.use-case.interface';
 import { ISignInUseCase } from '../../../../domain/auth/interfaces/use-cases/sign-in.use-case.interface';
 import { ISignOutUseCase } from '../../../../domain/auth/interfaces/use-cases/sign-out.use-case.interface';
 import { IRefreshTokenUseCase } from '../../../../domain/auth/interfaces/use-cases/refresh-token.use-case.interface';
@@ -34,7 +32,6 @@ import { Public } from '../../decorators/public.decorator';
 import { CurrentUser, ICurrentUser } from '../../decorators/current-user.decorator';
 
 // Schemas
-import { SignUpInputDTO, signUpInputSchema } from '../schemas/sign-up.schema';
 import { SignInInputDTO, signInInputSchema } from '../schemas/sign-in.schema';
 import { ValidateTwoFAInputDTO, validateTwoFAInputSchema } from '../schemas/two-fa.schema';
 import { RefreshTokenInputDTO, refreshTokenInputSchema } from '../schemas/refresh.schema';
@@ -48,8 +45,6 @@ export class AuthController {
   private readonly logger = new Logger(AuthController.name);
 
   constructor(
-    @Inject(ISignUpUseCase)
-    private readonly signUpUseCase: ISignUpUseCase,
     @Inject(ISignInUseCase)
     private readonly signInUseCase: ISignInUseCase,
     @Inject(ISignOutUseCase)
@@ -59,50 +54,6 @@ export class AuthController {
     @Inject(IValidateTwoFAUseCase)
     private readonly validateTwoFAUseCase: IValidateTwoFAUseCase,
   ) {}
-
-  @Post('sign-up')
-  @Public()
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ 
-    summary: 'Cadastrar novo usuário',
-    description: 'Cria um novo usuário no sistema com validação de CPF único e envio de email de confirmação'
-  })
-  @ApiBody({ 
-    type: SignUpDto,
-    description: 'Dados para cadastro do usuário',
-    examples: {
-      example1: {
-        summary: 'Exemplo de cadastro de profissional',
-        value: {
-          email: 'profissional@clinica.com',
-          password: 'SenhaForte123!',
-          name: 'Dr. João Silva',
-          cpf: '12345678901',
-          phone: '11999999999',
-          role: 'PROFESSIONAL',
-          tenantId: 'clinic-123',
-          acceptTerms: true
-        }
-      }
-    }
-  })
-  @ApiResponse({ 
-    status: 201, 
-    description: 'Usuário criado com sucesso',
-    type: SignUpResponseDto 
-  })
-  @ApiResponse({ status: 400, description: 'Dados inválidos' })
-  @ApiResponse({ status: 409, description: 'Email ou CPF já cadastrado' })
-  @UsePipes(new ZodValidationPipe(signUpInputSchema))
-  async signUp(@Body() dto: SignUpInputDTO) {
-    const result = await this.signUpUseCase.execute(dto);
-
-    if (result.error) {
-      throw result.error;
-    }
-
-    return result.data;
-  }
 
   @Post('sign-in')
   @Public()
