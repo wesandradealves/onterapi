@@ -1,0 +1,32 @@
+services:
+  # NestJS Application (conectando ao Supabase externo)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: onterapi-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Force IPv4
+      NODE_OPTIONS: "--dns-result-order=ipv4first"
+      # Swagger configuration for Docker
+      SWAGGER_SERVER_URL: "http://localhost:3001"
+    ports:
+      - "3001:3000"
+    networks:
+      - onterapi-network
+    volumes:
+      - /app/node_modules # Prevent overwriting node_modules
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  onterapi-network:
+    driver: bridge
