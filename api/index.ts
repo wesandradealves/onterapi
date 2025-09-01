@@ -45,6 +45,17 @@ async function createNestApp() {
 }
 
 export default async function handler(req: any, res: any) {
+  // Rota raiz retorna info básica
+  if (req.url === '/' || req.url === '') {
+    return res.status(200).json({
+      name: 'OnTerapi API',
+      version: '0.2.4',
+      status: 'running',
+      health: '/health',
+      docs: 'Swagger não disponível em serverless'
+    });
+  }
+  
   if (!app) {
     await createNestApp();
   }
