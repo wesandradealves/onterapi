@@ -22,14 +22,22 @@ export class HealthController {
   @ApiOperation({ summary: 'Health check endpoint' })
   @HealthCheck()
   check() {
-    return this.health.check([
+    const checks = [
       () => this.db.pingCheck('database', { timeout: 5000 }),
       () => this.memory.checkHeap('memory_heap', 150 * 1024 * 1024),
       () => this.memory.checkRSS('memory_rss', 150 * 1024 * 1024),
-      () => this.disk.checkStorage('storage', { 
-        path: process.platform === 'win32' ? 'C:\\' : '/', 
-        thresholdPercent: 0.9 
-      }),
-    ]);
+    ];
+
+    // Não verificar disco em ambiente serverless (Vercel)
+    if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+      checks.push(
+        () => this.disk.checkStorage('storage', { 
+          path: process.platform === 'win32' ? 'C:\\' : '/', 
+          thresholdPercent: 0.95 
+        })
+      );
+    }
+
+    return this.health.check(checks);
   }
 }

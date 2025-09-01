@@ -21,6 +21,7 @@
   ],
   "env": {
     "NODE_ENV": "production",
+    "VERCEL": "1",
     "PORT": "3000",
     "DB_HOST": "aws-0-sa-east-1.pooler.supabase.com",
     "DB_PORT": "6543",
