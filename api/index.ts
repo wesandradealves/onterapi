@@ -1,8 +1,9 @@
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from '../src/app.module';
+import HttpExceptionFilter from '../src/core/shared/exceptions/filter.exception';
+import Swagger from '../src/core/shared/swagger/swagger.config';
 import express from 'express';
 import helmet from 'helmet';
 
@@ -24,10 +25,8 @@ async function createNestApp() {
     credentials: true,
   });
 
-  // Prefixo global da API
-  app.setGlobalPrefix('api/v1', {
-    exclude: ['health', 'metrics', 'api', 'api-json'],
-  });
+  // Exception filter
+  app.useGlobalFilters(new HttpExceptionFilter());
 
   // Pipes de validação
   app.useGlobalPipes(
@@ -42,23 +41,7 @@ async function createNestApp() {
   );
 
   // Configuração do Swagger
-  const config = new DocumentBuilder()
-    .setTitle('OnTerapi API')
-    .setDescription('API for OnTerapi Platform')
-    .setVersion('1.0.0')
-    .addBearerAuth()
-    .addServer('https://onterapi.vercel.app', 'Production')
-    .addServer('http://localhost:3001', 'Local Docker')
-    .build();
-
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document, {
-    swaggerOptions: {
-      persistAuthorization: true,
-      tagsSorter: 'alpha',
-      operationsSorter: 'alpha',
-    },
-  });
+  Swagger.swaggerInit(app);
 
   await app.init();
   return app;

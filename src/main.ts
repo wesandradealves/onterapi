@@ -1,17 +1,38 @@
+import { ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
-import { BootstrapFactory } from './shared/bootstrap/bootstrap.factory';
+import HttpExceptionFilter from './core/shared/exceptions/filter.exception';
+import { healthRoute } from './core/shared/health/health.router';
+import Swagger from './core/shared/swagger/swagger.config';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
-  const isTestMode = process.env.NODE_ENV === 'test';
+  const app = await NestFactory.create(AppModule);
+  Swagger.swaggerInit(app);
 
-  await BootstrapFactory.create({
-    module: AppModule,
-    port: Number(process.env.PORT) || 3000,
-    corsOrigin: process.env.CORS_ORIGIN?.split(',') || '*',
-    enableHelmet: !isTestMode,
-    logLevels: isTestMode ? ['error', 'warn', 'log'] : ['error', 'warn', 'log', 'debug', 'verbose'],
-    mode: isTestMode ? 'test' : 'production',
+  const configService = app.get<ConfigService>(ConfigService);
+
+  app.use(healthRoute);
+
+  app.use(json({ limit: '5mb' }));
+  app.use(urlencoded({ extended: false }));
+  app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      disableErrorMessages: false,
+    }),
+  );
+
+  app.enableCors({
+    origin: process.env.CORS_ORIGIN?.split(',') || '*',
+    credentials: true,
   });
-}
 
+  const port = configService.get<string>('PORT') ?? 3000;
+  await app.listen(port);
+}
 bootstrap();
