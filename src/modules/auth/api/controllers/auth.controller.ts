@@ -14,6 +14,13 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 
+// DTOs
+import { SignUpDto, SignUpResponseDto } from '../dtos/sign-up.dto';
+import { SignInDto, SignInResponseDto } from '../dtos/sign-in.dto';
+import { ValidateTwoFADto, ValidateTwoFAResponseDto } from '../dtos/two-fa.dto';
+import { RefreshTokenDto, RefreshTokenResponseDto } from '../dtos/refresh.dto';
+import { SignOutDto, SignOutResponseDto, MeResponseDto } from '../dtos/sign-out.dto';
+
 // Use Cases
 import { ISignUpUseCase } from '../../../../domain/auth/interfaces/use-cases/sign-up.use-case.interface';
 import { ISignInUseCase } from '../../../../domain/auth/interfaces/use-cases/sign-in.use-case.interface';
@@ -56,8 +63,34 @@ export class AuthController {
   @Post('sign-up')
   @Public()
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Cadastrar novo usuário' })
-  @ApiResponse({ status: 201, description: 'Usuário criado com sucesso' })
+  @ApiOperation({ 
+    summary: 'Cadastrar novo usuário',
+    description: 'Cria um novo usuário no sistema com validação de CPF único e envio de email de confirmação'
+  })
+  @ApiBody({ 
+    type: SignUpDto,
+    description: 'Dados para cadastro do usuário',
+    examples: {
+      example1: {
+        summary: 'Exemplo de cadastro de profissional',
+        value: {
+          email: 'profissional@clinica.com',
+          password: 'SenhaForte123!',
+          name: 'Dr. João Silva',
+          cpf: '12345678901',
+          phone: '11999999999',
+          role: 'PROFESSIONAL',
+          tenantId: 'clinic-123',
+          acceptTerms: true
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 201, 
+    description: 'Usuário criado com sucesso',
+    type: SignUpResponseDto 
+  })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
   @ApiResponse({ status: 409, description: 'Email ou CPF já cadastrado' })
   @UsePipes(new ZodValidationPipe(signUpInputSchema))
@@ -74,8 +107,40 @@ export class AuthController {
   @Post('sign-in')
   @Public()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Autenticar usuário' })
-  @ApiResponse({ status: 200, description: 'Login realizado com sucesso' })
+  @ApiOperation({ 
+    summary: 'Autenticar usuário',
+    description: 'Autentica um usuário com email e senha, podendo requerer 2FA'
+  })
+  @ApiBody({ 
+    type: SignInDto,
+    description: 'Credenciais de autenticação',
+    examples: {
+      example1: {
+        summary: 'Login simples',
+        value: {
+          email: 'usuario@example.com',
+          password: 'SenhaForte123!',
+          rememberMe: false
+        }
+      },
+      example2: {
+        summary: 'Login com remember me',
+        value: {
+          email: 'usuario@example.com',
+          password: 'SenhaForte123!',
+          rememberMe: true,
+          deviceInfo: {
+            device: 'Chrome on Windows'
+          }
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Login realizado com sucesso',
+    type: SignInResponseDto 
+  })
   @ApiResponse({ status: 401, description: 'Credenciais inválidas' })
   @ApiResponse({ status: 423, description: 'Conta bloqueada' })
   @UsePipes(new ZodValidationPipe(signInInputSchema))
@@ -105,8 +170,40 @@ export class AuthController {
   @Post('two-factor/validate')
   @Public()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Validar código 2FA' })
-  @ApiResponse({ status: 200, description: 'Código validado com sucesso' })
+  @ApiOperation({ 
+    summary: 'Validar código 2FA',
+    description: 'Valida o código de autenticação de dois fatores enviado por SMS, email ou TOTP'
+  })
+  @ApiBody({ 
+    type: ValidateTwoFADto,
+    description: 'Código 2FA para validação',
+    examples: {
+      example1: {
+        summary: 'Validação de código',
+        value: {
+          tempToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+          code: '123456',
+          trustDevice: false
+        }
+      },
+      example2: {
+        summary: 'Validação com confiança no dispositivo',
+        value: {
+          tempToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+          code: '123456',
+          trustDevice: true,
+          deviceInfo: {
+            device: 'iPhone Safari'
+          }
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Código validado com sucesso',
+    type: ValidateTwoFAResponseDto 
+  })
   @ApiResponse({ status: 401, description: 'Código inválido' })
   @UsePipes(new ZodValidationPipe(validateTwoFAInputSchema))
   async validateTwoFA(
@@ -136,8 +233,27 @@ export class AuthController {
   @Post('refresh')
   @Public()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Renovar token de acesso' })
-  @ApiResponse({ status: 200, description: 'Token renovado com sucesso' })
+  @ApiOperation({ 
+    summary: 'Renovar token de acesso',
+    description: 'Usa o refresh token para obter um novo access token'
+  })
+  @ApiBody({ 
+    type: RefreshTokenDto,
+    description: 'Refresh token para renovação',
+    examples: {
+      example1: {
+        summary: 'Renovação de token',
+        value: {
+          refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Token renovado com sucesso',
+    type: RefreshTokenResponseDto 
+  })
   @ApiResponse({ status: 401, description: 'Refresh token inválido' })
   @UsePipes(new ZodValidationPipe(refreshTokenInputSchema))
   async refresh(
@@ -167,21 +283,51 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Fazer logout' })
-  @ApiResponse({ status: 200, description: 'Logout realizado com sucesso' })
+  @ApiOperation({ 
+    summary: 'Fazer logout',
+    description: 'Encerra a sessão do usuário, invalidando tokens'
+  })
+  @ApiBody({ 
+    type: SignOutDto,
+    description: 'Opções de logout',
+    required: false,
+    examples: {
+      example1: {
+        summary: 'Logout simples',
+        value: {}
+      },
+      example2: {
+        summary: 'Logout com refresh token',
+        value: {
+          refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+        }
+      },
+      example3: {
+        summary: 'Logout em todos dispositivos',
+        value: {
+          allDevices: true
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Logout realizado com sucesso',
+    type: SignOutResponseDto 
+  })
+  @ApiResponse({ status: 401, description: 'Token inválido ou expirado' })
   async signOut(
     @CurrentUser() user: ICurrentUser,
     @Headers('authorization') authorization: string,
-    @Body('refreshToken') refreshToken?: string,
-    @Body('allDevices') allDevices?: boolean,
+    @Body() dto?: SignOutDto,
   ) {
     const accessToken = authorization?.split(' ')[1] || '';
 
     const result = await this.signOutUseCase.execute({
       userId: user.id,
       accessToken,
-      refreshToken,
-      allDevices,
+      refreshToken: dto?.refreshToken,
+      allDevices: dto?.allDevices,
     });
 
     if (result.error) {
@@ -191,13 +337,29 @@ export class AuthController {
     return result.data;
   }
 
-  @Post('me')
+  @Get('me')
   @UseGuards(JwtAuthGuard)
-  @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Obter dados do usuário autenticado' })
-  @ApiResponse({ status: 200, description: 'Dados do usuário' })
+  @ApiOperation({ 
+    summary: 'Obter dados do usuário autenticado',
+    description: 'Retorna as informações do usuário atualmente autenticado'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Dados do usuário',
+    type: MeResponseDto 
+  })
+  @ApiResponse({ status: 401, description: 'Não autenticado' })
   async me(@CurrentUser() user: ICurrentUser) {
-    return user;
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      tenantId: user.tenantId,
+      createdAt: new Date().toISOString(),
+      emailVerified: true,
+      twoFactorEnabled: false,
+    };
   }
 }
