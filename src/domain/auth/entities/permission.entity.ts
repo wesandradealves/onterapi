@@ -3,9 +3,9 @@
  * Representa uma permissão granular no sistema
  */
 export class Permission {
-  id: string;
-  userId: string;
-  permission: string;
+  id!: string;
+  userId!: string;
+  permission!: string;
   resource?: string;
   tenantId?: string;
   expiresAt?: Date;

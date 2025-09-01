@@ -5,13 +5,13 @@ import { RolesEnum } from '../enums/roles.enum';
  * Representa um usuário do sistema
  */
 export class User {
-  id: string;
-  supabaseId: string;
-  email: string;
-  name: string;
-  cpf: string;
+  id!: string;
+  supabaseId!: string;
+  email!: string;
+  name!: string;
+  cpf!: string;
   phone?: string;
-  role: RolesEnum;
+  role!: RolesEnum;
   tenantId?: string;
   twoFactorEnabled: boolean;
   twoFactorSecret?: string;

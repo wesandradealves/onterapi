@@ -3,8 +3,8 @@
  * Representa configurações e códigos 2FA
  */
 export class TwoFactor {
-  id: string;
-  userId: string;
+  id!: string;
+  userId!: string;
   secret?: string;
   backupCodes?: string[];
   method: 'authenticator' | 'sms' | 'email';

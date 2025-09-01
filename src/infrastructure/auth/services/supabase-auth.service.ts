@@ -16,7 +16,7 @@ export class SupabaseAuthService implements ISupabaseAuthService {
 
   constructor(private readonly configService: ConfigService) {
     const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
-    const supabaseKey = this.configService.get<string>('SUPABASE_SERVICE_KEY');
+    const supabaseKey = this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!supabaseUrl || !supabaseKey) {
       throw new Error('Supabase configuration is missing');
@@ -158,10 +158,9 @@ export class SupabaseAuthService implements ISupabaseAuthService {
 
   async updatePassword(accessToken: string, newPassword: string): Promise<Result<void>> {
     try {
-      const { error } = await this.supabase.auth.updateUser(
-        { password: newPassword },
-        { accessToken }
-      );
+      const { error } = await this.supabase.auth.updateUser({
+        password: newPassword,
+      });
 
       if (error) {
         this.logger.error(`Supabase updatePassword error: ${error.message}`);

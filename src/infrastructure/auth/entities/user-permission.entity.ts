@@ -18,13 +18,13 @@ import { UserEntity } from './user.entity';
 @Index(['permission'])
 export class UserPermissionEntity {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column({ name: 'user_id', type: 'uuid' })
-  userId: string;
+  userId!: string;
 
   @Column({ type: 'varchar', length: 100 })
-  permission: string;
+  permission!: string;
 
   @Column({ type: 'varchar', length: 100, nullable: true })
   resource?: string;
@@ -39,12 +39,12 @@ export class UserPermissionEntity {
   metadata?: Record<string, any>;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  updatedAt!: Date;
 
   @ManyToOne(() => UserEntity, (user) => user.permissions)
   @JoinColumn({ name: 'user_id' })
-  user: UserEntity;
+  user!: UserEntity;
 }

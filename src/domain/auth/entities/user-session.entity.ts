@@ -3,9 +3,9 @@
  * Representa uma sessão ativa de usuário
  */
 export class UserSession {
-  id: string;
-  userId: string;
-  refreshToken: string;
+  id!: string;
+  userId!: string;
+  refreshToken!: string;
   accessToken?: string;
   deviceInfo?: {
     userAgent?: string;
@@ -17,7 +17,7 @@ export class UserSession {
   ipAddress?: string;
   isTrustedDevice: boolean;
   lastActivityAt: Date;
-  expiresAt: Date;
+  expiresAt!: Date;
   createdAt: Date;
   revokedAt?: Date;
   revokedReason?: string;

@@ -19,19 +19,19 @@ import { UserPermissionEntity } from './user-permission.entity';
 @Index(['tenantId'])
 export class UserEntity {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column({ name: 'supabase_id', type: 'uuid', unique: true })
-  supabaseId: string;
+  supabaseId!: string;
 
   @Column({ type: 'varchar', length: 255, unique: true })
-  email: string;
+  email!: string;
 
   @Column({ type: 'varchar', length: 255 })
-  name: string;
+  name!: string;
 
   @Column({ type: 'varchar', length: 11, unique: true })
-  cpf: string;
+  cpf!: string;
 
   @Column({ type: 'varchar', length: 20, nullable: true })
   phone?: string;
@@ -41,13 +41,13 @@ export class UserEntity {
     enum: RolesEnum,
     default: RolesEnum.PATIENT,
   })
-  role: RolesEnum;
+  role!: RolesEnum;
 
   @Column({ name: 'tenant_id', type: 'uuid', nullable: true })
   tenantId?: string;
 
   @Column({ name: 'two_factor_enabled', type: 'boolean', default: false })
-  twoFactorEnabled: boolean;
+  twoFactorEnabled!: boolean;
 
   @Column({ name: 'two_factor_secret', type: 'varchar', length: 255, nullable: true })
   twoFactorSecret?: string;
@@ -56,16 +56,16 @@ export class UserEntity {
   backupCodes?: string[];
 
   @Column({ name: 'is_active', type: 'boolean', default: true })
-  isActive: boolean;
+  isActive!: boolean;
 
   @Column({ name: 'email_verified', type: 'boolean', default: false })
-  emailVerified: boolean;
+  emailVerified!: boolean;
 
   @Column({ name: 'last_login_at', type: 'timestamp', nullable: true })
   lastLoginAt?: Date;
 
   @Column({ name: 'failed_login_attempts', type: 'int', default: 0 })
-  failedLoginAttempts: number;
+  failedLoginAttempts!: number;
 
   @Column({ name: 'locked_until', type: 'timestamp', nullable: true })
   lockedUntil?: Date;
@@ -74,17 +74,17 @@ export class UserEntity {
   metadata?: Record<string, any>;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  updatedAt!: Date;
 
   @DeleteDateColumn({ name: 'deleted_at' })
   deletedAt?: Date;
 
   @OneToMany(() => UserSessionEntity, (session) => session.user)
-  sessions: UserSessionEntity[];
+  sessions!: UserSessionEntity[];
 
   @OneToMany(() => UserPermissionEntity, (permission) => permission.user)
-  permissions: UserPermissionEntity[];
+  permissions!: UserPermissionEntity[];
 }

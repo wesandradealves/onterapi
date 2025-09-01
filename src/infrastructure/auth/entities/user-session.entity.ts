@@ -15,13 +15,13 @@ import { UserEntity } from './user.entity';
 @Index(['expiresAt'])
 export class UserSessionEntity {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column({ name: 'user_id', type: 'uuid' })
-  userId: string;
+  userId!: string;
 
   @Column({ name: 'refresh_token', type: 'varchar', length: 500, unique: true })
-  refreshToken: string;
+  refreshToken!: string;
 
   @Column({ name: 'access_token', type: 'varchar', length: 500, nullable: true })
   accessToken?: string;
@@ -40,13 +40,13 @@ export class UserSessionEntity {
   ipAddress?: string;
 
   @Column({ name: 'is_trusted_device', type: 'boolean', default: false })
-  isTrustedDevice: boolean;
+  isTrustedDevice!: boolean;
 
   @Column({ name: 'last_activity_at', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-  lastActivityAt: Date;
+  lastActivityAt!: Date;
 
   @Column({ name: 'expires_at', type: 'timestamp' })
-  expiresAt: Date;
+  expiresAt!: Date;
 
   @Column({ name: 'revoked_at', type: 'timestamp', nullable: true })
   revokedAt?: Date;
@@ -55,9 +55,9 @@ export class UserSessionEntity {
   revokedReason?: string;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @ManyToOne(() => UserEntity, (user) => user.sessions)
   @JoinColumn({ name: 'user_id' })
-  user: UserEntity;
+  user!: UserEntity;
 }
