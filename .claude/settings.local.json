@@ -10,7 +10,9 @@
       "Read(D:\\www\\Onterapi/**)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(docker:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []
