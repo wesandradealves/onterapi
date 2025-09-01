@@ -23,16 +23,10 @@ export class HealthController {
   @HealthCheck()
   check() {
     return this.health.check([
-      () => this.db.pingCheck('database'),
+      () => this.db.pingCheck('database', { timeout: 5000 }),
       () => this.memory.checkHeap('memory_heap', 150 * 1024 * 1024),
       () => this.memory.checkRSS('memory_rss', 150 * 1024 * 1024),
       () => this.disk.checkStorage('storage', { path: process.platform === 'win32' ? 'C:\\' : '/', thresholdPercent: 0.9 }),
     ]);
-  }
-
-  @Get('ping')
-  @ApiOperation({ summary: 'Simple ping endpoint' })
-  ping() {
-    return { status: 'ok', timestamp: new Date().toISOString() };
   }
 }

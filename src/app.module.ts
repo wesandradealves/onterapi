@@ -28,17 +28,13 @@ import { HealthController } from './health.controller';
       ssl:
         process.env.DB_SSL === 'true'
           ? {
-              rejectUnauthorized: true,
+              rejectUnauthorized: false,
             }
           : false,
-      extra: {
-        ssl:
-          process.env.DB_SSL === 'true'
-            ? {
-                rejectUnauthorized: false,
-              }
-            : false,
-      },
+      connectTimeoutMS: 10000,
+      maxQueryExecutionTime: 5000,
+      retryAttempts: 3,
+      retryDelay: 3000,
     }),
 
     MessageBusModule,

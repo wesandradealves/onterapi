@@ -14,5 +14,24 @@
       "src": "/(.*)",
       "dest": "api/index.ts"
     }
-  ]
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "PORT": "3000",
+    "DB_HOST": "aws-0-sa-east-1.pooler.supabase.com",
+    "DB_PORT": "6543",
+    "DB_USERNAME": "postgres.ogffdaemylaezxpunmop",
+    "DB_PASSWORD": "5lGR6N9OyfF1fcMc",
+    "DB_DATABASE": "postgres",
+    "DB_SSL": "true",
+    "SUPABASE_URL": "https://ogffdaemylaezxpunmop.supabase.co",
+    "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9nZmZkYWVteWxhZXp4cHVubW9wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyNDQ5NDQsImV4cCI6MjA2NjgyMDk0NH0.cWZvt7FOySwg0kc6wANYoqEM1mxl4QSG7MLLhSjiYZE",
+    "SUPABASE_SERVICE_ROLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9nZmZkYWVteWxhZXp4cHVubW9wIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTI0NDk0NCwiZXhwIjoyMDY2ODIwOTQ0fQ.-4UloSh5XTNItqs2mDCWEsBhvSKTv27zmJ1N-qrxm5o",
+    "CORS_ORIGIN": "*",
+    "LOG_LEVEL": "info",
+    "API_PREFIX": "api/v1",
+    "API_VERSION": "1.0.0",
+    "API_TITLE": "OnTerapi API",
+    "API_DESCRIPTION": "API for OnTerapi Platform"
+  }
 }
