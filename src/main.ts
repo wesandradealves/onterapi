@@ -3,7 +3,6 @@ import { NestFactory } from '@nestjs/core';
 import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import HttpExceptionFilter from './core/shared/exceptions/filter.exception';
-import { healthRoute } from './core/shared/health/health.router';
 import Swagger from './core/shared/swagger/swagger.config';
 import { ConfigService } from '@nestjs/config';
 
@@ -12,8 +11,6 @@ async function bootstrap() {
   Swagger.swaggerInit(app);
 
   const configService = app.get<ConfigService>(ConfigService);
-
-  app.use(healthRoute);
 
   app.use(json({ limit: '5mb' }));
   app.use(urlencoded({ extended: false }));

@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, QueryRunner, EntityManager } from 'typeorm';
 import { IAuthRepository } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
-import { User } from '../../../domain/auth/entities/user.entity';
 import { UserEntity } from '../entities/user.entity';
 import { UserSessionEntity } from '../entities/user-session.entity';
 import { TwoFactorCodeEntity } from '../entities/two-factor-code.entity';
@@ -23,7 +22,7 @@ export class AuthRepository implements IAuthRepository {
     private readonly loginAttemptRepository: Repository<LoginAttemptEntity>,
   ) {}
 
-  async findByEmail(email: string, runner?: QueryRunner): Promise<User | null> {
+  async findByEmail(email: string, runner?: QueryRunner): Promise<UserEntity | null> {
     const manager = runner?.manager || this.userRepository.manager;
     
     const entity = await manager
@@ -32,10 +31,10 @@ export class AuthRepository implements IAuthRepository {
       .andWhere('user.deletedAt IS NULL')
       .getOne();
 
-    return entity ? this.toDomainEntity(entity) : null;
+    return entity;
   }
 
-  async findByCpf(cpf: string, runner?: QueryRunner): Promise<User | null> {
+  async findByCpf(cpf: string, runner?: QueryRunner): Promise<UserEntity | null> {
     const manager = runner?.manager || this.userRepository.manager;
     
     const entity = await manager
@@ -44,10 +43,10 @@ export class AuthRepository implements IAuthRepository {
       .andWhere('user.deletedAt IS NULL')
       .getOne();
 
-    return entity ? this.toDomainEntity(entity) : null;
+    return entity;
   }
 
-  async findById(id: string, runner?: QueryRunner): Promise<User | null> {
+  async findById(id: string, runner?: QueryRunner): Promise<UserEntity | null> {
     const manager = runner?.manager || this.userRepository.manager;
     
     const entity = await manager
@@ -56,10 +55,10 @@ export class AuthRepository implements IAuthRepository {
       .andWhere('user.deletedAt IS NULL')
       .getOne();
 
-    return entity ? this.toDomainEntity(entity) : null;
+    return entity;
   }
 
-  async findBySupabaseId(supabaseId: string, runner?: QueryRunner): Promise<User | null> {
+  async findBySupabaseId(supabaseId: string, runner?: QueryRunner): Promise<UserEntity | null> {
     const manager = runner?.manager || this.userRepository.manager;
     
     const entity = await manager
@@ -68,10 +67,10 @@ export class AuthRepository implements IAuthRepository {
       .andWhere('user.deletedAt IS NULL')
       .getOne();
 
-    return entity ? this.toDomainEntity(entity) : null;
+    return entity;
   }
 
-  async create(data: Partial<User>, runner?: QueryRunner): Promise<User> {
+  async create(data: Partial<UserEntity>, runner?: QueryRunner): Promise<UserEntity> {
     const manager = runner?.manager || this.userRepository.manager;
     
     const entity = manager.create(UserEntity, {
@@ -90,10 +89,10 @@ export class AuthRepository implements IAuthRepository {
     });
 
     const saved = await manager.save(entity);
-    return this.toDomainEntity(saved);
+    return saved;
   }
 
-  async update(id: string, data: Partial<User>, runner?: QueryRunner): Promise<User> {
+  async update(id: string, data: Partial<UserEntity>, runner?: QueryRunner): Promise<UserEntity> {
     const manager = runner?.manager || this.userRepository.manager;
     
     await manager
@@ -145,7 +144,7 @@ export class AuthRepository implements IAuthRepository {
     await manager.save(session);
   }
 
-  async validateRefreshToken(token: string): Promise<User | null> {
+  async validateRefreshToken(token: string): Promise<UserEntity | null> {
     const session = await this.sessionRepository
       .createQueryBuilder('session')
       .leftJoinAndSelect('session.user', 'user')
@@ -166,7 +165,7 @@ export class AuthRepository implements IAuthRepository {
       .where('id = :id', { id: session.id })
       .execute();
 
-    return this.toDomainEntity(session.user);
+    return session.user;
   }
 
   async removeRefreshToken(token: string, runner?: QueryRunner): Promise<void> {
@@ -251,7 +250,7 @@ export class AuthRepository implements IAuthRepository {
     const attempts = user.failedLoginAttempts + 1;
     const maxAttempts = 5;
     
-    const updateData: Partial<User> = {
+    const updateData: Partial<UserEntity> = {
       failedLoginAttempts: attempts,
     };
 
@@ -290,30 +289,6 @@ export class AuthRepository implements IAuthRepository {
     const user = await this.findByEmail(email);
     if (!user) return false;
 
-    return user.isLocked();
-  }
-
-  private toDomainEntity(entity: UserEntity): User {
-    return new User({
-      id: entity.id,
-      supabaseId: entity.supabaseId,
-      email: entity.email,
-      name: entity.name,
-      cpf: entity.cpf,
-      phone: entity.phone,
-      role: entity.role,
-      tenantId: entity.tenantId,
-      twoFactorEnabled: entity.twoFactorEnabled,
-      twoFactorSecret: entity.twoFactorSecret,
-      isActive: entity.isActive,
-      emailVerified: entity.emailVerified,
-      lastLoginAt: entity.lastLoginAt,
-      failedLoginAttempts: entity.failedLoginAttempts,
-      lockedUntil: entity.lockedUntil,
-      metadata: entity.metadata,
-      createdAt: entity.createdAt,
-      updatedAt: entity.updatedAt,
-      deletedAt: entity.deletedAt,
-    });
+    return user.lockedUntil ? user.lockedUntil > new Date() : false;
   }
 }

@@ -108,3 +108,10 @@ export const twoFactorCodeSchema = z
   .string()
   .length(6, 'Código deve ter 6 dígitos')
   .regex(/^\d{6}$/, 'Código deve conter apenas números');
+
+/**
+ * Exports com nomes alternativos para compatibilidade
+ */
+export const cpfValidator = cpfSchema;
+export const passwordValidator = passwordSchema;
+export const phoneValidator = phoneSchema;

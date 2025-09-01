@@ -1,5 +1,5 @@
 import { QueryRunner } from 'typeorm';
-import { User } from '../../entities/user.entity';
+import { UserEntity } from '../../../../infrastructure/auth/entities/user.entity';
 import { Result } from '@shared/types/result.type';
 
 /**
@@ -10,32 +10,32 @@ export interface IAuthRepository {
   /**
    * Busca usuário por email
    */
-  findByEmail(email: string, runner?: QueryRunner): Promise<User | null>;
+  findByEmail(email: string, runner?: QueryRunner): Promise<UserEntity | null>;
 
   /**
    * Busca usuário por CPF
    */
-  findByCpf(cpf: string, runner?: QueryRunner): Promise<User | null>;
+  findByCpf(cpf: string, runner?: QueryRunner): Promise<UserEntity | null>;
 
   /**
    * Busca usuário por ID
    */
-  findById(id: string, runner?: QueryRunner): Promise<User | null>;
+  findById(id: string, runner?: QueryRunner): Promise<UserEntity | null>;
 
   /**
    * Busca usuário por Supabase ID
    */
-  findBySupabaseId(supabaseId: string, runner?: QueryRunner): Promise<User | null>;
+  findBySupabaseId(supabaseId: string, runner?: QueryRunner): Promise<UserEntity | null>;
 
   /**
    * Cria novo usuário
    */
-  create(data: Partial<User>, runner?: QueryRunner): Promise<User>;
+  create(data: Partial<UserEntity>, runner?: QueryRunner): Promise<UserEntity>;
 
   /**
    * Atualiza usuário
    */
-  update(id: string, data: Partial<User>, runner?: QueryRunner): Promise<User>;
+  update(id: string, data: Partial<UserEntity>, runner?: QueryRunner): Promise<UserEntity>;
 
   /**
    * Salva refresh token
@@ -51,7 +51,7 @@ export interface IAuthRepository {
   /**
    * Valida refresh token
    */
-  validateRefreshToken(token: string): Promise<User | null>;
+  validateRefreshToken(token: string): Promise<UserEntity | null>;
 
   /**
    * Remove refresh token
