@@ -1,9 +1,9 @@
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from '../src/app.module';
 import HttpExceptionFilter from '../src/core/shared/exceptions/filter.exception';
-import Swagger from '../src/core/shared/swagger/swagger.config';
 import express from 'express';
 import helmet from 'helmet';
 
@@ -18,7 +18,9 @@ async function createNestApp() {
   });
 
   // Configurações de segurança e CORS
-  app.use(helmet());
+  app.use(helmet({
+    contentSecurityPolicy: false, // Desabilita CSP para permitir Swagger
+  }));
   
   app.enableCors({
     origin: process.env.CORS_ORIGIN?.split(',') || '*',
@@ -40,8 +42,28 @@ async function createNestApp() {
     }),
   );
 
-  // Configuração do Swagger
-  Swagger.swaggerInit(app);
+  // Configuração do Swagger inline para Vercel
+  const config = new DocumentBuilder()
+    .setTitle('OnTerapi API')
+    .setDescription('API for OnTerapi Platform')
+    .setVersion('1.0.0')
+    .addBearerAuth()
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  
+  // Configuração customizada para Vercel
+  SwaggerModule.setup('docs', app, document, {
+    customSiteTitle: 'OnTerapi API Docs',
+    customfavIcon: 'https://nestjs.com/img/logo_text.svg',
+    customJs: [
+      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.10.3/swagger-ui-bundle.min.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.10.3/swagger-ui-standalone-preset.min.js',
+    ],
+    customCssUrl: [
+      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.10.3/swagger-ui.min.css',
+    ],
+  });
 
   await app.init();
   return app;
