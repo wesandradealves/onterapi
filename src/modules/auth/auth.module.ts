@@ -10,9 +10,6 @@ import { UserPermissionEntity } from '../../infrastructure/auth/entities/user-pe
 import { TwoFactorCodeEntity } from '../../infrastructure/auth/entities/two-factor-code.entity';
 import { LoginAttemptEntity } from '../../infrastructure/auth/entities/login-attempt.entity';
 
-// Repositories
-import { AuthRepository } from '../../infrastructure/auth/repositories/auth.repository';
-import { IAuthRepository } from '../../domain/auth/interfaces/repositories/auth.repository.interface';
 
 // Services
 import { SupabaseAuthService } from '../../infrastructure/auth/services/supabase-auth.service';
@@ -23,6 +20,7 @@ import { ISupabaseAuthService } from '../../domain/auth/interfaces/services/supa
 import { IJwtService } from '../../domain/auth/interfaces/services/jwt.service.interface';
 import { ITwoFactorService } from '../../domain/auth/interfaces/services/two-factor.service.interface';
 import { IEmailService } from '../../domain/auth/interfaces/services/email.service.interface';
+import { IAuthRepository } from '../../domain/auth/interfaces/repositories/auth.repository.interface';
 
 // Use Cases
 import { SignInUseCase } from './use-cases/sign-in.use-case';
@@ -45,14 +43,12 @@ import { TenantGuard } from './guards/tenant.guard';
 import { AuthController } from './api/controllers/auth.controller';
 
 // Providers
-const repositoryProviders: Provider[] = [
-  {
-    provide: IAuthRepository,
-    useClass: AuthRepository,
-  },
-];
 
 const serviceProviders: Provider[] = [
+  {
+    provide: IAuthRepository,
+    useValue: {}, // Repository vazio por enquanto
+  },
   {
     provide: ISupabaseAuthService,
     useClass: SupabaseAuthService,
@@ -117,7 +113,6 @@ const useCaseProviders: Provider[] = [
   ],
   controllers: [AuthController],
   providers: [
-    ...repositoryProviders,
     ...serviceProviders,
     ...useCaseProviders,
     JwtAuthGuard,
@@ -125,7 +120,6 @@ const useCaseProviders: Provider[] = [
     TenantGuard,
   ],
   exports: [
-    ...repositoryProviders,
     ...serviceProviders,
     JwtAuthGuard,
     RolesGuard,

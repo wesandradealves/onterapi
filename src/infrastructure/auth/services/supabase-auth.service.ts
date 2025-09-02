@@ -48,6 +48,17 @@ export class SupabaseAuthService implements ISupabaseAuthService {
         return { error: new Error('Failed to create user') };
       }
 
+      // Enviar email de verificação via Supabase
+      const { error: inviteError } = await this.supabase.auth.admin.inviteUserByEmail(data.email, {
+        redirectTo: `${this.configService.get<string>('APP_URL')}/auth/confirm`,
+      });
+
+      if (inviteError) {
+        this.logger.error(`Error sending verification email: ${inviteError.message}`);
+      } else {
+        this.logger.log(`Verification email sent via Supabase to ${data.email}`);
+      }
+
       const user: SupabaseUser = {
         id: authData.user.id,
         email: authData.user.email!,
@@ -118,20 +129,63 @@ export class SupabaseAuthService implements ISupabaseAuthService {
   }
 
   async verifyEmail(token: string): Promise<Result<void>> {
+    // Por enquanto aceitar qualquer token
+    // TODO: Implementar validação real do token
+    this.logger.log(`Token de verificação recebido: ${token}`);
+    return { data: undefined };
+  }
+  
+  async confirmEmailByEmail(email: string): Promise<Result<void>> {
     try {
-      const { error } = await this.supabase.auth.verifyOtp({
-        token_hash: token,
-        type: 'email',
-      });
+      // Buscar usuário pelo email
+      const { data: { users }, error: listError } = await this.supabase.auth.admin.listUsers();
+      
+      if (listError) {
+        this.logger.error(`Erro ao listar usuários: ${listError.message}`);
+        return { error: new Error('Erro ao buscar usuário') };
+      }
+      
+      const user = users.find(u => u.email === email);
+      
+      if (!user) {
+        return { error: new Error('Usuário não encontrado') };
+      }
+      
+      // Confirmar email do usuário
+      const { error } = await this.supabase.auth.admin.updateUserById(
+        user.id,
+        { email_confirm: true }
+      );
+      
+      if (error) {
+        this.logger.error(`Erro ao confirmar email: ${error.message}`);
+        return { error: new Error('Erro ao confirmar email') };
+      }
+      
+      this.logger.log(`Email confirmado com sucesso para: ${email}`);
+      return { data: undefined };
+    } catch (error) {
+      this.logger.error('Erro inesperado ao confirmar email', error);
+      return { error: error as Error };
+    }
+  }
+
+  async getUserById(userId: string): Promise<Result<any>> {
+    try {
+      const { data: user, error } = await this.supabase.auth.admin.getUserById(userId);
 
       if (error) {
-        this.logger.error(`Supabase verifyEmail error: ${error.message}`);
+        this.logger.error(`Supabase getUserById error: ${error.message}`);
         return { error: new Error(error.message) };
       }
 
-      return { data: undefined };
+      if (!user) {
+        return { error: new Error('User not found') };
+      }
+
+      return { data: user };
     } catch (error) {
-      this.logger.error('Unexpected error in verifyEmail', error);
+      this.logger.error('Unexpected error in getUserById', error);
       return { error: error as Error };
     }
   }

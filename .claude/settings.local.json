@@ -42,7 +42,9 @@
       "Read(D:\\www\\Onterapi/**)",
       "Read(D:\\www\\Onterapi/**)",
       "Read(D:\\www\\Onterapi/**)",
-      "Bash(nslookup:*)"
+      "Bash(nslookup:*)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi/**)"
     ],
     "deny": [],
     "ask": []

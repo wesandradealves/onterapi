@@ -27,15 +27,21 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('Usuário não autenticado');
     }
 
+    this.logger.log(`Verificando permissões para usuário: ${user.email}, Role: ${user.role}`);
+    this.logger.log(`Roles requeridas: ${requiredRoles.join(', ')}`);
+
     // Verificar hierarquia de roles
     const userLevel = ROLE_HIERARCHY[user.role as RolesEnum] ?? 0;
+    this.logger.log(`Nível do usuário: ${userLevel}`);
+    
     const hasPermission = requiredRoles.some(role => {
       const requiredLevel = ROLE_HIERARCHY[role] ?? 100;
+      this.logger.log(`Verificando role ${role} (nível ${requiredLevel})`);
       return userLevel >= requiredLevel;
     });
 
     if (!hasPermission) {
-      this.logger.warn(`Acesso negado para ${user.email} - Role: ${user.role}`);
+      this.logger.warn(`Acesso negado para ${user.email} - Role: ${user.role} (nível ${userLevel})`);
       throw new ForbiddenException('Permissão insuficiente');
     }
 

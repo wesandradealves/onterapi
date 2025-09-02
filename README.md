@@ -522,13 +522,14 @@ CRUD completo de usuários com permissões granulares, integração com Supabase
 
 #### Permissões dos Endpoints
 
-| Endpoint | Método | Descrição | Permissão |
-|----------|--------|-----------|-----------|
-| `/users` | POST | Criar usuário | Público OU Admin |
-| `/users` | GET | Listar todos | APENAS Admin |
-| `/users/:id` | GET | Buscar por ID | Admin OU próprio usuário |
-| `/users/:id` | PATCH | Atualizar | Admin OU próprio usuário |
-| `/users/:id` | DELETE | Deletar | Admin OU próprio usuário |
+| Endpoint | Método | Descrição | Permissão | Status |
+|----------|--------|-----------|-----------|---------|
+| `/users` | POST | Criar usuário | Público OU Admin | ✅ Funcionando |
+| `/users` | GET | Listar todos | SUPER_ADMIN, ADMIN_SUPORTE | ✅ Funcionando |
+| `/users/:id` | GET | Buscar por ID | Admin OU próprio usuário | ⚠️ Retorna vazio |
+| `/users/:id` | PATCH | Atualizar parcial | Admin OU próprio usuário | ✅ Funcionando |
+| `/users/:id` | PUT | Atualizar completo | Admin OU próprio usuário | ❌ Não implementado |
+| `/users/:id` | DELETE | Deletar (soft) | SUPER_ADMIN | ✅ Funcionando |
 
 #### Endpoints da API
 
@@ -594,7 +595,18 @@ modules/users/
 └── users.module.ts
 ```
 
-#### UserOwnerGuard
+#### Guards de Segurança
+
+##### JwtAuthGuard
+- Valida tokens JWT
+- Extrai metadata do usuário do Supabase
+- **IMPORTANTE**: Corrigido em v0.5.1 para extrair corretamente o role do user_metadata
+
+##### RolesGuard
+- Verifica hierarquia de permissões
+- Funciona em conjunto com @Roles decorator
+
+##### UserOwnerGuard
 Guard especial que permite acesso se:
 - Usuário é admin (SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO)
 - Usuário está acessando seus próprios dados
@@ -616,9 +628,10 @@ JWT_ACCESS_SECRET=your_access_secret_min_32_chars
 JWT_REFRESH_SECRET=your_refresh_secret_min_32_chars
 JWT_2FA_SECRET=your_2fa_secret_min_32_chars
 
-# Supabase Auth
-SUPABASE_URL=https://ogffdaemylaezxpunmop.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+# Supabase Auth (OBRIGATÓRIO)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your_anon_key_here
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 
 # App Config
 APP_URL=http://localhost:3000

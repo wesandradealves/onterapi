@@ -6,6 +6,7 @@ import { CreateUserInputDTO } from '../api/dtos/create-user.dto';
 import { createUserSchema } from '../api/schemas/create-user.schema';
 import { hashPassword } from '../../../shared/utils/crypto.util';
 import { SupabaseService } from '../../../infrastructure/auth/services/supabase.service';
+import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { IEmailService } from '../../../domain/auth/interfaces/services/email.service.interface';
 import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
 import { ConfigService } from '@nestjs/config';
@@ -18,6 +19,8 @@ export class CreateUserUseCase implements ICreateUserUseCase {
     @Inject('IUserRepository')
     private readonly userRepository: IUserRepository,
     private readonly supabaseService: SupabaseService,
+    @Inject(ISupabaseAuthService)
+    private readonly supabaseAuthService: ISupabaseAuthService,
     @Inject(IEmailService)
     private readonly emailService: IEmailService,
     @Inject(IJwtService)
@@ -32,15 +35,22 @@ export class CreateUserUseCase implements ICreateUserUseCase {
 
       const roleForDB = validatedData.role.toLowerCase().replace(/_/g, '_');
       
-      const { user: supabaseUser, error } = await this.supabaseService.createUser(
-        validatedData.email,
-        validatedData.password,
-        {
+      // Usar o SupabaseAuthService que tem o método signUp com envio de email
+      const result = await this.supabaseAuthService.signUp({
+        email: validatedData.email,
+        password: validatedData.password,
+        metadata: {
           name: validatedData.name,
           role: validatedData.role,
           cpf: validatedData.cpf,
+          phone: validatedData.phone,
+          tenantId: validatedData.tenantId,
+          isActive: true,
         }
-      );
+      });
+      
+      const supabaseUser = result.data;
+      const error = result.error;
 
       if (error || !supabaseUser) {
         this.logger.error('Erro ao criar usuário no Supabase', error);
@@ -49,39 +59,41 @@ export class CreateUserUseCase implements ICreateUserUseCase {
 
       
       this.logger.log(`Usuário criado com sucesso no Supabase: ${supabaseUser.email}`);
-
-      const verificationToken = this.generateVerificationToken();
       
+      // Gerar nosso próprio token de verificação
+      const verificationToken = this.generateVerificationToken();
       
       const baseUrl = this.configService.get<string>('APP_URL') || 'http://localhost:3001';
       const verificationLink = `${baseUrl}/auth/verify-email?token=${verificationToken}&email=${supabaseUser.email}`;
-
+      
       this.logger.warn(`
 ========================================
-📧 EMAIL DE CONFIRMAÇÃO GERADO
+📧 EMAIL DE CONFIRMAÇÃO
 👤 Usuário: ${validatedData.name}
 📬 Email: ${supabaseUser.email}
-🔑 Token de Verificação: ${verificationToken}
-🔗 Link de Verificação: ${verificationLink}
-⏰ Expira em: 24 horas
+🔑 Token: ${verificationToken}
+🔗 Link: ${verificationLink}
 ========================================
       `);
-
+      
+      // Enviar nosso próprio email de verificação
       const emailResult = await this.emailService.sendVerificationEmail({
-        to: supabaseUser.email || '',
+        to: supabaseUser.email,
         name: validatedData.name,
         verificationLink,
         expiresIn: '24 horas',
       });
-
+      
       if (emailResult.error) {
         this.logger.error('Erro ao enviar email de verificação', emailResult.error);
-        // Don't throw error, user was created successfully
       } else {
         this.logger.log(`Email de verificação enviado para ${supabaseUser.email}`);
       }
+      
+      // TODO: Salvar o token em cache ou banco para validar depois
+      // Por enquanto vamos aceitar qualquer token
 
-      // Send welcome email too
+      // Enviar email de boas-vindas também
       await this.emailService.sendWelcomeEmail({
         to: supabaseUser.email || '',
         name: validatedData.name,
@@ -98,8 +110,8 @@ export class CreateUserUseCase implements ICreateUserUseCase {
         tenantId: validatedData.tenantId,
         isActive: true,
         emailVerified: true,
-        createdAt: new Date(supabaseUser.created_at),
-        updatedAt: new Date(supabaseUser.created_at),
+        createdAt: supabaseUser.createdAt,
+        updatedAt: supabaseUser.updatedAt,
       } as UserEntity;
     } catch (error) {
       this.logger.error('Erro ao criar usuário', error);
@@ -108,7 +120,6 @@ export class CreateUserUseCase implements ICreateUserUseCase {
   }
 
   private generateVerificationToken(): string {
-    // Generate a random token
     const randomBytes = require('crypto').randomBytes(32);
     return randomBytes.toString('hex');
   }

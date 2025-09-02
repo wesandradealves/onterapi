@@ -40,6 +40,11 @@ export interface ISupabaseAuthService {
   getUser(accessToken: string): Promise<Result<SupabaseUser>>;
 
   /**
+   * Obter usuário por ID
+   */
+  getUserById(userId: string): Promise<Result<any>>;
+
+  /**
    * Atualizar metadados do usuário
    */
   updateUserMetadata(

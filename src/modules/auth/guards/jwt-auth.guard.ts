@@ -1,7 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, Logger, Inject } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
-import { IAuthRepository } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
+import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
 @Injectable()
@@ -12,8 +12,8 @@ export class JwtAuthGuard implements CanActivate {
     private readonly reflector: Reflector,
     @Inject(IJwtService)
     private readonly jwtService: IJwtService,
-    @Inject(IAuthRepository)
-    private readonly authRepository: IAuthRepository,
+    @Inject(ISupabaseAuthService)
+    private readonly supabaseAuthService: ISupabaseAuthService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -41,26 +41,35 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Token inválido');
     }
 
-    // Buscar usuário
-    const user = await this.authRepository.findById(tokenResult.data.sub);
-    if (!user) {
+    const userResult = await this.supabaseAuthService.getUserById(tokenResult.data.sub);
+    if (userResult.error || !userResult.data) {
       throw new UnauthorizedException('Usuário não encontrado');
     }
 
-    // Verificar se usuário está ativo
-    if (!user.isActive) {
+    const userData = userResult.data;
+    
+    this.logger.log(`User data from Supabase: ${JSON.stringify(userData)}`);
+    
+    // Corrigir acesso ao user_metadata - o getUserById retorna {user: {...}}
+    const actualUser = (userData as any).user || userData;
+    const metadata = actualUser.user_metadata || {};
+    
+    this.logger.log(`User metadata: ${JSON.stringify(metadata)}`);
+    
+    if (actualUser.banned_until) {
       throw new UnauthorizedException('Conta desativada');
     }
 
-    // Adicionar usuário ao request
     request.user = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      tenantId: user.tenantId,
+      id: actualUser.id,
+      email: actualUser.email || '',
+      name: metadata.name || '',
+      role: metadata.role || 'PATIENT',
+      tenantId: metadata.tenantId || null,
       sessionId: tokenResult.data.sessionId,
     };
+    
+    this.logger.log(`Request user set to: ${JSON.stringify(request.user)}`);
 
     return true;
   }

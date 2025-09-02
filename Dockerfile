@@ -23,8 +23,8 @@ RUN npm run build
 # Production stage
 FROM node:20-alpine AS production
 
-# Install dumb-init for proper signal handling and curl for healthcheck
-RUN apk add --no-cache dumb-init curl
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \

@@ -38,7 +38,13 @@ export class SignInUseCase implements ISignInUseCase {
       }
 
       const supabaseUser = supabaseResult.data.user;
-      const userMetadata = (supabaseUser as any).user_metadata || {};
+      
+      const { data: fullUser } = await this.supabaseAuthService.getUserById(supabaseUser.id);
+      this.logger.log(`Full user data: ${JSON.stringify(fullUser)}`);
+      
+      const userMetadata = fullUser?.user?.user_metadata || fullUser?.user_metadata || {};
+      this.logger.log(`User metadata: ${JSON.stringify(userMetadata)}`);
+      
       const user = {
         id: supabaseUser.id,
         email: supabaseUser.email || '',
@@ -48,6 +54,8 @@ export class SignInUseCase implements ISignInUseCase {
         isActive: !(supabaseUser as any).banned_until,
         twoFactorEnabled: userMetadata.twoFactorEnabled || false,
       };
+      
+      this.logger.log(`Final user role: ${user.role}`);
 
 
       if (user.twoFactorEnabled) {

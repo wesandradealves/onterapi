@@ -7,7 +7,30 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
-## [0.5.0] - 2025-01-09
+## [0.5.1] - 2025-09-02
+
+### Fixed
+- **JwtAuthGuard**: Corrigido problema crítico de extração de metadata do usuário
+  - Guard estava acessando incorretamente `user.user_metadata` ao invés de `user.user.user_metadata`
+  - Isso causava todos os usuários serem identificados como role PATIENT
+  - Agora extrai corretamente o role do metadata do Supabase
+  - RolesGuard funcionando adequadamente após correção
+
+### Added
+- **Configuração SUPABASE_SERVICE_ROLE_KEY**: Adicionada chave de serviço ao .env
+  - Necessária para operações administrativas do Supabase
+  - Permite deletar e gerenciar usuários via API admin
+
+### Changed
+- **Módulo Users**: Endpoints totalmente testados e funcionais
+  - POST /users - Criação com validação de CPF e telefone ✅
+  - GET /users - Listagem com paginação (requer SUPER_ADMIN) ✅
+  - GET /users/:id - Busca por ID (retorna estrutura vazia - conhecido) ⚠️
+  - PATCH /users/:id - Atualização parcial funcionando ✅
+  - DELETE /users/:id - Deleção soft (requer SUPER_ADMIN) ✅
+  - PUT /users/:id - Não implementado (retorna 404) ❌
+
+## [0.5.0] - 2025-09-02
 
 ### Added
 - **Sistema de Autenticação 100% Supabase Cloud**
@@ -57,7 +80,7 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 - Service keys apenas para operações administrativas
 - Tokens JWT com expiração de 15 minutos
 
-## [0.4.1] - 2025-01-09
+## [0.4.1] - 2025-09-02
 
 ### Added
 - **Serviço de Email Completo** - Infraestrutura para envio de emails
@@ -91,7 +114,7 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 - Verificação de token 2FA com Result pattern correto
 - Acesso ao userId do TwoFactorTokenPayload usando 'sub'
 
-## [0.4.0] - 2025-01-09
+## [0.4.0] - 2025-09-02
 
 ### Added
 - **Módulo Users CRUD Completo** - Gestão completa de usuários
@@ -129,7 +152,7 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 - Imports após refatoração massiva
 - Build do Docker com nova estrutura
 
-## [0.3.1] - 2025-01-09
+## [0.3.1] - 2025-09-02
 
 ### Added
 - **Documentação Swagger Completa**
@@ -259,6 +282,12 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 - Integração com @nestjs/terminus para health checks nativos
 - Output style customizado para desenvolvimento OnTerapi
 - Regras de qualidade extrema (DRY, linter, build obrigatórios)
+- Boilerplate inicial do projeto
+- Estrutura de pastas seguindo DDD
+- Configurações base (TypeScript, ESLint, Prettier)
+- Package.json com dependências essenciais
+- README com documentação inicial
+- Sistema de versionamento semântico
 
 ### Changed
 - Banco de dados migrado de local para Supabase cloud
@@ -285,16 +314,6 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 - Separação de chaves públicas (Anon) e privadas (Service Role)
 - Row Level Security (RLS) preparado para implementação
 - Helmet.js configurado para segurança HTTP
-
-## [0.1.0] - 2024-12-28
-
-### Added
-- Boilerplate inicial do projeto
-- Estrutura de pastas seguindo DDD
-- Configurações base (TypeScript, ESLint, Prettier)
-- Package.json com dependências essenciais
-- README com documentação inicial
-- Sistema de versionamento semântico
 
 ---
 

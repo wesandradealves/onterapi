@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, Logger, Inject } from '@nestjs/common';
 import { IUpdateUserUseCase } from '../../../domain/users/interfaces/use-cases/update-user.use-case.interface';
-import { IUserRepository } from '../../../domain/users/interfaces/repositories/user.repository.interface';
+import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { UserEntity } from '../../../infrastructure/auth/entities/user.entity';
 import { UpdateUserDto } from '../api/dtos/update-user.dto';
 import { updateUserSchema } from '../api/schemas/update-user.schema';
@@ -10,24 +10,54 @@ export class UpdateUserUseCase implements IUpdateUserUseCase {
   private readonly logger = new Logger(UpdateUserUseCase.name);
 
   constructor(
-    @Inject('IUserRepository')
-    private readonly userRepository: IUserRepository,
+    @Inject(ISupabaseAuthService)
+    private readonly supabaseAuthService: ISupabaseAuthService,
   ) {}
 
   async execute(id: string, dto: UpdateUserDto, currentUserId: string): Promise<UserEntity> {
     try {
       const validatedData = updateUserSchema.parse(dto);
 
-      const user = await this.userRepository.findById(id);
-      if (!user) {
+      const userResult = await this.supabaseAuthService.getUserById(id);
+      if (userResult.error || !userResult.data) {
         throw new NotFoundException('Usuário não encontrado');
       }
 
-      const updatedUser = await this.userRepository.update(id, validatedData);
+      const currentMetadata = (userResult.data as any).user_metadata || {};
+      const updatedMetadata = {
+        ...currentMetadata,
+        ...validatedData,
+        updatedBy: currentUserId,
+        updatedAt: new Date().toISOString(),
+      };
 
-      this.logger.log(`Usuário atualizado: ${updatedUser.email} por ${currentUserId}`);
+      const updateResult = await this.supabaseAuthService.updateUserMetadata(id, updatedMetadata);
+      if (updateResult.error) {
+        throw updateResult.error;
+      }
 
-      return updatedUser;
+      const updatedUser = updateResult.data;
+      const metadata = (updatedUser as any).metadata || {};
+
+      const user = {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        name: metadata.name || '',
+        cpf: metadata.cpf || '',
+        phone: metadata.phone || '',
+        role: metadata.role || 'PATIENT',
+        tenantId: metadata.tenantId || null,
+        isActive: metadata.isActive !== false,
+        emailVerified: updatedUser.emailVerified,
+        twoFactorEnabled: metadata.twoFactorEnabled || false,
+        lastLoginAt: null,
+        createdAt: updatedUser.createdAt,
+        updatedAt: updatedUser.updatedAt,
+      } as unknown as UserEntity;
+
+      this.logger.log(`Usuário atualizado: ${user.email} por ${currentUserId}`);
+
+      return user;
     } catch (error) {
       this.logger.error('Erro ao atualizar usuário', error);
       throw error;

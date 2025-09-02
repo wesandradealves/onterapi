@@ -27,7 +27,7 @@ export class SupabaseService {
     const { data, error } = await this.supabase.auth.admin.createUser({
       email,
       password,
-      email_confirm: true, // Auto confirmar email para desenvolvimento
+      email_confirm: false, // Email precisa ser confirmado
       user_metadata: metadata || {},
     });
 

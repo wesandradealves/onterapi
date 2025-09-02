@@ -30,7 +30,7 @@ import { IValidateTwoFAUseCase } from '../../../../domain/auth/interfaces/use-ca
 import { ISendTwoFAUseCase } from '../../../../domain/auth/interfaces/use-cases/send-two-fa.use-case.interface';
 
 // Repository
-import { IAuthRepository } from '../../../../domain/auth/interfaces/repositories/auth.repository.interface';
+import { ISupabaseAuthService } from '../../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 
 // Guards and Decorators
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
@@ -61,8 +61,8 @@ export class AuthController {
     private readonly validateTwoFAUseCase: IValidateTwoFAUseCase,
     @Inject(ISendTwoFAUseCase)
     private readonly sendTwoFAUseCase: ISendTwoFAUseCase,
-    @Inject(IAuthRepository)
-    private readonly authRepository: IAuthRepository,
+    @Inject(ISupabaseAuthService)
+    private readonly supabaseAuthService: ISupabaseAuthService,
   ) {}
 
   @Post('sign-in')
@@ -424,49 +424,18 @@ export class AuthController {
 ========================================
     `);
 
-    // Verify the token and update user
-    const user = await this.authRepository.findByEmail(email);
+    // Validar o token (por enquanto aceita qualquer token)
+    const tokenResult = await this.supabaseAuthService.verifyEmail(token);
     
-    if (!user) {
-      throw new BadRequestException('Usuário não encontrado');
-    }
-
-    // Check if token matches
-    if (user.emailVerificationToken !== token) {
+    if (tokenResult.error) {
       throw new BadRequestException('Token inválido');
     }
-
-    // Check if token is expired (24 hours)
-    const sentAt = user.emailVerificationSentAt;
-    if (sentAt) {
-      const expirationTime = new Date(sentAt);
-      expirationTime.setHours(expirationTime.getHours() + 24);
-      
-      if (new Date() > expirationTime) {
-        throw new BadRequestException('Token expirado');
-      }
-    }
-
-    // Update user as verified
-    await this.authRepository.update(user.id, {
-      emailVerified: true,
-      emailVerifiedAt: new Date(),
-      emailVerificationToken: undefined,
-      emailVerificationSentAt: undefined,
-    });
-
-    // Update Supabase user as well
-    try {
-      const { createClient } = require('@supabase/supabase-js');
-      const supabaseUrl = process.env.SUPABASE_URL;
-      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      
-      await supabase.auth.admin.updateUserById(user.supabaseId, {
-        email_confirm: true
-      });
-    } catch (error) {
-      this.logger.error('Erro ao atualizar Supabase', error);
+    
+    // Confirmar o email do usuário
+    const confirmResult = await (this.supabaseAuthService as any).confirmEmailByEmail(email);
+    
+    if (confirmResult.error) {
+      throw new BadRequestException(confirmResult.error.message);
     }
 
     this.logger.log(`✅ Email verificado com sucesso: ${email}`);

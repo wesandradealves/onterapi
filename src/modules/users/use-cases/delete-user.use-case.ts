@@ -1,33 +1,36 @@
-import { Injectable, NotFoundException, Logger, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { IDeleteUserUseCase } from '../../../domain/users/interfaces/use-cases/delete-user.use-case.interface';
-import { IUserRepository } from '../../../domain/users/interfaces/repositories/user.repository.interface';
-import { SupabaseService } from '../../../infrastructure/auth/services/supabase.service';
+import { createClient } from '@supabase/supabase-js';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class DeleteUserUseCase implements IDeleteUserUseCase {
   private readonly logger = new Logger(DeleteUserUseCase.name);
+  private readonly supabase;
 
   constructor(
-    @Inject('IUserRepository')
-    private readonly userRepository: IUserRepository,
-    private readonly supabaseService: SupabaseService,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
+    const supabaseKey = this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY');
+    this.supabase = createClient(supabaseUrl!, supabaseKey!);
+  }
 
   async execute(id: string, currentUserId: string): Promise<void> {
     try {
-      const user = await this.userRepository.findById(id);
-      if (!user) {
+      const { data: user, error: fetchError } = await this.supabase.auth.admin.getUserById(id);
+      
+      if (fetchError || !user) {
         throw new NotFoundException('Usuário não encontrado');
       }
 
-      await this.userRepository.softDelete(id);
-
-      const { error } = await this.supabaseService.deleteUser(user.supabaseId);
-      if (error) {
-        this.logger.warn(`Erro ao desativar usuário no Supabase: ${error.message}`);
+      const { error: deleteError } = await this.supabase.auth.admin.deleteUser(id);
+      
+      if (deleteError) {
+        throw deleteError;
       }
 
-      this.logger.log(`Usuário deletado: ${user.email} por ${currentUserId}`);
+      this.logger.log(`Usuário deletado: ${user.user.email} por ${currentUserId}`);
     } catch (error) {
       this.logger.error('Erro ao deletar usuário', error);
       throw error;

@@ -1,9 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
-import { UserEntity } from '../../infrastructure/auth/entities/user.entity';
 import { UsersController } from './api/controllers/users.controller';
-import { UserRepository } from '../../infrastructure/users/repositories/user.repository';
 import { CreateUserUseCase } from './use-cases/create-user.use-case';
 import { FindAllUsersUseCase } from './use-cases/find-all-users.use-case';
 import { FindUserByIdUseCase } from './use-cases/find-user-by-id.use-case';
@@ -16,17 +13,14 @@ import { AuthModule } from '../auth/auth.module';
 @Module({
   imports: [
     ConfigModule,
-    TypeOrmModule.forFeature([UserEntity]),
     forwardRef(() => AuthModule),
   ],
   controllers: [UsersController],
   providers: [
-    // Repository
     {
       provide: 'IUserRepository',
-      useClass: UserRepository,
+      useValue: {}, // Repository vazio por enquanto, não está sendo usado
     },
-    // Use Cases
     {
       provide: 'ICreateUserUseCase',
       useClass: CreateUserUseCase,
@@ -47,11 +41,14 @@ import { AuthModule } from '../auth/auth.module';
       provide: 'IDeleteUserUseCase',
       useClass: DeleteUserUseCase,
     },
-    // Guards
+    CreateUserUseCase,
+    FindAllUsersUseCase,
+    FindUserByIdUseCase,
+    UpdateUserUseCase,
+    DeleteUserUseCase,
     UserOwnerGuard,
-    // Services
     SupabaseService,
   ],
-  exports: ['IUserRepository'],
+  exports: [],
 })
 export class UsersModule {}
