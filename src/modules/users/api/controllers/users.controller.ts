@@ -11,6 +11,7 @@ import {
   Inject,
   HttpCode,
   HttpStatus,
+  UsePipes,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -38,6 +39,9 @@ import { CreateUserInputDTO, CreateUserResponseDto } from '../dtos/create-user.d
 import { UpdateUserDto } from '../dtos/update-user.dto';
 import { UserResponseDto } from '../dtos/user-response.dto';
 import { ListUsersDto, ListUsersResponseDto } from '../dtos/list-users.dto';
+import { createUserSchema } from '../schemas/create-user.schema';
+import { updateUserSchema } from '../schemas/update-user.schema';
+import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
 
 @ApiTags('Users')
 @Controller('users')
@@ -60,7 +64,25 @@ export class UsersController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Criar novo usuário',
-    description: 'Cadastro público (auto-cadastro) ou via administrador',
+    description: `Cadastro de novo usuário no sistema.
+    
+    **Funcionalidades:**
+    - Cria usuário no Supabase Auth
+    - Valida CPF brasileiro
+    - Valida unicidade de email
+    - Define role e permissões
+    - Auto-confirma email para desenvolvimento
+    
+    **Emails enviados:**
+    - Email de verificação com link para confirmar conta
+    - Email de boas-vindas com informações da plataforma
+    
+    **Roles disponíveis:**
+    - PATIENT: Paciente
+    - PROFESSIONAL: Profissional de saúde
+    - SECRETARY: Secretária
+    - CLINIC_OWNER: Proprietário de clínica
+    - SUPER_ADMIN: Administrador do sistema`,
   })
   @ApiBody({
     type: CreateUserInputDTO,
@@ -100,6 +122,7 @@ export class UsersController {
     status: 409,
     description: 'Email ou CPF já cadastrado',
   })
+  @UsePipes(new ZodValidationPipe(createUserSchema))
   async create(@Body() dto: CreateUserInputDTO): Promise<CreateUserResponseDto> {
     const user = await this.createUserUseCase.execute(dto);
     return this.mapToResponse(user);

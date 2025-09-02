@@ -11,8 +11,10 @@ import {
   Logger,
   UsePipes,
   Get,
+  Query,
+  BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiQuery } from '@nestjs/swagger';
 
 // DTOs
 import { SignInDto, SignInResponseDto } from '../dtos/sign-in.dto';
@@ -25,6 +27,10 @@ import { ISignInUseCase } from '../../../../domain/auth/interfaces/use-cases/sig
 import { ISignOutUseCase } from '../../../../domain/auth/interfaces/use-cases/sign-out.use-case.interface';
 import { IRefreshTokenUseCase } from '../../../../domain/auth/interfaces/use-cases/refresh-token.use-case.interface';
 import { IValidateTwoFAUseCase } from '../../../../domain/auth/interfaces/use-cases/validate-two-fa.use-case.interface';
+import { ISendTwoFAUseCase } from '../../../../domain/auth/interfaces/use-cases/send-two-fa.use-case.interface';
+
+// Repository
+import { IAuthRepository } from '../../../../domain/auth/interfaces/repositories/auth.repository.interface';
 
 // Guards and Decorators
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
@@ -53,6 +59,10 @@ export class AuthController {
     private readonly refreshTokenUseCase: IRefreshTokenUseCase,
     @Inject(IValidateTwoFAUseCase)
     private readonly validateTwoFAUseCase: IValidateTwoFAUseCase,
+    @Inject(ISendTwoFAUseCase)
+    private readonly sendTwoFAUseCase: ISendTwoFAUseCase,
+    @Inject(IAuthRepository)
+    private readonly authRepository: IAuthRepository,
   ) {}
 
   @Post('sign-in')
@@ -60,7 +70,16 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ 
     summary: 'Autenticar usuário',
-    description: 'Autentica um usuário com email e senha, podendo requerer 2FA'
+    description: `Autentica um usuário com email e senha. 
+    
+    **Funcionalidades:**
+    - Valida credenciais no Supabase Auth
+    - Gera tokens JWT (access e refresh)
+    - Envia email de alerta de login com IP, dispositivo e localização
+    - Suporta autenticação em dois fatores (2FA)
+    
+    **Emails enviados:**
+    - Email de alerta de login bem-sucedido com detalhes do acesso`
   })
   @ApiBody({ 
     type: SignInDto,
@@ -102,6 +121,79 @@ export class AuthController {
     };
 
     const result = await this.signInUseCase.execute(input);
+
+    if (result.error) {
+      throw result.error;
+    }
+
+    return result.data;
+  }
+
+  @Post('two-factor/send')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Enviar código 2FA',
+    description: `Envia um novo código de autenticação de dois fatores.
+    
+    **Funcionalidades:**
+    - Gera código de 6 dígitos
+    - Valida token temporário
+    - Envia código por email (SMS e Authenticator em desenvolvimento)
+    - Código expira em 5 minutos
+    - Limite de 3 reenvios por sessão
+    
+    **Emails enviados:**
+    - Email com código de verificação 2FA formatado`
+  })
+  @ApiBody({
+    description: 'Token temporário para envio de código',
+    schema: {
+      type: 'object',
+      properties: {
+        tempToken: {
+          type: 'string',
+          description: 'Token temporário recebido no login'
+        },
+        method: {
+          type: 'string',
+          enum: ['email', 'sms', 'authenticator'],
+          description: 'Método de envio (default: email)'
+        }
+      },
+      required: ['tempToken']
+    },
+    examples: {
+      example1: {
+        summary: 'Solicitar envio de código',
+        value: {
+          tempToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Código enviado com sucesso',
+    schema: {
+      type: 'object',
+      properties: {
+        sentTo: { type: 'string', description: 'Endereço mascarado do destinatário' },
+        method: { type: 'string', enum: ['email', 'sms', 'authenticator'] },
+        expiresIn: { type: 'number', description: 'Tempo de expiração em segundos' },
+        attemptsRemaining: { type: 'number', description: 'Tentativas restantes' }
+      }
+    }
+  })
+  async sendTwoFactorCode(
+    @Body('tempToken') tempToken: string,
+    @Body('method') method?: 'email' | 'sms' | 'authenticator',
+  ) {
+    const result = await this.sendTwoFAUseCase.execute({
+      userId: '', // Será extraído do tempToken
+      tempToken,
+      method,
+    });
 
     if (result.error) {
       throw result.error;
@@ -286,6 +378,102 @@ export class AuthController {
       createdAt: new Date().toISOString(),
       emailVerified: true,
       twoFactorEnabled: false,
+    };
+  }
+
+  @Get('verify-email')
+  @Public()
+  @ApiOperation({
+    summary: 'Verificar email do usuário',
+    description: 'Confirma o email do usuário usando o token enviado por email'
+  })
+  @ApiQuery({
+    name: 'token',
+    required: true,
+    type: String,
+    description: 'Token de verificação enviado por email'
+  })
+  @ApiQuery({
+    name: 'email',
+    required: true,
+    type: String,
+    description: 'Email do usuário a ser verificado'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Email verificado com sucesso',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' }
+      }
+    }
+  })
+  @ApiResponse({ status: 400, description: 'Token inválido ou expirado' })
+  async verifyEmail(
+    @Query('token') token: string,
+    @Query('email') email: string,
+  ) {
+    // LOG PARA DESENVOLVIMENTO
+    this.logger.warn(`
+========================================
+✅ VERIFICANDO EMAIL
+📧 Email: ${email}
+🔑 Token: ${token}
+========================================
+    `);
+
+    // Verify the token and update user
+    const user = await this.authRepository.findByEmail(email);
+    
+    if (!user) {
+      throw new BadRequestException('Usuário não encontrado');
+    }
+
+    // Check if token matches
+    if (user.emailVerificationToken !== token) {
+      throw new BadRequestException('Token inválido');
+    }
+
+    // Check if token is expired (24 hours)
+    const sentAt = user.emailVerificationSentAt;
+    if (sentAt) {
+      const expirationTime = new Date(sentAt);
+      expirationTime.setHours(expirationTime.getHours() + 24);
+      
+      if (new Date() > expirationTime) {
+        throw new BadRequestException('Token expirado');
+      }
+    }
+
+    // Update user as verified
+    await this.authRepository.update(user.id, {
+      emailVerified: true,
+      emailVerifiedAt: new Date(),
+      emailVerificationToken: undefined,
+      emailVerificationSentAt: undefined,
+    });
+
+    // Update Supabase user as well
+    try {
+      const { createClient } = require('@supabase/supabase-js');
+      const supabaseUrl = process.env.SUPABASE_URL;
+      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      
+      await supabase.auth.admin.updateUserById(user.supabaseId, {
+        email_confirm: true
+      });
+    } catch (error) {
+      this.logger.error('Erro ao atualizar Supabase', error);
+    }
+
+    this.logger.log(`✅ Email verificado com sucesso: ${email}`);
+
+    return {
+      success: true,
+      message: 'Email verificado com sucesso! Você já pode fazer login.'
     };
   }
 }

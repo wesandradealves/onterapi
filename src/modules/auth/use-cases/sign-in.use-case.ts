@@ -4,6 +4,7 @@ import { ISignInUseCase, SignInInput, SignInOutput } from '../../../domain/auth/
 import { IAuthRepository } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
+import { IEmailService } from '../../../domain/auth/interfaces/services/email.service.interface';
 import { Result } from '../../../shared/types/result.type';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -18,45 +19,37 @@ export class SignInUseCase implements ISignInUseCase {
     private readonly supabaseAuthService: ISupabaseAuthService,
     @Inject(IJwtService)
     private readonly jwtService: IJwtService,
+    @Inject(IEmailService)
+    private readonly emailService: IEmailService,
     private readonly configService: ConfigService,
   ) {}
 
   async execute(input: SignInInput): Promise<Result<SignInOutput>> {
     try {
-      // Verificar se usuário está bloqueado
-      const isLocked = await this.authRepository.isUserLocked(input.email);
-      if (isLocked) {
-        return { error: new Error('Conta bloqueada temporariamente. Tente novamente mais tarde') };
-      }
 
-      // Autenticar com Supabase
       const supabaseResult = await this.supabaseAuthService.signIn(
         input.email,
         input.password,
       );
 
       if (supabaseResult.error) {
-        await this.authRepository.incrementFailedAttempts(input.email);
         this.logger.warn(`Login falhou para ${input.email}: ${supabaseResult.error.message}`);
         return { error: new Error('Credenciais inválidas') };
       }
 
-      // Buscar usuário no banco local
-      const user = await this.authRepository.findBySupabaseId(supabaseResult.data.user.id);
-      if (!user) {
-        this.logger.error(`Usuário não encontrado no banco local: ${supabaseResult.data.user.id}`);
-        return { error: new Error('Usuário não encontrado') };
-      }
+      const supabaseUser = supabaseResult.data.user;
+      const userMetadata = (supabaseUser as any).user_metadata || {};
+      const user = {
+        id: supabaseUser.id,
+        email: supabaseUser.email || '',
+        name: userMetadata.name || '',
+        role: userMetadata.role || 'PATIENT',
+        tenantId: userMetadata.tenantId || null,
+        isActive: !(supabaseUser as any).banned_until,
+        twoFactorEnabled: userMetadata.twoFactorEnabled || false,
+      };
 
-      // Verificar se usuário está ativo
-      if (!user.isActive) {
-        return { error: new Error('Conta desativada') };
-      }
 
-      // Resetar tentativas de login
-      await this.authRepository.resetFailedAttempts(input.email);
-
-      // Verificar se precisa 2FA
       if (user.twoFactorEnabled) {
         const tempToken = this.jwtService.generateTwoFactorToken(user.id);
         
@@ -68,7 +61,6 @@ export class SignInUseCase implements ISignInUseCase {
         };
       }
 
-      // Gerar tokens
       const sessionId = uuidv4();
       const accessToken = this.jwtService.generateAccessToken({
         sub: user.id,
@@ -83,22 +75,11 @@ export class SignInUseCase implements ISignInUseCase {
         sessionId,
       });
 
-      // Salvar refresh token
-      const refreshExpiry = input.rememberMe ? 30 : 7; // dias
+      const refreshExpiry = input.rememberMe ? 30 : 7;
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + refreshExpiry);
 
-      await this.authRepository.saveRefreshToken(
-        user.id,
-        refreshToken,
-        expiresAt,
-        input.deviceInfo,
-      );
 
-      // Atualizar último login
-      await this.authRepository.update(user.id, {
-        lastLoginAt: new Date(),
-      });
 
       const output: SignInOutput = {
         accessToken,
@@ -113,11 +94,42 @@ export class SignInUseCase implements ISignInUseCase {
         },
       };
 
+      const loginDate = new Date();
+      const loginInfo = {
+        to: user.email,
+        userName: user.name || user.email.split('@')[0],
+        loginDate: loginDate.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+        ipAddress: input.deviceInfo?.ip || 'IP não disponível',
+        userAgent: input.deviceInfo?.userAgent || 'Navegador não identificado',
+        location: (input.deviceInfo as any)?.location || 'Localização não disponível',
+        device: this.parseUserAgent(input.deviceInfo?.userAgent),
+      };
+
+      try {
+        await this.emailService.sendLoginAlertEmail(loginInfo);
+        this.logger.log(`Email de alerta de login enviado para ${user.email}`);
+      } catch (emailError) {
+        this.logger.error(`Erro ao enviar email de alerta de login: ${emailError}`);
+      }
+
       this.logger.log(`Login bem-sucedido para ${user.email}`);
       return { data: output };
     } catch (error) {
       this.logger.error('Erro no login', error);
       return { error: error as Error };
     }
+  }
+
+  private parseUserAgent(userAgent?: string): string {
+    if (!userAgent) return 'Dispositivo desconhecido';
+    
+    if (userAgent.includes('Windows')) return 'Windows PC';
+    if (userAgent.includes('Mac')) return 'Mac';
+    if (userAgent.includes('Linux')) return 'Linux';
+    if (userAgent.includes('iPhone')) return 'iPhone';
+    if (userAgent.includes('iPad')) return 'iPad';
+    if (userAgent.includes('Android')) return 'Android';
+    
+    return 'Dispositivo desconhecido';
   }
 }

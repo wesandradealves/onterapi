@@ -15,8 +15,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         database: configService.get('DB_DATABASE'),
         schema: configService.get('DB_SCHEMA') || 'public',
         entities: ['dist/**/*.entity{.ts,.js}'],
-        migrations: ['dist/infrastructure/database/migrations/*{.ts,.js}'],
+        migrations: ['dist/src/infrastructure/database/migrations/*{.ts,.js}'],
         synchronize: false,
+        migrationsRun: true, // Executar migrações automaticamente
         logging: configService.get('NODE_ENV') === 'development',
         ssl:
           configService.get('DB_SSL') === 'true'

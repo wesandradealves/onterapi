@@ -30,6 +30,9 @@ export class UserEntity {
   @Column({ type: 'varchar', length: 255 })
   name!: string;
 
+  @Column({ name: 'password_hash', type: 'varchar', length: 255, nullable: true })
+  password_hash?: string;
+
   @Column({ type: 'varchar', length: 11, unique: true })
   cpf!: string;
 
@@ -60,6 +63,15 @@ export class UserEntity {
 
   @Column({ name: 'email_verified', type: 'boolean', default: false })
   emailVerified!: boolean;
+
+  @Column({ name: 'email_verification_token', type: 'varchar', length: 255, nullable: true })
+  emailVerificationToken?: string;
+
+  @Column({ name: 'email_verification_sent_at', type: 'timestamp', nullable: true })
+  emailVerificationSentAt?: Date;
+
+  @Column({ name: 'email_verified_at', type: 'timestamp', nullable: true })
+  emailVerifiedAt?: Date;
 
   @Column({ name: 'last_login_at', type: 'timestamp', nullable: true })
   lastLoginAt?: Date;

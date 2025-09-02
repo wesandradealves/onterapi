@@ -28,6 +28,11 @@ export interface IEmailService {
    * Enviar notificação de login suspeito
    */
   sendSuspiciousLoginAlert(data: SuspiciousLoginData): Promise<Result<void>>;
+
+  /**
+   * Enviar alerta de login bem-sucedido
+   */
+  sendLoginAlertEmail(data: LoginAlertData): Promise<Result<void>>;
 }
 
 export interface VerificationEmailData {
@@ -65,6 +70,16 @@ export interface SuspiciousLoginData {
   location?: string;
   device: string;
   timestamp: Date;
+}
+
+export interface LoginAlertData {
+  to: string;
+  userName: string;
+  loginDate: string;
+  ipAddress: string;
+  userAgent: string;
+  location: string;
+  device: string;
 }
 
 export const IEmailService = Symbol('IEmailService');

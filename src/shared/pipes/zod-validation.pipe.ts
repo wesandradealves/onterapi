@@ -22,11 +22,11 @@ export class ZodValidationPipe implements PipeTransform {
           return `${field}: ${err.message}`;
         });
         
-        throw new BadRequestException({
-          message: 'Validation failed',
-          errors: errorMessages,
-          statusCode: 400,
-        });
+        // Log para debug
+        console.error('Zod Validation Errors:', errorMessages);
+        console.error('Input value:', value);
+        
+        throw new BadRequestException(errorMessages);
       }
       throw new BadRequestException('Validation failed');
     }

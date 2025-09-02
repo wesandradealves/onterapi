@@ -31,7 +31,18 @@
       "Bash(find:*)",
       "Read(D:\\www\\Onterapi/**)",
       "Read(D:\\www\\Onterapi/**)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(node:*)",
+      "Bash(npm run dev:*)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Bash(nslookup:*)"
     ],
     "deny": [],
     "ask": []

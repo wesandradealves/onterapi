@@ -29,12 +29,14 @@ OnTerapi v4 é uma plataforma SaaS multi-tenant completa para gestão de clínic
 
 ### Stack Tecnológica
 - **Backend**: NestJS 10.3 + TypeScript 5.3
-- **Database**: Supabase (PostgreSQL hospedado) + TypeORM 0.3
+- **Database**: Supabase Cloud (PostgreSQL) - **SEM BANCO LOCAL**
+- **ORM**: TypeORM 0.3 (apenas para estrutura, dados no Supabase)
 - **Cache**: Redis 7
 - **Queue**: Bull
 - **Mensageria**: EventEmitter + RabbitMQ
 - **Validação**: Zod 3.22
-- **Auth**: JWT + Passport + Supabase Auth
+- **Auth**: Supabase Auth + JWT (100% cloud)
+- **Email**: Nodemailer + Ethereal (dev) / SMTP (prod)
 - **Docs**: Swagger + Compodoc
 - **AI**: OpenAI + CrewAI
 
@@ -134,17 +136,24 @@ docker compose up -d
 
 ## ⚙️ Configuração
 
-### 🗄️ Banco de Dados - Supabase
+### 🗄️ Banco de Dados - Supabase Cloud Only
 
-O projeto usa Supabase como banco de dados PostgreSQL hospedado na nuvem.
+**⚠️ IMPORTANTE: Este projeto NÃO usa banco de dados local. Todos os dados estão no Supabase Cloud.**
 
-#### Conexão Principal
+#### Configuração para Docker (Recomendado)
 ```env
-# Supabase Database
-DB_HOST=db.ogffdaemylaezxpunmop.supabase.co
-DB_PORT=5432
-DB_USERNAME=postgres
+# Use IP direto do pooler para evitar problemas de DNS no Docker
+DB_HOST=54.94.90.106
+DB_PORT=6543
+DB_USERNAME=postgres.ogffdaemylaezxpunmop
 DB_PASSWORD=5lGR6N9OyfF1fcMc
+DB_DATABASE=postgres
+DB_SSL=true
+
+# Supabase Configuration
+SUPABASE_URL=https://ogffdaemylaezxpunmop.supabase.co
+SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 DB_DATABASE=postgres
 DB_SSL=true
 DB_SCHEMA=public
@@ -205,17 +214,26 @@ npm run check:quality # Verificar qualidade do código
 ### 🔐 Módulo de Autenticação (Auth)
 
 #### Visão Geral
-Sistema completo de autenticação e autorização seguindo DDD e Clean Architecture, com suporte a multi-tenant, RBAC e 2FA.
+Sistema de autenticação 100% baseado em Supabase Cloud, sem banco de dados local. Todos os usuários e sessões são gerenciados diretamente no Supabase Auth.
+
+#### ⚠️ IMPORTANTE: Arquitetura Cloud-Only
+- **NÃO HÁ BANCO DE DADOS LOCAL**
+- Todos os dados de usuários estão no Supabase Cloud
+- Autenticação realizada diretamente com Supabase Auth
+- User metadata armazenado no Supabase (nome, CPF, telefone, role, etc)
+- Nenhuma tabela local de users ou sessions
 
 #### Funcionalidades
-- ✅ **Cadastro de usuários** com validação de CPF único
-- ✅ **Login** com suporte a 2FA (Two-Factor Authentication)
+- ✅ **Cadastro de usuários** direto no Supabase Auth
+- ✅ **Login** com email de alerta (IP, dispositivo, localização)
+- ✅ **Email de notificação** em cada login bem-sucedido
+- ✅ **Two-Factor Authentication (2FA)** via email
 - ✅ **Refresh token** para renovação automática
 - ✅ **Sistema RBAC** com 11 roles hierárquicos
 - ✅ **Multi-tenant** com isolamento por tenant
 - ✅ **Guards de autorização** (JWT, Roles, Tenant)
-- ✅ **Rate limiting** e proteção contra brute force
-- ✅ **Integração Supabase Auth**
+- ✅ **Verificação de email** com link de confirmação
+- ✅ **Logs visuais** com links do Ethereal em desenvolvimento
 
 #### Sistema de Roles (RBAC)
 ```typescript
@@ -245,6 +263,33 @@ Body: {
   password: string,
   rememberMe?: boolean
 }
+Response: {
+  accessToken: string,      // JWT válido por 15 minutos
+  refreshToken: string,     // Token para renovação
+  expiresIn: 900,
+  user: {
+    id: string,
+    email: string,
+    name: string,
+    role: string,
+    tenantId: string | null
+  }
+}
+Efeitos: 
+  - Envia email de alerta com IP, dispositivo e localização
+  - Se 2FA ativo, retorna tempToken para validação
+
+POST /auth/two-factor/send
+Body: {
+  tempToken: string,
+  method?: 'email' | 'sms' | 'authenticator'
+}
+Response: {
+  sentTo: string,           // Email/telefone mascarado
+  method: string,
+  expiresIn: 300,           // 5 minutos
+  attemptsRemaining: number
+}
 
 POST /auth/two-factor/validate
 Body: {
@@ -252,10 +297,21 @@ Body: {
   code: string,
   trustDevice?: boolean
 }
+Response: {
+  accessToken: string,
+  refreshToken: string,
+  expiresIn: 900,
+  user: { ... }
+}
 
 POST /auth/refresh
 Body: {
   refreshToken: string
+}
+Response: {
+  accessToken: string,
+  refreshToken: string,
+  expiresIn: 900
 }
 
 POST /auth/sign-out
@@ -264,9 +320,28 @@ Body: {
   refreshToken?: string,
   allDevices?: boolean
 }
+Response: {
+  success: true,
+  message: string
+}
 
 GET /auth/me
 Headers: Authorization: Bearer {token}
+Response: {
+  id: string,
+  email: string,
+  name: string,
+  role: string,
+  tenantId: string | null,
+  emailVerified: boolean,
+  twoFactorEnabled: boolean
+}
+
+GET /auth/verify-email?token={token}&email={email}
+Response: {
+  success: true,
+  message: 'Email verificado com sucesso!'
+}
 ```
 
 #### Arquitetura do Módulo Auth
@@ -322,6 +397,102 @@ async getPublicInfo() {
   // Endpoint público
 }
 ```
+
+#### 📧 Sistema de Emails
+
+##### Configuração
+```env
+# Desenvolvimento (Ethereal - emails de teste)
+EMAIL_HOST=smtp.ethereal.email
+EMAIL_PORT=587
+EMAIL_USER=lina73@ethereal.email
+EMAIL_PASS=bZdVJ4VJdP46V6w5jx
+EMAIL_FROM=noreply@onterapi.com
+
+# Produção (configurar seu SMTP)
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=seu-email@gmail.com
+EMAIL_PASS=sua-senha-app
+EMAIL_FROM=noreply@onterapi.com
+```
+
+##### Emails Enviados pelo Sistema
+
+###### 1. Email de Alerta de Login
+- **Quando**: Sempre que um usuário faz login
+- **Conteúdo**: IP, dispositivo, navegador, localização, data/hora
+- **Template**: HTML responsivo com informações detalhadas
+- **Logs**: Link do Ethereal para visualização em desenvolvimento
+
+###### 2. Email de Verificação
+- **Quando**: Novo cadastro de usuário
+- **Conteúdo**: Link para verificar email
+- **Validade**: 24 horas
+
+###### 3. Email de Código 2FA
+- **Quando**: Login com 2FA ativado
+- **Conteúdo**: Código de 6 dígitos
+- **Validade**: 5 minutos
+
+###### 4. Email de Boas-Vindas
+- **Quando**: Após verificação do email
+- **Conteúdo**: Informações sobre a plataforma
+
+#### 🔄 Fluxo de Autenticação Completo
+
+##### 1. Cadastro de Novo Usuário
+```mermaid
+graph LR
+    A[POST /users] --> B[Cria no Supabase Auth]
+    B --> C[Salva metadata]
+    C --> D[Envia email verificação]
+    D --> E[Retorna user criado]
+```
+
+##### 2. Login Normal
+```mermaid
+graph LR
+    A[POST /auth/sign-in] --> B[Valida no Supabase]
+    B --> C{2FA ativo?}
+    C -->|Não| D[Gera tokens JWT]
+    C -->|Sim| E[Retorna tempToken]
+    D --> F[Envia email alerta]
+    F --> G[Retorna tokens + user]
+    E --> H[Aguarda código 2FA]
+```
+
+##### 3. Login com 2FA
+```mermaid
+graph LR
+    A[POST /auth/two-factor/send] --> B[Envia código email]
+    B --> C[POST /auth/two-factor/validate]
+    C --> D[Valida código]
+    D --> E[Gera tokens JWT]
+    E --> F[Retorna tokens + user]
+```
+
+#### 🐳 Configuração Docker
+
+##### docker-compose.yml
+```yaml
+services:
+  app:
+    build: .
+    ports:
+      - "3001:3000"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    extra_hosts:
+      - "ogffdaemylaezxpunmop.supabase.co:104.18.38.10"
+      - "aws-0-sa-east-1.pooler.supabase.com:54.94.90.106"
+      - "smtp.ethereal.email:95.216.108.161"
+    environment:
+      NODE_OPTIONS: "--dns-result-order=ipv4first"
+```
+
+**Nota**: Os extra_hosts são necessários para resolver DNS dentro do container Docker.
 
 ##### Obter usuário atual
 ```typescript

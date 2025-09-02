@@ -51,7 +51,7 @@ export class UserSessionEntity {
   @Column({ name: 'revoked_at', type: 'timestamp', nullable: true })
   revokedAt?: Date;
 
-  @Column({ name: 'revoked_reason', type: 'varchar', length: 255, nullable: true })
+  @Column({ name: 'revoke_reason', type: 'varchar', length: 255, nullable: true })
   revokedReason?: string;
 
   @CreateDateColumn({ name: 'created_at' })

@@ -35,12 +35,23 @@ export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
         return { error: new Error('Usuário não encontrado') };
       }
 
+      // LOG PARA DESENVOLVIMENTO
+      this.logger.warn(`
+========================================
+🔍 VALIDANDO CÓDIGO 2FA
+📧 Email: ${user.email}
+🔢 Código recebido: ${input.code}
+========================================
+      `);
+      
       // Validar código 2FA
       const isValidCode = await this.validateCode(user.id, user.twoFactorSecret!, input.code);
       if (!isValidCode) {
-        this.logger.warn(`Código 2FA inválido para usuário ${user.email}`);
+        this.logger.warn(`❌ Código 2FA inválido para usuário ${user.email}`);
         return { error: new Error('Código inválido') };
       }
+      
+      this.logger.warn(`✅ Código 2FA válido! Gerando tokens de acesso...`);
 
       // Gerar tokens finais
       const sessionId = uuidv4();

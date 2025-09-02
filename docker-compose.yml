@@ -16,6 +16,13 @@ services:
       SWAGGER_SERVER_URL: "http://localhost:3001"
     ports:
       - "3001:3000"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    extra_hosts:
+      - "ogffdaemylaezxpunmop.supabase.co:104.18.38.10"
+      - "aws-0-sa-east-1.pooler.supabase.com:54.94.90.106"
+      - "smtp.ethereal.email:95.216.108.161"
     networks:
       - onterapi-network
     volumes:

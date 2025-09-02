@@ -7,6 +7,90 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
+## [0.5.0] - 2025-01-09
+
+### Added
+- **Sistema de Autenticação 100% Supabase Cloud**
+  - Remoção completa de banco de dados local
+  - Autenticação usando apenas Supabase Auth
+  - Não há mais tabelas locais de usuários ou sessões
+  - Integração direta com Supabase para todas operações
+
+- **Email de Alerta de Login**
+  - Notificação automática por email em cada login
+  - Informações incluídas: IP, dispositivo, localização, data/hora
+  - Template HTML profissional e responsivo
+  - Logs com link direto do Ethereal para visualização em desenvolvimento
+
+- **Melhorias no Docker**
+  - Configuração de DNS com Google DNS (8.8.8.8, 8.8.4.4)
+  - Extra hosts configurados para Supabase e SMTP
+  - IPs diretos para evitar problemas de resolução DNS
+  - Health check configurado para monitoramento
+
+- **Logs Aprimorados**
+  - Links do Ethereal destacados nos logs
+  - Mensagens formatadas para melhor visualização
+  - Warnings visuais para eventos importantes
+
+### Changed
+- **Arquitetura Simplificada**
+  - SignInUseCase usa apenas Supabase Auth
+  - CreateUserUseCase cria usuários direto no Supabase
+  - Remoção de todas as referências a authRepository local
+  - User metadata armazenado no Supabase
+
+- **Configuração de Ambiente**
+  - DB_HOST usando IP direto do pooler Supabase
+  - Extra hosts no Docker para todos serviços externos
+  - NODE_OPTIONS com dns-result-order=ipv4first
+
+### Fixed
+- Resolução DNS no Docker para smtp.ethereal.email
+- Problemas de conectividade com Supabase no Docker
+- Envio de emails funcionando corretamente no container
+- Login e criação de usuários 100% funcional
+
+### Security
+- Nenhuma informação sensível armazenada localmente
+- Todos os dados de usuários no Supabase cloud
+- Service keys apenas para operações administrativas
+- Tokens JWT com expiração de 15 minutos
+
+## [0.4.1] - 2025-01-09
+
+### Added
+- **Serviço de Email Completo** - Infraestrutura para envio de emails
+  - EmailService implementado com Nodemailer
+  - Templates HTML responsivos para todos os tipos de email
+  - Integração com Ethereal para testes de desenvolvimento
+  - Suporte para produção com qualquer provedor SMTP
+  - Máscaramento de endereços de email para privacidade
+
+- **Two-Factor Authentication via Email**
+  - SendTwoFAUseCase para envio de códigos 2FA
+  - Endpoint `POST /auth/two-factor/send` para solicitar código
+  - Códigos de 6 dígitos com expiração de 5 minutos
+  - Template de email específico para códigos 2FA
+  - Integração completa com fluxo de autenticação
+
+- **Templates de Email Implementados**
+  - Código de verificação 2FA com design profissional
+  - Email de boas-vindas com onboarding
+  - Redefinição de senha com link seguro
+  - Verificação de email para novos cadastros
+  - Alerta de login suspeito com detalhes do acesso
+
+### Changed
+- Auth module atualizado com provider ISendTwoFAUseCase
+- Controller de autenticação com novo endpoint de envio 2FA
+- Documentação Swagger atualizada com exemplos de uso
+
+### Fixed
+- Typo em nodemailer.createTransport (estava createTransporter)
+- Verificação de token 2FA com Result pattern correto
+- Acesso ao userId do TwoFactorTokenPayload usando 'sub'
+
 ## [0.4.0] - 2025-01-09
 
 ### Added

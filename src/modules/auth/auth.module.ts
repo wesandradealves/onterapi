@@ -18,19 +18,23 @@ import { IAuthRepository } from '../../domain/auth/interfaces/repositories/auth.
 import { SupabaseAuthService } from '../../infrastructure/auth/services/supabase-auth.service';
 import { JwtService } from '../../infrastructure/auth/services/jwt.service';
 import { TwoFactorService } from '../../infrastructure/auth/services/two-factor.service';
+import { EmailService } from '../../infrastructure/email/services/email.service';
 import { ISupabaseAuthService } from '../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { IJwtService } from '../../domain/auth/interfaces/services/jwt.service.interface';
 import { ITwoFactorService } from '../../domain/auth/interfaces/services/two-factor.service.interface';
+import { IEmailService } from '../../domain/auth/interfaces/services/email.service.interface';
 
 // Use Cases
 import { SignInUseCase } from './use-cases/sign-in.use-case';
 import { SignOutUseCase } from './use-cases/sign-out.use-case';
 import { RefreshTokenUseCase } from './use-cases/refresh-token.use-case';
 import { ValidateTwoFAUseCase } from './use-cases/validate-two-fa.use-case';
+import { SendTwoFAUseCase } from './use-cases/send-two-fa.use-case';
 import { ISignInUseCase } from '../../domain/auth/interfaces/use-cases/sign-in.use-case.interface';
 import { ISignOutUseCase } from '../../domain/auth/interfaces/use-cases/sign-out.use-case.interface';
 import { IRefreshTokenUseCase } from '../../domain/auth/interfaces/use-cases/refresh-token.use-case.interface';
 import { IValidateTwoFAUseCase } from '../../domain/auth/interfaces/use-cases/validate-two-fa.use-case.interface';
+import { ISendTwoFAUseCase } from '../../domain/auth/interfaces/use-cases/send-two-fa.use-case.interface';
 
 // Guards
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -61,6 +65,10 @@ const serviceProviders: Provider[] = [
     provide: ITwoFactorService,
     useClass: TwoFactorService,
   },
+  {
+    provide: IEmailService,
+    useClass: EmailService,
+  },
 ];
 
 const useCaseProviders: Provider[] = [
@@ -79,6 +87,10 @@ const useCaseProviders: Provider[] = [
   {
     provide: IValidateTwoFAUseCase,
     useClass: ValidateTwoFAUseCase,
+  },
+  {
+    provide: ISendTwoFAUseCase,
+    useClass: SendTwoFAUseCase,
   },
 ];
 

@@ -23,11 +23,12 @@ export class SupabaseService {
     });
   }
 
-  async createUser(email: string, password: string) {
+  async createUser(email: string, password: string, metadata?: any) {
     const { data, error } = await this.supabase.auth.admin.createUser({
       email,
       password,
-      email_confirm: false,
+      email_confirm: true, // Auto confirmar email para desenvolvimento
+      user_metadata: metadata || {},
     });
 
     if (error) {
