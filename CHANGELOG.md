@@ -7,6 +7,28 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
+## [0.9.0] - 2025-09-03
+
+### Changed
+- **Limpeza Total de Código**
+  - Removidos TODOS os comentários de TODOS os arquivos TypeScript
+  - Incluindo JSDoc, comentários de linha e blocos
+  - Código mais limpo e profissional
+  - Mantidos apenas `.describe()` do Zod para documentação Swagger
+
+### Improved
+- **Organização de Diretórios**
+  - Removidos 8 diretórios vazios redundantes do boilerplate inicial
+  - Mantida estrutura modular (por feature) ao invés de centralizada
+  - Estrutura mais coerente com DDD modular
+
+### Technical
+- **Qualidade de Código**
+  - Zero comentários no código (código auto-explicativo)
+  - Melhor aderência aos padrões clean code
+  - Remoção de diretórios desnecessários: domain/enums, domain/interfaces/*, infrastructure/config, etc
+  - Mantidos apenas diretórios essenciais para futuras implementações
+
 ## [0.8.0] - 2025-09-03
 
 ### Added
