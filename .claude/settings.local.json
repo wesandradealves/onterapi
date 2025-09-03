@@ -75,7 +75,18 @@
       "Read(D:\\www\\Onterapi\\dourado-dashboard-backend\\src/**)",
       "Read(D:\\www\\Onterapi\\dourado-core-backend\\src/**)",
       "Bash(rm:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi/**)",
+      "Read(D:\\www\\Onterapi/**)"
     ],
     "deny": [],
     "ask": []

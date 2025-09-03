@@ -1,10 +1,13 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Injectable, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
+import { BaseGuard } from '../../../shared/guards/base.guard';
 
 @Injectable()
-export class EmailVerifiedGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
+export class EmailVerifiedGuard extends BaseGuard {
+  constructor(private reflector: Reflector) {
+    super();
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const skipEmailVerification = this.reflector.get<boolean>(
@@ -16,12 +19,7 @@ export class EmailVerifiedGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
-    const user = request.user;
-
-    if (!user) {
-      throw AuthErrorFactory.create(AuthErrorType.USER_NOT_FOUND);
-    }
+    const user = this.getUser(context);
 
     if (!user.emailVerified) {
       throw AuthErrorFactory.create(

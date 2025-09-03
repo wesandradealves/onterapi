@@ -1,15 +1,11 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Injectable, ExecutionContext } from '@nestjs/common';
 import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
+import { BaseGuard } from '../../../shared/guards/base.guard';
 
 @Injectable()
-export class ActiveAccountGuard implements CanActivate {
+export class ActiveAccountGuard extends BaseGuard {
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
-    const user = request.user;
-
-    if (!user) {
-      throw AuthErrorFactory.create(AuthErrorType.USER_NOT_FOUND);
-    }
+    const user = this.getUser(context);
 
     if (!user.isActive || user.bannedUntil) {
       const isLocked = user.bannedUntil && new Date(user.bannedUntil) > new Date();

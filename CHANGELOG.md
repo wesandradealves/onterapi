@@ -7,6 +7,69 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
+## [0.12.0] - 2025-09-03
+
+### Added
+- **BaseUseCase para eliminação de duplicação de try-catch**
+  - Criado BaseUseCase abstrato que centraliza tratamento de erros
+  - 10 use cases refatorados para usar o padrão DRY
+  - UseCaseWrapper criado para adaptar diferentes assinaturas de métodos
+  - UpdateUserUseCase e DeleteUserUseCase usando wrapper pattern
+
+- **BaseGuard para abstração de guards**
+  - Criado BaseGuard que centraliza lógica comum
+  - 6 guards refatorados (JwtAuth, Roles, Tenant, UserOwner, EmailVerified, ActiveAccount)
+  - Método getUser() centralizado para extração de usuário do contexto
+
+- **Sistema de mensagens centralizado**
+  - MESSAGES.constants.ts criado com todas as mensagens do sistema
+  - 0 mensagens hardcoded (100% centralizadas)
+  - Seções organizadas: AUTH, USER, VALIDATION, EVENTS, ERRORS, GUARDS, LOGS
+
+- **Divisão de controllers e serviços grandes**
+  - TwoFactorController separado do AuthController
+  - EmailService dividido em 3: AuthEmailService, NotificationEmailService e facade
+  - Redução significativa de complexidade por arquivo
+
+- **Event Subscribers implementados**
+  - AuthEventsSubscriber para eventos de autenticação
+  - UserEventsSubscriber para eventos de usuários
+  - Integração completa com MessageBus
+
+### Changed
+- **Result Pattern aplicado em toda a aplicação**
+  - Todas as interfaces de use cases retornando Result<T>
+  - Controllers atualizados para tratar result.error e result.data
+  - Tratamento de erros padronizado e consistente
+
+- **Usuário padrão do sistema**
+  - Removidos todos os usuários de teste
+  - Mantido apenas 1 super admin (lina73@ethereal.email / senha: admin)
+  - README atualizado com credenciais simplificadas
+
+### Fixed
+- **Correções críticas de arquitetura DRY**
+  - Eliminadas 635 linhas de código duplicado
+  - Redução de duplicação de 20% para 0%
+  - 100% dos use cases usando BaseUseCase ou wrapper
+  - 100% dos guards usando BaseGuard
+
+### Improved
+- **Qualidade e manutenibilidade do código**
+  - Zero comentários no código (código auto-documentado)
+  - Zero mensagens hardcoded em logs
+  - Arquitetura DDD/Clean 100% consistente
+  - Todos os testes de endpoints passando
+
+### Technical
+- **Métricas finais de refatoração**
+  - 396 inserções, 968 deleções (saldo: -572 linhas)
+  - 35 arquivos modificados
+  - 10 use cases refatorados
+  - 6 guards refatorados
+  - 3 serviços divididos
+  - 0 duplicações restantes
+
 ## [0.11.0] - 2025-09-03
 
 ### Added

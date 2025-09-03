@@ -5,6 +5,7 @@ export interface DeviceInfo {
   browser?: string;
   os?: string;
   location?: string;
+  trustedDevice?: boolean;
 }
 
 export interface DeviceMetadata extends DeviceInfo {

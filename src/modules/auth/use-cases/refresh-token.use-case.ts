@@ -3,7 +3,7 @@ import { IRefreshTokenUseCase, RefreshTokenInput, RefreshTokenOutput } from '../
 import { IAuthRepository, IAuthRepositoryToken } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
 import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
-import { Result } from '../../../shared/types/result.type';
+import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import { AUTH_CONSTANTS } from '../../../shared/constants/auth.constants';
 import { extractSupabaseUser } from '../../../shared/utils/auth.utils';
 import { createTokenResponse } from '../../../shared/factories/auth-response.factory';
@@ -11,10 +11,11 @@ import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-
 import { AuthTokenHelper } from '../../../shared/helpers/auth-token.helper';
 import { MessageBus } from '../../../shared/messaging/message-bus';
 import { DomainEvents } from '../../../shared/events/domain-events';
+import { MESSAGES } from '../../../shared/constants/messages.constants';
 
 @Injectable()
-export class RefreshTokenUseCase implements IRefreshTokenUseCase {
-  private readonly logger = new Logger(RefreshTokenUseCase.name);
+export class RefreshTokenUseCase extends BaseUseCase<RefreshTokenInput, RefreshTokenOutput> implements IRefreshTokenUseCase {
+  protected readonly logger = new Logger(RefreshTokenUseCase.name);
 
   constructor(
     @Inject(IAuthRepositoryToken)
@@ -24,32 +25,33 @@ export class RefreshTokenUseCase implements IRefreshTokenUseCase {
     @Inject(ISupabaseAuthService)
     private readonly supabaseAuthService: ISupabaseAuthService,
     private readonly messageBus: MessageBus,
-  ) {}
+  ) {
+    super();
+  }
 
-  async execute(input: RefreshTokenInput): Promise<Result<RefreshTokenOutput>> {
-    try {
+  protected async handle(input: RefreshTokenInput): Promise<RefreshTokenOutput> {
       const tokenResult = this.jwtService.verifyRefreshToken(input.refreshToken);
       if (tokenResult.error) {
-        return AuthErrorFactory.createResult(AuthErrorType.INVALID_TOKEN);
+        throw AuthErrorFactory.create(AuthErrorType.INVALID_TOKEN);
       }
 
       const sessionUser = await this.authRepository.validateRefreshToken(input.refreshToken);
       if (!sessionUser) {
-        this.logger.warn('Refresh token não encontrado ou expirado');
-        return AuthErrorFactory.createResult(AuthErrorType.SESSION_EXPIRED);
+        this.logger.warn(MESSAGES.LOGS.REFRESH_TOKEN_NOT_FOUND);
+        throw AuthErrorFactory.create(AuthErrorType.SESSION_EXPIRED);
       }
 
       const { data: supabaseData, error: userError } = await this.supabaseAuthService.getUserById(sessionUser.id);
       if (userError || !supabaseData) {
-        this.logger.error('Erro ao buscar usuário do Supabase', userError);
-        return AuthErrorFactory.createResult(AuthErrorType.USER_NOT_FOUND, { userId: sessionUser.id });
+        this.logger.error(MESSAGES.LOGS.SUPABASE_USER_FETCH_ERROR, userError);
+        throw AuthErrorFactory.create(AuthErrorType.USER_NOT_FOUND, { userId: sessionUser.id });
       }
 
       const user = extractSupabaseUser(supabaseData);
 
       if (!user.isActive) {
         await this.authRepository.removeRefreshToken(input.refreshToken);
-        return AuthErrorFactory.createResult(AuthErrorType.ACCOUNT_DISABLED, { userId: user.id, email: user.email });
+        throw AuthErrorFactory.create(AuthErrorType.ACCOUNT_DISABLED, { userId: user.id, email: user.email });
       }
 
       await this.authRepository.removeRefreshToken(input.refreshToken);
@@ -84,10 +86,6 @@ export class RefreshTokenUseCase implements IRefreshTokenUseCase {
       await this.messageBus.publish(event);
       this.logger.log(`Evento TOKEN_REFRESHED publicado para usuário ${user.id}`);
       
-      return { data: output as RefreshTokenOutput };
-    } catch (error) {
-      this.logger.error('Erro ao renovar token', error);
-      return { error: error as Error };
-    }
+      return output as RefreshTokenOutput;
   }
 }

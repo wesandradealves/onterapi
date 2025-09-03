@@ -9,17 +9,18 @@ import { IEmailService } from '../../../domain/auth/interfaces/services/email.se
 import { ITwoFactorService } from '../../../domain/auth/interfaces/services/two-factor.service.interface';
 import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
-import { Result } from '../../../shared/types/result.type';
+import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import { AUTH_CONSTANTS } from '../../../shared/constants/auth.constants';
 import { extractSupabaseUser, generateSixDigitCode, maskEmail, calculateExpirationMinutes } from '../../../shared/utils/auth.utils';
 import { createTwoFactorSendResponse } from '../../../shared/factories/auth-response.factory';
 import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
 import { MessageBus } from '../../../shared/messaging/message-bus';
 import { DomainEvents } from '../../../shared/events/domain-events';
+import { MESSAGES } from '../../../shared/constants/messages.constants';
 
 @Injectable()
-export class SendTwoFAUseCase implements ISendTwoFAUseCase {
-  private readonly logger = new Logger(SendTwoFAUseCase.name);
+export class SendTwoFAUseCase extends BaseUseCase<SendTwoFAInput, SendTwoFAOutput> implements ISendTwoFAUseCase {
+  protected readonly logger = new Logger(SendTwoFAUseCase.name);
 
   constructor(
     @Inject(IAuthRepositoryToken)
@@ -33,23 +34,24 @@ export class SendTwoFAUseCase implements ISendTwoFAUseCase {
     @Inject(ISupabaseAuthService)
     private readonly supabaseAuthService: ISupabaseAuthService,
     private readonly messageBus: MessageBus,
-  ) {}
+  ) {
+    super();
+  }
 
-  async execute(input: SendTwoFAInput): Promise<Result<SendTwoFAOutput>> {
-    try {
+  protected async handle(input: SendTwoFAInput): Promise<SendTwoFAOutput> {
       const decodedResult = await this.jwtService.verifyTwoFactorToken(input.tempToken);
       if (!decodedResult || decodedResult.error) {
-        return AuthErrorFactory.createResult(AuthErrorType.INVALID_TOKEN);
+        throw AuthErrorFactory.create(AuthErrorType.INVALID_TOKEN);
       }
 
       const userId = input.userId || decodedResult.data?.sub;
       if (!userId) {
-        return AuthErrorFactory.createResult(AuthErrorType.USER_ID_NOT_FOUND);
+        throw AuthErrorFactory.create(AuthErrorType.USER_ID_NOT_FOUND);
       }
       
       const { data: supabaseUser, error: userError } = await this.supabaseAuthService.getUserById(userId);
       if (userError || !supabaseUser) {
-        return AuthErrorFactory.createResult(AuthErrorType.USER_NOT_FOUND, { userId });
+        throw AuthErrorFactory.create(AuthErrorType.USER_NOT_FOUND, { userId });
       }
       
       const user = extractSupabaseUser(supabaseUser);
@@ -90,8 +92,8 @@ export class SendTwoFAUseCase implements ISendTwoFAUseCase {
         });
 
         if (result.error) {
-          this.logger.error('Error sending 2FA code', result.error);
-          return AuthErrorFactory.createResult(AuthErrorType.EMAIL_SEND_ERROR, { userId, email: user.email });
+          this.logger.error(MESSAGES.LOGS.TWO_FA_CODE_SEND_ERROR, result.error);
+          throw AuthErrorFactory.create(AuthErrorType.EMAIL_SEND_ERROR, { userId, email: user.email });
         }
 
         this.logger.log(`2FA code sent to ${user.email}`);
@@ -105,21 +107,14 @@ export class SendTwoFAUseCase implements ISendTwoFAUseCase {
         await this.messageBus.publish(event);
         this.logger.log(`Evento TWO_FA_SENT publicado para ${user.email}`);
 
-        return {
-          data: createTwoFactorSendResponse(
-            maskEmail(user.email),
-            'email',
-            attemptsRemaining
-          ) as SendTwoFAOutput
-        };
+        return createTwoFactorSendResponse(
+          maskEmail(user.email),
+          'email',
+          attemptsRemaining
+        ) as SendTwoFAOutput;
       }
 
-      return AuthErrorFactory.createResult(AuthErrorType.METHOD_NOT_IMPLEMENTED, { method });
-
-    } catch (error) {
-      this.logger.error('Error sending 2FA code', error);
-      return { error: error as Error };
-    }
+      throw AuthErrorFactory.create(AuthErrorType.METHOD_NOT_IMPLEMENTED, { method });
   }
 
 }

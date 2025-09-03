@@ -1,5 +1,6 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import { ISignInUseCase, SignInInput, SignInOutput } from '../../../domain/auth/interfaces/use-cases/sign-in.use-case.interface';
 import { IAuthRepository, IAuthRepositoryToken } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
@@ -15,8 +16,8 @@ import { MessageBus } from '../../../shared/messaging/message-bus';
 import { DomainEvents } from '../../../shared/events/domain-events';
 
 @Injectable()
-export class SignInUseCase implements ISignInUseCase {
-  private readonly logger = new Logger(SignInUseCase.name);
+export class SignInUseCase extends BaseUseCase<SignInInput, SignInOutput> implements ISignInUseCase {
+  protected readonly logger = new Logger(SignInUseCase.name);
 
   constructor(
     @Inject(IAuthRepositoryToken)
@@ -29,18 +30,19 @@ export class SignInUseCase implements ISignInUseCase {
     private readonly emailService: IEmailService,
     private readonly configService: ConfigService,
     private readonly messageBus: MessageBus,
-  ) {}
+  ) {
+    super();
+  }
 
-  async execute(input: SignInInput): Promise<Result<SignInOutput>> {
-    try {
+  protected async handle(input: SignInInput): Promise<SignInOutput> {
       const user = await this.authenticateUser(input.email, input.password);
       
       if (!user) {
-        return AuthErrorFactory.createResult(AuthErrorType.INVALID_CREDENTIALS, { email: input.email });
+        throw AuthErrorFactory.create(AuthErrorType.INVALID_CREDENTIALS, { email: input.email });
       }
 
       if (user.twoFactorEnabled) {
-        return this.handleTwoFactorAuth(user.id);
+        return this.handleTwoFactorAuth(user.id) as SignInOutput;
       }
 
       const tokens = await this.generateUserTokens(user, input);
@@ -48,11 +50,7 @@ export class SignInUseCase implements ISignInUseCase {
       
       await this.sendLoginNotifications(user, tokens, input);
       
-      return { data: output as SignInOutput };
-    } catch (error) {
-      this.logger.error('Erro no login', error);
-      return { error: error as Error };
-    }
+      return output as SignInOutput;
   }
 
   private async authenticateUser(email: string, password: string) {
@@ -76,7 +74,7 @@ export class SignInUseCase implements ISignInUseCase {
 
   private handleTwoFactorAuth(userId: string) {
     const tempToken = this.jwtService.generateTwoFactorToken(userId);
-    return { data: createTwoFactorTempResponse(tempToken) };
+    return createTwoFactorTempResponse(tempToken);
   }
 
   private async generateUserTokens(user: any, input: SignInInput) {

@@ -115,11 +115,11 @@ export class DomainEvents {
     );
   }
 
-  static twoFaFailed(userId: string, reason: string, metadata?: any): DomainEvent {
+  static twoFaFailed(userId: string, attemptData: any, metadata?: any): DomainEvent {
     return this.createEvent(
       this.TWO_FA_FAILED,
       userId,
-      { userId, reason, failedAt: new Date() },
+      { userId, ...attemptData, failedAt: new Date() },
       metadata,
     );
   }

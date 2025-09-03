@@ -127,8 +127,11 @@ export class UsersController {
   })
   @UsePipes(new ZodValidationPipe(createUserSchema))
   async create(@Body() dto: CreateUserInputDTO): Promise<CreateUserResponseDto> {
-    const user = await this.createUserUseCase.execute(dto);
-    const maskedUser = { ...user, cpf: CPFUtils.mask(user.cpf) };
+    const result = await this.createUserUseCase.execute(dto);
+    if (result.error) {
+      throw result.error;
+    }
+    const maskedUser = { ...result.data, cpf: CPFUtils.mask(result.data.cpf) };
     return maskedUser as UserResponseDto;
   }
 
@@ -182,9 +185,12 @@ export class UsersController {
   })
   async findAll(@Query() filters: ListUsersDto): Promise<ListUsersResponseDto> {
     const result = await this.findAllUsersUseCase.execute(filters);
+    if (result.error) {
+      throw result.error;
+    }
     return {
-      data: result.data.map(user => ({ ...user, cpf: CPFUtils.mask(user.cpf) })),
-      pagination: result.pagination,
+      data: result.data.data.map(user => ({ ...user, cpf: CPFUtils.mask(user.cpf) })),
+      pagination: result.data.pagination,
     };
   }
 
@@ -210,11 +216,14 @@ export class UsersController {
     description: 'Usuário não encontrado',
   })
   async findOne(@Param('id') id: string): Promise<UserResponseDto> {
-    const user = await this.findUserByIdUseCase.execute(id);
-    if (!user) {
+    const result = await this.findUserByIdUseCase.execute(id);
+    if (result.error) {
+      throw result.error;
+    }
+    if (!result.data) {
       throw AuthErrorFactory.userNotFound();
     }
-    const maskedUser = { ...user, cpf: CPFUtils.mask(user.cpf) };
+    const maskedUser = { ...result.data, cpf: CPFUtils.mask(result.data.cpf) };
     return maskedUser as UserResponseDto;
   }
 
@@ -273,7 +282,11 @@ export class UsersController {
     @Body() dto: UpdateUserDto,
     @CurrentUser() currentUser: ICurrentUser,
   ): Promise<UserResponseDto> {
-    const user = await this.updateUserUseCase.execute(id, dto, currentUser.id);
+    const result = await this.updateUserUseCase.execute(id, dto, currentUser.id);
+    if (result.error) {
+      throw result.error;
+    }
+    const user = result.data;
     const maskedUser = { ...user, cpf: CPFUtils.mask(user.cpf) };
     return maskedUser as UserResponseDto;
   }
@@ -299,7 +312,10 @@ export class UsersController {
     @Param('id') id: string,
     @CurrentUser() currentUser: ICurrentUser,
   ): Promise<void> {
-    await this.deleteUserUseCase.execute(id, currentUser.id);
+    const result = await this.deleteUserUseCase.execute(id, currentUser.id);
+    if (result.error) {
+      throw result.error;
+    }
   }
 
 }

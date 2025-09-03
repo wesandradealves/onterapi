@@ -1,12 +1,14 @@
-import { Injectable, CanActivate, ExecutionContext, Logger, Inject } from '@nestjs/common';
+import { Injectable, ExecutionContext, Logger, Inject } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { BaseGuard } from '../../../shared/guards/base.guard';
 import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
+import { MESSAGES } from '../../../shared/constants/messages.constants';
 
 @Injectable()
-export class JwtAuthGuard implements CanActivate {
+export class JwtAuthGuard extends BaseGuard {
   private readonly logger = new Logger(JwtAuthGuard.name);
 
   constructor(
@@ -15,7 +17,9 @@ export class JwtAuthGuard implements CanActivate {
     private readonly jwtService: IJwtService,
     @Inject(ISupabaseAuthService)
     private readonly supabaseAuthService: ISupabaseAuthService,
-  ) {}
+  ) {
+    super();
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
@@ -36,7 +40,7 @@ export class JwtAuthGuard implements CanActivate {
 
     const tokenResult = this.jwtService.verifyAccessToken(token);
     if (tokenResult.error) {
-      this.logger.warn('Token inválido ou expirado');
+      this.logger.warn(MESSAGES.LOGS.TOKEN_INVALID_OR_EXPIRED);
       throw AuthErrorFactory.create(AuthErrorType.INVALID_TOKEN);
     }
 

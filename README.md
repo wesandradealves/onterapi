@@ -28,21 +28,15 @@ OnTerapi v4 é uma plataforma SaaS multi-tenant completa para gestão de clínic
 - 🔐 Autenticação 100% Supabase Cloud
 - 📧 Alertas de login com IP e localização
 
-## 🧪 Usuários de Teste
+## 🧪 Usuário Padrão
 
-### Tabela de Usuários Criados
+### Credenciais do Sistema
 
-| Email | Senha | Role | CPF | Status | Observações |
-|-------|-------|------|-----|--------|-------------|
-| lina73@ethereal.email | Admin@123456 | SUPER_ADMIN | - | ✅ Ativo | Super administrador principal |
-| patient@onterapi.com | Patient@123 | PATIENT | - | ✅ Ativo | Paciente de teste |
-| professional@onterapi.com | Prof@123456 | PROFESSIONAL | - | ✅ Ativo | Profissional de saúde |
-| owner@onterapi.com | Owner@123456 | CLINIC_OWNER | - | ✅ Ativo | Dono de clínica |
-| secretary@onterapi.com | Secretary@123 | SECRETARY | - | ✅ Ativo | Secretária |
-| admin.fin@onterapi.com | AdminFin@123 | ADMIN_FINANCEIRO | - | ✅ Ativo | Admin financeiro |
-| admin.support@onterapi.com | Support@123 | ADMIN_SUPORTE | - | ✅ Ativo | Admin suporte |
-| manager@onterapi.com | Manager@123 | MANAGER | - | ✅ Ativo | Gerente |
-| test_verification@ethereal.email | Test@123456 | PATIENT | 76567840552 | ✅ Verificado | Teste de verificação email |
+| Email | Senha | Nome | Role | Status |
+|-------|-------|------|------|--------|
+| lina73@ethereal.email | admin | Admin | SUPER_ADMIN | ✅ Ativo |
+
+**Observação**: Este é o único usuário padrão do sistema. Novos usuários devem ser criados através da API.
 
 ### Como Testar
 

@@ -4,7 +4,7 @@ import { IAuthRepository, IAuthRepositoryToken } from '../../../domain/auth/inte
 import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
 import { ITwoFactorService } from '../../../domain/auth/interfaces/services/two-factor.service.interface';
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
-import { Result } from '../../../shared/types/result.type';
+import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import { AUTH_CONSTANTS } from '../../../shared/constants/auth.constants';
 import { extractSupabaseUser } from '../../../shared/utils/auth.utils';
 import { createTokenResponse } from '../../../shared/factories/auth-response.factory';
@@ -12,10 +12,11 @@ import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-
 import { AuthTokenHelper } from '../../../shared/helpers/auth-token.helper';
 import { MessageBus } from '../../../shared/messaging/message-bus';
 import { DomainEvents } from '../../../shared/events/domain-events';
+import { MESSAGES } from '../../../shared/constants/messages.constants';
 
 @Injectable()
-export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
-  private readonly logger = new Logger(ValidateTwoFAUseCase.name);
+export class ValidateTwoFAUseCase extends BaseUseCase<ValidateTwoFAInput, ValidateTwoFAOutput> implements IValidateTwoFAUseCase {
+  protected readonly logger = new Logger(ValidateTwoFAUseCase.name);
 
   constructor(
     @Inject(IAuthRepositoryToken)
@@ -27,39 +28,43 @@ export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
     @Inject(ISupabaseAuthService)
     private readonly supabaseAuthService: ISupabaseAuthService,
     private readonly messageBus: MessageBus,
-  ) {}
+  ) {
+    super();
+  }
 
-  async execute(input: ValidateTwoFAInput): Promise<Result<ValidateTwoFAOutput>> {
-    try {
+  protected async handle(input: ValidateTwoFAInput): Promise<ValidateTwoFAOutput> {
       const tempTokenResult = this.jwtService.verifyTwoFactorToken(input.tempToken);
       if (tempTokenResult.error) {
-        return AuthErrorFactory.createResult(AuthErrorType.INVALID_TOKEN);
+        throw AuthErrorFactory.create(AuthErrorType.INVALID_TOKEN);
       }
 
       const userId = tempTokenResult.data.sub;
 
       const { data: supabaseUser, error: userError } = await this.supabaseAuthService.getUserById(userId);
       if (userError || !supabaseUser) {
-        return AuthErrorFactory.createResult(AuthErrorType.USER_NOT_FOUND, { userId });
+        throw AuthErrorFactory.create(AuthErrorType.USER_NOT_FOUND, { userId });
       }
       
       const user = extractSupabaseUser(supabaseUser);
 
-      this.logger.warn(`
-========================================
-🔍 VALIDANDO CÓDIGO 2FA
-📧 Email: ${user.email}
-🔢 Código recebido: ${input.code}
-========================================
-      `);
+      this.logger.log(MESSAGES.LOGS.TWO_FA_CODE_VALIDATING);
       
       const isValidCode = await this.validateCode(user.id, user.twoFactorSecret!, input.code);
       if (!isValidCode) {
-        this.logger.warn(`❌ Código 2FA inválido para usuário ${user.email}`);
-        return AuthErrorFactory.createResult(AuthErrorType.INVALID_2FA_CODE, { userId: user.id, email: user.email });
+        this.logger.warn(`${MESSAGES.LOGS.TWO_FA_CODE_INVALID} ${user.email}`);
+        
+        const event = DomainEvents.twoFaFailed(
+          user.id,
+          { userId: user.id, email: user.email, attemptedAt: new Date().toISOString() }
+        );
+        
+        await this.messageBus.publish(event);
+        this.logger.log(`${MESSAGES.EVENTS.TWO_FA_FAILED} para ${user.email}`);
+        
+        throw AuthErrorFactory.create(AuthErrorType.INVALID_2FA_CODE, { userId: user.id, email: user.email });
       }
       
-      this.logger.warn(`✅ Código 2FA válido! Gerando tokens de acesso...`);
+      this.logger.log(MESSAGES.LOGS.TWO_FA_CODE_VALID);
 
       const tokenHelper = new AuthTokenHelper(this.jwtService);
       const tokens = await tokenHelper.generateAndSaveTokens(
@@ -84,7 +89,7 @@ export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
       });
 
       if (updateError) {
-        this.logger.error('Erro ao atualizar lastLoginAt no Supabase', updateError);
+        this.logger.error(MESSAGES.LOGS.SUPABASE_UPDATE_ERROR, updateError);
       }
 
       const output = createTokenResponse(
@@ -102,11 +107,7 @@ export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
       await this.messageBus.publish(event);
       this.logger.log(`Evento TWO_FA_VALIDATED publicado para ${user.email}`);
       
-      return { data: output as ValidateTwoFAOutput };
-    } catch (error) {
-      this.logger.error('Erro na validação 2FA', error);
-      return { error: error as Error };
-    }
+      return output as ValidateTwoFAOutput;
   }
 
   private async validateCode(userId: string, secret: string, code: string): Promise<boolean> {
