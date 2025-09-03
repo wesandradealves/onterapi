@@ -3,6 +3,7 @@ import { IValidateTwoFAUseCase, ValidateTwoFAInput, ValidateTwoFAOutput } from '
 import { IAuthRepository, IAuthRepositoryToken } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
 import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
 import { ITwoFactorService } from '../../../domain/auth/interfaces/services/two-factor.service.interface';
+import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { Result } from '../../../shared/types/result.type';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -17,6 +18,8 @@ export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
     private readonly jwtService: IJwtService,
     @Inject(ITwoFactorService)
     private readonly twoFactorService: ITwoFactorService,
+    @Inject(ISupabaseAuthService)
+    private readonly supabaseAuthService: ISupabaseAuthService,
   ) {}
 
   async execute(input: ValidateTwoFAInput): Promise<Result<ValidateTwoFAOutput>> {
@@ -29,11 +32,21 @@ export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
 
       const userId = tempTokenResult.data.sub;
 
-      // Buscar usuário
-      const user = await this.authRepository.findById(userId);
-      if (!user) {
+      // Buscar usuário do Supabase
+      const { data: supabaseUser, error: userError } = await this.supabaseAuthService.getUserById(userId);
+      if (userError || !supabaseUser) {
         return { error: new Error('Usuário não encontrado') };
       }
+      
+      const userData = supabaseUser.user || supabaseUser;
+      const user = {
+        id: userData.id,
+        email: userData.email,
+        name: userData.user_metadata?.name || userData.email?.split('@')[0],
+        role: userData.user_metadata?.role || 'PATIENT',
+        tenantId: userData.user_metadata?.tenantId || null,
+        twoFactorSecret: null, // Não temos secret no Supabase ainda
+      };
 
       // LOG PARA DESENVOLVIMENTO
       this.logger.warn(`

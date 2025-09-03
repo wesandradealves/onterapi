@@ -8,6 +8,7 @@ import { IAuthRepository, IAuthRepositoryToken } from '../../../domain/auth/inte
 import { IEmailService } from '../../../domain/auth/interfaces/services/email.service.interface';
 import { ITwoFactorService } from '../../../domain/auth/interfaces/services/two-factor.service.interface';
 import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
+import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { Result } from '../../../shared/types/result.type';
 
 @Injectable()
@@ -23,6 +24,8 @@ export class SendTwoFAUseCase implements ISendTwoFAUseCase {
     private readonly twoFactorService: ITwoFactorService,
     @Inject(IJwtService)
     private readonly jwtService: IJwtService,
+    @Inject(ISupabaseAuthService)
+    private readonly supabaseAuthService: ISupabaseAuthService,
   ) {}
 
   async execute(input: SendTwoFAInput): Promise<Result<SendTwoFAOutput>> {
@@ -39,10 +42,18 @@ export class SendTwoFAUseCase implements ISendTwoFAUseCase {
         return { error: new BadRequestException('User ID not found') };
       }
       
-      const user = await this.authRepository.findById(userId);
-      if (!user) {
+      // Buscar usuário do Supabase
+      const { data: supabaseUser, error: userError } = await this.supabaseAuthService.getUserById(userId);
+      if (userError || !supabaseUser) {
         return { error: new BadRequestException('User not found') };
       }
+      
+      const userData = supabaseUser.user || supabaseUser;
+      const user = {
+        id: userData.id,
+        email: userData.email,
+        name: userData.user_metadata?.name || userData.email?.split('@')[0],
+      };
 
       // Determine send method
       const method = input.method || 'email';
