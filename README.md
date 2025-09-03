@@ -257,6 +257,8 @@ Sistema de autenticação 100% baseado em Supabase Cloud, sem banco de dados loc
 - ✅ **Two-Factor Authentication (2FA)** completo e funcional
   - Geração e envio de código de 6 dígitos por email
   - Validação com limite de 3 tentativas
+  - Contador de tentativas com bloqueio automático
+  - Sistema anti força bruta (bloqueia após 3 tentativas erradas)
   - Expiração de código em 5 minutos
   - Tabela `two_factor_codes` no Supabase Cloud
   - Integração 100% com Supabase Auth (sem banco local)
@@ -514,6 +516,13 @@ graph LR
 5. Email enviado com código (válido por 5 minutos)
 6. Cliente envia código para `/auth/two-factor/validate`
 7. Sistema valida código e retorna tokens completos
+
+**Sistema de Bloqueio:**
+- Máximo de 3 tentativas por código
+- Incremento automático a cada erro
+- Bloqueio total após 3 tentativas erradas
+- Não aceita código correto após bloqueio
+- Usuário deve solicitar novo código após bloqueio
 
 #### 🐳 Configuração Docker
 

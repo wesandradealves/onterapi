@@ -71,7 +71,12 @@ export class SendTwoFAUseCase implements ISendTwoFAUseCase {
 ========================================
       `);
       
-      // Save code to database (expires in 5 minutes)
+      const maxAttempts = 3;
+      
+      // Check if there's an existing valid code
+      const existingCode = await this.authRepository.findValidTwoFactorCode(user.id);
+      
+      // Save new code to database (expires in 5 minutes)
       const expiresAt = new Date();
       expiresAt.setMinutes(expiresAt.getMinutes() + 5);
       
@@ -80,6 +85,9 @@ export class SendTwoFAUseCase implements ISendTwoFAUseCase {
         code,
         expiresAt,
       );
+
+      // Calculate attempts remaining from the new code (always starts at maxAttempts for new codes)
+      const attemptsRemaining = maxAttempts;
 
       // Currently only supporting email
       if (method === 'email') {
@@ -101,13 +109,12 @@ export class SendTwoFAUseCase implements ISendTwoFAUseCase {
           data: {
             sentTo: this.maskEmail(user.email),
             method: 'email',
-            expiresIn: 300, // 5 minutes in seconds
-            attemptsRemaining: 3, // TODO: Implement attempts counter
+            expiresIn: 300,
+            attemptsRemaining,
           }
         };
       }
 
-      // TODO: Implement SMS and authenticator app
       return { 
         error: new BadRequestException(`Method ${method} not yet implemented`) 
       };

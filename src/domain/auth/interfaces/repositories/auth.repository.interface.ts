@@ -74,6 +74,11 @@ export interface IAuthRepository {
   validateTwoFactorCode(userId: string, code: string): Promise<boolean>;
 
   /**
+   * Busca código 2FA válido do usuário
+   */
+  findValidTwoFactorCode(userId: string): Promise<any>;
+
+  /**
    * Incrementa tentativas de login falhas
    */
   incrementFailedAttempts(email: string): Promise<void>;

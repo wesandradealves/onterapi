@@ -7,6 +7,33 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
+## [0.8.0] - 2025-09-03
+
+### Added
+- **Contador de Tentativas no 2FA**
+  - Sistema de bloqueio após 3 tentativas erradas
+  - Incremento automático de tentativas em códigos inválidos
+  - Bloqueio efetivo quando attempts >= max_attempts
+  - Método `findValidTwoFactorCode` no repositório
+
+### Fixed
+- **Lógica de Validação 2FA**
+  - Corrigido incremento de tentativas para códigos válidos
+  - Agora incrementa tentativas do código ativo, não do código errado
+  - Validação correta busca código válido antes de verificar match
+
+### Improved
+- **Segurança do 2FA**
+  - Bloqueio automático após exceder tentativas
+  - Não aceita código correto após bloqueio
+  - Proteção contra força bruta
+
+### Technical
+- **Limpeza de Código**
+  - Removidos todos os TODOs do módulo auth
+  - Implementado contador de tentativas completo
+  - Código de produção sem comentários desnecessários
+
 ## [0.7.0] - 2025-09-03
 
 ### Added

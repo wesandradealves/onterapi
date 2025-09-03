@@ -212,27 +212,50 @@ export class AuthRepository implements IAuthRepository {
     await manager.save(twoFactorCode);
   }
 
-  async validateTwoFactorCode(userId: string, code: string): Promise<boolean> {
+  async findValidTwoFactorCode(userId: string): Promise<any> {
     const twoFactorCode = await this.twoFactorCodeRepository
       .createQueryBuilder('code')
       .where('code.userId = :userId', { userId })
-      .andWhere('code.code = :code', { code })
       .andWhere('code.expiresAt > :now', { now: new Date() })
       .andWhere('code.isUsed = false')
       .andWhere('code.attempts < code.maxAttempts')
+      .orderBy('code.createdAt', 'DESC')
       .getOne();
 
-    if (!twoFactorCode) {
-      await this.twoFactorCodeRepository
-        .createQueryBuilder()
-        .update(TwoFactorCodeEntity)
-        .set({ attempts: () => 'attempts + 1' })
-        .where('userId = :userId', { userId })
-        .andWhere('code = :code', { code })
-        .execute();
-      
+    return twoFactorCode;
+  }
+
+  async validateTwoFactorCode(userId: string, code: string): Promise<boolean> {
+    // First, find ANY valid code for this user
+    const validCode = await this.twoFactorCodeRepository
+      .createQueryBuilder('code')
+      .where('code.userId = :userId', { userId })
+      .andWhere('code.expiresAt > :now', { now: new Date() })
+      .andWhere('code.isUsed = false')
+      .andWhere('code.attempts < code.maxAttempts')
+      .orderBy('code.createdAt', 'DESC')
+      .getOne();
+
+    // If there's a valid code for this user, increment its attempts (whether the code matches or not)
+    if (validCode) {
+      // If the provided code doesn't match the valid code, increment attempts
+      if (validCode.code !== code) {
+        await this.twoFactorCodeRepository
+          .createQueryBuilder()
+          .update(TwoFactorCodeEntity)
+          .set({ attempts: () => 'attempts + 1' })
+          .where('id = :id', { id: validCode.id })
+          .execute();
+        
+        return false;
+      }
+      // If code matches, continue to mark as used below
+    } else {
+      // No valid code exists for this user
       return false;
     }
+
+    const twoFactorCode = validCode;
 
     await this.twoFactorCodeRepository
       .createQueryBuilder()
