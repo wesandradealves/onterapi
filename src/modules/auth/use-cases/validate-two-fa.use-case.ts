@@ -96,10 +96,15 @@ export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
         },
       );
 
-      // Atualizar último login
-      await this.authRepository.update(user.id, {
-        lastLoginAt: new Date(),
+      // Atualizar último login no Supabase user_metadata
+      const { error: updateError } = await this.supabaseAuthService.updateUserMetadata(user.id, {
+        ...user,
+        lastLoginAt: new Date().toISOString(),
       });
+
+      if (updateError) {
+        this.logger.error('Erro ao atualizar lastLoginAt no Supabase', updateError);
+      }
 
       const output: ValidateTwoFAOutput = {
         accessToken,

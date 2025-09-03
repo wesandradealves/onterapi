@@ -7,6 +7,37 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
+## [0.7.0] - 2025-09-03
+
+### Added
+- **Two-Factor Authentication (2FA) Completo**
+  - Criada tabela `two_factor_codes` no Supabase Cloud
+  - Geração de códigos de 6 dígitos com expiração de 5 minutos
+  - Envio de código por email com template HTML responsivo
+  - Validação de código com limite de 3 tentativas
+  - Integração completa com Supabase Auth (sem banco local)
+  - Logs visuais no desenvolvimento com links do Ethereal
+  - Suporte para trust device (30 dias vs 7 dias padrão)
+
+### Fixed
+- **2FA com Supabase**: Integração dos use cases de 2FA
+  - `send-two-fa.use-case.ts`: Busca usuário do Supabase ao invés de banco local
+  - `validate-two-fa.use-case.ts`: Remove update em tabela local inexistente
+  - Atualização de lastLoginAt via Supabase user_metadata
+  - Correção de extração de dados do usuário (user.user || user)
+
+### Database
+- **Tabela two_factor_codes**: Estrutura completa criada
+  - Colunas: id, user_id, code, method, expires_at, attempts, max_attempts, is_used, used_at, created_at
+  - Índices para performance: idx_two_factor_codes_user_id, idx_two_factor_codes_expires_at
+  - Foreign key com auth.users com CASCADE DELETE
+
+### Documentation
+- **Fluxo 2FA Documentado**: Como funciona o sistema completo
+  - Login detecta 2FA habilitado e retorna tempToken
+  - Envio de código gera 6 dígitos e salva no banco
+  - Validação verifica código e retorna tokens JWT completos
+
 ## [0.6.0] - 2025-09-03
 
 ### Added

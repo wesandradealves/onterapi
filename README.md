@@ -254,12 +254,17 @@ Sistema de autenticação 100% baseado em Supabase Cloud, sem banco de dados loc
 - ✅ **Cadastro de usuários** direto no Supabase Auth
 - ✅ **Login** com email de alerta (IP, dispositivo, localização)
 - ✅ **Email de notificação** em cada login bem-sucedido
-- ✅ **Two-Factor Authentication (2FA)** via email
+- ✅ **Two-Factor Authentication (2FA)** completo e funcional
+  - Geração e envio de código de 6 dígitos por email
+  - Validação com limite de 3 tentativas
+  - Expiração de código em 5 minutos
+  - Tabela `two_factor_codes` no Supabase Cloud
+  - Integração 100% com Supabase Auth (sem banco local)
 - ✅ **Refresh token** para renovação automática
 - ✅ **Sistema RBAC** com 11 roles hierárquicos
 - ✅ **Multi-tenant** com isolamento por tenant
 - ✅ **Guards de autorização** (JWT, Roles, Tenant)
-- ✅ **Verificação de email** com link de confirmação
+- ✅ **Verificação de email** com tokens seguros e validação real
 - ✅ **Logs visuais** com links do Ethereal em desenvolvimento
 
 #### Sistema de Roles (RBAC)
@@ -492,12 +497,23 @@ graph LR
 ##### 3. Login com 2FA
 ```mermaid
 graph LR
-    A[POST /auth/two-factor/send] --> B[Envia código email]
-    B --> C[POST /auth/two-factor/validate]
-    C --> D[Valida código]
-    D --> E[Gera tokens JWT]
-    E --> F[Retorna tokens + user]
+    A[POST /auth/two-factor/send] --> B[Gera código 6 dígitos]
+    B --> C[Salva em two_factor_codes]
+    C --> D[Envia por email]
+    D --> E[POST /auth/two-factor/validate]
+    E --> F[Valida código no banco]
+    F --> G[Gera tokens JWT]
+    G --> H[Retorna tokens + user]
 ```
+
+**Fluxo Detalhado do 2FA:**
+1. Login detecta `twoFactorEnabled: true` no user_metadata
+2. Retorna `requiresTwoFactor: true` com `tempToken`
+3. Cliente envia tempToken para `/auth/two-factor/send`
+4. Sistema gera código de 6 dígitos e salva no Supabase
+5. Email enviado com código (válido por 5 minutos)
+6. Cliente envia código para `/auth/two-factor/validate`
+7. Sistema valida código e retorna tokens completos
 
 #### 🐳 Configuração Docker
 
