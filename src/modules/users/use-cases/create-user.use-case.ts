@@ -90,8 +90,8 @@ export class CreateUserUseCase implements ICreateUserUseCase {
         this.logger.log(`Email de verificação enviado para ${supabaseUser.email}`);
       }
       
-      // TODO: Salvar o token em cache ou banco para validar depois
-      // Por enquanto vamos aceitar qualquer token
+      // Salvar o token no banco de dados
+      await this.saveVerificationToken(supabaseUser.id, supabaseUser.email, verificationToken);
 
       // Enviar email de boas-vindas também
       await this.emailService.sendWelcomeEmail({
@@ -109,7 +109,7 @@ export class CreateUserUseCase implements ICreateUserUseCase {
         role: validatedData.role,
         tenantId: validatedData.tenantId,
         isActive: true,
-        emailVerified: true,
+        emailVerified: false, // Começa como não verificado
         createdAt: supabaseUser.createdAt,
         updatedAt: supabaseUser.updatedAt,
       } as UserEntity;
@@ -122,5 +122,40 @@ export class CreateUserUseCase implements ICreateUserUseCase {
   private generateVerificationToken(): string {
     const randomBytes = require('crypto').randomBytes(32);
     return randomBytes.toString('hex');
+  }
+
+  private async saveVerificationToken(userId: string, email: string, token: string): Promise<void> {
+    try {
+      const { Client } = require('pg');
+      const client = new Client({
+        host: 'aws-0-sa-east-1.pooler.supabase.com',
+        port: 6543,
+        database: 'postgres',
+        user: 'postgres.ogffdaemylaezxpunmop',
+        password: '5lGR6N9OyfF1fcMc',
+        ssl: {
+          rejectUnauthorized: false
+        }
+      });
+
+      await client.connect();
+      
+      // Token expira em 24 horas
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24);
+      
+      const query = `
+        INSERT INTO email_verification_tokens (user_id, email, token, expires_at)
+        VALUES ($1, $2, $3, $4)
+      `;
+      
+      await client.query(query, [userId, email, token, expiresAt]);
+      await client.end();
+      
+      this.logger.log(`Token de verificação salvo para ${email}`);
+    } catch (error) {
+      this.logger.error('Erro ao salvar token de verificação:', error);
+      // Não lançar erro para não impedir criação do usuário
+    }
   }
 }

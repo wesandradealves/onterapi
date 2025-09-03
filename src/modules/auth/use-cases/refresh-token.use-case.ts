@@ -1,7 +1,8 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { IRefreshTokenUseCase, RefreshTokenInput, RefreshTokenOutput } from '../../../domain/auth/interfaces/use-cases/refresh-token.use-case.interface';
-import { IAuthRepository } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
+import { IAuthRepository, IAuthRepositoryToken } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
 import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
+import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { Result } from '../../../shared/types/result.type';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -10,10 +11,12 @@ export class RefreshTokenUseCase implements IRefreshTokenUseCase {
   private readonly logger = new Logger(RefreshTokenUseCase.name);
 
   constructor(
-    @Inject(IAuthRepository)
+    @Inject(IAuthRepositoryToken)
     private readonly authRepository: IAuthRepository,
     @Inject(IJwtService)
     private readonly jwtService: IJwtService,
+    @Inject(ISupabaseAuthService)
+    private readonly supabaseAuthService: ISupabaseAuthService,
   ) {}
 
   async execute(input: RefreshTokenInput): Promise<Result<RefreshTokenOutput>> {
@@ -25,11 +28,30 @@ export class RefreshTokenUseCase implements IRefreshTokenUseCase {
       }
 
       // Validar refresh token no banco
-      const user = await this.authRepository.validateRefreshToken(input.refreshToken);
-      if (!user) {
+      const sessionUser = await this.authRepository.validateRefreshToken(input.refreshToken);
+      if (!sessionUser) {
         this.logger.warn('Refresh token não encontrado ou expirado');
         return { error: new Error('Sessão expirada') };
       }
+
+      // Buscar usuário real do Supabase
+      const { data: supabaseData, error: userError } = await this.supabaseAuthService.getUserById(sessionUser.id);
+      if (userError || !supabaseData) {
+        this.logger.error('Erro ao buscar usuário do Supabase', userError);
+        return { error: new Error('Usuário não encontrado') };
+      }
+
+      // O Supabase retorna {user: {...}}
+      const supabaseUser = supabaseData.user || supabaseData;
+
+      const user = {
+        id: sessionUser.id, // Usar o ID da sessão que sabemos que é válido
+        email: supabaseUser.email,
+        name: supabaseUser.user_metadata?.name,
+        role: supabaseUser.user_metadata?.role,
+        tenantId: supabaseUser.user_metadata?.tenantId || null,
+        isActive: supabaseUser.user_metadata?.isActive !== false,
+      };
 
       // Verificar se usuário está ativo
       if (!user.isActive) {

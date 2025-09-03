@@ -22,7 +22,7 @@ export interface ISupabaseAuthService {
   /**
    * Verificar email
    */
-  verifyEmail(token: string): Promise<Result<void>>;
+  verifyEmail(token: string, email?: string): Promise<Result<void>>;
 
   /**
    * Resetar senha

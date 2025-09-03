@@ -4,7 +4,7 @@ import {
   SendTwoFAInput,
   SendTwoFAOutput 
 } from '../../../domain/auth/interfaces/use-cases/send-two-fa.use-case.interface';
-import { IAuthRepository } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
+import { IAuthRepository, IAuthRepositoryToken } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
 import { IEmailService } from '../../../domain/auth/interfaces/services/email.service.interface';
 import { ITwoFactorService } from '../../../domain/auth/interfaces/services/two-factor.service.interface';
 import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
@@ -15,7 +15,7 @@ export class SendTwoFAUseCase implements ISendTwoFAUseCase {
   private readonly logger = new Logger(SendTwoFAUseCase.name);
 
   constructor(
-    @Inject(IAuthRepository)
+    @Inject(IAuthRepositoryToken)
     private readonly authRepository: IAuthRepository,
     @Inject(IEmailService)
     private readonly emailService: IEmailService,

@@ -1,7 +1,7 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { ISignOutUseCase, SignOutInput, SignOutOutput } from '../../../domain/auth/interfaces/use-cases/sign-out.use-case.interface';
-import { IAuthRepository } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
+import { IAuthRepository, IAuthRepositoryToken } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { Result } from '../../../shared/types/result.type';
 
@@ -11,7 +11,7 @@ export class SignOutUseCase implements ISignOutUseCase {
 
   constructor(
     private readonly dataSource: DataSource,
-    @Inject(IAuthRepository)
+    @Inject(IAuthRepositoryToken)
     private readonly authRepository: IAuthRepository,
     @Inject(ISupabaseAuthService)
     private readonly supabaseAuthService: ISupabaseAuthService,

@@ -89,4 +89,4 @@ export interface IAuthRepository {
   isUserLocked(email: string): Promise<boolean>;
 }
 
-export const IAuthRepository = Symbol('IAuthRepository');
+export const IAuthRepositoryToken = Symbol('IAuthRepository');

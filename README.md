@@ -24,6 +24,33 @@ OnTerapi v4 é uma plataforma SaaS multi-tenant completa para gestão de clínic
 - 🤖 Sistema CrewAI integrado
 - 📱 Portais dedicados (profissional, paciente, admin)
 - 🛒 Marketplace público
+- ✅ Sistema de verificação de email com tokens seguros
+- 🔐 Autenticação 100% Supabase Cloud
+- 📧 Alertas de login com IP e localização
+
+## 🧪 Usuários de Teste
+
+### Tabela de Usuários Criados
+
+| Email | Senha | Role | CPF | Status | Observações |
+|-------|-------|------|-----|--------|-------------|
+| lina73@ethereal.email | Admin@123456 | SUPER_ADMIN | - | ✅ Ativo | Super administrador principal |
+| patient@onterapi.com | Patient@123 | PATIENT | - | ✅ Ativo | Paciente de teste |
+| professional@onterapi.com | Prof@123456 | PROFESSIONAL | - | ✅ Ativo | Profissional de saúde |
+| owner@onterapi.com | Owner@123456 | CLINIC_OWNER | - | ✅ Ativo | Dono de clínica |
+| secretary@onterapi.com | Secretary@123 | SECRETARY | - | ✅ Ativo | Secretária |
+| admin.fin@onterapi.com | AdminFin@123 | ADMIN_FINANCEIRO | - | ✅ Ativo | Admin financeiro |
+| admin.support@onterapi.com | Support@123 | ADMIN_SUPORTE | - | ✅ Ativo | Admin suporte |
+| manager@onterapi.com | Manager@123 | MANAGER | - | ✅ Ativo | Gerente |
+| test_verification@ethereal.email | Test@123456 | PATIENT | 76567840552 | ✅ Verificado | Teste de verificação email |
+
+### Como Testar
+
+1. **Login**: Use o endpoint `/auth/sign-in` com email e senha
+2. **Verificação de Email**: Novos usuários recebem link de verificação que expira em 24h
+3. **Refresh Token**: Use `/auth/refresh` com o refreshToken
+4. **Logout**: Use `/auth/sign-out` com Bearer token
+5. **Me**: Use `/auth/me` para obter dados do usuário autenticado
 
 ## 🏗️ Arquitetura
 

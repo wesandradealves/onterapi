@@ -7,6 +7,43 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
+## [0.6.0] - 2025-09-03
+
+### Added
+- **Sistema de Verificação de Email com Tokens Seguros**
+  - Criada tabela `email_verification_tokens` no Supabase
+  - Tokens únicos de 64 caracteres hexadecimais
+  - Expiração de 24 horas para tokens
+  - Tokens marcados como usados após verificação
+  - Validação robusta: rejeita tokens de teste, tokens curtos, formatos inválidos
+  - Integração com fluxo de criação de usuários
+
+- **Melhorias no Módulo de Autenticação**
+  - Refresh token agora retorna dados completos do usuário (email, name, role correto)
+  - Verificação de email com validação real de tokens no banco
+  - Usuários criados com `emailVerified: false` até confirmar email
+  - Link de verificação enviado por email com token único
+
+### Fixed
+- **Refresh Token**: Corrigido para acessar corretamente `supabaseData.user` 
+  - Antes retornava email vazio, name vazio e role sempre PATIENT
+  - Agora retorna todos os dados corretos do user_metadata
+  
+- **Email Verified**: Corrigido valor hardcoded
+  - Usuários eram criados com `emailVerified: true` incorretamente
+  - Agora começam com `false` e só mudam após verificação real
+
+### Security
+- **Verify Email**: Removido aceite de qualquer token
+  - Antes tinha TODO e aceitava qualquer string
+  - Agora valida token no banco de dados
+  - Tokens só podem ser usados uma vez
+  - Expiração de 24 horas implementada
+
+### Documentation
+- **README**: Adicionada tabela completa de usuários de teste
+- **onterapi-dev.md**: Documentada configuração correta de conexão PostgreSQL/Supabase
+
 ## [0.5.1] - 2025-09-02
 
 ### Fixed

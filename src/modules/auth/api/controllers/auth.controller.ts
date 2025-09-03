@@ -424,8 +424,8 @@ export class AuthController {
 ========================================
     `);
 
-    // Validar o token (por enquanto aceita qualquer token)
-    const tokenResult = await this.supabaseAuthService.verifyEmail(token);
+    // Validar o token com o email
+    const tokenResult = await this.supabaseAuthService.verifyEmail(token, email);
     
     if (tokenResult.error) {
       throw new BadRequestException('Token inválido');

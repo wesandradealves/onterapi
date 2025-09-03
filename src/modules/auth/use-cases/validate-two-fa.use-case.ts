@@ -1,6 +1,6 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { IValidateTwoFAUseCase, ValidateTwoFAInput, ValidateTwoFAOutput } from '../../../domain/auth/interfaces/use-cases/validate-two-fa.use-case.interface';
-import { IAuthRepository } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
+import { IAuthRepository, IAuthRepositoryToken } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
 import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
 import { ITwoFactorService } from '../../../domain/auth/interfaces/services/two-factor.service.interface';
 import { Result } from '../../../shared/types/result.type';
@@ -11,7 +11,7 @@ export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
   private readonly logger = new Logger(ValidateTwoFAUseCase.name);
 
   constructor(
-    @Inject(IAuthRepository)
+    @Inject(IAuthRepositoryToken)
     private readonly authRepository: IAuthRepository,
     @Inject(IJwtService)
     private readonly jwtService: IJwtService,

@@ -1,7 +1,7 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ISignInUseCase, SignInInput, SignInOutput } from '../../../domain/auth/interfaces/use-cases/sign-in.use-case.interface';
-import { IAuthRepository } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
+import { IAuthRepository, IAuthRepositoryToken } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
 import { IEmailService } from '../../../domain/auth/interfaces/services/email.service.interface';
@@ -13,7 +13,7 @@ export class SignInUseCase implements ISignInUseCase {
   private readonly logger = new Logger(SignInUseCase.name);
 
   constructor(
-    @Inject(IAuthRepository)
+    @Inject(IAuthRepositoryToken)
     private readonly authRepository: IAuthRepository,
     @Inject(ISupabaseAuthService)
     private readonly supabaseAuthService: ISupabaseAuthService,
@@ -87,7 +87,12 @@ export class SignInUseCase implements ISignInUseCase {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + refreshExpiry);
 
-
+      await this.authRepository.saveRefreshToken(
+        user.id,
+        refreshToken,
+        expiresAt,
+        input.deviceInfo,
+      );
 
       const output: SignInOutput = {
         accessToken,

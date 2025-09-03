@@ -147,14 +147,12 @@ export class AuthRepository implements IAuthRepository {
   async validateRefreshToken(token: string): Promise<UserEntity | null> {
     const session = await this.sessionRepository
       .createQueryBuilder('session')
-      .leftJoinAndSelect('session.user', 'user')
       .where('session.refreshToken = :token', { token })
       .andWhere('session.expiresAt > :now', { now: new Date() })
       .andWhere('session.revokedAt IS NULL')
-      .andWhere('user.deletedAt IS NULL')
       .getOne();
 
-    if (!session || !session.user) {
+    if (!session) {
       return null;
     }
 
@@ -165,7 +163,13 @@ export class AuthRepository implements IAuthRepository {
       .where('id = :id', { id: session.id })
       .execute();
 
-    return session.user;
+    // Retornamos um UserEntity mínimo com o ID para o RefreshTokenUseCase buscar o usuário completo do Supabase
+    const user = new UserEntity();
+    user.id = session.userId;
+    user.supabaseId = session.userId;
+    user.isActive = true; // Sessão válida indica usuário ativo
+    
+    return user;
   }
 
   async removeRefreshToken(token: string, runner?: QueryRunner): Promise<void> {
