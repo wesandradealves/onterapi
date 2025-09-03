@@ -5,6 +5,8 @@ import { UserEntity } from '../../../infrastructure/auth/entities/user.entity';
 import { UpdateUserDto } from '../api/dtos/update-user.dto';
 import { updateUserSchema } from '../api/schemas/update-user.schema';
 import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
+import { MessageBus } from '../../../shared/messaging/message-bus';
+import { DomainEvents } from '../../../shared/events/domain-events';
 
 @Injectable()
 export class UpdateUserUseCase implements IUpdateUserUseCase {
@@ -13,6 +15,7 @@ export class UpdateUserUseCase implements IUpdateUserUseCase {
   constructor(
     @Inject(ISupabaseAuthService)
     private readonly supabaseAuthService: ISupabaseAuthService,
+    private readonly messageBus: MessageBus,
   ) {}
 
   async execute(id: string, dto: UpdateUserDto, currentUserId: string): Promise<UserEntity> {
@@ -57,6 +60,15 @@ export class UpdateUserUseCase implements IUpdateUserUseCase {
       } as unknown as UserEntity;
 
       this.logger.log(`Usuário atualizado: ${user.email} por ${currentUserId}`);
+
+      const event = DomainEvents.userUpdated(
+        id,
+        validatedData,
+        { userId: currentUserId }
+      );
+      
+      await this.messageBus.publish(event);
+      this.logger.log(`Evento USER_UPDATED publicado para usuário ${id}`);
 
       return user;
     } catch (error) {

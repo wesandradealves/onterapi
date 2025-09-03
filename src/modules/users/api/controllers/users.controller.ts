@@ -43,6 +43,7 @@ import { createUserSchema } from '../schemas/create-user.schema';
 import { updateUserSchema } from '../schemas/update-user.schema';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
 import { CPFUtils } from '../../../../shared/utils/cpf.utils';
+import { UserMapper } from '../../../../shared/mappers/user.mapper';
 import { NotFoundException } from '@nestjs/common';
 
 @ApiTags('Users')
@@ -127,7 +128,8 @@ export class UsersController {
   @UsePipes(new ZodValidationPipe(createUserSchema))
   async create(@Body() dto: CreateUserInputDTO): Promise<CreateUserResponseDto> {
     const user = await this.createUserUseCase.execute(dto);
-    return this.mapToResponse(user);
+    const maskedUser = { ...user, cpf: CPFUtils.mask(user.cpf) };
+    return maskedUser as UserResponseDto;
   }
 
   @Get()
@@ -181,7 +183,7 @@ export class UsersController {
   async findAll(@Query() filters: ListUsersDto): Promise<ListUsersResponseDto> {
     const result = await this.findAllUsersUseCase.execute(filters);
     return {
-      data: result.data.map(user => this.mapToResponse(user)),
+      data: result.data.map(user => ({ ...user, cpf: CPFUtils.mask(user.cpf) })),
       pagination: result.pagination,
     };
   }
@@ -212,7 +214,8 @@ export class UsersController {
     if (!user) {
       throw new NotFoundException('Usuário não encontrado');
     }
-    return this.mapToResponse(user);
+    const maskedUser = { ...user, cpf: CPFUtils.mask(user.cpf) };
+    return maskedUser as UserResponseDto;
   }
 
   @Patch(':id')
@@ -271,7 +274,8 @@ export class UsersController {
     @CurrentUser() currentUser: ICurrentUser,
   ): Promise<UserResponseDto> {
     const user = await this.updateUserUseCase.execute(id, dto, currentUser.id);
-    return this.mapToResponse(user);
+    const maskedUser = { ...user, cpf: CPFUtils.mask(user.cpf) };
+    return maskedUser as UserResponseDto;
   }
 
   @Delete(':id')
@@ -298,23 +302,4 @@ export class UsersController {
     await this.deleteUserUseCase.execute(id, currentUser.id);
   }
 
-  private mapToResponse(user: any): UserResponseDto {
-    const cpfMasked = CPFUtils.mask(user.cpf);
-
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      cpf: cpfMasked,
-      phone: user.phone,
-      role: user.role,
-      tenantId: user.tenantId,
-      isActive: user.isActive,
-      emailVerified: user.emailVerified,
-      twoFactorEnabled: user.twoFactorEnabled,
-      lastLoginAt: user.lastLoginAt,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    };
-  }
 }

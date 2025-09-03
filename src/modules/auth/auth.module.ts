@@ -37,6 +37,8 @@ import { RolesGuard } from './guards/roles.guard';
 import { TenantGuard } from './guards/tenant.guard';
 
 import { AuthController } from './api/controllers/auth.controller';
+import { MessageBus } from '../../shared/messaging/message-bus';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 const serviceProviders: Provider[] = [
   {
@@ -87,6 +89,7 @@ const useCaseProviders: Provider[] = [
 @Module({
   imports: [
     ConfigModule,
+    EventEmitterModule.forRoot(),
     TypeOrmModule.forFeature([
       UserEntity,
       UserSessionEntity,
@@ -112,6 +115,7 @@ const useCaseProviders: Provider[] = [
     JwtAuthGuard,
     RolesGuard,
     TenantGuard,
+    MessageBus,
   ],
   exports: [
     ...serviceProviders,

@@ -7,6 +7,61 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
+## [0.10.0] - 2025-09-03
+
+### Added
+- **Sistema de Mensageria Completo**
+  - MessageBus implementado com EventEmitter2
+  - DomainEvents com 12 eventos definidos
+  - Interface DomainEvent padronizada
+  - Eventos: USER_CREATED, USER_UPDATED, USER_DELETED, USER_LOGGED_IN, etc.
+
+- **Validadores Centralizados**
+  - CPFValidator com validação completa de CPF brasileiro
+  - EmailValidator com regex e normalização
+  - PhoneValidator com validação de DDDs brasileiros
+  
+- **Constantes Centralizadas**
+  - validation.constants.ts com mensagens e patterns
+  - error.constants.ts com códigos de erro padronizados
+  - event.constants.ts com nomes de eventos
+
+- **Tipos Centralizados**
+  - DeviceInfo movido para shared/types/device.types.ts
+  - Eliminada duplicação em 19 arquivos
+
+### Fixed
+- **IUserRepository em Produção**
+  - Corrigido mock vazio `useValue: {}`
+  - Implementado `useClass: UserRepository` 
+  - Adicionado TypeOrmModule.forFeature([UserEntity])
+  - Repository real agora é injetado corretamente
+
+- **Tratamento de Erros Consistente**
+  - AuthErrorFactory expandido com 5 novos tipos
+  - Substituídos 13 `throw new` diretos por AuthErrorFactory
+  - Tipos adicionados: TOKEN_NOT_PROVIDED, USER_NOT_AUTHENTICATED, ACCESS_DENIED, etc.
+
+### Improved
+- **Redução de Duplicação de Código**
+  - DeviceInfo: de 19 duplicações para 1 centralizada
+  - Tratamento de erros: 100% usando AuthErrorFactory
+  - UserMapper eliminando duplicações de mapeamento
+  - CPFUtils centralizando lógica de mascaramento
+
+- **Arquitetura DDD**
+  - Separação clara entre camadas
+  - Sistema de eventos para comunicação entre módulos
+  - Validadores reutilizáveis no shared
+  - Constantes centralizadas por tipo
+
+### Technical
+- **Qualidade de Código**
+  - Build sem erros TypeScript
+  - API funcionando corretamente no Docker
+  - 7 de 22 correções críticas implementadas
+  - Base preparada para sistema de eventos completo
+
 ## [0.9.0] - 2025-09-03
 
 ### Changed

@@ -14,6 +14,8 @@ import { AUTH_CONSTANTS } from '../../../shared/constants/auth.constants';
 import { extractSupabaseUser, generateSixDigitCode, maskEmail, calculateExpirationMinutes } from '../../../shared/utils/auth.utils';
 import { createTwoFactorSendResponse } from '../../../shared/factories/auth-response.factory';
 import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
+import { MessageBus } from '../../../shared/messaging/message-bus';
+import { DomainEvents } from '../../../shared/events/domain-events';
 
 @Injectable()
 export class SendTwoFAUseCase implements ISendTwoFAUseCase {
@@ -30,6 +32,7 @@ export class SendTwoFAUseCase implements ISendTwoFAUseCase {
     private readonly jwtService: IJwtService,
     @Inject(ISupabaseAuthService)
     private readonly supabaseAuthService: ISupabaseAuthService,
+    private readonly messageBus: MessageBus,
   ) {}
 
   async execute(input: SendTwoFAInput): Promise<Result<SendTwoFAOutput>> {
@@ -92,6 +95,15 @@ export class SendTwoFAUseCase implements ISendTwoFAUseCase {
         }
 
         this.logger.log(`2FA code sent to ${user.email}`);
+        
+        const event = DomainEvents.twoFaSent(
+          user.id,
+          'email',
+          { userId: user.id, email: user.email }
+        );
+        
+        await this.messageBus.publish(event);
+        this.logger.log(`Evento TWO_FA_SENT publicado para ${user.email}`);
 
         return {
           data: createTwoFactorSendResponse(

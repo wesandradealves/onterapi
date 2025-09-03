@@ -11,6 +11,8 @@ import { IEmailService } from '../../../domain/auth/interfaces/services/email.se
 import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
 import { ConfigService } from '@nestjs/config';
 import { generateSecureToken } from '../../../shared/utils/crypto.util';
+import { MessageBus } from '../../../shared/messaging/message-bus';
+import { DomainEvents } from '../../../shared/events/domain-events';
 
 @Injectable()
 export class CreateUserUseCase implements ICreateUserUseCase {
@@ -27,6 +29,7 @@ export class CreateUserUseCase implements ICreateUserUseCase {
     @Inject(IJwtService)
     private readonly jwtService: IJwtService,
     private readonly configService: ConfigService,
+    private readonly messageBus: MessageBus,
   ) {}
 
   async execute(dto: CreateUserInputDTO): Promise<UserEntity> {
@@ -95,6 +98,22 @@ export class CreateUserUseCase implements ICreateUserUseCase {
         name: validatedData.name,
         role: validatedData.role,
       });
+
+      const event = DomainEvents.userCreated(
+        supabaseUser.id,
+        {
+          email: supabaseUser.email,
+          name: validatedData.name,
+          role: validatedData.role,
+          cpf: validatedData.cpf,
+          phone: validatedData.phone,
+          tenantId: validatedData.tenantId,
+        },
+        { userId: supabaseUser.id }
+      );
+      
+      await this.messageBus.publish(event);
+      this.logger.log(`Evento USER_CREATED publicado para ${supabaseUser.email}`);
 
       return {
         id: supabaseUser.id,

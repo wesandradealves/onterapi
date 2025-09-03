@@ -9,6 +9,8 @@ import { extractSupabaseUser } from '../../../shared/utils/auth.utils';
 import { createTokenResponse } from '../../../shared/factories/auth-response.factory';
 import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
 import { AuthTokenHelper } from '../../../shared/helpers/auth-token.helper';
+import { MessageBus } from '../../../shared/messaging/message-bus';
+import { DomainEvents } from '../../../shared/events/domain-events';
 
 @Injectable()
 export class RefreshTokenUseCase implements IRefreshTokenUseCase {
@@ -21,6 +23,7 @@ export class RefreshTokenUseCase implements IRefreshTokenUseCase {
     private readonly jwtService: IJwtService,
     @Inject(ISupabaseAuthService)
     private readonly supabaseAuthService: ISupabaseAuthService,
+    private readonly messageBus: MessageBus,
   ) {}
 
   async execute(input: RefreshTokenInput): Promise<Result<RefreshTokenOutput>> {
@@ -71,6 +74,16 @@ export class RefreshTokenUseCase implements IRefreshTokenUseCase {
       );
 
       this.logger.log(`Token renovado para usuário ${user.email}`);
+      
+      const event = DomainEvents.tokenRefreshed(
+        user.id,
+        { sessionId: tokens.sessionId },
+        { userId: user.id }
+      );
+      
+      await this.messageBus.publish(event);
+      this.logger.log(`Evento TOKEN_REFRESHED publicado para usuário ${user.id}`);
+      
       return { data: output as RefreshTokenOutput };
     } catch (error) {
       this.logger.error('Erro ao renovar token', error);

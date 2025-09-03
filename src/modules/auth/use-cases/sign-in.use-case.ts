@@ -11,6 +11,8 @@ import { extractSupabaseUser, normalizeLoginInfo } from '../../../shared/utils/a
 import { createTokenResponse, createTwoFactorTempResponse } from '../../../shared/factories/auth-response.factory';
 import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
 import { AuthTokenHelper } from '../../../shared/helpers/auth-token.helper';
+import { MessageBus } from '../../../shared/messaging/message-bus';
+import { DomainEvents } from '../../../shared/events/domain-events';
 
 @Injectable()
 export class SignInUseCase implements ISignInUseCase {
@@ -26,6 +28,7 @@ export class SignInUseCase implements ISignInUseCase {
     @Inject(IEmailService)
     private readonly emailService: IEmailService,
     private readonly configService: ConfigService,
+    private readonly messageBus: MessageBus,
   ) {}
 
   async execute(input: SignInInput): Promise<Result<SignInOutput>> {
@@ -84,6 +87,22 @@ export class SignInUseCase implements ISignInUseCase {
       }
 
       this.logger.log(`Login bem-sucedido para ${user.email}`);
+      
+      const event = DomainEvents.userLoggedIn(
+        user.id,
+        {
+          email: user.email,
+          sessionId: tokens.sessionId,
+          ip: loginInfo.ipAddress,
+          userAgent: loginInfo.userAgent,
+          device: loginInfo.device,
+        },
+        { userId: user.id }
+      );
+      
+      await this.messageBus.publish(event);
+      this.logger.log(`Evento USER_LOGGED_IN publicado para ${user.email}`);
+      
       return { data: output as SignInOutput };
     } catch (error) {
       this.logger.error('Erro no login', error);

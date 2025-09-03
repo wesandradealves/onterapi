@@ -12,11 +12,14 @@ import { SupabaseService } from '../../infrastructure/auth/services/supabase.ser
 import { AuthModule } from '../auth/auth.module';
 import { UserRepository } from '../../infrastructure/users/repositories/user.repository';
 import { UserEntity } from '../../infrastructure/auth/entities/user.entity';
+import { MessageBus } from '../../shared/messaging/message-bus';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
   imports: [
     ConfigModule,
     forwardRef(() => AuthModule),
+    EventEmitterModule.forRoot(),
     TypeOrmModule.forFeature([UserEntity]),
   ],
   controllers: [UsersController],
@@ -52,6 +55,7 @@ import { UserEntity } from '../../infrastructure/auth/entities/user.entity';
     DeleteUserUseCase,
     UserOwnerGuard,
     SupabaseService,
+    MessageBus,
   ],
   exports: [],
 })

@@ -10,6 +10,8 @@ import { extractSupabaseUser } from '../../../shared/utils/auth.utils';
 import { createTokenResponse } from '../../../shared/factories/auth-response.factory';
 import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
 import { AuthTokenHelper } from '../../../shared/helpers/auth-token.helper';
+import { MessageBus } from '../../../shared/messaging/message-bus';
+import { DomainEvents } from '../../../shared/events/domain-events';
 
 @Injectable()
 export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
@@ -24,6 +26,7 @@ export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
     private readonly twoFactorService: ITwoFactorService,
     @Inject(ISupabaseAuthService)
     private readonly supabaseAuthService: ISupabaseAuthService,
+    private readonly messageBus: MessageBus,
   ) {}
 
   async execute(input: ValidateTwoFAInput): Promise<Result<ValidateTwoFAOutput>> {
@@ -90,6 +93,15 @@ export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
       );
 
       this.logger.log(`2FA validado com sucesso para ${user.email}`);
+      
+      const event = DomainEvents.twoFaValidated(
+        user.id,
+        { userId: user.id, email: user.email }
+      );
+      
+      await this.messageBus.publish(event);
+      this.logger.log(`Evento TWO_FA_VALIDATED publicado para ${user.email}`);
+      
       return { data: output as ValidateTwoFAOutput };
     } catch (error) {
       this.logger.error('Erro na validação 2FA', error);
