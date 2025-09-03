@@ -23,6 +23,10 @@ export interface ISupabaseAuthService {
   ): Promise<Result<SupabaseUser>>;
 
   refreshToken(refreshToken: string): Promise<Result<SupabaseSession>>;
+
+  listUsers(params: { page?: number; perPage?: number }): Promise<Result<{ users: any[] }>>;
+
+  deleteUser(userId: string): Promise<Result<void>>;
 }
 
 export interface SignUpData {

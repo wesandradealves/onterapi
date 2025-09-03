@@ -1,6 +1,7 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException, Logger } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { RolesEnum, INTERNAL_ROLES } from '../../../domain/auth/enums/roles.enum';
+import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
 
 @Injectable()
 export class TenantGuard implements CanActivate {
@@ -13,7 +14,7 @@ export class TenantGuard implements CanActivate {
     const user = request.user;
 
     if (!user) {
-      throw new ForbiddenException('Usuário não autenticado');
+      throw AuthErrorFactory.create(AuthErrorType.USER_NOT_AUTHENTICATED);
     }
 
     if (INTERNAL_ROLES.includes(user.role)) {
@@ -28,7 +29,7 @@ export class TenantGuard implements CanActivate {
 
     if (user.tenantId !== requestTenantId) {
       this.logger.warn(`Acesso negado ao tenant ${requestTenantId} para usuário ${user.email}`);
-      throw new ForbiddenException('Acesso negado a este tenant');
+      throw AuthErrorFactory.create(AuthErrorType.TENANT_ACCESS_DENIED);
     }
 
     return true;

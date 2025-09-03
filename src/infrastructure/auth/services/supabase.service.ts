@@ -99,4 +99,8 @@ export class SupabaseService {
 
     return { data, error };
   }
+
+  getClient(): SupabaseClient {
+    return this.supabase;
+  }
 }

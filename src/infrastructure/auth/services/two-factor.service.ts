@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
 import { ITwoFactorService, TwoFactorSecret } from '../../../domain/auth/interfaces/services/two-factor.service.interface';
+import { generateSixDigitCode } from '../../../shared/utils/auth.utils';
+import { generateSecureToken } from '../../../shared/utils/crypto.util';
 
 @Injectable()
 export class TwoFactorService implements ITwoFactorService {
@@ -42,7 +44,7 @@ export class TwoFactorService implements ITwoFactorService {
   }
 
   generateTempCode(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    return generateSixDigitCode();
   }
 
   async generateQRCode(secret: string, email: string): Promise<string> {
@@ -66,9 +68,8 @@ export class TwoFactorService implements ITwoFactorService {
     const codes: string[] = [];
     
     for (let i = 0; i < count; i++) {
-      const code = Math.random()
-        .toString(36)
-        .substring(2, 10)
+      const code = generateSecureToken(4)
+        .substring(0, 8)
         .toUpperCase();
       codes.push(code);
     }

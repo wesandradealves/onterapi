@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { IUpdateUserUseCase } from '../../../domain/users/interfaces/use-cases/update-user.use-case.interface';
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { UserEntity } from '../../../infrastructure/auth/entities/user.entity';
 import { UpdateUserDto } from '../api/dtos/update-user.dto';
 import { updateUserSchema } from '../api/schemas/update-user.schema';
+import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
 
 @Injectable()
 export class UpdateUserUseCase implements IUpdateUserUseCase {
@@ -20,7 +21,7 @@ export class UpdateUserUseCase implements IUpdateUserUseCase {
 
       const userResult = await this.supabaseAuthService.getUserById(id);
       if (userResult.error || !userResult.data) {
-        throw new NotFoundException('Usuário não encontrado');
+        throw AuthErrorFactory.create(AuthErrorType.USER_NOT_FOUND, { userId: id });
       }
 
       const currentMetadata = (userResult.data as any).user_metadata || {};

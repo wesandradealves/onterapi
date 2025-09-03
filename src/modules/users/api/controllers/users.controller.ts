@@ -42,6 +42,8 @@ import { ListUsersDto, ListUsersResponseDto } from '../dtos/list-users.dto';
 import { createUserSchema } from '../schemas/create-user.schema';
 import { updateUserSchema } from '../schemas/update-user.schema';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
+import { CPFUtils } from '../../../../shared/utils/cpf.utils';
+import { NotFoundException } from '@nestjs/common';
 
 @ApiTags('Users')
 @Controller('users')
@@ -208,7 +210,7 @@ export class UsersController {
   async findOne(@Param('id') id: string): Promise<UserResponseDto> {
     const user = await this.findUserByIdUseCase.execute(id);
     if (!user) {
-      throw new Error('Usuário não encontrado');
+      throw new NotFoundException('Usuário não encontrado');
     }
     return this.mapToResponse(user);
   }
@@ -297,9 +299,7 @@ export class UsersController {
   }
 
   private mapToResponse(user: any): UserResponseDto {
-    const cpfMasked = user.cpf
-      ? `${user.cpf.slice(0, 3)}.***.***.${user.cpf.slice(-2)}`
-      : '';
+    const cpfMasked = CPFUtils.mask(user.cpf);
 
     return {
       id: user.id,

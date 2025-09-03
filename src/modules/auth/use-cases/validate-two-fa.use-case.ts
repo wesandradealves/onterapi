@@ -5,7 +5,11 @@ import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.servic
 import { ITwoFactorService } from '../../../domain/auth/interfaces/services/two-factor.service.interface';
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { Result } from '../../../shared/types/result.type';
-import { v4 as uuidv4 } from 'uuid';
+import { AUTH_CONSTANTS } from '../../../shared/constants/auth.constants';
+import { extractSupabaseUser } from '../../../shared/utils/auth.utils';
+import { createTokenResponse } from '../../../shared/factories/auth-response.factory';
+import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
+import { AuthTokenHelper } from '../../../shared/helpers/auth-token.helper';
 
 @Injectable()
 export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
@@ -26,25 +30,17 @@ export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
     try {
       const tempTokenResult = this.jwtService.verifyTwoFactorToken(input.tempToken);
       if (tempTokenResult.error) {
-        return { error: new Error('Token inválido ou expirado') };
+        return AuthErrorFactory.createResult(AuthErrorType.INVALID_TOKEN);
       }
 
       const userId = tempTokenResult.data.sub;
 
       const { data: supabaseUser, error: userError } = await this.supabaseAuthService.getUserById(userId);
       if (userError || !supabaseUser) {
-        return { error: new Error('Usuário não encontrado') };
+        return AuthErrorFactory.createResult(AuthErrorType.USER_NOT_FOUND, { userId });
       }
       
-      const userData = supabaseUser.user || supabaseUser;
-      const user = {
-        id: userData.id,
-        email: userData.email,
-        name: userData.user_metadata?.name || userData.email?.split('@')[0],
-        role: userData.user_metadata?.role || 'PATIENT',
-        tenantId: userData.user_metadata?.tenantId || null,
-        twoFactorSecret: null,
-      };
+      const user = extractSupabaseUser(supabaseUser);
 
       this.logger.warn(`
 ========================================
@@ -57,37 +53,26 @@ export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
       const isValidCode = await this.validateCode(user.id, user.twoFactorSecret!, input.code);
       if (!isValidCode) {
         this.logger.warn(`❌ Código 2FA inválido para usuário ${user.email}`);
-        return { error: new Error('Código inválido') };
+        return AuthErrorFactory.createResult(AuthErrorType.INVALID_2FA_CODE, { userId: user.id, email: user.email });
       }
       
       this.logger.warn(`✅ Código 2FA válido! Gerando tokens de acesso...`);
 
-      const sessionId = uuidv4();
-      const accessToken = this.jwtService.generateAccessToken({
-        sub: user.id,
-        email: user.email,
-        role: user.role,
-        tenantId: user.tenantId,
-        sessionId,
-      });
-
-      const refreshToken = this.jwtService.generateRefreshToken({
-        sub: user.id,
-        sessionId,
-      });
-
-      const expiresAt = new Date();
-      const refreshDays = input.trustDevice ? 30 : 7;
-      expiresAt.setDate(expiresAt.getDate() + refreshDays);
-
-      await this.authRepository.saveRefreshToken(
-        user.id,
-        refreshToken,
-        expiresAt,
+      const tokenHelper = new AuthTokenHelper(this.jwtService);
+      const tokens = await tokenHelper.generateAndSaveTokens(
+        {
+          userId: user.id,
+          email: user.email,
+          role: user.role,
+          tenantId: user.tenantId,
+          rememberMe: input.trustDevice,
+        },
         {
           ...input.deviceInfo,
           trustedDevice: input.trustDevice,
         },
+        this.jwtService,
+        this.authRepository
       );
 
       const { error: updateError } = await this.supabaseAuthService.updateUserMetadata(user.id, {
@@ -99,21 +84,13 @@ export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
         this.logger.error('Erro ao atualizar lastLoginAt no Supabase', updateError);
       }
 
-      const output: ValidateTwoFAOutput = {
-        accessToken,
-        refreshToken,
-        expiresIn: 900,
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          tenantId: user.tenantId,
-        },
-      };
+      const output = createTokenResponse(
+        { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken, expiresIn: AUTH_CONSTANTS.ACCESS_TOKEN_EXPIRES_IN },
+        { id: user.id, email: user.email, name: user.name, role: user.role, tenantId: user.tenantId }
+      );
 
       this.logger.log(`2FA validado com sucesso para ${user.email}`);
-      return { data: output };
+      return { data: output as ValidateTwoFAOutput };
     } catch (error) {
       this.logger.error('Erro na validação 2FA', error);
       return { error: error as Error };

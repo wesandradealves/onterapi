@@ -1,5 +1,6 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException, Logger } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, Logger } from '@nestjs/common';
 import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
+import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
 
 @Injectable()
 export class UserOwnerGuard implements CanActivate {
@@ -11,7 +12,7 @@ export class UserOwnerGuard implements CanActivate {
     const targetUserId = request.params.id;
 
     if (!user) {
-      throw new ForbiddenException('Usuário não autenticado');
+      throw AuthErrorFactory.create(AuthErrorType.USER_NOT_AUTHENTICATED);
     }
 
     const adminRoles = [
@@ -31,6 +32,6 @@ export class UserOwnerGuard implements CanActivate {
     }
 
     this.logger.warn(`Acesso negado: ${user.email} tentou acessar ${targetUserId}`);
-    throw new ForbiddenException('Você só pode acessar seus próprios dados');
+    throw AuthErrorFactory.create(AuthErrorType.ACCESS_DENIED, { reason: 'Você só pode acessar seus próprios dados' });
   }
 }

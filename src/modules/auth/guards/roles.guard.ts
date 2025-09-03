@@ -1,7 +1,8 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException, Logger } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { RolesEnum, ROLE_HIERARCHY } from '../../../domain/auth/enums/roles.enum';
 import { ROLES_KEY } from '../decorators/roles.decorator';
+import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -23,7 +24,7 @@ export class RolesGuard implements CanActivate {
     const user = request.user;
 
     if (!user) {
-      throw new ForbiddenException('Usuário não autenticado');
+      throw AuthErrorFactory.create(AuthErrorType.USER_NOT_AUTHENTICATED);
     }
 
     this.logger.log(`Verificando permissões para usuário: ${user.email}, Role: ${user.role}`);
@@ -40,7 +41,7 @@ export class RolesGuard implements CanActivate {
 
     if (!hasPermission) {
       this.logger.warn(`Acesso negado para ${user.email} - Role: ${user.role} (nível ${userLevel})`);
-      throw new ForbiddenException('Permissão insuficiente');
+      throw AuthErrorFactory.create(AuthErrorType.INSUFFICIENT_PERMISSIONS);
     }
 
     return true;

@@ -1,8 +1,9 @@
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, Logger, Inject } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, Logger, Inject } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -30,18 +31,18 @@ export class JwtAuthGuard implements CanActivate {
     const token = this.extractTokenFromHeader(request);
 
     if (!token) {
-      throw new UnauthorizedException('Token não fornecido');
+      throw AuthErrorFactory.create(AuthErrorType.TOKEN_NOT_PROVIDED);
     }
 
     const tokenResult = this.jwtService.verifyAccessToken(token);
     if (tokenResult.error) {
       this.logger.warn('Token inválido ou expirado');
-      throw new UnauthorizedException('Token inválido');
+      throw AuthErrorFactory.create(AuthErrorType.INVALID_TOKEN);
     }
 
     const userResult = await this.supabaseAuthService.getUserById(tokenResult.data.sub);
     if (userResult.error || !userResult.data) {
-      throw new UnauthorizedException('Usuário não encontrado');
+      throw AuthErrorFactory.create(AuthErrorType.USER_NOT_FOUND);
     }
 
     const userData = userResult.data;
@@ -54,7 +55,7 @@ export class JwtAuthGuard implements CanActivate {
     this.logger.log(`User metadata: ${JSON.stringify(metadata)}`);
     
     if (actualUser.banned_until) {
-      throw new UnauthorizedException('Conta desativada');
+      throw AuthErrorFactory.create(AuthErrorType.ACCOUNT_DISABLED);
     }
 
     request.user = {

@@ -236,13 +236,10 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Código inválido' })
   @UsePipes(new ZodValidationPipe(validateTwoFAInputSchema))
   async validateTwoFA(@Body() dto: ValidateTwoFAInputDTO) {
-    const input = {
+    const result = await this.validateTwoFAUseCase.execute({
       ...dto,
       userId: '',
-      deviceInfo: dto.deviceInfo || {},
-    };
-
-    const result = await this.validateTwoFAUseCase.execute(input);
+    });
 
     if (result.error) {
       throw result.error;
@@ -332,8 +329,9 @@ export class AuthController {
   async signOut(
     @CurrentUser() user: ICurrentUser,
     @Body() dto?: SignOutDto,
+    @Headers('authorization') authorization?: string,
   ) {
-    const accessToken = '';
+    const accessToken = authorization?.replace('Bearer ', '') || '';
 
     const result = await this.signOutUseCase.execute({
       userId: user.id,

@@ -10,6 +10,7 @@ import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/s
 import { IEmailService } from '../../../domain/auth/interfaces/services/email.service.interface';
 import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
 import { ConfigService } from '@nestjs/config';
+import { generateSecureToken } from '../../../shared/utils/crypto.util';
 
 @Injectable()
 export class CreateUserUseCase implements ICreateUserUseCase {
@@ -115,36 +116,22 @@ export class CreateUserUseCase implements ICreateUserUseCase {
   }
 
   private generateVerificationToken(): string {
-    const randomBytes = require('crypto').randomBytes(32);
-    return randomBytes.toString('hex');
+    return generateSecureToken(32);
   }
 
   private async saveVerificationToken(userId: string, email: string, token: string): Promise<void> {
     try {
-      const { Client } = require('pg');
-      const client = new Client({
-        host: 'aws-0-sa-east-1.pooler.supabase.com',
-        port: 6543,
-        database: 'postgres',
-        user: 'postgres.ogffdaemylaezxpunmop',
-        password: '5lGR6N9OyfF1fcMc',
-        ssl: {
-          rejectUnauthorized: false
-        }
-      });
-
-      await client.connect();
-      
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 24);
       
-      const query = `
-        INSERT INTO email_verification_tokens (user_id, email, token, expires_at)
-        VALUES ($1, $2, $3, $4)
-      `;
-      
-      await client.query(query, [userId, email, token, expiresAt]);
-      await client.end();
+      await this.supabaseService.getClient()
+        .from('email_verification_tokens')
+        .insert({
+          user_id: userId,
+          email: email,
+          token: token,
+          expires_at: expiresAt.toISOString()
+        });
       
       this.logger.log(`Token de verificação salvo para ${email}`);
     } catch (error) {

@@ -138,49 +138,29 @@ export class SupabaseAuthService implements ISupabaseAuthService {
       }
 
       if (email) {
-        const { Client } = require('pg');
-        const client = new Client({
-          host: 'aws-0-sa-east-1.pooler.supabase.com',
-          port: 6543,
-          database: 'postgres',
-          user: 'postgres.ogffdaemylaezxpunmop',
-          password: '5lGR6N9OyfF1fcMc',
-          ssl: {
-            rejectUnauthorized: false
-          }
-        });
-
         try {
-          await client.connect();
+          const { data: tokenData, error: tokenError } = await this.supabase
+            .from('email_verification_tokens')
+            .select('*')
+            .eq('token', token)
+            .eq('email', email)
+            .eq('used', false)
+            .gt('expires_at', new Date().toISOString())
+            .single();
           
-          const query = `
-            SELECT * FROM email_verification_tokens 
-            WHERE token = $1 
-              AND email = $2 
-              AND used = false 
-              AND expires_at > NOW()
-          `;
-          
-          const result = await client.query(query, [token, email]);
-          
-          if (result.rows.length === 0) {
+          if (tokenError || !tokenData) {
             return { error: new Error('Token inválido ou expirado') };
           }
           
-          const tokenData = result.rows[0];
-          
-          await client.query(
-            'UPDATE email_verification_tokens SET used = true, updated_at = NOW() WHERE id = $1',
-            [tokenData.id]
-          );
-          
-          await client.end();
+          await this.supabase
+            .from('email_verification_tokens')
+            .update({ used: true, updated_at: new Date().toISOString() })
+            .eq('id', tokenData.id);
           
           this.logger.log(`Email verificado com sucesso para: ${email}`);
           return { data: undefined };
           
         } catch (dbError) {
-          await client.end();
           this.logger.error('Erro ao verificar token no banco:', dbError);
           
           const { data, error } = await this.supabase.auth.verifyOtp({
@@ -250,18 +230,18 @@ export class SupabaseAuthService implements ISupabaseAuthService {
 
   async getUserById(userId: string): Promise<Result<any>> {
     try {
-      const { data: user, error } = await this.supabase.auth.admin.getUserById(userId);
+      const { data, error } = await this.supabase.auth.admin.getUserById(userId);
 
       if (error) {
         this.logger.error(`Supabase getUserById error: ${error.message}`);
         return { error: new Error(error.message) };
       }
 
-      if (!user) {
+      if (!data || !data.user) {
         return { error: new Error('User not found') };
       }
 
-      return { data: user };
+      return { data: data.user };
     } catch (error) {
       this.logger.error('Unexpected error in getUserById', error);
       return { error: error as Error };
@@ -402,6 +382,41 @@ export class SupabaseAuthService implements ISupabaseAuthService {
       return { data: session };
     } catch (error) {
       this.logger.error('Unexpected error in refreshToken', error);
+      return { error: error as Error };
+    }
+  }
+
+  async listUsers(params: { page?: number; perPage?: number }): Promise<Result<{ users: any[] }>> {
+    try {
+      const { data, error } = await this.supabase.auth.admin.listUsers({
+        page: params.page || 1,
+        perPage: params.perPage || 20,
+      });
+
+      if (error) {
+        this.logger.error(`Supabase listUsers error: ${error.message}`);
+        return { error: new Error(error.message) };
+      }
+
+      return { data: { users: data?.users || [] } };
+    } catch (error) {
+      this.logger.error('Unexpected error in listUsers', error);
+      return { error: error as Error };
+    }
+  }
+
+  async deleteUser(userId: string): Promise<Result<void>> {
+    try {
+      const { error } = await this.supabase.auth.admin.deleteUser(userId);
+
+      if (error) {
+        this.logger.error(`Supabase deleteUser error: ${error.message}`);
+        return { error: new Error(error.message) };
+      }
+
+      return { data: undefined };
+    } catch (error) {
+      this.logger.error('Unexpected error in deleteUser', error);
       return { error: error as Error };
     }
   }

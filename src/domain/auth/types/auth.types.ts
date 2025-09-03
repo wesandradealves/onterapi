@@ -1,4 +1,5 @@
 import { RolesEnum } from '../enums/roles.enum';
+import { DeviceInfo } from '../../../shared/types/device.types';
 
 export type AuthTokenPayload = {
   sub: string;
@@ -40,14 +41,6 @@ export type PasswordResetTokenPayload = {
   exp: number;
 };
 
-export type DeviceInfo = {
-  userAgent?: string;
-  ip?: string;
-  device?: string;
-  browser?: string;
-  os?: string;
-  fingerprint?: string;
-};
 
 export type LoginAttempt = {
   email: string;
