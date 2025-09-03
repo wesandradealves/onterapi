@@ -13,6 +13,7 @@ import { ConfigService } from '@nestjs/config';
 import { generateSecureToken } from '../../../shared/utils/crypto.util';
 import { MessageBus } from '../../../shared/messaging/message-bus';
 import { DomainEvents } from '../../../shared/events/domain-events';
+import { AuthErrorFactory } from '../../../shared/factories/auth-error.factory';
 
 @Injectable()
 export class CreateUserUseCase implements ICreateUserUseCase {
@@ -57,7 +58,7 @@ export class CreateUserUseCase implements ICreateUserUseCase {
 
       if (error || !supabaseUser) {
         this.logger.error('Erro ao criar usuário no Supabase', error);
-        throw new Error('Erro ao criar usuário no Supabase: ' + (error?.message || 'Erro desconhecido'));
+        throw AuthErrorFactory.internalServerError('Erro ao criar usuário no Supabase: ' + (error?.message || 'Erro desconhecido'));
       }
 
       

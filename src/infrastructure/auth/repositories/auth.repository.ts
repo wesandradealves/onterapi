@@ -6,6 +6,7 @@ import { UserEntity } from '../entities/user.entity';
 import { UserSessionEntity } from '../entities/user-session.entity';
 import { TwoFactorCodeEntity } from '../entities/two-factor-code.entity';
 import { LoginAttemptEntity } from '../entities/login-attempt.entity';
+import { AuthErrorFactory } from '../../../shared/factories/auth-error.factory';
 
 @Injectable()
 export class AuthRepository implements IAuthRepository {
@@ -118,7 +119,7 @@ export class AuthRepository implements IAuthRepository {
 
     const updated = await this.findById(id, runner);
     if (!updated) {
-      throw new Error(`User with id ${id} not found after update`);
+      throw AuthErrorFactory.userNotFound();
     }
 
     return updated;

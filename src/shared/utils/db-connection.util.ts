@@ -1,11 +1,12 @@
 import { EntityManager } from 'typeorm';
+import { generateSecureToken } from './crypto.util';
 
 export function generateSavepointId(): string {
   const timestamp = new Date()
     .toISOString()
     .replace(/[-:T.Z]/g, '')
     .slice(0, 14);
-  const random = Math.random().toString(36).substring(2, 8);
+  const random = generateSecureToken(4).substring(0, 8);
   return `savepoint_${timestamp}_${random}`;
 }
 

@@ -44,7 +44,7 @@ import { updateUserSchema } from '../schemas/update-user.schema';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
 import { CPFUtils } from '../../../../shared/utils/cpf.utils';
 import { UserMapper } from '../../../../shared/mappers/user.mapper';
-import { NotFoundException } from '@nestjs/common';
+import { AuthErrorFactory } from '../../../../shared/factories/auth-error.factory';
 
 @ApiTags('Users')
 @Controller('users')
@@ -212,7 +212,7 @@ export class UsersController {
   async findOne(@Param('id') id: string): Promise<UserResponseDto> {
     const user = await this.findUserByIdUseCase.execute(id);
     if (!user) {
-      throw new NotFoundException('Usuário não encontrado');
+      throw AuthErrorFactory.userNotFound();
     }
     const maskedUser = { ...user, cpf: CPFUtils.mask(user.cpf) };
     return maskedUser as UserResponseDto;

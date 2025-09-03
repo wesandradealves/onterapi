@@ -4,6 +4,8 @@ import { ISignOutUseCase, SignOutInput, SignOutOutput } from '../../../domain/au
 import { IAuthRepository, IAuthRepositoryToken } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { Result } from '../../../shared/types/result.type';
+import { MessageBus } from '../../../shared/messaging/message-bus';
+import { DomainEvents } from '../../../shared/events/domain-events';
 
 @Injectable()
 export class SignOutUseCase implements ISignOutUseCase {
@@ -15,6 +17,7 @@ export class SignOutUseCase implements ISignOutUseCase {
     private readonly authRepository: IAuthRepository,
     @Inject(ISupabaseAuthService)
     private readonly supabaseAuthService: ISupabaseAuthService,
+    private readonly messageBus: MessageBus,
   ) {}
 
   async execute(input: SignOutInput): Promise<Result<SignOutOutput>> {
@@ -62,6 +65,12 @@ export class SignOutUseCase implements ISignOutUseCase {
           : 'Logout realizado com sucesso',
         revokedSessions: revokedCount,
       };
+
+      const event = DomainEvents.userLoggedOut(input.userId, {
+        allDevices: input.allDevices,
+        revokedCount,
+      });
+      await this.messageBus.publish(event);
 
       this.logger.log(`Logout realizado para usuário ${input.userId}`);
       return { data: output };

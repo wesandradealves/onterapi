@@ -38,6 +38,7 @@ import { ValidateTwoFAInputDTO, validateTwoFAInputSchema } from '../schemas/two-
 import { RefreshTokenInputDTO, refreshTokenInputSchema } from '../schemas/refresh.schema';
 
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
+import { AuthErrorFactory } from '../../../../shared/factories/auth-error.factory';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -418,13 +419,13 @@ export class AuthController {
     const tokenResult = await this.supabaseAuthService.verifyEmail(token, email);
     
     if (tokenResult.error) {
-      throw new BadRequestException('Token inválido');
+      throw AuthErrorFactory.invalidToken();
     }
     
     const confirmResult = await (this.supabaseAuthService as any).confirmEmailByEmail(email);
     
     if (confirmResult.error) {
-      throw new BadRequestException(confirmResult.error.message);
+      throw AuthErrorFactory.badRequest(confirmResult.error.message);
     }
 
     this.logger.log(`✅ Email verificado com sucesso: ${email}`);

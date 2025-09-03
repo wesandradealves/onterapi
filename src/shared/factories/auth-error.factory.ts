@@ -149,4 +149,20 @@ export class AuthErrorFactory {
   ): { error: Error } {
     return { error: this.create(type, context) };
   }
+
+  static userNotFound(): NotFoundException {
+    return this.create(AuthErrorType.USER_NOT_FOUND) as NotFoundException;
+  }
+
+  static invalidToken(): UnauthorizedException {
+    return this.create(AuthErrorType.INVALID_TOKEN) as UnauthorizedException;
+  }
+
+  static badRequest(message?: string): BadRequestException {
+    return new BadRequestException(message || 'Requisição inválida');
+  }
+
+  static internalServerError(message?: string): HttpException {
+    return new HttpException(message || 'Erro interno do servidor', 500);
+  }
 }

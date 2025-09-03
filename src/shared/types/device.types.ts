@@ -1,11 +1,13 @@
 export interface DeviceInfo {
   userAgent?: string;
-  ipAddress?: string;
-  platform?: string;
-  browser?: string;
-  version?: string;
-  os?: string;
+  ip?: string;
   device?: string;
-  deviceType?: 'mobile' | 'tablet' | 'desktop' | 'unknown';
+  browser?: string;
+  os?: string;
+  location?: string;
+}
+
+export interface DeviceMetadata extends DeviceInfo {
   timestamp?: Date;
+  sessionId?: string;
 }

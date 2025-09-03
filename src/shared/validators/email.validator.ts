@@ -1,39 +1,30 @@
 export class EmailValidator {
-  private static readonly EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  private static readonly EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   
   static isValid(email: string): boolean {
     if (!email) return false;
-    
-    const trimmedEmail = email.trim().toLowerCase();
-    
-    if (trimmedEmail.length > 254) return false;
-    
-    if (!this.EMAIL_REGEX.test(trimmedEmail)) return false;
-    
-    const [localPart, domain] = trimmedEmail.split('@');
-    
-    if (localPart.length > 64) return false;
-    
-    if (domain.startsWith('-') || domain.endsWith('-')) return false;
-    
-    if (domain.includes('..')) return false;
-    
-    return true;
+    return this.EMAIL_REGEX.test(email.toLowerCase());
   }
 
   static normalize(email: string): string {
-    return email?.trim().toLowerCase() || '';
+    if (!email) return '';
+    return email.toLowerCase().trim();
   }
 
   static getDomain(email: string): string | null {
     if (!this.isValid(email)) return null;
-    
-    return email.split('@')[1].toLowerCase();
+    return email.split('@')[1]?.toLowerCase() || null;
   }
 
-  static getLocalPart(email: string): string | null {
+  static mask(email: string): string | null {
     if (!this.isValid(email)) return null;
     
-    return email.split('@')[0].toLowerCase();
+    const [local, domain] = email.split('@');
+    const visibleChars = Math.min(3, Math.floor(local.length / 2));
+    const maskedLocal = 
+      local.substring(0, visibleChars) + 
+      '*'.repeat(Math.max(local.length - visibleChars, 3));
+    
+    return `${maskedLocal}@${domain}`;
   }
 }
