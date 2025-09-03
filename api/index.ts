@@ -17,9 +17,8 @@ async function createNestApp() {
     logger: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['log', 'error', 'warn', 'debug'],
   });
 
-  // Configurações de segurança e CORS
   app.use(helmet({
-    contentSecurityPolicy: false, // Desabilita CSP para permitir Swagger
+    contentSecurityPolicy: false,
   }));
   
   app.enableCors({
@@ -27,10 +26,8 @@ async function createNestApp() {
     credentials: true,
   });
 
-  // Exception filter
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  // Pipes de validação
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -42,7 +39,6 @@ async function createNestApp() {
     }),
   );
 
-  // Configuração do Swagger inline para Vercel
   const config = new DocumentBuilder()
     .setTitle('OnTerapi API')
     .setDescription('API for OnTerapi Platform')
@@ -52,7 +48,6 @@ async function createNestApp() {
 
   const document = SwaggerModule.createDocument(app, config);
   
-  // Configuração customizada para Vercel
   SwaggerModule.setup('docs', app, document, {
     customSiteTitle: 'OnTerapi API Docs',
     customfavIcon: 'https://nestjs.com/img/logo_text.svg',

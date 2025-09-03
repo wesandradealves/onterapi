@@ -33,7 +33,7 @@ export class TwoFactorService implements ITwoFactorService {
         secret,
         encoding: 'base32',
         token: code,
-        window: 2, // Permite códigos com até 2 períodos de diferença
+        window: 2,
       });
     } catch (error) {
       this.logger.error('Error verifying TOTP', error);
@@ -42,7 +42,6 @@ export class TwoFactorService implements ITwoFactorService {
   }
 
   generateTempCode(): string {
-    // Gerar código de 6 dígitos
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
@@ -55,7 +54,6 @@ export class TwoFactorService implements ITwoFactorService {
         encoding: 'base32',
       });
 
-      // Gerar QR Code como data URL
       const qrCodeDataUrl = await QRCode.toDataURL(otpAuthUrl);
       return qrCodeDataUrl;
     } catch (error) {
@@ -68,7 +66,6 @@ export class TwoFactorService implements ITwoFactorService {
     const codes: string[] = [];
     
     for (let i = 0; i < count; i++) {
-      // Gerar códigos de 8 caracteres alfanuméricos
       const code = Math.random()
         .toString(36)
         .substring(2, 10)

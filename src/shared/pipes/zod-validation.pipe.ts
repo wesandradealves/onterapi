@@ -5,9 +5,6 @@ import {
 } from '@nestjs/common';
 import { ZodSchema, ZodError } from 'zod';
 
-/**
- * Pipe para validação usando Zod schemas
- */
 export class ZodValidationPipe implements PipeTransform {
   constructor(private schema: ZodSchema) {}
 
@@ -22,7 +19,6 @@ export class ZodValidationPipe implements PipeTransform {
           return `${field}: ${err.message}`;
         });
         
-        // Log para debug
         console.error('Zod Validation Errors:', errorMessages);
         console.error('Input value:', value);
         

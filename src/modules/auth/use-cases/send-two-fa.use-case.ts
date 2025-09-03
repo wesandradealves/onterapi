@@ -30,19 +30,16 @@ export class SendTwoFAUseCase implements ISendTwoFAUseCase {
 
   async execute(input: SendTwoFAInput): Promise<Result<SendTwoFAOutput>> {
     try {
-      // Decode temp token
       const decodedResult = await this.jwtService.verifyTwoFactorToken(input.tempToken);
       if (!decodedResult || decodedResult.error) {
         return { error: new BadRequestException('Invalid temporary token') };
       }
 
-      // Get user
       const userId = input.userId || decodedResult.data?.sub;
       if (!userId) {
         return { error: new BadRequestException('User ID not found') };
       }
       
-      // Buscar usuário do Supabase
       const { data: supabaseUser, error: userError } = await this.supabaseAuthService.getUserById(userId);
       if (userError || !supabaseUser) {
         return { error: new BadRequestException('User not found') };
@@ -55,13 +52,10 @@ export class SendTwoFAUseCase implements ISendTwoFAUseCase {
         name: userData.user_metadata?.name || userData.email?.split('@')[0],
       };
 
-      // Determine send method
       const method = input.method || 'email';
 
-      // Generate 2FA code
       const code = this.generateSixDigitCode();
       
-      // LOG PARA DESENVOLVIMENTO - REMOVER EM PRODUÇÃO
       this.logger.warn(`
 ========================================
 🔐 CÓDIGO 2FA GERADO: ${code}
@@ -73,10 +67,8 @@ export class SendTwoFAUseCase implements ISendTwoFAUseCase {
       
       const maxAttempts = 3;
       
-      // Check if there's an existing valid code
       const existingCode = await this.authRepository.findValidTwoFactorCode(user.id);
       
-      // Save new code to database (expires in 5 minutes)
       const expiresAt = new Date();
       expiresAt.setMinutes(expiresAt.getMinutes() + 5);
       
@@ -86,10 +78,8 @@ export class SendTwoFAUseCase implements ISendTwoFAUseCase {
         expiresAt,
       );
 
-      // Calculate attempts remaining from the new code (always starts at maxAttempts for new codes)
       const attemptsRemaining = maxAttempts;
 
-      // Currently only supporting email
       if (method === 'email') {
         const result = await this.emailService.sendTwoFactorCode({
           to: user.email,

@@ -21,31 +21,27 @@ export class RefreshTokenUseCase implements IRefreshTokenUseCase {
 
   async execute(input: RefreshTokenInput): Promise<Result<RefreshTokenOutput>> {
     try {
-      // Verificar refresh token
       const tokenResult = this.jwtService.verifyRefreshToken(input.refreshToken);
       if (tokenResult.error) {
         return { error: new Error('Refresh token inválido') };
       }
 
-      // Validar refresh token no banco
       const sessionUser = await this.authRepository.validateRefreshToken(input.refreshToken);
       if (!sessionUser) {
         this.logger.warn('Refresh token não encontrado ou expirado');
         return { error: new Error('Sessão expirada') };
       }
 
-      // Buscar usuário real do Supabase
       const { data: supabaseData, error: userError } = await this.supabaseAuthService.getUserById(sessionUser.id);
       if (userError || !supabaseData) {
         this.logger.error('Erro ao buscar usuário do Supabase', userError);
         return { error: new Error('Usuário não encontrado') };
       }
 
-      // O Supabase retorna {user: {...}}
       const supabaseUser = supabaseData.user || supabaseData;
 
       const user = {
-        id: sessionUser.id, // Usar o ID da sessão que sabemos que é válido
+        id: sessionUser.id,
         email: supabaseUser.email,
         name: supabaseUser.user_metadata?.name,
         role: supabaseUser.user_metadata?.role,
@@ -53,13 +49,11 @@ export class RefreshTokenUseCase implements IRefreshTokenUseCase {
         isActive: supabaseUser.user_metadata?.isActive !== false,
       };
 
-      // Verificar se usuário está ativo
       if (!user.isActive) {
         await this.authRepository.removeRefreshToken(input.refreshToken);
         return { error: new Error('Conta desativada') };
       }
 
-      // Gerar novos tokens
       const sessionId = uuidv4();
       const accessToken = this.jwtService.generateAccessToken({
         sub: user.id,
@@ -74,10 +68,8 @@ export class RefreshTokenUseCase implements IRefreshTokenUseCase {
         sessionId,
       });
 
-      // Remover token antigo
       await this.authRepository.removeRefreshToken(input.refreshToken);
 
-      // Salvar novo refresh token
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 7);
 
@@ -91,7 +83,7 @@ export class RefreshTokenUseCase implements IRefreshTokenUseCase {
       const output: RefreshTokenOutput = {
         accessToken,
         refreshToken: newRefreshToken,
-        expiresIn: 900, // 15 minutos
+        expiresIn: 900,
         user: {
           id: user.id,
           email: user.email,

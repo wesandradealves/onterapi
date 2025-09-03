@@ -1,9 +1,5 @@
 import { EntityManager } from 'typeorm';
 
-/**
- * Gera ID único para savepoint
- * Formato: savepoint_YYYYMMDDHHMMSS_random
- */
 export function generateSavepointId(): string {
   const timestamp = new Date()
     .toISOString()
@@ -13,9 +9,6 @@ export function generateSavepointId(): string {
   return `savepoint_${timestamp}_${random}`;
 }
 
-/**
- * Cria um savepoint na transação
- */
 export async function createSavepoint(
   manager: EntityManager,
   id: string,
@@ -23,9 +16,6 @@ export async function createSavepoint(
   await manager.query(`SAVEPOINT ${id}`);
 }
 
-/**
- * Faz rollback para um savepoint específico
- */
 export async function rollbackToSavepoint(
   manager: EntityManager,
   id: string,
@@ -33,9 +23,6 @@ export async function rollbackToSavepoint(
   await manager.query(`ROLLBACK TO SAVEPOINT ${id}`);
 }
 
-/**
- * Release de um savepoint (libera memória)
- */
 export async function releaseSavepoint(
   manager: EntityManager,
   id: string,

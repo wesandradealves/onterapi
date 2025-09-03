@@ -1,8 +1,5 @@
 import { Result } from '@shared/types/result.type';
 
-/**
- * Interface do caso de uso de recuperação de senha
- */
 export interface IForgotPasswordUseCase {
   execute(input: ForgotPasswordInput): Promise<Result<ForgotPasswordOutput>>;
 }

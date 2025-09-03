@@ -24,7 +24,6 @@ export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
 
   async execute(input: ValidateTwoFAInput): Promise<Result<ValidateTwoFAOutput>> {
     try {
-      // Verificar token temporário
       const tempTokenResult = this.jwtService.verifyTwoFactorToken(input.tempToken);
       if (tempTokenResult.error) {
         return { error: new Error('Token inválido ou expirado') };
@@ -32,7 +31,6 @@ export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
 
       const userId = tempTokenResult.data.sub;
 
-      // Buscar usuário do Supabase
       const { data: supabaseUser, error: userError } = await this.supabaseAuthService.getUserById(userId);
       if (userError || !supabaseUser) {
         return { error: new Error('Usuário não encontrado') };
@@ -45,10 +43,9 @@ export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
         name: userData.user_metadata?.name || userData.email?.split('@')[0],
         role: userData.user_metadata?.role || 'PATIENT',
         tenantId: userData.user_metadata?.tenantId || null,
-        twoFactorSecret: null, // Não temos secret no Supabase ainda
+        twoFactorSecret: null,
       };
 
-      // LOG PARA DESENVOLVIMENTO
       this.logger.warn(`
 ========================================
 🔍 VALIDANDO CÓDIGO 2FA
@@ -57,7 +54,6 @@ export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
 ========================================
       `);
       
-      // Validar código 2FA
       const isValidCode = await this.validateCode(user.id, user.twoFactorSecret!, input.code);
       if (!isValidCode) {
         this.logger.warn(`❌ Código 2FA inválido para usuário ${user.email}`);
@@ -66,7 +62,6 @@ export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
       
       this.logger.warn(`✅ Código 2FA válido! Gerando tokens de acesso...`);
 
-      // Gerar tokens finais
       const sessionId = uuidv4();
       const accessToken = this.jwtService.generateAccessToken({
         sub: user.id,
@@ -81,7 +76,6 @@ export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
         sessionId,
       });
 
-      // Salvar sessão
       const expiresAt = new Date();
       const refreshDays = input.trustDevice ? 30 : 7;
       expiresAt.setDate(expiresAt.getDate() + refreshDays);
@@ -96,7 +90,6 @@ export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
         },
       );
 
-      // Atualizar último login no Supabase user_metadata
       const { error: updateError } = await this.supabaseAuthService.updateUserMetadata(user.id, {
         ...user,
         lastLoginAt: new Date().toISOString(),
@@ -109,7 +102,7 @@ export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
       const output: ValidateTwoFAOutput = {
         accessToken,
         refreshToken,
-        expiresIn: 900, // 15 minutos
+        expiresIn: 900,
         user: {
           id: user.id,
           email: user.email,
@@ -128,12 +121,10 @@ export class ValidateTwoFAUseCase implements IValidateTwoFAUseCase {
   }
 
   private async validateCode(userId: string, secret: string, code: string): Promise<boolean> {
-    // Primeiro tenta validar como código TOTP (authenticator app)
     if (secret && this.twoFactorService.verifyTOTP(secret, code)) {
       return true;
     }
 
-    // Se não, tenta validar como código temporário (email/SMS)
     return await this.authRepository.validateTwoFactorCode(userId, code);
   }
 }

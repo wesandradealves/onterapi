@@ -16,33 +16,27 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiQuery } from '@nestjs/swagger';
 
-// DTOs
 import { SignInDto, SignInResponseDto } from '../dtos/sign-in.dto';
 import { ValidateTwoFADto, ValidateTwoFAResponseDto } from '../dtos/two-fa.dto';
 import { RefreshTokenDto, RefreshTokenResponseDto } from '../dtos/refresh.dto';
 import { SignOutDto, SignOutResponseDto, MeResponseDto } from '../dtos/sign-out.dto';
 
-// Use Cases
 import { ISignInUseCase } from '../../../../domain/auth/interfaces/use-cases/sign-in.use-case.interface';
 import { ISignOutUseCase } from '../../../../domain/auth/interfaces/use-cases/sign-out.use-case.interface';
 import { IRefreshTokenUseCase } from '../../../../domain/auth/interfaces/use-cases/refresh-token.use-case.interface';
 import { IValidateTwoFAUseCase } from '../../../../domain/auth/interfaces/use-cases/validate-two-fa.use-case.interface';
 import { ISendTwoFAUseCase } from '../../../../domain/auth/interfaces/use-cases/send-two-fa.use-case.interface';
 
-// Repository
 import { ISupabaseAuthService } from '../../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 
-// Guards and Decorators
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { Public } from '../../decorators/public.decorator';
 import { CurrentUser, ICurrentUser } from '../../decorators/current-user.decorator';
 
-// Schemas
 import { SignInInputDTO, signInInputSchema } from '../schemas/sign-in.schema';
 import { ValidateTwoFAInputDTO, validateTwoFAInputSchema } from '../schemas/two-fa.schema';
 import { RefreshTokenInputDTO, refreshTokenInputSchema } from '../schemas/refresh.schema';
 
-// Pipes
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
 
 @ApiTags('Auth')
@@ -190,7 +184,7 @@ export class AuthController {
     @Body('method') method?: 'email' | 'sms' | 'authenticator',
   ) {
     const result = await this.sendTwoFAUseCase.execute({
-      userId: '', // Será extraído do tempToken
+      userId: '',
       tempToken,
       method,
     });
@@ -244,7 +238,7 @@ export class AuthController {
   async validateTwoFA(@Body() dto: ValidateTwoFAInputDTO) {
     const input = {
       ...dto,
-      userId: '', // Será extraído do tempToken
+      userId: '',
       deviceInfo: dto.deviceInfo || {},
     };
 
@@ -339,7 +333,7 @@ export class AuthController {
     @CurrentUser() user: ICurrentUser,
     @Body() dto?: SignOutDto,
   ) {
-    const accessToken = ''; // Será obtido do contexto do guard
+    const accessToken = '';
 
     const result = await this.signOutUseCase.execute({
       userId: user.id,
@@ -415,7 +409,6 @@ export class AuthController {
     @Query('token') token: string,
     @Query('email') email: string,
   ) {
-    // LOG PARA DESENVOLVIMENTO
     this.logger.warn(`
 ========================================
 ✅ VERIFICANDO EMAIL
@@ -424,14 +417,12 @@ export class AuthController {
 ========================================
     `);
 
-    // Validar o token com o email
     const tokenResult = await this.supabaseAuthService.verifyEmail(token, email);
     
     if (tokenResult.error) {
       throw new BadRequestException('Token inválido');
     }
     
-    // Confirmar o email do usuário
     const confirmResult = await (this.supabaseAuthService as any).confirmEmailByEmail(email);
     
     if (confirmResult.error) {

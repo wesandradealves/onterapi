@@ -1,8 +1,5 @@
 import { Result } from '@shared/types/result.type';
 
-/**
- * Interface do caso de uso de validação de código 2FA
- */
 export interface IValidateTwoFAUseCase {
   execute(input: ValidateTwoFAInput): Promise<Result<ValidateTwoFAOutput>>;
 }

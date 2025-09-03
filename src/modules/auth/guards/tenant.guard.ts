@@ -16,20 +16,16 @@ export class TenantGuard implements CanActivate {
       throw new ForbiddenException('Usuário não autenticado');
     }
 
-    // Usuários internos têm acesso a todos os tenants
     if (INTERNAL_ROLES.includes(user.role)) {
       return true;
     }
 
-    // Verificar se a requisição tem tenantId
     const requestTenantId = this.extractTenantId(request);
     
     if (!requestTenantId) {
-      // Se não há tenantId na requisição, permitir acesso
       return true;
     }
 
-    // Verificar se o usuário pertence ao tenant
     if (user.tenantId !== requestTenantId) {
       this.logger.warn(`Acesso negado ao tenant ${requestTenantId} para usuário ${user.email}`);
       throw new ForbiddenException('Acesso negado a este tenant');
@@ -39,7 +35,6 @@ export class TenantGuard implements CanActivate {
   }
 
   private extractTenantId(request: any): string | null {
-    // Procurar tenantId em diferentes lugares
     return (
       request.params?.tenantId ||
       request.query?.tenantId ||

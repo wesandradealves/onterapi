@@ -28,7 +28,6 @@ export class HealthController {
       () => this.memory.checkRSS('memory_rss', 150 * 1024 * 1024),
     ];
 
-    // Não verificar disco em ambiente serverless (Vercel)
     if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
       checks.push(
         () => this.disk.checkStorage('storage', { 

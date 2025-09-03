@@ -1,8 +1,5 @@
 import { z } from 'zod';
 
-/**
- * Valida CPF brasileiro
- */
 function validateCPF(cpf: string): boolean {
   const cleanCpf = cpf.replace(/\D/g, '');
   
@@ -32,9 +29,6 @@ function validateCPF(cpf: string): boolean {
   return true;
 }
 
-/**
- * Schema para validação de CPF
- */
 export const cpfSchema = z
   .string()
   .transform((val) => val.replace(/\D/g, ''))
@@ -45,18 +39,12 @@ export const cpfSchema = z
     message: 'CPF inválido',
   });
 
-/**
- * Schema para validação de email
- */
 export const emailSchema = z
   .string()
   .email('Email inválido')
   .toLowerCase()
   .trim();
 
-/**
- * Schema para validação de senha forte
- */
 export const passwordSchema = z
   .string()
   .min(8, 'Senha deve ter no mínimo 8 caracteres')
@@ -65,9 +53,6 @@ export const passwordSchema = z
   .regex(/(?=.*[0-9])/, 'Senha deve conter pelo menos um número')
   .regex(/(?=.*[!@#$%^&*])/, 'Senha deve conter pelo menos um caractere especial');
 
-/**
- * Schema para validação de telefone brasileiro
- */
 export const phoneSchema = z
   .string()
   .transform((val) => val.replace(/\D/g, ''))
@@ -83,9 +68,6 @@ export const phoneSchema = z
     message: 'Celular deve começar com 9',
   });
 
-/**
- * Schema para validação de nome completo
- */
 export const fullNameSchema = z
   .string()
   .min(3, 'Nome deve ter no mínimo 3 caracteres')
@@ -96,22 +78,13 @@ export const fullNameSchema = z
     message: 'Informe nome e sobrenome',
   });
 
-/**
- * Schema para UUID
- */
 export const uuidSchema = z.string().uuid('ID inválido');
 
-/**
- * Schema para código 2FA
- */
 export const twoFactorCodeSchema = z
   .string()
   .length(6, 'Código deve ter 6 dígitos')
   .regex(/^\d{6}$/, 'Código deve conter apenas números');
 
-/**
- * Exports com nomes alternativos para compatibilidade
- */
 export const cpfValidator = cpfSchema;
 export const passwordValidator = passwordSchema;
 export const phoneValidator = phoneSchema;

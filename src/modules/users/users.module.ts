@@ -19,7 +19,7 @@ import { AuthModule } from '../auth/auth.module';
   providers: [
     {
       provide: 'IUserRepository',
-      useValue: {}, // Repository vazio por enquanto, não está sendo usado
+      useValue: {},
     },
     {
       provide: 'ICreateUserUseCase',

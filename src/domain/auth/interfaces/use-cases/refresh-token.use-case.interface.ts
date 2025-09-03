@@ -1,8 +1,5 @@
 import { Result } from '@shared/types/result.type';
 
-/**
- * Interface do caso de uso de refresh token
- */
 export interface IRefreshTokenUseCase {
   execute(input: RefreshTokenInput): Promise<Result<RefreshTokenOutput>>;
 }

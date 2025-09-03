@@ -35,7 +35,6 @@ export class CreateUserUseCase implements ICreateUserUseCase {
 
       const roleForDB = validatedData.role.toLowerCase().replace(/_/g, '_');
       
-      // Usar o SupabaseAuthService que tem o método signUp com envio de email
       const result = await this.supabaseAuthService.signUp({
         email: validatedData.email,
         password: validatedData.password,
@@ -60,7 +59,6 @@ export class CreateUserUseCase implements ICreateUserUseCase {
       
       this.logger.log(`Usuário criado com sucesso no Supabase: ${supabaseUser.email}`);
       
-      // Gerar nosso próprio token de verificação
       const verificationToken = this.generateVerificationToken();
       
       const baseUrl = this.configService.get<string>('APP_URL') || 'http://localhost:3001';
@@ -76,7 +74,6 @@ export class CreateUserUseCase implements ICreateUserUseCase {
 ========================================
       `);
       
-      // Enviar nosso próprio email de verificação
       const emailResult = await this.emailService.sendVerificationEmail({
         to: supabaseUser.email,
         name: validatedData.name,
@@ -90,10 +87,8 @@ export class CreateUserUseCase implements ICreateUserUseCase {
         this.logger.log(`Email de verificação enviado para ${supabaseUser.email}`);
       }
       
-      // Salvar o token no banco de dados
       await this.saveVerificationToken(supabaseUser.id, supabaseUser.email, verificationToken);
 
-      // Enviar email de boas-vindas também
       await this.emailService.sendWelcomeEmail({
         to: supabaseUser.email || '',
         name: validatedData.name,
@@ -109,7 +104,7 @@ export class CreateUserUseCase implements ICreateUserUseCase {
         role: validatedData.role,
         tenantId: validatedData.tenantId,
         isActive: true,
-        emailVerified: false, // Começa como não verificado
+        emailVerified: false,
         createdAt: supabaseUser.createdAt,
         updatedAt: supabaseUser.updatedAt,
       } as UserEntity;
@@ -140,7 +135,6 @@ export class CreateUserUseCase implements ICreateUserUseCase {
 
       await client.connect();
       
-      // Token expira em 24 horas
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 24);
       
@@ -155,7 +149,6 @@ export class CreateUserUseCase implements ICreateUserUseCase {
       this.logger.log(`Token de verificação salvo para ${email}`);
     } catch (error) {
       this.logger.error('Erro ao salvar token de verificação:', error);
-      // Não lançar erro para não impedir criação do usuário
     }
   }
 }

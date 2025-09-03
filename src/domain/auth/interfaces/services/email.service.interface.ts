@@ -1,37 +1,16 @@
 import { Result } from '@shared/types/result.type';
 
-/**
- * Interface para o serviço de email
- */
 export interface IEmailService {
-  /**
-   * Enviar email de verificação
-   */
   sendVerificationEmail(data: VerificationEmailData): Promise<Result<void>>;
 
-  /**
-   * Enviar email de recuperação de senha
-   */
   sendPasswordResetEmail(data: PasswordResetEmailData): Promise<Result<void>>;
 
-  /**
-   * Enviar código 2FA por email
-   */
   sendTwoFactorCode(data: TwoFactorCodeData): Promise<Result<void>>;
 
-  /**
-   * Enviar email de boas-vindas
-   */
   sendWelcomeEmail(data: WelcomeEmailData): Promise<Result<void>>;
 
-  /**
-   * Enviar notificação de login suspeito
-   */
   sendSuspiciousLoginAlert(data: SuspiciousLoginData): Promise<Result<void>>;
 
-  /**
-   * Enviar alerta de login bem-sucedido
-   */
   sendLoginAlertEmail(data: LoginAlertData): Promise<Result<void>>;
 }
 

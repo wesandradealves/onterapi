@@ -6,7 +6,6 @@ import {
   phoneValidator,
 } from '../../../../shared/validators/auth.validators';
 
-// Lista de roles válidos
 const validRoles = Object.values(RolesEnum);
 
 export const createUserSchema = z.object({

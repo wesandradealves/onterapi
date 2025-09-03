@@ -97,7 +97,7 @@ export class SignInUseCase implements ISignInUseCase {
       const output: SignInOutput = {
         accessToken,
         refreshToken,
-        expiresIn: 900, // 15 minutos em segundos
+        expiresIn: 900,
         user: {
           id: user.id,
           email: user.email,

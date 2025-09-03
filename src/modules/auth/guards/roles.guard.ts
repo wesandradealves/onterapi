@@ -10,7 +10,6 @@ export class RolesGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    // Obter roles requeridas
     const requiredRoles = this.reflector.getAllAndOverride<RolesEnum[]>(ROLES_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -30,7 +29,6 @@ export class RolesGuard implements CanActivate {
     this.logger.log(`Verificando permissões para usuário: ${user.email}, Role: ${user.role}`);
     this.logger.log(`Roles requeridas: ${requiredRoles.join(', ')}`);
 
-    // Verificar hierarquia de roles
     const userLevel = ROLE_HIERARCHY[user.role as RolesEnum] ?? 0;
     this.logger.log(`Nível do usuário: ${userLevel}`);
     

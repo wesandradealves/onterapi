@@ -22,7 +22,6 @@ export class SignOutUseCase implements ISignOutUseCase {
       let revokedCount = 0;
 
       if (input.allDevices) {
-        // Revogar todas as sessões do usuário
         const queryRunner = this.dataSource.createQueryRunner();
         await queryRunner.connect();
         await queryRunner.startTransaction();
@@ -48,12 +47,10 @@ export class SignOutUseCase implements ISignOutUseCase {
           await queryRunner.release();
         }
       } else if (input.refreshToken) {
-        // Revogar apenas a sessão específica
         await this.authRepository.removeRefreshToken(input.refreshToken);
         revokedCount = 1;
       }
 
-      // Fazer logout no Supabase
       const supabaseResult = await this.supabaseAuthService.signOut(input.accessToken);
       if (supabaseResult.error) {
         this.logger.warn('Erro ao fazer logout no Supabase', supabaseResult.error);

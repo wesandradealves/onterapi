@@ -1,29 +1,19 @@
-/**
- * Roles do sistema OnTerapi
- * Hierarquia de permissões baseada no PRD
- */
 export enum RolesEnum {
-  // Roles Internos (Plataforma)
   SUPER_ADMIN = 'SUPER_ADMIN',
   ADMIN_FINANCEIRO = 'ADMIN_FINANCEIRO',
   ADMIN_SUPORTE = 'ADMIN_SUPORTE',
   ADMIN_EDITOR = 'ADMIN_EDITOR',
   MARKETPLACE_MANAGER = 'MARKETPLACE_MANAGER',
 
-  // Roles Externos (Clientes)
   CLINIC_OWNER = 'CLINIC_OWNER',
   PROFESSIONAL = 'PROFESSIONAL',
   SECRETARY = 'SECRETARY',
   MANAGER = 'MANAGER',
   PATIENT = 'PATIENT',
 
-  // Público
   VISITOR = 'VISITOR',
 }
 
-/**
- * Agrupamento de roles por categoria
- */
 export const INTERNAL_ROLES = [
   RolesEnum.SUPER_ADMIN,
   RolesEnum.ADMIN_FINANCEIRO,
@@ -44,9 +34,6 @@ export const PUBLIC_ROLES = [
   RolesEnum.VISITOR,
 ];
 
-/**
- * Hierarquia de roles (maior poder → menor poder)
- */
 export const ROLE_HIERARCHY: Record<RolesEnum, number> = {
   [RolesEnum.SUPER_ADMIN]: 100,
   [RolesEnum.ADMIN_FINANCEIRO]: 90,

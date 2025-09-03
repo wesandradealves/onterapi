@@ -3,21 +3,6 @@ import { ApiResponse } from '@nestjs/swagger';
 import { ZodType as ZodSchema } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
-/**
- * Decorator para documentar responses usando schemas Zod
- *
- * @example
- * ```typescript
- * @Get(':id')
- * @ZodResponse({
- *   schema: patientResponseSchema,
- *   description: 'Retorna os dados do paciente',
- * })
- * async findById(@Param('id') id: string) {
- *   // ...
- * }
- * ```
- */
 export const ZodResponse = (options: {
   schema: ZodSchema;
   status?: HttpStatus;
@@ -56,9 +41,6 @@ export const ZodResponse = (options: {
   );
 };
 
-/**
- * Decorator para múltiplas responses
- */
 export const ZodResponses = (
   responses: Array<{
     schema: ZodSchema;
@@ -79,9 +61,6 @@ export const ZodResponses = (
   return applyDecorators(...decorators);
 };
 
-/**
- * Decorator para response paginada
- */
 export const ZodPaginatedResponse = (options: { schema: ZodSchema; description?: string }) => {
   const { schema, description = 'Paginated response' } = options;
 

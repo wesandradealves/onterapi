@@ -4,7 +4,6 @@ export class AddDeletedAtToUsers1736293350000 implements MigrationInterface {
   name = 'AddDeletedAtToUsers1736293350000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Adicionar coluna deleted_at na tabela users se não existir
     const hasDeletedAt = await queryRunner.query(`
       SELECT column_name 
       FROM information_schema.columns 

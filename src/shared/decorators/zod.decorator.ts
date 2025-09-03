@@ -20,20 +20,6 @@ enum ErrorPrefix {
   headers = 'Erro ao validar os headers',
 }
 
-/**
- * Decorator para validação de requisições usando Zod
- *
- * @example
- * ```typescript
- * @Post()
- * async create(
- *   @ZodInputValidation({ body: createPatientSchema })
- *   @Body() data: CreatePatientInput,
- * ) {
- *   // data já está validado e tipado
- * }
- * ```
- */
 export const ZodInputValidation = (schemas: Schemas) => {
   return createParamDecorator((data: unknown, ctx: ExecutionContext) => {
     const request = ctx.switchToHttp().getRequest();
@@ -70,12 +56,10 @@ export const ZodInputValidation = (schemas: Schemas) => {
           });
         }
 
-        // Substitui o valor original pelo valor parseado/transformado
         request[target] = validation.data;
       }
     }
 
-    // Retorna o request completo com dados validados
     return request;
   })();
 };

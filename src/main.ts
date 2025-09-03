@@ -18,8 +18,8 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
-      whitelist: false, // Mudado para false porque usamos Zod ao invés de class-validator
-      forbidNonWhitelisted: false, // Mudado para false porque usamos Zod
+      whitelist: false,
+      forbidNonWhitelisted: false,
       disableErrorMessages: false,
     }),
   );

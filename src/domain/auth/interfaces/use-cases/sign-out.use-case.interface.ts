@@ -1,8 +1,5 @@
 import { Result } from '@shared/types/result.type';
 
-/**
- * Interface do caso de uso de logout
- */
 export interface ISignOutUseCase {
   execute(input: SignOutInput): Promise<Result<SignOutOutput>>;
 }

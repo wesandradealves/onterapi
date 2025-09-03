@@ -163,11 +163,10 @@ export class AuthRepository implements IAuthRepository {
       .where('id = :id', { id: session.id })
       .execute();
 
-    // Retornamos um UserEntity mínimo com o ID para o RefreshTokenUseCase buscar o usuário completo do Supabase
     const user = new UserEntity();
     user.id = session.userId;
     user.supabaseId = session.userId;
-    user.isActive = true; // Sessão válida indica usuário ativo
+    user.isActive = true;
     
     return user;
   }
@@ -226,7 +225,6 @@ export class AuthRepository implements IAuthRepository {
   }
 
   async validateTwoFactorCode(userId: string, code: string): Promise<boolean> {
-    // First, find ANY valid code for this user
     const validCode = await this.twoFactorCodeRepository
       .createQueryBuilder('code')
       .where('code.userId = :userId', { userId })
@@ -236,9 +234,7 @@ export class AuthRepository implements IAuthRepository {
       .orderBy('code.createdAt', 'DESC')
       .getOne();
 
-    // If there's a valid code for this user, increment its attempts (whether the code matches or not)
     if (validCode) {
-      // If the provided code doesn't match the valid code, increment attempts
       if (validCode.code !== code) {
         await this.twoFactorCodeRepository
           .createQueryBuilder()
@@ -249,9 +245,7 @@ export class AuthRepository implements IAuthRepository {
         
         return false;
       }
-      // If code matches, continue to mark as used below
     } else {
-      // No valid code exists for this user
       return false;
     }
 
@@ -282,7 +276,7 @@ export class AuthRepository implements IAuthRepository {
     };
 
     if (attempts >= maxAttempts) {
-      const lockDuration = 30 * 60 * 1000; // 30 minutes
+      const lockDuration = 30 * 60 * 1000;
       updateData.lockedUntil = new Date(Date.now() + lockDuration);
     }
 

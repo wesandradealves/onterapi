@@ -1,8 +1,5 @@
 import { z } from 'zod';
 
-/**
- * Schema base para entidades com timestamps
- */
 export const timestampSchema = z.object({
   id: z.string().uuid(),
   createdAt: z.string().datetime(),
@@ -10,9 +7,6 @@ export const timestampSchema = z.object({
   deletedAt: z.string().datetime().nullable().optional(),
 });
 
-/**
- * Schema base para paginação de requests
- */
 export const paginationSchema = z.object({
   page: z.coerce.number().min(1).default(1).describe('Número da página'),
   limit: z.coerce.number().min(1).max(100).default(20).describe('Itens por página'),
@@ -20,9 +14,6 @@ export const paginationSchema = z.object({
   order: z.enum(['ASC', 'DESC']).default('DESC').describe('Direção da ordenação'),
 });
 
-/**
- * Schema base para response paginado
- */
 export const paginatedResponseSchema = <T extends z.ZodType>(itemSchema: T) =>
   z.object({
     items: z.array(itemSchema),
@@ -36,9 +27,6 @@ export const paginatedResponseSchema = <T extends z.ZodType>(itemSchema: T) =>
     }),
   });
 
-/**
- * Schema para headers comuns
- */
 export const commonHeadersSchema = z.object({
   'x-tenant-id': z.string().uuid().describe('ID do tenant/clínica'),
   'x-user-id': z.string().uuid().describe('ID do usuário autenticado'),
@@ -46,9 +34,6 @@ export const commonHeadersSchema = z.object({
   'x-api-key': z.string().optional().describe('Chave de API para integrações'),
 });
 
-/**
- * Schema para endereço brasileiro
- */
 export const addressSchema = z.object({
   zipCode: z
     .string()
@@ -65,9 +50,6 @@ export const addressSchema = z.object({
   longitude: z.number().min(-180).max(180).optional().describe('Longitude'),
 });
 
-/**
- * Schema para dados de contato
- */
 export const contactSchema = z.object({
   phone: z
     .string()
@@ -81,9 +63,6 @@ export const contactSchema = z.object({
     .describe('WhatsApp'),
 });
 
-/**
- * Schema para response de erro
- */
 export const errorResponseSchema = z.object({
   statusCode: z.number().describe('Código HTTP do erro'),
   message: z.string().describe('Mensagem de erro'),
@@ -93,9 +72,6 @@ export const errorResponseSchema = z.object({
   details: z.array(z.string()).optional().describe('Detalhes adicionais'),
 });
 
-/**
- * Schema para response de sucesso
- */
 export const successResponseSchema = <T extends z.ZodType>(dataSchema: T) =>
   z.object({
     success: z.boolean().default(true),
@@ -103,18 +79,12 @@ export const successResponseSchema = <T extends z.ZodType>(dataSchema: T) =>
     data: dataSchema,
   });
 
-/**
- * Schema para soft delete
- */
 export const softDeleteSchema = z.object({
   isActive: z.boolean().default(true).describe('Registro ativo'),
   deletedAt: z.string().datetime().nullable().optional().describe('Data de exclusão'),
   deletedBy: z.string().uuid().nullable().optional().describe('Usuário que excluiu'),
 });
 
-/**
- * Schema para auditoria
- */
 export const auditSchema = z.object({
   createdBy: z.string().uuid().describe('Usuário que criou'),
   updatedBy: z.string().uuid().optional().describe('Último usuário que atualizou'),
@@ -123,9 +93,6 @@ export const auditSchema = z.object({
   version: z.number().default(1).describe('Versão do registro para controle de concorrência'),
 });
 
-/**
- * Schema para filtros de busca
- */
 export const searchFiltersSchema = z.object({
   search: z.string().optional().describe('Termo de busca geral'),
   startDate: z.string().datetime().optional().describe('Data inicial'),
@@ -134,9 +101,6 @@ export const searchFiltersSchema = z.object({
   isActive: z.boolean().optional().describe('Apenas ativos'),
 });
 
-/**
- * Schema para multi-tenant
- */
 export const tenantSchema = z.object({
   tenantId: z.string().uuid().describe('ID do tenant/clínica'),
   tenantName: z.string().optional().describe('Nome do tenant'),

@@ -17,7 +17,6 @@ export class JwtAuthGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    // Verificar se é rota pública
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -34,7 +33,6 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Token não fornecido');
     }
 
-    // Verificar token
     const tokenResult = this.jwtService.verifyAccessToken(token);
     if (tokenResult.error) {
       this.logger.warn('Token inválido ou expirado');
@@ -50,7 +48,6 @@ export class JwtAuthGuard implements CanActivate {
     
     this.logger.log(`User data from Supabase: ${JSON.stringify(userData)}`);
     
-    // Corrigir acesso ao user_metadata - o getUserById retorna {user: {...}}
     const actualUser = (userData as any).user || userData;
     const metadata = actualUser.user_metadata || {};
     

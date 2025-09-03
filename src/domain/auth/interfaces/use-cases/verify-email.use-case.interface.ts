@@ -1,8 +1,5 @@
 import { Result } from '@shared/types/result.type';
 
-/**
- * Interface do caso de uso de verificação de email
- */
 export interface IVerifyEmailUseCase {
   execute(input: VerifyEmailInput): Promise<Result<VerifyEmailOutput>>;
 }

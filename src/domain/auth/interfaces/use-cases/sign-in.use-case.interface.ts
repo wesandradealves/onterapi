@@ -1,8 +1,5 @@
 import { Result } from '@shared/types/result.type';
 
-/**
- * Interface do caso de uso de login
- */
 export interface ISignInUseCase {
   execute(input: SignInInput): Promise<Result<SignInOutput>>;
 }

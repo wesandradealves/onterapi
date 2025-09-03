@@ -48,7 +48,6 @@ export class SupabaseAuthService implements ISupabaseAuthService {
         return { error: new Error('Failed to create user') };
       }
 
-      // Enviar email de verificação via Supabase
       const { error: inviteError } = await this.supabase.auth.admin.inviteUserByEmail(data.email, {
         redirectTo: `${this.configService.get<string>('APP_URL')}/auth/confirm`,
       });
@@ -130,19 +129,15 @@ export class SupabaseAuthService implements ISupabaseAuthService {
 
   async verifyEmail(token: string, email?: string): Promise<Result<void>> {
     try {
-      // Validação básica do token
       if (!token || token.length < 6) {
         return { error: new Error('Token inválido') };
       }
 
-      // Para tokens de teste, rejeitar sempre
       if (token.includes('test-token') || token === '123456') {
         return { error: new Error('Token de teste não é válido') };
       }
 
-      // Se temos o email, verificar no nosso banco primeiro
       if (email) {
-        // Verificar token no nosso banco de dados
         const { Client } = require('pg');
         const client = new Client({
           host: 'aws-0-sa-east-1.pooler.supabase.com',
@@ -158,7 +153,6 @@ export class SupabaseAuthService implements ISupabaseAuthService {
         try {
           await client.connect();
           
-          // Buscar token válido
           const query = `
             SELECT * FROM email_verification_tokens 
             WHERE token = $1 
@@ -175,7 +169,6 @@ export class SupabaseAuthService implements ISupabaseAuthService {
           
           const tokenData = result.rows[0];
           
-          // Marcar token como usado
           await client.query(
             'UPDATE email_verification_tokens SET used = true, updated_at = NOW() WHERE id = $1',
             [tokenData.id]
@@ -190,7 +183,6 @@ export class SupabaseAuthService implements ISupabaseAuthService {
           await client.end();
           this.logger.error('Erro ao verificar token no banco:', dbError);
           
-          // Fallback para verificação OTP do Supabase
           const { data, error } = await this.supabase.auth.verifyOtp({
             type: 'email',
             token: token,
@@ -211,14 +203,11 @@ export class SupabaseAuthService implements ISupabaseAuthService {
         }
       }
 
-      // Se não temos email, pelo menos validar formato do token
-      // Tokens reais têm 64 caracteres hexadecimais
       const tokenRegex = /^[a-f0-9]{64}$/;
       if (!tokenRegex.test(token)) {
         return { error: new Error('Formato de token inválido') };
       }
 
-      // Sem email, não podemos validar completamente
       return { error: new Error('Email é necessário para validação completa') };
     } catch (error) {
       this.logger.error('Erro inesperado ao verificar email', error);
@@ -228,7 +217,6 @@ export class SupabaseAuthService implements ISupabaseAuthService {
   
   async confirmEmailByEmail(email: string): Promise<Result<void>> {
     try {
-      // Buscar usuário pelo email
       const { data: { users }, error: listError } = await this.supabase.auth.admin.listUsers();
       
       if (listError) {
@@ -242,7 +230,6 @@ export class SupabaseAuthService implements ISupabaseAuthService {
         return { error: new Error('Usuário não encontrado') };
       }
       
-      // Confirmar email do usuário
       const { error } = await this.supabase.auth.admin.updateUserById(
         user.id,
         { email_confirm: true }

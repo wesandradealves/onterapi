@@ -3,17 +3,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
-// Entities
 import { UserEntity } from '../../infrastructure/auth/entities/user.entity';
 import { UserSessionEntity } from '../../infrastructure/auth/entities/user-session.entity';
 import { UserPermissionEntity } from '../../infrastructure/auth/entities/user-permission.entity';
 import { TwoFactorCodeEntity } from '../../infrastructure/auth/entities/two-factor-code.entity';
 import { LoginAttemptEntity } from '../../infrastructure/auth/entities/login-attempt.entity';
 
-// Repository
 import { AuthRepository } from '../../infrastructure/auth/repositories/auth.repository';
 
-// Services
 import { SupabaseAuthService } from '../../infrastructure/auth/services/supabase-auth.service';
 import { JwtService } from '../../infrastructure/auth/services/jwt.service';
 import { TwoFactorService } from '../../infrastructure/auth/services/two-factor.service';
@@ -24,7 +21,6 @@ import { ITwoFactorService } from '../../domain/auth/interfaces/services/two-fac
 import { IEmailService } from '../../domain/auth/interfaces/services/email.service.interface';
 import { IAuthRepository, IAuthRepositoryToken } from '../../domain/auth/interfaces/repositories/auth.repository.interface';
 
-// Use Cases
 import { SignInUseCase } from './use-cases/sign-in.use-case';
 import { SignOutUseCase } from './use-cases/sign-out.use-case';
 import { RefreshTokenUseCase } from './use-cases/refresh-token.use-case';
@@ -36,15 +32,11 @@ import { IRefreshTokenUseCase } from '../../domain/auth/interfaces/use-cases/ref
 import { IValidateTwoFAUseCase } from '../../domain/auth/interfaces/use-cases/validate-two-fa.use-case.interface';
 import { ISendTwoFAUseCase } from '../../domain/auth/interfaces/use-cases/send-two-fa.use-case.interface';
 
-// Guards
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { TenantGuard } from './guards/tenant.guard';
 
-// Controllers
 import { AuthController } from './api/controllers/auth.controller';
-
-// Providers
 
 const serviceProviders: Provider[] = [
   {

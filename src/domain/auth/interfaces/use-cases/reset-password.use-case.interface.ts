@@ -1,8 +1,5 @@
 import { Result } from '@shared/types/result.type';
 
-/**
- * Interface do caso de uso de reset de senha
- */
 export interface IResetPasswordUseCase {
   execute(input: ResetPasswordInput): Promise<Result<ResetPasswordOutput>>;
 }

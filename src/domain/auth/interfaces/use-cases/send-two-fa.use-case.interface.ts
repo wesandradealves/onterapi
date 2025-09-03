@@ -1,8 +1,5 @@
 import { Result } from '@shared/types/result.type';
 
-/**
- * Interface do caso de uso de envio de código 2FA
- */
 export interface ISendTwoFAUseCase {
   execute(input: SendTwoFAInput): Promise<Result<SendTwoFAOutput>>;
 }
