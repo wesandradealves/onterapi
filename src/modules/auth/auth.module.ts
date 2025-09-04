@@ -15,6 +15,8 @@ import { SupabaseAuthService } from '../../infrastructure/auth/services/supabase
 import { JwtService } from '../../infrastructure/auth/services/jwt.service';
 import { TwoFactorService } from '../../infrastructure/auth/services/two-factor.service';
 import { EmailService } from '../../infrastructure/email/services/email.service';
+import { AuthEmailService } from '../../infrastructure/email/services/auth-email.service';
+import { NotificationEmailService } from '../../infrastructure/email/services/notification-email.service';
 import { ISupabaseAuthService } from '../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { IJwtService } from '../../domain/auth/interfaces/services/jwt.service.interface';
 import { ITwoFactorService } from '../../domain/auth/interfaces/services/two-factor.service.interface';
@@ -37,6 +39,10 @@ import { RolesGuard } from './guards/roles.guard';
 import { TenantGuard } from './guards/tenant.guard';
 
 import { AuthController } from './api/controllers/auth.controller';
+import { TwoFactorController } from './api/controllers/two-factor.controller';
+import { MessageBus } from '../../shared/messaging/message-bus';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { AuthEventsSubscriber } from './subscribers/auth-events.subscriber';
 
 const serviceProviders: Provider[] = [
   {
@@ -87,6 +93,7 @@ const useCaseProviders: Provider[] = [
 @Module({
   imports: [
     ConfigModule,
+    EventEmitterModule.forRoot(),
     TypeOrmModule.forFeature([
       UserEntity,
       UserSessionEntity,
@@ -105,13 +112,17 @@ const useCaseProviders: Provider[] = [
       }),
     }),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, TwoFactorController],
   providers: [
     ...serviceProviders,
     ...useCaseProviders,
     JwtAuthGuard,
     RolesGuard,
     TenantGuard,
+    MessageBus,
+    AuthEventsSubscriber,
+    AuthEmailService,
+    NotificationEmailService,
   ],
   exports: [
     ...serviceProviders,

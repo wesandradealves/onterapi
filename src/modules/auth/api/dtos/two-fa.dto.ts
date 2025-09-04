@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { DeviceInfo } from '../../../../shared/types/device.types';
 
 export class ValidateTwoFADto {
   @ApiProperty({
@@ -27,11 +28,7 @@ export class ValidateTwoFADto {
     description: 'Informações do dispositivo',
     required: false,
   })
-  deviceInfo?: {
-    userAgent?: string;
-    ip?: string;
-    device?: string;
-  };
+  deviceInfo?: DeviceInfo;
 }
 
 export class ValidateTwoFAResponseDto {

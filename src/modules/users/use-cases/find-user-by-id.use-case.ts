@@ -1,50 +1,39 @@
-import { Injectable, NotFoundException, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { IFindUserByIdUseCase } from '../../../domain/users/interfaces/use-cases/find-user-by-id.use-case.interface';
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { UserEntity } from '../../../infrastructure/auth/entities/user.entity';
+import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
+import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
+import { UserMapper } from '../../../shared/mappers/user.mapper';
+import { MESSAGES } from '../../../shared/constants/messages.constants';
+import { Result } from '../../../shared/types/result.type';
 
 @Injectable()
-export class FindUserByIdUseCase implements IFindUserByIdUseCase {
-  private readonly logger = new Logger(FindUserByIdUseCase.name);
+export class FindUserByIdUseCase extends BaseUseCase<string, UserEntity | null> implements IFindUserByIdUseCase {
+  protected readonly logger = new Logger(FindUserByIdUseCase.name);
 
   constructor(
     @Inject(ISupabaseAuthService)
     private readonly supabaseAuthService: ISupabaseAuthService,
-  ) {}
+  ) {
+    super();
+  }
 
-  async execute(id: string): Promise<UserEntity | null> {
-    try {
+  async execute(id: string): Promise<Result<UserEntity | null>> {
+    return super.execute(id);
+  }
+
+  protected async handle(id: string): Promise<UserEntity | null> {
       const userResult = await this.supabaseAuthService.getUserById(id);
 
       if (userResult.error || !userResult.data) {
-        throw new NotFoundException('Usuário não encontrado');
+        throw AuthErrorFactory.create(AuthErrorType.USER_NOT_FOUND, { userId: id });
       }
 
-      const supabaseUser = userResult.data;
-      const metadata = (supabaseUser as any).user_metadata || {};
+      const user = UserMapper.fromSupabaseToEntity(userResult.data);
 
-      const user: UserEntity = {
-        id: supabaseUser.id,
-        email: supabaseUser.email || '',
-        name: metadata.name || '',
-        cpf: metadata.cpf || '',
-        phone: metadata.phone || '',
-        role: metadata.role || 'PATIENT',
-        tenantId: metadata.tenantId || null,
-        isActive: !(supabaseUser as any).banned_until,
-        emailVerified: !!(supabaseUser as any).email_confirmed_at,
-        twoFactorEnabled: metadata.twoFactorEnabled || false,
-        lastLoginAt: (supabaseUser as any).last_sign_in_at ? new Date((supabaseUser as any).last_sign_in_at) : null,
-        createdAt: new Date(supabaseUser.created_at),
-        updatedAt: new Date((supabaseUser as any).updated_at || supabaseUser.created_at),
-      } as UserEntity;
-
-      this.logger.log(`Usuário encontrado: ${user.email}`);
+      this.logger.log(`${MESSAGES.LOGS.USER_FOUND}: ${user.email}`);
 
       return user;
-    } catch (error) {
-      this.logger.error('Erro ao buscar usuário', error);
-      throw error;
-    }
   }
 }

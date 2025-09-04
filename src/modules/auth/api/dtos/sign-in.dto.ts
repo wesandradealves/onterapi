@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { DeviceInfo } from '../../../../shared/types/device.types';
 
 export class SignInDto {
   @ApiProperty({
@@ -25,11 +26,7 @@ export class SignInDto {
     description: 'Informações do dispositivo',
     required: false,
   })
-  deviceInfo?: {
-    userAgent?: string;
-    ip?: string;
-    device?: string;
-  };
+  deviceInfo?: DeviceInfo;
 }
 
 export class SignInResponseDto {

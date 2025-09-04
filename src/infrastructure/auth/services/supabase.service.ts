@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { AuthErrorFactory } from '../../../shared/factories/auth-error.factory';
 
 @Injectable()
 export class SupabaseService {
@@ -12,7 +13,7 @@ export class SupabaseService {
     const supabaseKey = this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Supabase credentials not configured');
+      throw AuthErrorFactory.internalServerError('Supabase credentials not configured');
     }
 
     this.supabase = createClient(supabaseUrl, supabaseKey, {
@@ -98,5 +99,9 @@ export class SupabaseService {
     });
 
     return { data, error };
+  }
+
+  getClient(): SupabaseClient {
+    return this.supabase;
   }
 }

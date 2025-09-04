@@ -7,6 +7,9 @@ export interface ICurrentUser {
   role: string;
   tenantId?: string;
   sessionId: string;
+  isActive?: boolean;
+  bannedUntil?: Date;
+  emailVerified?: boolean;
 }
 
 export const CurrentUser = createParamDecorator(

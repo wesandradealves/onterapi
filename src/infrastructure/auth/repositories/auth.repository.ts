@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, QueryRunner, EntityManager } from 'typeorm';
 import { IAuthRepository } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
@@ -6,6 +6,7 @@ import { UserEntity } from '../entities/user.entity';
 import { UserSessionEntity } from '../entities/user-session.entity';
 import { TwoFactorCodeEntity } from '../entities/two-factor-code.entity';
 import { LoginAttemptEntity } from '../entities/login-attempt.entity';
+import { AuthErrorFactory } from '../../../shared/factories/auth-error.factory';
 
 @Injectable()
 export class AuthRepository implements IAuthRepository {
@@ -118,7 +119,7 @@ export class AuthRepository implements IAuthRepository {
 
     const updated = await this.findById(id, runner);
     if (!updated) {
-      throw new Error(`User with id ${id} not found after update`);
+      throw AuthErrorFactory.userNotFound();
     }
 
     return updated;
@@ -225,31 +226,39 @@ export class AuthRepository implements IAuthRepository {
   }
 
   async validateTwoFactorCode(userId: string, code: string): Promise<boolean> {
-    const validCode = await this.twoFactorCodeRepository
+    const anyCode = await this.twoFactorCodeRepository
       .createQueryBuilder('code')
       .where('code.userId = :userId', { userId })
       .andWhere('code.expiresAt > :now', { now: new Date() })
       .andWhere('code.isUsed = false')
-      .andWhere('code.attempts < code.maxAttempts')
       .orderBy('code.createdAt', 'DESC')
       .getOne();
 
-    if (validCode) {
-      if (validCode.code !== code) {
-        await this.twoFactorCodeRepository
-          .createQueryBuilder()
-          .update(TwoFactorCodeEntity)
-          .set({ attempts: () => 'attempts + 1' })
-          .where('id = :id', { id: validCode.id })
-          .execute();
-        
-        return false;
-      }
-    } else {
+    if (!anyCode) {
       return false;
     }
 
-    const twoFactorCode = validCode;
+    if (anyCode.attempts >= anyCode.maxAttempts) {
+      throw new UnauthorizedException('Conta bloqueada temporariamente. Muitas tentativas erradas.');
+    }
+
+    if (anyCode.code !== code) {
+      await this.twoFactorCodeRepository
+        .createQueryBuilder()
+        .update(TwoFactorCodeEntity)
+        .set({ attempts: () => 'attempts + 1' })
+        .where('id = :id', { id: anyCode.id })
+        .execute();
+      
+      const updatedCode = await this.twoFactorCodeRepository.findOne({ where: { id: anyCode.id } });
+      if (updatedCode && updatedCode.attempts >= updatedCode.maxAttempts) {
+        throw new UnauthorizedException('Conta bloqueada temporariamente. Muitas tentativas erradas.');
+      }
+      
+      return false;
+    }
+
+    const twoFactorCode = anyCode;
 
     await this.twoFactorCodeRepository
       .createQueryBuilder()

@@ -3,12 +3,19 @@ import { IRefreshTokenUseCase, RefreshTokenInput, RefreshTokenOutput } from '../
 import { IAuthRepository, IAuthRepositoryToken } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
 import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
-import { Result } from '../../../shared/types/result.type';
-import { v4 as uuidv4 } from 'uuid';
+import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
+import { AUTH_CONSTANTS } from '../../../shared/constants/auth.constants';
+import { extractSupabaseUser } from '../../../shared/utils/auth.utils';
+import { createTokenResponse } from '../../../shared/factories/auth-response.factory';
+import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
+import { AuthTokenHelper } from '../../../shared/helpers/auth-token.helper';
+import { MessageBus } from '../../../shared/messaging/message-bus';
+import { DomainEvents } from '../../../shared/events/domain-events';
+import { MESSAGES } from '../../../shared/constants/messages.constants';
 
 @Injectable()
-export class RefreshTokenUseCase implements IRefreshTokenUseCase {
-  private readonly logger = new Logger(RefreshTokenUseCase.name);
+export class RefreshTokenUseCase extends BaseUseCase<RefreshTokenInput, RefreshTokenOutput> implements IRefreshTokenUseCase {
+  protected readonly logger = new Logger(RefreshTokenUseCase.name);
 
   constructor(
     @Inject(IAuthRepositoryToken)
@@ -17,87 +24,68 @@ export class RefreshTokenUseCase implements IRefreshTokenUseCase {
     private readonly jwtService: IJwtService,
     @Inject(ISupabaseAuthService)
     private readonly supabaseAuthService: ISupabaseAuthService,
-  ) {}
+    private readonly messageBus: MessageBus,
+  ) {
+    super();
+  }
 
-  async execute(input: RefreshTokenInput): Promise<Result<RefreshTokenOutput>> {
-    try {
+  protected async handle(input: RefreshTokenInput): Promise<RefreshTokenOutput> {
       const tokenResult = this.jwtService.verifyRefreshToken(input.refreshToken);
       if (tokenResult.error) {
-        return { error: new Error('Refresh token inválido') };
+        throw AuthErrorFactory.create(AuthErrorType.INVALID_TOKEN);
       }
 
       const sessionUser = await this.authRepository.validateRefreshToken(input.refreshToken);
       if (!sessionUser) {
-        this.logger.warn('Refresh token não encontrado ou expirado');
-        return { error: new Error('Sessão expirada') };
+        this.logger.warn(MESSAGES.LOGS.REFRESH_TOKEN_NOT_FOUND);
+        throw AuthErrorFactory.create(AuthErrorType.SESSION_EXPIRED);
       }
 
       const { data: supabaseData, error: userError } = await this.supabaseAuthService.getUserById(sessionUser.id);
       if (userError || !supabaseData) {
-        this.logger.error('Erro ao buscar usuário do Supabase', userError);
-        return { error: new Error('Usuário não encontrado') };
+        this.logger.error(MESSAGES.LOGS.SUPABASE_USER_FETCH_ERROR, userError);
+        throw AuthErrorFactory.create(AuthErrorType.USER_NOT_FOUND, { userId: sessionUser.id });
       }
 
-      const supabaseUser = supabaseData.user || supabaseData;
-
-      const user = {
-        id: sessionUser.id,
-        email: supabaseUser.email,
-        name: supabaseUser.user_metadata?.name,
-        role: supabaseUser.user_metadata?.role,
-        tenantId: supabaseUser.user_metadata?.tenantId || null,
-        isActive: supabaseUser.user_metadata?.isActive !== false,
-      };
+      const user = extractSupabaseUser(supabaseData);
 
       if (!user.isActive) {
         await this.authRepository.removeRefreshToken(input.refreshToken);
-        return { error: new Error('Conta desativada') };
+        throw AuthErrorFactory.create(AuthErrorType.ACCOUNT_DISABLED, { userId: user.id, email: user.email });
       }
-
-      const sessionId = uuidv4();
-      const accessToken = this.jwtService.generateAccessToken({
-        sub: user.id,
-        email: user.email,
-        role: user.role,
-        tenantId: user.tenantId,
-        sessionId,
-      });
-
-      const newRefreshToken = this.jwtService.generateRefreshToken({
-        sub: user.id,
-        sessionId,
-      });
 
       await this.authRepository.removeRefreshToken(input.refreshToken);
 
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
-
-      await this.authRepository.saveRefreshToken(
-        user.id,
-        newRefreshToken,
-        expiresAt,
-        input.deviceInfo,
-      );
-
-      const output: RefreshTokenOutput = {
-        accessToken,
-        refreshToken: newRefreshToken,
-        expiresIn: 900,
-        user: {
-          id: user.id,
+      const tokenHelper = new AuthTokenHelper(this.jwtService);
+      const tokens = await tokenHelper.generateAndSaveTokens(
+        {
+          userId: user.id,
           email: user.email,
-          name: user.name,
           role: user.role,
           tenantId: user.tenantId,
+          rememberMe: false,
         },
-      };
+        input.deviceInfo,
+        this.jwtService,
+        this.authRepository
+      );
+
+      const output = createTokenResponse(
+        { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken, expiresIn: AUTH_CONSTANTS.ACCESS_TOKEN_EXPIRES_IN },
+        { id: user.id, email: user.email, name: user.name, role: user.role, tenantId: user.tenantId }
+      );
 
       this.logger.log(`Token renovado para usuário ${user.email}`);
-      return { data: output };
-    } catch (error) {
-      this.logger.error('Erro ao renovar token', error);
-      return { error: error as Error };
-    }
+      
+      const event = DomainEvents.tokenRefreshed(
+        user.id,
+        { sessionId: tokens.sessionId },
+        { userId: user.id }
+      );
+      
+      await this.messageBus.publish(event);
+      this.logger.log(`Evento TOKEN_REFRESHED publicado para usuário ${user.id}`);
+      
+      return output as RefreshTokenOutput;
   }
 }

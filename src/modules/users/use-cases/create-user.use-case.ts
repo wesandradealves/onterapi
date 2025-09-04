@@ -1,4 +1,5 @@
 import { Injectable, ConflictException, Logger, Inject } from '@nestjs/common';
+import { UserMapper } from '../../../shared/mappers/user.mapper';
 import { ICreateUserUseCase } from '../../../domain/users/interfaces/use-cases/create-user.use-case.interface';
 import { IUserRepository } from '../../../domain/users/interfaces/repositories/user.repository.interface';
 import { UserEntity } from '../../../infrastructure/auth/entities/user.entity';
@@ -10,10 +11,17 @@ import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/s
 import { IEmailService } from '../../../domain/auth/interfaces/services/email.service.interface';
 import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
 import { ConfigService } from '@nestjs/config';
+import { generateSecureToken } from '../../../shared/utils/crypto.util';
+import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
+import { Result } from '../../../shared/types/result.type';
+import { MessageBus } from '../../../shared/messaging/message-bus';
+import { DomainEvents } from '../../../shared/events/domain-events';
+import { AuthErrorFactory } from '../../../shared/factories/auth-error.factory';
+import { MESSAGES } from '../../../shared/constants/messages.constants';
 
 @Injectable()
-export class CreateUserUseCase implements ICreateUserUseCase {
-  private readonly logger = new Logger(CreateUserUseCase.name);
+export class CreateUserUseCase extends BaseUseCase<CreateUserInputDTO, UserEntity> implements ICreateUserUseCase {
+  protected readonly logger = new Logger(CreateUserUseCase.name);
 
   constructor(
     @Inject('IUserRepository')
@@ -26,12 +34,41 @@ export class CreateUserUseCase implements ICreateUserUseCase {
     @Inject(IJwtService)
     private readonly jwtService: IJwtService,
     private readonly configService: ConfigService,
-  ) {}
+    private readonly messageBus: MessageBus,
+  ) {
+    super();
+  }
 
-  async execute(dto: CreateUserInputDTO): Promise<UserEntity> {
-    try {
+  async execute(dto: CreateUserInputDTO): Promise<Result<UserEntity>> {
+    return super.execute(dto);
+  }
+
+  protected async handle(dto: CreateUserInputDTO): Promise<UserEntity> {
       const validatedData = createUserSchema.parse(dto);
 
+      this.logger.log(MESSAGES.VALIDATION.CHECKING_CPF);
+      
+      const { data: { users: allUsers }, error: listError } = await this.supabaseService.getClient()
+        .auth.admin.listUsers();
+
+      if (listError) {
+        this.logger.error(MESSAGES.ERRORS.SUPABASE.LIST_ERROR, listError);
+      }
+
+      this.logger.log(`${MESSAGES.VALIDATION.TOTAL_USERS}: ${allUsers?.length || 0}`);
+      
+      const existingUserWithCpf = allUsers?.find(user => {
+        const userCpf = user.user_metadata?.cpf;
+        this.logger.log(MESSAGES.VALIDATION.COMPARING_CPF);
+        return userCpf === validatedData.cpf;
+      });
+
+      if (existingUserWithCpf) {
+        this.logger.warn(MESSAGES.USER.CPF_DUPLICATE);
+        throw new ConflictException(MESSAGES.USER.CPF_DUPLICATE);
+      }
+      
+      this.logger.log(MESSAGES.USER.CPF_AVAILABLE);
 
       const roleForDB = validatedData.role.toLowerCase().replace(/_/g, '_');
       
@@ -52,27 +89,18 @@ export class CreateUserUseCase implements ICreateUserUseCase {
       const error = result.error;
 
       if (error || !supabaseUser) {
-        this.logger.error('Erro ao criar usuário no Supabase', error);
-        throw new Error('Erro ao criar usuário no Supabase: ' + (error?.message || 'Erro desconhecido'));
+        this.logger.error(MESSAGES.ERRORS.SUPABASE.CREATE_ERROR, error);
+        throw AuthErrorFactory.internalServerError(MESSAGES.ERRORS.SUPABASE.CREATE_ERROR);
       }
 
       
-      this.logger.log(`Usuário criado com sucesso no Supabase: ${supabaseUser.email}`);
+      this.logger.log(`${MESSAGES.USER.CREATED}: ${supabaseUser.email}`);
       
       const verificationToken = this.generateVerificationToken();
       
       const baseUrl = this.configService.get<string>('APP_URL') || 'http://localhost:3001';
       const verificationLink = `${baseUrl}/auth/verify-email?token=${verificationToken}&email=${supabaseUser.email}`;
       
-      this.logger.warn(`
-========================================
-📧 EMAIL DE CONFIRMAÇÃO
-👤 Usuário: ${validatedData.name}
-📬 Email: ${supabaseUser.email}
-🔑 Token: ${verificationToken}
-🔗 Link: ${verificationLink}
-========================================
-      `);
       
       const emailResult = await this.emailService.sendVerificationEmail({
         to: supabaseUser.email,
@@ -82,9 +110,9 @@ export class CreateUserUseCase implements ICreateUserUseCase {
       });
       
       if (emailResult.error) {
-        this.logger.error('Erro ao enviar email de verificação', emailResult.error);
+        this.logger.error(MESSAGES.ERRORS.EMAIL.SEND_ERROR, emailResult.error);
       } else {
-        this.logger.log(`Email de verificação enviado para ${supabaseUser.email}`);
+        this.logger.log(`${MESSAGES.AUTH.VERIFICATION_EMAIL_SENT} para ${supabaseUser.email}`);
       }
       
       await this.saveVerificationToken(supabaseUser.id, supabaseUser.email, verificationToken);
@@ -95,60 +123,72 @@ export class CreateUserUseCase implements ICreateUserUseCase {
         role: validatedData.role,
       });
 
-      return {
-        id: supabaseUser.id,
-        email: supabaseUser.email,
-        name: validatedData.name,
-        cpf: validatedData.cpf,
-        phone: validatedData.phone,
-        role: validatedData.role,
-        tenantId: validatedData.tenantId,
-        isActive: true,
-        emailVerified: false,
-        createdAt: supabaseUser.createdAt,
-        updatedAt: supabaseUser.updatedAt,
-      } as UserEntity;
-    } catch (error) {
-      this.logger.error('Erro ao criar usuário', error);
-      throw error;
-    }
+      const userCreatedEvent = DomainEvents.userCreated(
+        supabaseUser.id,
+        {
+          email: supabaseUser.email,
+          name: validatedData.name,
+          role: validatedData.role,
+          cpf: validatedData.cpf,
+          phone: validatedData.phone,
+          tenantId: validatedData.tenantId,
+        },
+        { userId: supabaseUser.id }
+      );
+      
+      await this.messageBus.publish(userCreatedEvent);
+      this.logger.log(`Evento USER_CREATED publicado para ${supabaseUser.email}`);
+      
+      const userRegisteredEvent = DomainEvents.userRegistered(
+        supabaseUser.id,
+        {
+          email: supabaseUser.email,
+          name: validatedData.name,
+          role: validatedData.role,
+          registeredAt: new Date().toISOString(),
+        },
+        { userId: supabaseUser.id }
+      );
+      
+      await this.messageBus.publish(userRegisteredEvent);
+      this.logger.log(`Evento USER_REGISTERED publicado para ${supabaseUser.email}`);
+
+      const userWithMetadata = {
+        ...supabaseUser,
+        user_metadata: {
+          name: validatedData.name,
+          cpf: validatedData.cpf,
+          phone: validatedData.phone,
+          role: validatedData.role,
+          tenantId: validatedData.tenantId,
+          isActive: true,
+        }
+      };
+      
+      return UserMapper.fromSupabaseToEntity(userWithMetadata);
   }
 
   private generateVerificationToken(): string {
-    const randomBytes = require('crypto').randomBytes(32);
-    return randomBytes.toString('hex');
+    return generateSecureToken(32);
   }
 
   private async saveVerificationToken(userId: string, email: string, token: string): Promise<void> {
     try {
-      const { Client } = require('pg');
-      const client = new Client({
-        host: 'aws-0-sa-east-1.pooler.supabase.com',
-        port: 6543,
-        database: 'postgres',
-        user: 'postgres.ogffdaemylaezxpunmop',
-        password: '5lGR6N9OyfF1fcMc',
-        ssl: {
-          rejectUnauthorized: false
-        }
-      });
-
-      await client.connect();
-      
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 24);
       
-      const query = `
-        INSERT INTO email_verification_tokens (user_id, email, token, expires_at)
-        VALUES ($1, $2, $3, $4)
-      `;
+      await this.supabaseService.getClient()
+        .from('email_verification_tokens')
+        .insert({
+          user_id: userId,
+          email: email,
+          token: token,
+          expires_at: expiresAt.toISOString()
+        });
       
-      await client.query(query, [userId, email, token, expiresAt]);
-      await client.end();
-      
-      this.logger.log(`Token de verificação salvo para ${email}`);
+      this.logger.log(MESSAGES.LOGS.TOKEN_VERIFICATION_SAVED);
     } catch (error) {
-      this.logger.error('Erro ao salvar token de verificação:', error);
+      this.logger.error(MESSAGES.LOGS.TOKEN_VERIFICATION_ERROR, error);
     }
   }
 }

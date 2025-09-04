@@ -17,15 +17,12 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiQuery } from '@nestjs/swagger';
 
 import { SignInDto, SignInResponseDto } from '../dtos/sign-in.dto';
-import { ValidateTwoFADto, ValidateTwoFAResponseDto } from '../dtos/two-fa.dto';
 import { RefreshTokenDto, RefreshTokenResponseDto } from '../dtos/refresh.dto';
 import { SignOutDto, SignOutResponseDto, MeResponseDto } from '../dtos/sign-out.dto';
 
 import { ISignInUseCase } from '../../../../domain/auth/interfaces/use-cases/sign-in.use-case.interface';
 import { ISignOutUseCase } from '../../../../domain/auth/interfaces/use-cases/sign-out.use-case.interface';
 import { IRefreshTokenUseCase } from '../../../../domain/auth/interfaces/use-cases/refresh-token.use-case.interface';
-import { IValidateTwoFAUseCase } from '../../../../domain/auth/interfaces/use-cases/validate-two-fa.use-case.interface';
-import { ISendTwoFAUseCase } from '../../../../domain/auth/interfaces/use-cases/send-two-fa.use-case.interface';
 
 import { ISupabaseAuthService } from '../../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 
@@ -34,10 +31,10 @@ import { Public } from '../../decorators/public.decorator';
 import { CurrentUser, ICurrentUser } from '../../decorators/current-user.decorator';
 
 import { SignInInputDTO, signInInputSchema } from '../schemas/sign-in.schema';
-import { ValidateTwoFAInputDTO, validateTwoFAInputSchema } from '../schemas/two-fa.schema';
 import { RefreshTokenInputDTO, refreshTokenInputSchema } from '../schemas/refresh.schema';
 
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
+import { AuthErrorFactory } from '../../../../shared/factories/auth-error.factory';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -51,10 +48,6 @@ export class AuthController {
     private readonly signOutUseCase: ISignOutUseCase,
     @Inject(IRefreshTokenUseCase)
     private readonly refreshTokenUseCase: IRefreshTokenUseCase,
-    @Inject(IValidateTwoFAUseCase)
-    private readonly validateTwoFAUseCase: IValidateTwoFAUseCase,
-    @Inject(ISendTwoFAUseCase)
-    private readonly sendTwoFAUseCase: ISendTwoFAUseCase,
     @Inject(ISupabaseAuthService)
     private readonly supabaseAuthService: ISupabaseAuthService,
   ) {}
@@ -123,133 +116,6 @@ export class AuthController {
     return result.data;
   }
 
-  @Post('two-factor/send')
-  @Public()
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
-    summary: 'Enviar código 2FA',
-    description: `Envia um novo código de autenticação de dois fatores.
-    
-    **Funcionalidades:**
-    - Gera código de 6 dígitos
-    - Valida token temporário
-    - Envia código por email (SMS e Authenticator em desenvolvimento)
-    - Código expira em 5 minutos
-    - Limite de 3 reenvios por sessão
-    
-    **Emails enviados:**
-    - Email com código de verificação 2FA formatado`
-  })
-  @ApiBody({
-    description: 'Token temporário para envio de código',
-    schema: {
-      type: 'object',
-      properties: {
-        tempToken: {
-          type: 'string',
-          description: 'Token temporário recebido no login'
-        },
-        method: {
-          type: 'string',
-          enum: ['email', 'sms', 'authenticator'],
-          description: 'Método de envio (default: email)'
-        }
-      },
-      required: ['tempToken']
-    },
-    examples: {
-      example1: {
-        summary: 'Solicitar envio de código',
-        value: {
-          tempToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
-        }
-      }
-    }
-  })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Código enviado com sucesso',
-    schema: {
-      type: 'object',
-      properties: {
-        sentTo: { type: 'string', description: 'Endereço mascarado do destinatário' },
-        method: { type: 'string', enum: ['email', 'sms', 'authenticator'] },
-        expiresIn: { type: 'number', description: 'Tempo de expiração em segundos' },
-        attemptsRemaining: { type: 'number', description: 'Tentativas restantes' }
-      }
-    }
-  })
-  async sendTwoFactorCode(
-    @Body('tempToken') tempToken: string,
-    @Body('method') method?: 'email' | 'sms' | 'authenticator',
-  ) {
-    const result = await this.sendTwoFAUseCase.execute({
-      userId: '',
-      tempToken,
-      method,
-    });
-
-    if (result.error) {
-      throw result.error;
-    }
-
-    return result.data;
-  }
-
-  @Post('two-factor/validate')
-  @Public()
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
-    summary: 'Validar código 2FA',
-    description: 'Valida o código de autenticação de dois fatores enviado por SMS, email ou TOTP'
-  })
-  @ApiBody({ 
-    type: ValidateTwoFADto,
-    description: 'Código 2FA para validação',
-    examples: {
-      example1: {
-        summary: 'Validação de código',
-        value: {
-          tempToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-          code: '123456',
-          trustDevice: false
-        }
-      },
-      example2: {
-        summary: 'Validação com confiança no dispositivo',
-        value: {
-          tempToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-          code: '123456',
-          trustDevice: true,
-          deviceInfo: {
-            device: 'iPhone Safari'
-          }
-        }
-      }
-    }
-  })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Código validado com sucesso',
-    type: ValidateTwoFAResponseDto 
-  })
-  @ApiResponse({ status: 401, description: 'Código inválido' })
-  @UsePipes(new ZodValidationPipe(validateTwoFAInputSchema))
-  async validateTwoFA(@Body() dto: ValidateTwoFAInputDTO) {
-    const input = {
-      ...dto,
-      userId: '',
-      deviceInfo: dto.deviceInfo || {},
-    };
-
-    const result = await this.validateTwoFAUseCase.execute(input);
-
-    if (result.error) {
-      throw result.error;
-    }
-
-    return result.data;
-  }
 
   @Post('refresh')
   @Public()
@@ -332,8 +198,9 @@ export class AuthController {
   async signOut(
     @CurrentUser() user: ICurrentUser,
     @Body() dto?: SignOutDto,
+    @Headers('authorization') authorization?: string,
   ) {
-    const accessToken = '';
+    const accessToken = authorization?.replace('Bearer ', '') || '';
 
     const result = await this.signOutUseCase.execute({
       userId: user.id,
@@ -420,13 +287,13 @@ export class AuthController {
     const tokenResult = await this.supabaseAuthService.verifyEmail(token, email);
     
     if (tokenResult.error) {
-      throw new BadRequestException('Token inválido');
+      throw AuthErrorFactory.invalidToken();
     }
     
     const confirmResult = await (this.supabaseAuthService as any).confirmEmailByEmail(email);
     
     if (confirmResult.error) {
-      throw new BadRequestException(confirmResult.error.message);
+      throw AuthErrorFactory.badRequest(confirmResult.error.message);
     }
 
     this.logger.log(`✅ Email verificado com sucesso: ${email}`);

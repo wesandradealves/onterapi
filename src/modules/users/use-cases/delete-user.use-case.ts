@@ -1,39 +1,57 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { IDeleteUserUseCase } from '../../../domain/users/interfaces/use-cases/delete-user.use-case.interface';
-import { createClient } from '@supabase/supabase-js';
-import { ConfigService } from '@nestjs/config';
+import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
+import { UseCaseWrapper } from '../../../shared/use-cases/use-case-wrapper';
+import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
+import { MessageBus } from '../../../shared/messaging/message-bus';
+import { DomainEvents } from '../../../shared/events/domain-events';
+import { Result } from '../../../shared/types/result.type';
+import { MESSAGES } from '../../../shared/constants/messages.constants';
+
+type DeleteUserInput = { id: string; currentUserId: string };
 
 @Injectable()
 export class DeleteUserUseCase implements IDeleteUserUseCase {
   private readonly logger = new Logger(DeleteUserUseCase.name);
-  private readonly supabase;
+  private readonly wrapper: UseCaseWrapper<DeleteUserInput, void>;
 
   constructor(
-    private readonly configService: ConfigService,
+    @Inject(ISupabaseAuthService)
+    private readonly supabaseAuthService: ISupabaseAuthService,
+    private readonly messageBus: MessageBus,
   ) {
-    const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
-    const supabaseKey = this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY');
-    this.supabase = createClient(supabaseUrl!, supabaseKey!);
+    this.wrapper = new UseCaseWrapper(
+      this.logger,
+      async (input: DeleteUserInput) => this.handleDelete(input)
+    );
   }
 
-  async execute(id: string, currentUserId: string): Promise<void> {
-    try {
-      const { data: user, error: fetchError } = await this.supabase.auth.admin.getUserById(id);
+  async execute(id: string, currentUserId: string): Promise<Result<void>> {
+    return this.wrapper.execute({ id, currentUserId });
+  }
+
+  private async handleDelete(input: DeleteUserInput): Promise<void> {
+      const { id, currentUserId } = input;
+      const userResult = await this.supabaseAuthService.getUserById(id);
       
-      if (fetchError || !user) {
-        throw new NotFoundException('Usuário não encontrado');
+      if (userResult.error || !userResult.data) {
+        throw AuthErrorFactory.create(AuthErrorType.USER_NOT_FOUND, { userId: id });
       }
 
-      const { error: deleteError } = await this.supabase.auth.admin.deleteUser(id);
+      const deleteResult = await this.supabaseAuthService.deleteUser(id);
       
-      if (deleteError) {
-        throw deleteError;
+      if (deleteResult.error) {
+        throw deleteResult.error;
       }
 
-      this.logger.log(`Usuário deletado: ${user.user.email} por ${currentUserId}`);
-    } catch (error) {
-      this.logger.error('Erro ao deletar usuário', error);
-      throw error;
-    }
+      this.logger.log(`${MESSAGES.LOGS.USER_DELETED_LOG}: ${userResult.data.email} por ${currentUserId}`);
+      
+      const event = DomainEvents.userDeleted(
+        id,
+        { deletedBy: currentUserId }
+      );
+      
+      await this.messageBus.publish(event);
+      this.logger.log(`${MESSAGES.EVENTS.USER_DELETED} para ${id}`);
   }
 }

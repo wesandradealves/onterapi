@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { 
   ISendTwoFAUseCase,
   SendTwoFAInput,
@@ -9,11 +9,18 @@ import { IEmailService } from '../../../domain/auth/interfaces/services/email.se
 import { ITwoFactorService } from '../../../domain/auth/interfaces/services/two-factor.service.interface';
 import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
-import { Result } from '../../../shared/types/result.type';
+import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
+import { AUTH_CONSTANTS } from '../../../shared/constants/auth.constants';
+import { extractSupabaseUser, generateSixDigitCode, maskEmail, calculateExpirationMinutes } from '../../../shared/utils/auth.utils';
+import { createTwoFactorSendResponse } from '../../../shared/factories/auth-response.factory';
+import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
+import { MessageBus } from '../../../shared/messaging/message-bus';
+import { DomainEvents } from '../../../shared/events/domain-events';
+import { MESSAGES } from '../../../shared/constants/messages.constants';
 
 @Injectable()
-export class SendTwoFAUseCase implements ISendTwoFAUseCase {
-  private readonly logger = new Logger(SendTwoFAUseCase.name);
+export class SendTwoFAUseCase extends BaseUseCase<SendTwoFAInput, SendTwoFAOutput> implements ISendTwoFAUseCase {
+  protected readonly logger = new Logger(SendTwoFAUseCase.name);
 
   constructor(
     @Inject(IAuthRepositoryToken)
@@ -26,35 +33,32 @@ export class SendTwoFAUseCase implements ISendTwoFAUseCase {
     private readonly jwtService: IJwtService,
     @Inject(ISupabaseAuthService)
     private readonly supabaseAuthService: ISupabaseAuthService,
-  ) {}
+    private readonly messageBus: MessageBus,
+  ) {
+    super();
+  }
 
-  async execute(input: SendTwoFAInput): Promise<Result<SendTwoFAOutput>> {
-    try {
+  protected async handle(input: SendTwoFAInput): Promise<SendTwoFAOutput> {
       const decodedResult = await this.jwtService.verifyTwoFactorToken(input.tempToken);
       if (!decodedResult || decodedResult.error) {
-        return { error: new BadRequestException('Invalid temporary token') };
+        throw AuthErrorFactory.create(AuthErrorType.INVALID_TOKEN);
       }
 
       const userId = input.userId || decodedResult.data?.sub;
       if (!userId) {
-        return { error: new BadRequestException('User ID not found') };
+        throw AuthErrorFactory.create(AuthErrorType.USER_ID_NOT_FOUND);
       }
       
       const { data: supabaseUser, error: userError } = await this.supabaseAuthService.getUserById(userId);
       if (userError || !supabaseUser) {
-        return { error: new BadRequestException('User not found') };
+        throw AuthErrorFactory.create(AuthErrorType.USER_NOT_FOUND, { userId });
       }
       
-      const userData = supabaseUser.user || supabaseUser;
-      const user = {
-        id: userData.id,
-        email: userData.email,
-        name: userData.user_metadata?.name || userData.email?.split('@')[0],
-      };
+      const user = extractSupabaseUser(supabaseUser);
 
       const method = input.method || 'email';
 
-      const code = this.generateSixDigitCode();
+      const code = generateSixDigitCode();
       
       this.logger.warn(`
 ========================================
@@ -65,12 +69,11 @@ export class SendTwoFAUseCase implements ISendTwoFAUseCase {
 ========================================
       `);
       
-      const maxAttempts = 3;
+      const maxAttempts = AUTH_CONSTANTS.TWO_FACTOR_MAX_ATTEMPTS;
       
       const existingCode = await this.authRepository.findValidTwoFactorCode(user.id);
       
-      const expiresAt = new Date();
-      expiresAt.setMinutes(expiresAt.getMinutes() + 5);
+      const expiresAt = calculateExpirationMinutes(AUTH_CONSTANTS.TWO_FACTOR_CODE_EXPIRES_MINUTES);
       
       await this.authRepository.saveTwoFactorCode(
         user.id,
@@ -85,45 +88,33 @@ export class SendTwoFAUseCase implements ISendTwoFAUseCase {
           to: user.email,
           name: user.name,
           code,
-          expiresIn: '5 minutes',
+          expiresIn: `${AUTH_CONSTANTS.TWO_FACTOR_CODE_EXPIRES_MINUTES} minutes`,
         });
 
         if (result.error) {
-          this.logger.error('Error sending 2FA code', result.error);
-          return { error: new BadRequestException('Error sending code. Please try again.') };
+          this.logger.error(MESSAGES.LOGS.TWO_FA_CODE_SEND_ERROR, result.error);
+          throw AuthErrorFactory.create(AuthErrorType.EMAIL_SEND_ERROR, { userId, email: user.email });
         }
 
         this.logger.log(`2FA code sent to ${user.email}`);
+        
+        const event = DomainEvents.twoFaSent(
+          user.id,
+          'email',
+          { userId: user.id, email: user.email }
+        );
+        
+        await this.messageBus.publish(event);
+        this.logger.log(`Evento TWO_FA_SENT publicado para ${user.email}`);
 
-        return {
-          data: {
-            sentTo: this.maskEmail(user.email),
-            method: 'email',
-            expiresIn: 300,
-            attemptsRemaining,
-          }
-        };
+        return createTwoFactorSendResponse(
+          maskEmail(user.email),
+          'email',
+          attemptsRemaining
+        ) as SendTwoFAOutput;
       }
 
-      return { 
-        error: new BadRequestException(`Method ${method} not yet implemented`) 
-      };
-
-    } catch (error) {
-      this.logger.error('Error sending 2FA code', error);
-      return { error: error as Error };
-    }
+      throw AuthErrorFactory.create(AuthErrorType.METHOD_NOT_IMPLEMENTED, { method });
   }
 
-  private generateSixDigitCode(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  }
-
-  private maskEmail(email: string): string {
-    const [local, domain] = email.split('@');
-    const maskedLocal = local.length > 2 
-      ? local[0] + '*'.repeat(local.length - 2) + local[local.length - 1]
-      : local;
-    return `${maskedLocal}@${domain}`;
-  }
 }

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserEntity } from '../../auth/entities/user.entity';
 import { IUserRepository } from '../../../domain/users/interfaces/repositories/user.repository.interface';
+import { AuthErrorFactory } from '../../../shared/factories/auth-error.factory';
 
 @Injectable()
 export class UserRepository implements IUserRepository {
@@ -83,7 +84,7 @@ export class UserRepository implements IUserRepository {
     await this.repository.update(id, data);
     const updated = await this.findById(id);
     if (!updated) {
-      throw new Error('User not found after update');
+      throw AuthErrorFactory.userNotFound();
     }
     return updated;
   }
