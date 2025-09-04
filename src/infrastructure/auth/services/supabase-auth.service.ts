@@ -211,6 +211,11 @@ export class SupabaseAuthService implements ISupabaseAuthService {
         return { error: new Error('Usuário não encontrado') };
       }
       
+      if (user.email_confirmed_at) {
+        this.logger.warn(`Email já confirmado para: ${email}`);
+        return { error: new Error('Email já foi confirmado anteriormente') };
+      }
+      
       const { error } = await this.supabase.auth.admin.updateUserById(
         user.id,
         { email_confirm: true }

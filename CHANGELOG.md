@@ -7,6 +7,34 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
+## [0.13.0] - 2025-09-04
+
+### Added
+- **Validação de email obrigatória para login**
+  - Usuários não podem fazer login sem confirmar email
+  - Mensagem específica "Email não verificado" ao invés de "Credenciais inválidas"
+  - Tratamento correto do erro "Email not confirmed" do Supabase
+
+### Fixed
+- **Correções no fluxo de autenticação**
+  - Verificação de email confirmado antes de permitir login
+  - Prevenção de confirmação duplicada de email (retorna erro apropriado)
+  - Mensagens de erro mais claras e específicas para cada situação
+
+### Improved
+- **Sistema de verificação de email**
+  - Token de verificação único por usuário
+  - Não permite confirmar email já confirmado
+  - Integração completa com Supabase email_confirmed_at
+
+### Tested
+- **Fluxo completo de autenticação validado**
+  - Login bloqueado sem email confirmado ✓
+  - Login funcional após confirmação ✓
+  - Prevenção de confirmação duplicada ✓
+  - 2FA funcionando corretamente ✓
+  - Bloqueio após 3 tentativas erradas de 2FA ✓
+
 ## [0.12.0] - 2025-09-03
 
 ### Added

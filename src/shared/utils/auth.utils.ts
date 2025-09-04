@@ -34,6 +34,7 @@ export interface ExtractedUser {
   role: RolesEnum;
   tenantId: string | undefined;
   isActive?: boolean;
+  emailConfirmed?: boolean;
   twoFactorEnabled?: boolean;
   twoFactorSecret?: string | null;
 }
@@ -49,6 +50,7 @@ export function extractSupabaseUser(supabaseData: any): ExtractedUser {
     role: (metadata.role as RolesEnum) || (AUTH_CONSTANTS.DEFAULT_ROLE as RolesEnum),
     tenantId: metadata.tenantId || undefined,
     isActive: !(userData as any).banned_until && metadata.isActive !== false,
+    emailConfirmed: userData.email_confirmed_at !== null || metadata.emailVerified === true,
     twoFactorEnabled: metadata.twoFactorEnabled || false,
     twoFactorSecret: metadata.twoFactorSecret || null,
   };

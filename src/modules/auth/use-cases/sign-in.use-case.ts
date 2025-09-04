@@ -41,6 +41,10 @@ export class SignInUseCase extends BaseUseCase<SignInInput, SignInOutput> implem
         throw AuthErrorFactory.create(AuthErrorType.INVALID_CREDENTIALS, { email: input.email });
       }
 
+      if (!user.emailConfirmed) {
+        throw AuthErrorFactory.create(AuthErrorType.EMAIL_NOT_VERIFIED, { email: input.email });
+      }
+
       if (user.twoFactorEnabled) {
         return this.handleTwoFactorAuth(user.id) as SignInOutput;
       }
@@ -58,6 +62,11 @@ export class SignInUseCase extends BaseUseCase<SignInInput, SignInOutput> implem
 
     if (supabaseResult.error) {
       this.logger.warn(`Login falhou para ${email}: ${supabaseResult.error.message}`);
+      
+      if (supabaseResult.error.message.includes('Email not confirmed')) {
+        throw AuthErrorFactory.create(AuthErrorType.EMAIL_NOT_VERIFIED, { email });
+      }
+      
       return null;
     }
 
