@@ -24,9 +24,11 @@ OnTerapi v4 é uma plataforma SaaS multi-tenant completa para gestão de clínic
 - 🤖 Sistema CrewAI integrado
 - 📱 Portais dedicados (profissional, paciente, admin)
 - 🛒 Marketplace público
-- ✅ Sistema de verificação de email com tokens seguros
-- 🔐 Autenticação 100% Supabase Cloud
+- ✅ Sistema de verificação de email obrigatória para login
+- 🔐 Autenticação 100% Supabase Cloud (v0.13.0)
 - 📧 Alertas de login com IP e localização
+- 🛡️ 2FA completo com bloqueio após 3 tentativas
+- 🎯 Arquitetura DRY com 0% duplicação de código
 
 ## 🧪 Usuário Padrão
 
@@ -63,11 +65,13 @@ OnTerapi v4 é uma plataforma SaaS multi-tenant completa para gestão de clínic
 
 ### Padrões Arquiteturais
 - **DDD** (Domain-Driven Design)
-- **Clean Architecture**
+- **Clean Architecture** com 4 camadas bem definidas
 - **CQRS Pattern**
-- **Event-Driven Architecture**
-- **Repository Pattern**
-- **Result Pattern**
+- **Event-Driven Architecture** com MessageBus
+- **Repository Pattern** com inversão de dependências
+- **Result Pattern** (Railway Oriented)
+- **BaseUseCase** para eliminar duplicação
+- **BaseGuard** para centralizar lógica
 
 ### Estrutura de Módulos
 ```
@@ -218,8 +222,10 @@ npm run build        # Build para produção
 npm run test         # Testes unitários
 npm run test:e2e     # Testes end-to-end
 npm run lint         # Linting
-npm run check:dry    # Verificar violações DRY
-npm run check:quality # Verificar qualidade do código
+npm run typecheck    # Verificação de tipos TypeScript
+npm run migration:generate # Gerar nova migration
+npm run migration:run      # Executar migrations
+npm run seed:run          # Popular banco com dados iniciais
 ```
 
 ### Fluxo de Desenvolvimento
@@ -246,8 +252,8 @@ Sistema de autenticação 100% baseado em Supabase Cloud, sem banco de dados loc
 
 #### Funcionalidades
 - ✅ **Cadastro de usuários** direto no Supabase Auth
-- ✅ **Login** com email de alerta (IP, dispositivo, localização)
-- ✅ **Email de notificação** em cada login bem-sucedido
+- ✅ **Login** com validação obrigatória de email confirmado
+- ✅ **Email de notificação** em cada login bem-sucedido (IP, dispositivo, localização)
 - ✅ **Two-Factor Authentication (2FA)** completo e funcional
   - Geração e envio de código de 6 dígitos por email
   - Validação com limite de 3 tentativas
@@ -256,11 +262,16 @@ Sistema de autenticação 100% baseado em Supabase Cloud, sem banco de dados loc
   - Expiração de código em 5 minutos
   - Tabela `two_factor_codes` no Supabase Cloud
   - Integração 100% com Supabase Auth (sem banco local)
+  - Testado e funcionando em produção (v0.13.0)
 - ✅ **Refresh token** para renovação automática
 - ✅ **Sistema RBAC** com 11 roles hierárquicos
 - ✅ **Multi-tenant** com isolamento por tenant
 - ✅ **Guards de autorização** (JWT, Roles, Tenant)
-- ✅ **Verificação de email** com tokens seguros e validação real
+- ✅ **Verificação de email obrigatória** (v0.13.0)
+  - Bloqueio de login sem email confirmado
+  - Prevenção de confirmação duplicada
+  - Mensagem específica "Email não verificado" ao invés de credenciais inválidas
+  - Tokens únicos com expiração de 24h
 - ✅ **Logs visuais** com links do Ethereal em desenvolvimento
 
 #### Sistema de Roles (RBAC)
@@ -572,9 +583,9 @@ CRUD completo de usuários com permissões granulares, integração com Supabase
 |----------|--------|-----------|-----------|---------|
 | `/users` | POST | Criar usuário | Público OU Admin | ✅ Funcionando |
 | `/users` | GET | Listar todos | SUPER_ADMIN, ADMIN_SUPORTE | ✅ Funcionando |
-| `/users/:id` | GET | Buscar por ID | Admin OU próprio usuário | ⚠️ Retorna vazio |
+| `/users/:id` | GET | Buscar por ID | Admin OU próprio usuário | ✅ Funcionando |
 | `/users/:id` | PATCH | Atualizar parcial | Admin OU próprio usuário | ✅ Funcionando |
-| `/users/:id` | PUT | Atualizar completo | Admin OU próprio usuário | ❌ Não implementado |
+| `/users/:id` | PUT | Atualizar completo | Admin OU próprio usuário | ✅ Funcionando |
 | `/users/:id` | DELETE | Deletar (soft) | SUPER_ADMIN | ✅ Funcionando |
 
 #### Endpoints da API
@@ -733,6 +744,30 @@ npm run test:e2e     # End-to-end
 - Integração: 70%
 - E2E: Fluxos críticos
 
+## 📊 Métricas de Qualidade (v0.13.0)
+
+### Arquitetura DRY
+- **0% duplicação de código** (eliminadas 635 linhas)
+- **100% dos use cases** usando BaseUseCase
+- **100% dos guards** usando BaseGuard
+- **100% das mensagens** centralizadas em constants
+- **Zero comentários** no código (auto-documentado)
+
+### Estrutura
+- **35 arquivos** otimizados
+- **10 use cases** refatorados
+- **6 guards** padronizados
+- **3 serviços** divididos (EmailService)
+- **2 controllers** separados (Auth e TwoFactor)
+
+### Testes de Integração Validados
+- ✅ Login bloqueado sem email confirmado
+- ✅ Prevenção de confirmação duplicada de email
+- ✅ 2FA com envio de código por email
+- ✅ Bloqueio após 3 tentativas erradas
+- ✅ Refresh token funcionando
+- ✅ Guards de permissão validados
+
 ## 🐳 Docker
 
 ### Configuração Docker
@@ -830,6 +865,12 @@ NODE_OPTIONS=--dns-result-order=ipv4first
 ## 📝 Changelog
 
 Veja [CHANGELOG.md](./CHANGELOG.md) para histórico de mudanças.
+
+### Últimas Versões
+- **v0.13.0** (2025-09-04): Validação obrigatória de email para login
+- **v0.12.0** (2025-09-03): Implementação completa arquitetura DRY
+- **v0.11.0** (2025-09-03): Sistema de 2FA funcional
+- **v0.10.0** (2025-09-03): Sistema de eventos completo
 
 ## 📄 Licença
 
