@@ -6,9 +6,9 @@ import { IAuthRepository, IAuthRepositoryToken } from '../../../domain/auth/inte
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
 import { IEmailService } from '../../../domain/auth/interfaces/services/email.service.interface';
-import { Result } from '../../../shared/types/result.type';
 import { AUTH_CONSTANTS } from '../../../shared/constants/auth.constants';
 import { extractSupabaseUser, normalizeLoginInfo } from '../../../shared/utils/auth.utils';
+import { maskEmailForLog } from '../../../shared/utils/logging.utils';
 import { createTokenResponse, createTwoFactorTempResponse } from '../../../shared/factories/auth-response.factory';
 import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
 import { AuthTokenHelper } from '../../../shared/helpers/auth-token.helper';
@@ -58,26 +58,38 @@ export class SignInUseCase extends BaseUseCase<SignInInput, SignInOutput> implem
   }
 
   private async authenticateUser(email: string, password: string) {
+    if (await this.authRepository.isUserLocked(email)) {
+      const maskedEmail = maskEmailForLog(email);
+      this.logger.warn('Conta bloqueada', { email: maskedEmail });
+      throw AuthErrorFactory.create(AuthErrorType.ACCOUNT_LOCKED, { email });
+    }
+
     const supabaseResult = await this.supabaseAuthService.signIn(email, password);
 
     if (supabaseResult.error) {
-      this.logger.warn(`Login falhou para ${email}: ${supabaseResult.error.message}`);
-      
+      this.logger.warn(`Login falhou: ${supabaseResult.error.message}`);
+
+      const messageLower = supabaseResult.error.message.toLowerCase();
+      if (messageLower.includes('invalid login credentials')) {
+        await this.authRepository.incrementFailedAttempts(email);
+      }
+
       if (supabaseResult.error.message.includes('Email not confirmed')) {
         throw AuthErrorFactory.create(AuthErrorType.EMAIL_NOT_VERIFIED, { email });
       }
-      
+
       return null;
     }
 
     const supabaseUser = supabaseResult.data.user;
     const { data: fullUser } = await this.supabaseAuthService.getUserById(supabaseUser.id);
-    
-    this.logger.log(`Full user data: ${JSON.stringify(fullUser)}`);
-    
+
     const user = extractSupabaseUser(fullUser);
-    this.logger.log(`Final user role: ${user.role}`);
-    
+
+    this.logger.debug('Usuario Supabase carregado', { userId: user.id, role: user.role });
+
+    await this.authRepository.resetFailedAttempts(email);
+
     return user;
   }
 
@@ -121,15 +133,16 @@ export class SignInUseCase extends BaseUseCase<SignInInput, SignInOutput> implem
 
   private async sendLoginNotifications(user: any, tokens: any, input: SignInInput) {
     const loginInfo = normalizeLoginInfo(user, input.deviceInfo);
+    const maskedEmail = maskEmailForLog(user.email || '');
 
-    try {
-      await this.emailService.sendLoginAlertEmail(loginInfo);
-      this.logger.log(`Email de alerta de login enviado para ${user.email}`);
-    } catch (emailError) {
-      this.logger.error(`Erro ao enviar email de alerta de login: ${emailError}`);
+    const emailResult = await this.emailService.sendLoginAlertEmail(loginInfo);
+    if (emailResult.error) {
+      this.logger.error('Erro ao enviar email de alerta de login', emailResult.error);
+    } else {
+      this.logger.log('Email de alerta de login enviado', { email: maskedEmail });
     }
 
-    this.logger.log(`Login bem-sucedido para ${user.email}`);
+    this.logger.log('Login bem-sucedido', { email: maskedEmail });
     
     const event = DomainEvents.userLoggedIn(
       user.id,
@@ -144,7 +157,7 @@ export class SignInUseCase extends BaseUseCase<SignInInput, SignInOutput> implem
     );
     
     await this.messageBus.publish(event);
-    this.logger.log(`Evento USER_LOGGED_IN publicado para ${user.email}`);
+    this.logger.log('Evento USER_LOGGED_IN publicado', { userId: user.id, email: maskedEmail });
   }
 
 }

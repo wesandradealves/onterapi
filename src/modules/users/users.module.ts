@@ -13,13 +13,11 @@ import { AuthModule } from '../auth/auth.module';
 import { UserRepository } from '../../infrastructure/users/repositories/user.repository';
 import { UserEntity } from '../../infrastructure/auth/entities/user.entity';
 import { MessageBus } from '../../shared/messaging/message-bus';
-import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
   imports: [
     ConfigModule,
     forwardRef(() => AuthModule),
-    EventEmitterModule.forRoot(),
     TypeOrmModule.forFeature([UserEntity]),
   ],
   controllers: [UsersController],

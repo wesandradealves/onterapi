@@ -5,11 +5,16 @@ export interface ICurrentUser {
   email: string;
   name: string;
   role: string;
-  tenantId?: string;
+  tenantId?: string | null;
   sessionId: string;
   isActive?: boolean;
-  bannedUntil?: Date;
+  bannedUntil?: Date | null;
   emailVerified?: boolean;
+  twoFactorEnabled?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  lastLoginAt?: string | null;
+  metadata?: Record<string, any>;
 }
 
 export const CurrentUser = createParamDecorator(

@@ -25,10 +25,10 @@ export class SignOutResponseDto {
   message!: string;
 
   @ApiProperty({
-    description: 'Número de sessões encerradas',
+    description: 'Número de sessões revogadas',
     example: 1,
   })
-  sessionsRevoked!: number;
+  revokedSessions!: number;
 }
 
 export class MeResponseDto {

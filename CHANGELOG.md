@@ -7,6 +7,26 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
+## [0.13.1] - 2025-09-21
+
+### Changed
+- Reforço de segurança exigindo segredos JWT definidos via ambiente
+- ValidationPipe global com whitelist e forbidNonWhitelisted ativados
+- Códigos 2FA gerados com RNG criptográfico
+- JwtAuthGuard agora injeta o contexto completo do usuário utilizado pelos demais guards
+- Contratos e DTOs de Auth ajustados (me, sign-out, refresh) para respostas consistentes
+
+### Fixed
+- Logout em todos os dispositivos atualiza as colunas corretas em user_sessions
+- SignOutResponseDto alinhado ao payload retornado (revokedSessions)
+- Endpoint /auth/two-factor/send documentado e validado com Zod
+- Criação de usuários utilizando a interface unificada do Supabase Auth
+
+### Infrastructure
+- EventEmitter centralizado no AppModule para mensageria compartilhada
+- Interface ISupabaseAuthService passa a expor confirmEmailByEmail
+- Fluxos E2E revalidados com super admin dedicado e tokens reais
+
 ## [0.13.0] - 2025-09-04
 
 ### Added

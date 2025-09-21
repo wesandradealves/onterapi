@@ -39,8 +39,8 @@ export class SignOutUseCase extends BaseUseCase<SignOutInput, SignOutOutput> imp
               revokedAt: new Date(),
               revokedReason: 'User signed out from all devices',
             })
-            .where('userId = :userId', { userId: input.userId })
-            .andWhere('revokedAt IS NULL')
+            .where('user_id = :userId', { userId: input.userId })
+            .andWhere('revoked_at IS NULL')
             .execute();
 
           revokedCount = result.affected || 0;

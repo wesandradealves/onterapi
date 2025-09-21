@@ -6,6 +6,7 @@ import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/s
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
 import { MESSAGES } from '../../../shared/constants/messages.constants';
+import { buildUserLogPayload, shouldLogSensitiveData } from '../../../shared/utils/logging.utils';
 
 @Injectable()
 export class JwtAuthGuard extends BaseGuard {
@@ -50,17 +51,42 @@ export class JwtAuthGuard extends BaseGuard {
     }
 
     const userData = userResult.data;
-    
-    this.logger.log(`User data from Supabase: ${JSON.stringify(userData)}`);
-    
+
+    const sanitizedUserLog = buildUserLogPayload({
+      id: (userData as any)?.id,
+      email: (userData as any)?.email,
+      role: (userData as any)?.user_metadata?.role,
+      tenantId: (userData as any)?.user_metadata?.tenantId,
+    });
+
+    this.logger.log('Supabase user retrieved', sanitizedUserLog);
+
     const actualUser = (userData as any).user || userData;
     const metadata = actualUser.user_metadata || {};
-    
-    this.logger.log(`User metadata: ${JSON.stringify(metadata)}`);
-    
-    if (actualUser.banned_until) {
-      throw AuthErrorFactory.create(AuthErrorType.ACCOUNT_DISABLED);
+
+    if (shouldLogSensitiveData()) {
+      const metadataKeys = Object.keys(metadata);
+      this.logger.debug('Supabase user metadata keys', { keys: metadataKeys });
     }
+
+    const bannedUntilRaw = actualUser.banned_until ? new Date(actualUser.banned_until) : null;
+    const isCurrentlyBanned = Boolean(bannedUntilRaw && bannedUntilRaw > new Date());
+
+    if (isCurrentlyBanned) {
+      throw AuthErrorFactory.create(AuthErrorType.ACCOUNT_DISABLED, {
+        userId: actualUser.id,
+        email: actualUser.email,
+        bannedUntil: bannedUntilRaw?.toISOString(),
+      });
+    }
+
+    const emailVerified = Boolean(
+      actualUser.email_confirmed_at ||
+        metadata.emailVerified ||
+        metadata.email_verified,
+    );
+
+    const isActive = metadata.isActive !== false;
 
     request.user = {
       id: actualUser.id,
@@ -69,9 +95,27 @@ export class JwtAuthGuard extends BaseGuard {
       role: metadata.role || 'PATIENT',
       tenantId: metadata.tenantId || null,
       sessionId: tokenResult.data.sessionId,
+      emailVerified,
+      isActive,
+      bannedUntil: bannedUntilRaw,
+      twoFactorEnabled: metadata.twoFactorEnabled || false,
+      createdAt: actualUser.created_at
+        ? new Date(actualUser.created_at).toISOString()
+        : undefined,
+      updatedAt: actualUser.updated_at
+        ? new Date(actualUser.updated_at).toISOString()
+        : undefined,
+      lastLoginAt: actualUser.last_sign_in_at
+        ? new Date(actualUser.last_sign_in_at).toISOString()
+        : null,
+      metadata,
     };
-    
-    this.logger.log(`Request user set to: ${JSON.stringify(request.user)}`);
+
+    this.logger.debug('Contexto de usuario aplicado', {
+      userId: request.user.id,
+      role: request.user.role,
+      tenantId: request.user.tenantId,
+    });
 
     return true;
   }

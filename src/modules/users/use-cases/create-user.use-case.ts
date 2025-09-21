@@ -48,16 +48,16 @@ export class CreateUserUseCase extends BaseUseCase<CreateUserInputDTO, UserEntit
 
       this.logger.log(MESSAGES.VALIDATION.CHECKING_CPF);
       
-      const { data: { users: allUsers }, error: listError } = await this.supabaseService.getClient()
-        .auth.admin.listUsers();
+      const listResult = await this.supabaseAuthService.listUsers({ perPage: 1000 });
+      const allUsers = listResult.data?.users ?? [];
 
-      if (listError) {
-        this.logger.error(MESSAGES.ERRORS.SUPABASE.LIST_ERROR, listError);
+      if (listResult.error) {
+        this.logger.error(MESSAGES.ERRORS.SUPABASE.LIST_ERROR, listResult.error);
       }
 
-      this.logger.log(`${MESSAGES.VALIDATION.TOTAL_USERS}: ${allUsers?.length || 0}`);
-      
-      const existingUserWithCpf = allUsers?.find(user => {
+      this.logger.log(MESSAGES.VALIDATION.TOTAL_USERS + ': ' + allUsers.length);
+
+      const existingUserWithCpf = allUsers.find(user => {
         const userCpf = user.user_metadata?.cpf;
         this.logger.log(MESSAGES.VALIDATION.COMPARING_CPF);
         return userCpf === validatedData.cpf;

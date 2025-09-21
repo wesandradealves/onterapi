@@ -27,6 +27,8 @@ export interface ISupabaseAuthService {
   listUsers(params: { page?: number; perPage?: number }): Promise<Result<{ users: any[] }>>;
 
   deleteUser(userId: string): Promise<Result<void>>;
+
+  confirmEmailByEmail(email: string): Promise<Result<void>>;
 }
 
 export interface SignUpData {

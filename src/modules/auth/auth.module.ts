@@ -41,7 +41,6 @@ import { TenantGuard } from './guards/tenant.guard';
 import { AuthController } from './api/controllers/auth.controller';
 import { TwoFactorController } from './api/controllers/two-factor.controller';
 import { MessageBus } from '../../shared/messaging/message-bus';
-import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AuthEventsSubscriber } from './subscribers/auth-events.subscriber';
 
 const serviceProviders: Provider[] = [
@@ -93,7 +92,6 @@ const useCaseProviders: Provider[] = [
 @Module({
   imports: [
     ConfigModule,
-    EventEmitterModule.forRoot(),
     TypeOrmModule.forFeature([
       UserEntity,
       UserSessionEntity,
@@ -104,12 +102,20 @@ const useCaseProviders: Provider[] = [
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_ACCESS_SECRET', 'access-secret-key'),
-        signOptions: {
-          expiresIn: '15m',
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const secret = configService.get<string>('JWT_ACCESS_SECRET');
+
+        if (!secret) {
+          throw new Error('Missing required configuration: JWT_ACCESS_SECRET');
+        }
+
+        return {
+          secret,
+          signOptions: {
+            expiresIn: '15m',
+          },
+        };
+      },
     }),
   ],
   controllers: [AuthController, TwoFactorController],

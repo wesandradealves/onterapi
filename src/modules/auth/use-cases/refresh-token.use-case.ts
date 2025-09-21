@@ -6,6 +6,7 @@ import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/s
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import { AUTH_CONSTANTS } from '../../../shared/constants/auth.constants';
 import { extractSupabaseUser } from '../../../shared/utils/auth.utils';
+import { maskEmailForLog } from '../../../shared/utils/logging.utils';
 import { createTokenResponse } from '../../../shared/factories/auth-response.factory';
 import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
 import { AuthTokenHelper } from '../../../shared/helpers/auth-token.helper';
@@ -48,6 +49,7 @@ export class RefreshTokenUseCase extends BaseUseCase<RefreshTokenInput, RefreshT
       }
 
       const user = extractSupabaseUser(supabaseData);
+      const maskedEmail = maskEmailForLog(user.email);
 
       if (!user.isActive) {
         await this.authRepository.removeRefreshToken(input.refreshToken);
@@ -75,7 +77,7 @@ export class RefreshTokenUseCase extends BaseUseCase<RefreshTokenInput, RefreshT
         { id: user.id, email: user.email, name: user.name, role: user.role, tenantId: user.tenantId }
       );
 
-      this.logger.log(`Token renovado para usuário ${user.email}`);
+      this.logger.log('Token renovado', { userId: user.id, email: maskedEmail });
       
       const event = DomainEvents.tokenRefreshed(
         user.id,
@@ -84,7 +86,7 @@ export class RefreshTokenUseCase extends BaseUseCase<RefreshTokenInput, RefreshT
       );
       
       await this.messageBus.publish(event);
-      this.logger.log(`Evento TOKEN_REFRESHED publicado para usuário ${user.id}`);
+      this.logger.log('Evento TOKEN_REFRESHED publicado', { userId: user.id });
       
       return output as RefreshTokenOutput;
   }

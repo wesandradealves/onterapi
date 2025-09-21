@@ -16,9 +16,9 @@ export class JwtService implements IJwtService {
     private readonly nestJwtService: NestJwtService,
     private readonly configService: ConfigService,
   ) {
-    this.accessTokenSecret = this.configService.get<string>('JWT_ACCESS_SECRET', 'access-secret-key');
-    this.refreshTokenSecret = this.configService.get<string>('JWT_REFRESH_SECRET', 'refresh-secret-key');
-    this.twoFactorSecret = this.configService.get<string>('JWT_2FA_SECRET', '2fa-secret-key');
+    this.accessTokenSecret = this.getRequiredSecret('JWT_ACCESS_SECRET');
+    this.refreshTokenSecret = this.getRequiredSecret('JWT_REFRESH_SECRET');
+    this.twoFactorSecret = this.getRequiredSecret('JWT_2FA_SECRET');
   }
 
   generateAccessToken(payload: Omit<AuthTokenPayload, 'iat' | 'exp'>): string {
@@ -81,6 +81,16 @@ export class JwtService implements IJwtService {
       this.logger.warn('Failed to verify 2FA token', error);
       return { error: error as Error };
     }
+  }
+
+  private getRequiredSecret(envKey: string): string {
+    const value = this.configService.get<string>(envKey);
+
+    if (!value) {
+      throw new Error('Missing required configuration: ' + envKey);
+    }
+
+    return value;
   }
 
   decode<T = any>(token: string): T | null {

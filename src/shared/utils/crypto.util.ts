@@ -19,7 +19,8 @@ export function generateSecureToken(length: number = 32): string {
 }
 
 export function generateTwoFactorCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  const code = crypto.randomInt(0, 1_000_000);
+  return code.toString().padStart(6, '0');
 }
 
 export function sha256(data: string): string {

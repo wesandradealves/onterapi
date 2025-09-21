@@ -35,6 +35,7 @@ import { RefreshTokenInputDTO, refreshTokenInputSchema } from '../schemas/refres
 
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
 import { AuthErrorFactory } from '../../../../shared/factories/auth-error.factory';
+import { maskEmailForLog, maskSecret, shouldLogSensitiveData } from '../../../../shared/utils/logging.utils';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -235,10 +236,10 @@ export class AuthController {
       email: user.email,
       name: user.name,
       role: user.role,
-      tenantId: user.tenantId,
-      createdAt: new Date().toISOString(),
-      emailVerified: true,
-      twoFactorEnabled: false,
+      tenantId: user.tenantId ?? null,
+      createdAt: user.createdAt,
+      emailVerified: user.emailVerified ?? false,
+      twoFactorEnabled: user.twoFactorEnabled ?? false,
     };
   }
 
@@ -276,13 +277,16 @@ export class AuthController {
     @Query('token') token: string,
     @Query('email') email: string,
   ) {
-    this.logger.warn(`
-========================================
-✅ VERIFICANDO EMAIL
-📧 Email: ${email}
-🔑 Token: ${token}
-========================================
-    `);
+    const maskedEmail = maskEmailForLog(email);
+    const maskedToken = maskSecret(token, { visiblePrefix: 3, visibleSuffix: 2 });
+
+    const logPayload: Record<string, string> = { email: maskedEmail };
+
+    if (shouldLogSensitiveData()) {
+      logPayload.token = maskedToken;
+    }
+
+    this.logger.warn('Verificando email do usuario', logPayload);
 
     const tokenResult = await this.supabaseAuthService.verifyEmail(token, email);
     
@@ -290,13 +294,13 @@ export class AuthController {
       throw AuthErrorFactory.invalidToken();
     }
     
-    const confirmResult = await (this.supabaseAuthService as any).confirmEmailByEmail(email);
+    const confirmResult = await this.supabaseAuthService.confirmEmailByEmail(email);
     
     if (confirmResult.error) {
       throw AuthErrorFactory.badRequest(confirmResult.error.message);
     }
 
-    this.logger.log(`✅ Email verificado com sucesso: ${email}`);
+    this.logger.log('Email verificado com sucesso', { email: maskedEmail });
 
     return {
       success: true,

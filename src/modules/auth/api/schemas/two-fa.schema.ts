@@ -28,3 +28,9 @@ export const validateTwoFAOutputSchema = z.object({
 
 export type ValidateTwoFAInputDTO = z.infer<typeof validateTwoFAInputSchema>;
 export type ValidateTwoFAOutputDTO = z.infer<typeof validateTwoFAOutputSchema>;
+export const sendTwoFAInputSchema = z.object({
+  tempToken: z.string().min(1, 'Token temporário é obrigatório'),
+  method: z.enum(['email', 'sms']).default('email'),
+});
+
+export type SendTwoFAInputDTO = z.infer<typeof sendTwoFAInputSchema>;

@@ -17,7 +17,12 @@ import { IValidateTwoFAUseCase } from '../../../../domain/auth/interfaces/use-ca
 import { ISendTwoFAUseCase } from '../../../../domain/auth/interfaces/use-cases/send-two-fa.use-case.interface';
 
 import { Public } from '../../decorators/public.decorator';
-import { ValidateTwoFAInputDTO, validateTwoFAInputSchema } from '../schemas/two-fa.schema';
+import {
+  ValidateTwoFAInputDTO,
+  validateTwoFAInputSchema,
+  SendTwoFAInputDTO,
+  sendTwoFAInputSchema,
+} from '../schemas/two-fa.schema';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
 import { MESSAGES } from '../../../../shared/constants/messages.constants';
 
@@ -89,12 +94,13 @@ export class TwoFactorController {
     status: 400, 
     description: MESSAGES.ERRORS.AUTH.INVALID_TOKEN 
   })
+  @UsePipes(new ZodValidationPipe(sendTwoFAInputSchema))
   async sendTwoFA(
-    @Body() dto: { tempToken: string; method?: 'email' | 'sms' },
+    @Body() dto: SendTwoFAInputDTO,
   ) {
     const result = await this.sendTwoFAUseCase.execute({
       tempToken: dto.tempToken,
-      method: dto.method || 'email',
+      method: dto.method ?? 'email',
       userId: '',
     });
 
