@@ -1,4 +1,4 @@
-import {
+﻿import {
   Body,
   Controller,
   Get,
@@ -220,7 +220,7 @@ export class PatientsController {
     return this.mapPatientSummary(result.data);
   }
 
-  @Get(':id')
+  @Get(':slug')
   @Roles(
     RolesEnum.CLINIC_OWNER,
     RolesEnum.PROFESSIONAL,
@@ -230,18 +230,18 @@ export class PatientsController {
   )
   @ApiOperation({
     summary: 'Detalhes do paciente',
-    description: `Retorna informações completas do paciente informado.
+    description: `Retorna informacoes completas do paciente informado.
 
 **Roles:** CLINIC_OWNER, PROFESSIONAL, SECRETARY, MANAGER, SUPER_ADMIN`,
   })
   @ApiParam({
-    name: 'id',
+    name: 'slug',
     description: 'Identificador do paciente',
-    example: 'dbbaf755-4bea-4212-838c-0a192e7fffa0',
+    example: 'joao-silva',
   })
   @ApiResponse({ status: 200, type: PatientDetailDto })
   async findOne(
-    @Param('id') patientId: string,
+    @Param('slug') patientSlug: string,
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<PatientDetailDto> {
@@ -251,7 +251,7 @@ export class PatientsController {
       tenantId,
       requesterId: currentUser.id,
       requesterRole: currentUser.role,
-      patientId,
+      patientSlug,
     });
 
     if (result.error) {
@@ -287,7 +287,7 @@ export class PatientsController {
     };
   }
 
-  @Patch(':id')
+  @Patch(':slug')
   @Roles(
     RolesEnum.CLINIC_OWNER,
     RolesEnum.PROFESSIONAL,
@@ -301,11 +301,11 @@ export class PatientsController {
 
 **Roles:** CLINIC_OWNER, PROFESSIONAL, SECRETARY, MANAGER, SUPER_ADMIN`,
   })
-  @ApiParam({ name: 'id', description: 'Identificador do paciente' })
+  @ApiParam({ name: 'slug', description: 'Identificador do paciente' })
   @ApiResponse({ status: 200, type: PatientResponseDto })
   
   async update(
-    @Param('id') patientId: string,
+    @Param('slug') patientSlug: string,
     @Body() body: UpdatePatientDto,
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
@@ -314,7 +314,7 @@ export class PatientsController {
     const parsed = updatePatientSchema.parse(body);
 
     const input: UpdatePatientInput = {
-      patientId,
+      patientSlug,
       tenantId,
       updatedBy: currentUser.id,
       requesterRole: currentUser.role,
@@ -360,7 +360,7 @@ export class PatientsController {
     return this.mapPatientSummary(result.data);
   }
 
-  @Post(':id/transfer')
+  @Post(':slug/transfer')
   @HttpCode(HttpStatus.OK)
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
   @ApiOperation({
@@ -369,11 +369,11 @@ export class PatientsController {
 
 **Roles:** CLINIC_OWNER, MANAGER, SUPER_ADMIN`,
   })
-  @ApiParam({ name: 'id', description: 'Identificador do paciente' })
+  @ApiParam({ name: 'slug', description: 'Identificador do paciente' })
   @ApiResponse({ status: 200, type: PatientResponseDto })
   
   async transfer(
-    @Param('id') patientId: string,
+    @Param('slug') patientSlug: string,
     @Body() body: TransferPatientDto,
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
@@ -382,7 +382,7 @@ export class PatientsController {
     const parsed = transferPatientSchema.parse(body);
 
     const input: TransferPatientInput = {
-      patientId,
+      patientSlug,
       tenantId,
       requestedBy: currentUser.id,
       requesterRole: currentUser.role,
@@ -400,7 +400,7 @@ export class PatientsController {
     return this.mapPatientSummary(result.data);
   }
 
-  @Post(':id/archive')
+  @Post(':slug/archive')
   @HttpCode(HttpStatus.OK)
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
   @ApiOperation({
@@ -409,11 +409,11 @@ export class PatientsController {
 
 **Roles:** CLINIC_OWNER, MANAGER, SUPER_ADMIN`,
   })
-  @ApiParam({ name: 'id', description: 'Identificador do paciente' })
+  @ApiParam({ name: 'slug', description: 'Identificador do paciente' })
   @ApiResponse({ status: 200, description: 'Paciente arquivado' })
   
   async archive(
-    @Param('id') patientId: string,
+    @Param('slug') patientSlug: string,
     @Body() body: ArchivePatientDto,
     @CurrentUser() currentUser: ICurrentUser,
   ): Promise<void> {
@@ -421,7 +421,7 @@ export class PatientsController {
     const parsed = archivePatientSchema.parse(body);
 
     const input: ArchivePatientInput = {
-      patientId,
+      patientSlug,
       tenantId,
       requestedBy: currentUser.id,
       requesterRole: currentUser.role,
@@ -445,7 +445,7 @@ export class PatientsController {
   )
   @ApiOperation({
     summary: 'Exportar pacientes',
-    description: `Gera uma solicitação de exportação com filtros opcionais.
+    description: `Gera uma solicitacao de exportacao com filtros opcionais.
 
 **Roles:** CLINIC_OWNER, MANAGER, SUPER_ADMIN, ADMIN_FINANCEIRO`,
   })
@@ -486,6 +486,7 @@ export class PatientsController {
   private mapPatientSummary(patient: Patient): PatientResponseDto {
     return {
       id: patient.id,
+      slug: patient.slug,
       fullName: patient.fullName,
       status: patient.status,
       cpfMasked: CPFUtils.mask(patient.cpf),
@@ -504,6 +505,7 @@ export class PatientsController {
   private mapPatientDetail(patient: Patient) {
     return {
       id: patient.id,
+      slug: patient.slug,
       fullName: patient.fullName,
       status: patient.status,
       cpfMasked: CPFUtils.mask(patient.cpf),
@@ -544,6 +546,7 @@ export class PatientsController {
 
     return {
       id: patient.id,
+      slug: patient.slug,
       fullName: patient.fullName,
       status: patient.status,
       cpfMasked: patient.cpfMasked,

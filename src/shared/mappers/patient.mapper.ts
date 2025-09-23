@@ -62,6 +62,7 @@ const mapTags = (tags: string[] | undefined): PatientTag[] | undefined => {
 
 type SupabasePatientRecord = {
   id: string;
+  slug?: string | null;
   clinic_id: string;
   user_id?: string | null;
   professional_id?: string | null;
@@ -89,6 +90,7 @@ export const PatientMapper = {
 
     return {
       id: record.id,
+      slug: record.slug ?? record.id,
       tenantId: record.clinic_id,
       professionalId: record.professional_id ?? undefined,
       fullName,
@@ -124,6 +126,7 @@ export const PatientMapper = {
 
     return {
       id: record.id,
+      slug: record.slug ?? record.id,
       fullName,
       shortName: medical.shortName ?? fullName.split(' ')[0],
       status: (medical.status as PatientListItem['status']) ?? 'active',

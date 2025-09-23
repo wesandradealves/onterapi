@@ -20,6 +20,10 @@
     "strict": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
+    "typeRoots": [
+      "./types",
+      "./node_modules/@types"
+    ],
     "paths": {
       "@domain/*": ["src/domain/*"],
       "@infrastructure/*": ["src/infrastructure/*"],
@@ -30,7 +34,9 @@
   },
   "include": [
     "src/**/*",
-    "api/**/*"
+    "api/**/*",
+    "scripts/**/*",
+    "types/**/*"
   ],
   "exclude": [
     "node_modules",

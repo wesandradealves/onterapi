@@ -15,11 +15,15 @@ import { UserPermissionEntity } from './user-permission.entity';
 @Entity('users')
 @Index(['email'], { unique: true })
 @Index(['cpf'], { unique: true })
+@Index(['slug'], { unique: true })
 @Index(['supabaseId'], { unique: true })
 @Index(['tenantId'])
 export class UserEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
+
+  @Column({ type: 'varchar', length: 160, unique: true })
+  slug!: string;
 
   @Column({ name: 'supabase_id', type: 'uuid', unique: true })
   supabaseId!: string;

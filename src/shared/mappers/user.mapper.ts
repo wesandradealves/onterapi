@@ -1,11 +1,15 @@
-import { UserEntity } from '../../infrastructure/auth/entities/user.entity';
+﻿import { UserEntity } from '../../infrastructure/auth/entities/user.entity';
 
 export class UserMapper {
   static fromSupabaseToEntity(supabaseUser: any): UserEntity {
     const metadata = supabaseUser.user_metadata || supabaseUser.metadata || {};
+    const rawSlug = metadata.slug;
+    const slug = typeof rawSlug === 'string' && rawSlug.trim().length ? rawSlug.trim() : supabaseUser.id;
 
     return {
       id: supabaseUser.id,
+      supabaseId: supabaseUser.id,
+      slug,
       email: supabaseUser.email || '',
       name: metadata.name || '',
       cpf: metadata.cpf || '',
@@ -23,6 +27,7 @@ export class UserMapper {
           supabaseUser.created_at ||
           supabaseUser.createdAt,
       ),
+      metadata,
     } as UserEntity;
   }
 

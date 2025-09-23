@@ -19,7 +19,7 @@ interface GetPatientInput {
   tenantId: string;
   requesterId: string;
   requesterRole: string;
-  patientId: string;
+  patientSlug: string;
 }
 
 @Injectable()
@@ -52,7 +52,7 @@ export class GetPatientUseCase
   }
 
   protected async handle(input: GetPatientInput) {
-    const patient = await this.patientRepository.findById(input.tenantId, input.patientId);
+    const patient = await this.patientRepository.findBySlug(input.tenantId, input.patientSlug);
 
     if (!patient) {
       throw PatientErrorFactory.notFound();
@@ -61,11 +61,11 @@ export class GetPatientUseCase
     this.ensurePermissions(input, patient);
 
     const [summary, timeline, insights] = await Promise.all([
-      this.patientRepository.findSummary(input.tenantId, input.patientId),
-      this.patientRepository.findTimeline(input.tenantId, input.patientId, {
+      this.patientRepository.findSummary(input.tenantId, patient.id),
+      this.patientRepository.findTimeline(input.tenantId, patient.id, {
         limit: 25,
       }),
-      this.aiSuggestionsService.getInsights(input.patientId, input.tenantId),
+      this.aiSuggestionsService.getInsights(patient.id, input.tenantId),
     ]);
 
     await this.auditService.register('patient.viewed', {

@@ -14,6 +14,7 @@
 export interface IPatientRepository {
   create(data: CreatePatientInput): Promise<Patient>;
   findById(tenantId: string, patientId: string): Promise<Patient | null>;
+  findBySlug(tenantId: string, slug: string): Promise<Patient | null>;
   findSummary(tenantId: string, patientId: string): Promise<PatientSummary>;
   findTimeline(
     tenantId: string,

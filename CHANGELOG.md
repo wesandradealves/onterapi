@@ -1,10 +1,27 @@
-﻿# Changelog
+# Changelog
 
 Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o projeto adota [Versionamento Semantico](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
+
+## [0.15.0] - 2025-09-24
+
+### Added
+- Suporte a slugs unicos para usuarios e pacientes, com migracao TypeORM e utilitario compartilhado para gerar/backfill.
+- Scripts CLI `npm run backfill:user-slugs`, `npm run sync:users` e `npm run prune:users` para manter Supabase e banco relacional alinhados.
+- Fonte de dados TypeORM dedicada (`typeorm.datasource.ts`) e declaracoes de tipo locais para scripts.
+
+### Changed
+- Endpoints REST de pacientes e usuarios agora aceitam slugs; DTOs, guards, mapeadores e casos de uso foram atualizados para expor o campo.
+- Casos de uso de usuarios passam a persistir e atualizar dados pelo repositorio relacional enquanto sincronizam metadata com Supabase.
+- README e `tsconfig.json` atualizados para refletir o fluxo baseado em slugs e permitir build dos novos scripts.
+
+### Fixed
+- Operacoes de paciente (atualizar, transferir, arquivar) resolvem o identificador interno a partir do slug antes de manipular registros.
+- Exclusao de usuario garante soft delete do registro local apos remover a conta no Supabase, evitando dados orfaos.
+
 
 ## [0.14.0] - 2025-09-23
 

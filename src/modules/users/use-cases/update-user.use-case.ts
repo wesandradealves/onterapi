@@ -1,6 +1,7 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+﻿import { Inject, Injectable, Logger } from '@nestjs/common';
 import { IUpdateUserUseCase } from '../../../domain/users/interfaces/use-cases/update-user.use-case.interface';
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
+import { IUserRepository } from '../../../domain/users/interfaces/repositories/user.repository.interface';
 import { UserEntity } from '../../../infrastructure/auth/entities/user.entity';
 import { UpdateUserDto } from '../api/dtos/update-user.dto';
 import { updateUserSchema } from '../api/schemas/update-user.schema';
@@ -11,7 +12,17 @@ import { DomainEvents } from '../../../shared/events/domain-events';
 import { Result } from '../../../shared/types/result.type';
 import { MESSAGES } from '../../../shared/constants/messages.constants';
 
-type UpdateUserInput = { id: string; dto: UpdateUserDto; currentUserId: string };
+type UpdateUserInput = { slug: string; dto: UpdateUserDto; currentUserId: string };
+
+type SupabaseUser = {
+  id: string;
+  email: string;
+  emailVerified?: boolean;
+  user_metadata?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  updatedAt?: string | Date;
+  createdAt?: string | Date;
+};
 
 @Injectable()
 export class UpdateUserUseCase implements IUpdateUserUseCase {
@@ -21,6 +32,8 @@ export class UpdateUserUseCase implements IUpdateUserUseCase {
   constructor(
     @Inject(ISupabaseAuthService)
     private readonly supabaseAuthService: ISupabaseAuthService,
+    @Inject('IUserRepository')
+    private readonly userRepository: IUserRepository,
     private readonly messageBus: MessageBus,
   ) {
     this.wrapper = new UseCaseWrapper(this.logger, async (input: UpdateUserInput) =>
@@ -29,61 +42,67 @@ export class UpdateUserUseCase implements IUpdateUserUseCase {
   }
 
   async execute(
-    id: string,
+    slug: string,
     dto: UpdateUserDto,
     currentUserId: string,
   ): Promise<Result<UserEntity>> {
-    return this.wrapper.execute({ id, dto, currentUserId });
+    return this.wrapper.execute({ slug, dto, currentUserId });
   }
 
   private async handleUpdate(input: UpdateUserInput): Promise<UserEntity> {
-    const { id, dto, currentUserId } = input;
+    const { slug, dto, currentUserId } = input;
     const validatedData = updateUserSchema.parse(dto);
 
-    const userResult = await this.supabaseAuthService.getUserById(id);
-    if (userResult.error || !userResult.data) {
-      throw AuthErrorFactory.create(AuthErrorType.USER_NOT_FOUND, { userId: id });
+    const user = await this.userRepository.findBySlug(slug);
+    if (!user) {
+      throw AuthErrorFactory.create(AuthErrorType.USER_NOT_FOUND, { slug });
     }
 
-    const currentMetadata = (userResult.data as any).user_metadata || {};
+    const userResult = await this.supabaseAuthService.getUserById(user.supabaseId);
+    if (userResult.error || !userResult.data) {
+      throw AuthErrorFactory.create(AuthErrorType.USER_NOT_FOUND, { userId: user.supabaseId });
+    }
+
+    const supabaseUser = userResult.data as SupabaseUser;
+    const currentMetadata = (supabaseUser.user_metadata || supabaseUser.metadata || {}) as Record<string, unknown>;
+
     const updatedMetadata = {
       ...currentMetadata,
       ...validatedData,
+      slug: user.slug,
       updatedBy: currentUserId,
       updatedAt: new Date().toISOString(),
     };
 
-    const updateResult = await this.supabaseAuthService.updateUserMetadata(id, updatedMetadata);
+    const updateResult = await this.supabaseAuthService.updateUserMetadata(
+      user.supabaseId,
+      updatedMetadata,
+    );
     if (updateResult.error) {
       throw updateResult.error;
     }
 
-    const updatedUser = updateResult.data;
-    const metadata = (updatedUser as any).metadata || {};
+    await this.userRepository.update(user.id, {
+      name: typeof validatedData.name === 'string' ? validatedData.name : user.name,
+      phone: typeof validatedData.phone === 'string' ? validatedData.phone : user.phone,
+      isActive: typeof validatedData.isActive === 'boolean' ? validatedData.isActive : user.isActive,
+      metadata: updatedMetadata,
+      emailVerified: (updateResult.data as SupabaseUser).emailVerified ?? user.emailVerified,
+      updatedAt: new Date(),
+    });
 
-    const user = {
-      id: updatedUser.id,
-      email: updatedUser.email,
-      name: metadata.name || '',
-      cpf: metadata.cpf || '',
-      phone: metadata.phone || '',
-      role: metadata.role || 'PATIENT',
-      tenantId: metadata.tenantId || null,
-      isActive: metadata.isActive !== false,
-      emailVerified: updatedUser.emailVerified,
-      twoFactorEnabled: metadata.twoFactorEnabled || false,
-      lastLoginAt: null,
-      createdAt: updatedUser.createdAt,
-      updatedAt: updatedUser.updatedAt,
-    } as unknown as UserEntity;
+    const refreshed = await this.userRepository.findBySlug(user.slug);
+    if (!refreshed) {
+      throw AuthErrorFactory.create(AuthErrorType.USER_NOT_FOUND, { slug });
+    }
 
-    this.logger.log(`${MESSAGES.LOGS.USER_UPDATED}: ${user.email} por ${currentUserId}`);
+    this.logger.log(`${MESSAGES.LOGS.USER_UPDATED}: ${refreshed.email} por ${currentUserId}`);
 
-    const event = DomainEvents.userUpdated(id, validatedData, { userId: currentUserId });
+    const event = DomainEvents.userUpdated(refreshed.id, validatedData, { userId: currentUserId });
 
     await this.messageBus.publish(event);
-    this.logger.log(`${MESSAGES.EVENTS.USER_UPDATED} para ${id}`);
+    this.logger.log(`${MESSAGES.EVENTS.USER_UPDATED} para ${refreshed.id}`);
 
-    return user;
+    return refreshed;
   }
 }

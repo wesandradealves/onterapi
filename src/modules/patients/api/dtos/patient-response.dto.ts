@@ -4,6 +4,9 @@ export class PatientResponseDto {
   @ApiProperty({ description: 'ID do paciente', example: 'dbbaf755-4bea-4212-838c-0a192e7fffa0' })
   id!: string;
 
+  @ApiProperty({ description: 'Slug do paciente', example: 'joao-silva' })
+  slug!: string;
+
   @ApiProperty({ description: 'Nome completo', example: 'Patient Two Updated' })
   fullName!: string;
 

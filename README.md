@@ -1,4 +1,4 @@
-﻿# OnTerapi v4
+# OnTerapi v4
 
 Plataforma SaaS multi-tenant para gestao de clinicas e terapeutas, com Supabase Auth, 2FA, RBAC e modulo de pacientes conectado diretamente ao storage do Supabase.
 
@@ -53,15 +53,18 @@ Plataforma SaaS multi-tenant para gestao de clinicas e terapeutas, com Supabase 
 Rotas principais:
 - `GET /patients` Lista paginada.
 - `POST /patients` Cria paciente (CPF unico por tenant).
-- `GET /patients/:id` Retorna resumo, timeline (stub) e insights (stub).
-- `PATCH /patients/:id` Atualiza dados basicos, tags, professionalId.
-- `POST /patients/:id/transfer` Transferencia entre profissionais.
-- `POST /patients/:id/archive` Arquiva/soft-delete e bloqueia edicao.
+- `GET /patients/:slug` Retorna resumo, timeline (stub) e insights (stub).
+- `PATCH /patients/:slug` Atualiza dados basicos, tags, professionalId.
+- `POST /patients/:slug/transfer` Transferencia entre profissionais.
+- `POST /patients/:slug/archive` Arquiva/soft-delete e bloqueia edicao.
 
 ## Modulo de Usuarios
 - `GET /users` visivel apenas para SUPER_ADMIN.
 - Cria usuarios com Supabase Auth (`POST /users`). Email precisa ser confirmado antes de login.
+- Rotas de leitura/edicao usam slug estavel (`GET /users/:slug`, `PATCH /users/:slug`, `DELETE /users/:slug`).
 - Atualizacoes refletem metadata e sessoes (`user_sessions`) para refresh tokens.
+- Script `npm run backfill:user-slugs` sincroniza o slug do banco relacional com o metadata do Supabase Auth para contas legadas.
+- Script `npm run sync:users` garante que apenas os usuarios presentes no Postgres estejam registrados no Supabase Auth (executa insert/update e remove contas extras).
 
 ## Exportacao de Pacientes
 - `POST /patients/export` enfileira solicitacao na tabela `patient_exports`.
@@ -105,4 +108,7 @@ EMAIL_PASS=XwFUUjCagc3uhmxvhM
 - **Emails/Ethereal**: conferir caixa de saida do Ethereal para visualizar credenciais e codigos 2FA.
 
 ## Changelog
-Mudancas recentes estao em [CHANGELOG.md](./CHANGELOG.md). Ultima versao: v0.14.0 (23/09/2025).
+Mudancas recentes estao em [CHANGELOG.md](./CHANGELOG.md). Ultima versao: v0.15.0 (24/09/2025).
+
+
+

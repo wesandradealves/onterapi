@@ -29,7 +29,7 @@ export class UpdatePatientUseCase
   }
 
   protected async handle(input: UpdatePatientInput): Promise<Patient> {
-    const existing = await this.patientRepository.findById(input.tenantId, input.patientId);
+    const existing = await this.patientRepository.findBySlug(input.tenantId, input.patientSlug);
 
     if (!existing) {
       throw PatientErrorFactory.notFound();
@@ -37,7 +37,8 @@ export class UpdatePatientUseCase
 
     this.ensurePermissions(input, existing);
 
-    const updated = await this.patientRepository.update(input);
+    const payload = { ...input, patientId: existing.id };
+    const updated = await this.patientRepository.update(payload);
 
     await this.auditService.register('patient.updated', {
       patientId: updated.id,
@@ -105,3 +106,4 @@ export class UpdatePatientUseCase
     return diff;
   }
 }
+
