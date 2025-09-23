@@ -1,16 +1,17 @@
 import {
   Body,
   Controller,
-  Headers,
   HttpCode,
   HttpStatus,
   Inject,
   Ip,
   Logger,
   Post,
+  Req,
   UsePipes,
 } from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiExcludeEndpoint, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Request } from 'express';
 
 import { ValidateTwoFADto, ValidateTwoFAResponseDto } from '../dtos/two-fa.dto';
 import { IValidateTwoFAUseCase } from '../../../../domain/auth/interfaces/use-cases/validate-two-fa.use-case.interface';
@@ -47,6 +48,20 @@ export class TwoFactorController {
 
 **Roles:** Público`,
   })
+  @ApiBody({
+    type: ValidateTwoFADto,
+    description: 'Payload necessário para validar o código 2FA gerado após o login.',
+    examples: {
+      padrao: {
+        summary: 'Validação padrão',
+        value: {
+          tempToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+          code: '123456',
+          trustDevice: false,
+        },
+      },
+    },
+  })
   @ApiResponse({
     status: 200,
     description: MESSAGES.AUTH.TWO_FA_VALIDATED,
@@ -59,9 +74,17 @@ export class TwoFactorController {
   @UsePipes(new ZodValidationPipe(validateTwoFAInputSchema))
   async validateTwoFA(
     @Body() dto: ValidateTwoFAInputDTO,
-    @Headers('user-agent') userAgent: string,
+    @Req() request: Request,
     @Ip() ip: string,
   ): Promise<ValidateTwoFAResponseDto> {
+    const userAgentHeader = request.headers['user-agent'];
+    const resolvedUserAgent =
+      dto.deviceInfo?.userAgent ??
+      (Array.isArray(userAgentHeader) ? userAgentHeader[0] : userAgentHeader) ??
+      'two-factor-client';
+
+    const resolvedIp = dto.deviceInfo?.ip ?? ip;
+
     const result = await this.validateTwoFAUseCase.execute({
       tempToken: dto.tempToken,
       code: dto.code,
@@ -69,8 +92,8 @@ export class TwoFactorController {
       userId: '',
       deviceInfo: {
         ...dto.deviceInfo,
-        userAgent,
-        ip,
+        userAgent: resolvedUserAgent,
+        ip: resolvedIp,
       },
     });
 
@@ -82,22 +105,9 @@ export class TwoFactorController {
   }
 
   @Post('send')
+  @ApiExcludeEndpoint()
   @Public()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Reenviar código 2FA',
-    description: `Reenvia o código de autenticação de dois fatores.
-
-**Roles:** Público`,
-  })
-  @ApiResponse({
-    status: 200,
-    description: MESSAGES.AUTH.TWO_FA_SENT,
-  })
-  @ApiResponse({
-    status: 400,
-    description: MESSAGES.ERRORS.AUTH.INVALID_TOKEN,
-  })
   @UsePipes(new ZodValidationPipe(sendTwoFAInputSchema))
   async sendTwoFA(@Body() dto: SendTwoFAInputDTO) {
     const result = await this.sendTwoFAUseCase.execute({

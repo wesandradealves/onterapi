@@ -1,4 +1,4 @@
-﻿import { INestApplication, Logger } from '@nestjs/common';
+import { INestApplication, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { format } from 'util';
 import { AuthModule } from '../../../modules/auth/auth.module';
@@ -15,7 +15,6 @@ export default class Swagger {
       .setDescription('API for OnTerapi Platform')
       .setVersion(process.env.npm_package_version || '1.0.0')
       .addBearerAuth()
-      .addApiKey({ type: 'apiKey', name: 'x-api-key', in: 'header' })
       .addServer('/')
       .addServer(process.env.SWAGGER_SERVER_URL || process.env.API_URL || 'http://localhost:3000')
       .build();

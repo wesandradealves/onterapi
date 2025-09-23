@@ -1,4 +1,16 @@
-﻿import { z } from 'zod';
+import { z } from 'zod';
+
+const statusEnum = z.enum(['new', 'active', 'inactive', 'in_treatment', 'finished']);
+const riskLevelEnum = z.enum(['low', 'medium', 'high']);
+const quickFilterEnum = z.enum(['inactive_30_days', 'no_anamnesis', 'needs_follow_up', 'birthday_week']);
+
+const normalizeToArray = <T>(value: T | T[] | undefined): T[] | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return Array.isArray(value) ? value : [value];
+};
 
 export const listPatientsSchema = z.object({
   page: z.coerce.number().int().min(1).optional(),
@@ -7,22 +19,22 @@ export const listPatientsSchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).optional(),
   query: z.string().trim().optional(),
   status: z
-    .union([z.string(), z.array(z.string())])
+    .union([statusEnum, z.array(statusEnum)])
     .optional()
-    .transform((value) => (typeof value === 'string' ? [value] : value)),
+    .transform((value) => normalizeToArray(value)),
   riskLevel: z
-    .union([z.string(), z.array(z.string())])
+    .union([riskLevelEnum, z.array(riskLevelEnum)])
     .optional()
-    .transform((value) => (typeof value === 'string' ? [value] : value)),
+    .transform((value) => normalizeToArray(value)),
   professionalIds: z
-    .union([z.string(), z.array(z.string())])
+    .union([z.string().uuid(), z.array(z.string().uuid())])
     .optional()
-    .transform((value) => (typeof value === 'string' ? [value] : value)),
+    .transform((value) => normalizeToArray(value)),
   tags: z
     .union([z.string(), z.array(z.string())])
     .optional()
-    .transform((value) => (typeof value === 'string' ? [value] : value)),
-  quickFilter: z.string().optional(),
+    .transform((value) => normalizeToArray(value)),
+  quickFilter: quickFilterEnum.optional(),
   tenantId: z.string().uuid().optional(),
 });
 
