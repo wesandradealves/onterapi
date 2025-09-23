@@ -29,11 +29,11 @@ export class HealthController {
     ];
 
     if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
-      checks.push(
-        () => this.disk.checkStorage('storage', { 
-          path: process.platform === 'win32' ? 'C:\\' : '/', 
-          thresholdPercent: 0.95 
-        })
+      checks.push(() =>
+        this.disk.checkStorage('storage', {
+          path: process.platform === 'win32' ? 'C:\\' : '/',
+          thresholdPercent: 0.95,
+        }),
       );
     }
 

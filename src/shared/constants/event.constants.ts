@@ -4,7 +4,7 @@ export const EVENT_NAMES = {
   USER_DELETED: 'user.deleted',
   USER_ACTIVATED: 'user.activated',
   USER_DEACTIVATED: 'user.deactivated',
-  
+
   AUTH_LOGIN: 'auth.login',
   AUTH_LOGOUT: 'auth.logout',
   AUTH_REGISTER: 'auth.register',
@@ -17,14 +17,14 @@ export const EVENT_NAMES = {
   AUTH_TWO_FA_SENT: 'auth.two_fa.sent',
   AUTH_TWO_FA_VALIDATED: 'auth.two_fa.validated',
   AUTH_TWO_FA_FAILED: 'auth.two_fa.failed',
-  
+
   SESSION_CREATED: 'session.created',
   SESSION_EXPIRED: 'session.expired',
   SESSION_REVOKED: 'session.revoked',
-  
+
   PERMISSION_GRANTED: 'permission.granted',
   PERMISSION_REVOKED: 'permission.revoked',
-  
+
   TENANT_CREATED: 'tenant.created',
   TENANT_UPDATED: 'tenant.updated',
   TENANT_DELETED: 'tenant.deleted',

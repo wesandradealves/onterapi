@@ -1,12 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { AuthErrorFactory } from '../../../shared/factories/auth-error.factory';
 import {
   ISupabaseAuthService,
   SignUpData,
-  SupabaseUser,
   SupabaseSession,
+  SupabaseUser,
 } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { Result } from '../../../shared/types/result.type';
 
@@ -112,13 +112,25 @@ export class SupabaseAuthService implements ISupabaseAuthService {
     }
   }
 
-  async signOut(accessToken: string): Promise<Result<void>> {
+  async signOut(accessToken: string, userId?: string): Promise<Result<void>> {
     try {
+      if (!accessToken) {
+        this.logger.debug('No Supabase access token provided for signOut', { userId });
+        return { data: undefined };
+      }
+
       const { error } = await this.supabase.auth.admin.signOut(accessToken);
 
       if (error) {
-        this.logger.error(`Supabase signOut error: ${error.message}`);
-        return { error: new Error(error.message) };
+        const message = error.message || 'Supabase signOut failed';
+
+        if (message.toLowerCase().includes('invalid jwt')) {
+          this.logger.debug('Supabase signOut token was not accepted by Supabase, ignoring', { userId, reason: message });
+          return { data: undefined };
+        }
+
+        this.logger.error('Supabase signOut error: ' + message);
+        return { error: new Error(message) };
       }
 
       return { data: undefined };
@@ -131,11 +143,11 @@ export class SupabaseAuthService implements ISupabaseAuthService {
   async verifyEmail(token: string, email?: string): Promise<Result<void>> {
     try {
       if (!token || token.length < 6) {
-        return { error: new Error('Token inválido') };
+        return { error: new Error('Token invÃ¡lido') };
       }
 
       if (token.includes('test-token') || token === '123456') {
-        return { error: new Error('Token de teste não é válido') };
+        return { error: new Error('Token de teste nÃ£o Ã© vÃ¡lido') };
       }
 
       if (email) {
@@ -148,22 +160,21 @@ export class SupabaseAuthService implements ISupabaseAuthService {
             .eq('used', false)
             .gt('expires_at', new Date().toISOString())
             .single();
-          
+
           if (tokenError || !tokenData) {
-            return { error: new Error('Token inválido ou expirado') };
+            return { error: new Error('Token invÃ¡lido ou expirado') };
           }
-          
+
           await this.supabase
             .from('email_verification_tokens')
             .update({ used: true, updated_at: new Date().toISOString() })
             .eq('id', tokenData.id);
-          
+
           this.logger.log(`Email verificado com sucesso para: ${email}`);
           return { data: undefined };
-          
         } catch (dbError) {
           this.logger.error('Erro ao verificar token no banco:', dbError);
-          
+
           const { data, error } = await this.supabase.auth.verifyOtp({
             type: 'email',
             token: token,
@@ -172,60 +183,62 @@ export class SupabaseAuthService implements ISupabaseAuthService {
 
           if (error) {
             this.logger.error(`Erro ao verificar token OTP: ${error.message}`);
-            return { error: new Error('Token inválido ou expirado') };
+            return { error: new Error('Token invÃ¡lido ou expirado') };
           }
 
           if (!data.user) {
-            return { error: new Error('Token inválido') };
+            return { error: new Error('Token invÃ¡lido') };
           }
 
-          this.logger.log(`Email verificado com sucesso para usuário: ${data.user.email}`);
+          this.logger.log(`Email verificado com sucesso para usuÃ¡rio: ${data.user.email}`);
           return { data: undefined };
         }
       }
 
       const tokenRegex = /^[a-f0-9]{64}$/;
       if (!tokenRegex.test(token)) {
-        return { error: new Error('Formato de token inválido') };
+        return { error: new Error('Formato de token invÃ¡lido') };
       }
 
-      return { error: new Error('Email é necessário para validação completa') };
+      return { error: new Error('Email Ã© necessÃ¡rio para validaÃ§Ã£o completa') };
     } catch (error) {
       this.logger.error('Erro inesperado ao verificar email', error);
       return { error: error as Error };
     }
   }
-  
+
   async confirmEmailByEmail(email: string): Promise<Result<void>> {
     try {
-      const { data: { users }, error: listError } = await this.supabase.auth.admin.listUsers();
-      
+      const {
+        data: { users },
+        error: listError,
+      } = await this.supabase.auth.admin.listUsers();
+
       if (listError) {
-        this.logger.error(`Erro ao listar usuários: ${listError.message}`);
-        return { error: new Error('Erro ao buscar usuário') };
+        this.logger.error(`Erro ao listar usuÃ¡rios: ${listError.message}`);
+        return { error: new Error('Erro ao buscar usuÃ¡rio') };
       }
-      
-      const user = users.find(u => u.email === email);
-      
+
+      const user = users.find((u) => u.email === email);
+
       if (!user) {
-        return { error: new Error('Usuário não encontrado') };
+        return { error: new Error('UsuÃ¡rio nÃ£o encontrado') };
       }
-      
+
       if (user.email_confirmed_at) {
-        this.logger.warn(`Email já confirmado para: ${email}`);
-        return { error: new Error('Email já foi confirmado anteriormente') };
+        this.logger.warn(`Email jÃ¡ confirmado para: ${email}`);
+        return { error: new Error('Email jÃ¡ foi confirmado anteriormente') };
       }
-      
-      const { error } = await this.supabase.auth.admin.updateUserById(
-        user.id,
-        { email_confirm: true }
-      );
-      
+
+      const { error } = await this.supabase.auth.admin.updateUserById(user.id, {
+        email_confirm: true,
+      });
+
       if (error) {
         this.logger.error(`Erro ao confirmar email: ${error.message}`);
         return { error: new Error('Erro ao confirmar email') };
       }
-      
+
       this.logger.log(`Email confirmado com sucesso para: ${email}`);
       return { data: undefined };
     } catch (error) {
@@ -257,7 +270,7 @@ export class SupabaseAuthService implements ISupabaseAuthService {
   async resetPassword(email: string): Promise<Result<void>> {
     try {
       const resetUrl = `${this.configService.get<string>('APP_URL')}/reset-password`;
-      
+
       const { error } = await this.supabase.auth.resetPasswordForEmail(email, {
         redirectTo: resetUrl,
       });
@@ -326,10 +339,9 @@ export class SupabaseAuthService implements ISupabaseAuthService {
     metadata: Record<string, any>,
   ): Promise<Result<SupabaseUser>> {
     try {
-      const { data: userData, error } = await this.supabase.auth.admin.updateUserById(
-        userId,
-        { user_metadata: metadata }
-      );
+      const { data: userData, error } = await this.supabase.auth.admin.updateUserById(userId, {
+        user_metadata: metadata,
+      });
 
       if (error) {
         this.logger.error(`Supabase updateUserMetadata error: ${error.message}`);
@@ -427,3 +439,4 @@ export class SupabaseAuthService implements ISupabaseAuthService {
     }
   }
 }
+

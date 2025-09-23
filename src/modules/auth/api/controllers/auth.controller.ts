@@ -1,24 +1,31 @@
 import {
-  Controller,
-  Post,
+  BadRequestException,
   Body,
-  UseGuards,
+  Controller,
+  Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Inject,
-  Headers,
   Ip,
   Logger,
-  UsePipes,
-  Get,
+  Post,
   Query,
-  BadRequestException,
+  UseGuards,
+  UsePipes,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 
 import { SignInDto, SignInResponseDto } from '../dtos/sign-in.dto';
 import { RefreshTokenDto, RefreshTokenResponseDto } from '../dtos/refresh.dto';
-import { SignOutDto, SignOutResponseDto, MeResponseDto } from '../dtos/sign-out.dto';
+import { MeResponseDto, SignOutDto, SignOutResponseDto } from '../dtos/sign-out.dto';
 
 import { ISignInUseCase } from '../../../../domain/auth/interfaces/use-cases/sign-in.use-case.interface';
 import { ISignOutUseCase } from '../../../../domain/auth/interfaces/use-cases/sign-out.use-case.interface';
@@ -35,7 +42,11 @@ import { RefreshTokenInputDTO, refreshTokenInputSchema } from '../schemas/refres
 
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
 import { AuthErrorFactory } from '../../../../shared/factories/auth-error.factory';
-import { maskEmailForLog, maskSecret, shouldLogSensitiveData } from '../../../../shared/utils/logging.utils';
+import {
+  maskEmailForLog,
+  maskSecret,
+  shouldLogSensitiveData,
+} from '../../../../shared/utils/logging.utils';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -56,7 +67,7 @@ export class AuthController {
   @Post('sign-in')
   @Public()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Autenticar usuário',
     description: `Autentica um usuário com email e senha. 
     
@@ -67,9 +78,9 @@ export class AuthController {
     - Suporta autenticação em dois fatores (2FA)
     
     **Emails enviados:**
-    - Email de alerta de login bem-sucedido com detalhes do acesso`
+    - Email de alerta de login bem-sucedido com detalhes do acesso`,
   })
-  @ApiBody({ 
+  @ApiBody({
     type: SignInDto,
     description: 'Credenciais de autenticação',
     examples: {
@@ -78,8 +89,8 @@ export class AuthController {
         value: {
           email: 'usuario@example.com',
           password: 'SenhaForte123!',
-          rememberMe: false
-        }
+          rememberMe: false,
+        },
       },
       example2: {
         summary: 'Login com remember me',
@@ -88,16 +99,16 @@ export class AuthController {
           password: 'SenhaForte123!',
           rememberMe: true,
           deviceInfo: {
-            device: 'Chrome on Windows'
-          }
-        }
-      }
-    }
+            device: 'Chrome on Windows',
+          },
+        },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Login realizado com sucesso',
-    type: SignInResponseDto 
+    type: SignInResponseDto,
   })
   @ApiResponse({ status: 401, description: 'Credenciais inválidas' })
   @ApiResponse({ status: 423, description: 'Conta bloqueada' })
@@ -117,30 +128,29 @@ export class AuthController {
     return result.data;
   }
 
-
   @Post('refresh')
   @Public()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Renovar token de acesso',
-    description: 'Usa o refresh token para obter um novo access token'
+    description: 'Usa o refresh token para obter um novo access token',
   })
-  @ApiBody({ 
+  @ApiBody({
     type: RefreshTokenDto,
     description: 'Refresh token para renovação',
     examples: {
       example1: {
         summary: 'Renovação de token',
         value: {
-          refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
-        }
-      }
-    }
+          refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Token renovado com sucesso',
-    type: RefreshTokenResponseDto 
+    type: RefreshTokenResponseDto,
   })
   @ApiResponse({ status: 401, description: 'Refresh token inválido' })
   @UsePipes(new ZodValidationPipe(refreshTokenInputSchema))
@@ -163,37 +173,37 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Fazer logout',
-    description: 'Encerra a sessão do usuário, invalidando tokens'
+    description: 'Encerra a sessão do usuário, invalidando tokens',
   })
-  @ApiBody({ 
+  @ApiBody({
     type: SignOutDto,
     description: 'Opções de logout',
     required: false,
     examples: {
       example1: {
         summary: 'Logout simples',
-        value: {}
+        value: {},
       },
       example2: {
         summary: 'Logout com refresh token',
         value: {
-          refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
-        }
+          refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        },
       },
       example3: {
         summary: 'Logout em todos dispositivos',
         value: {
-          allDevices: true
-        }
-      }
-    }
+          allDevices: true,
+        },
+      },
+    },
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Logout realizado com sucesso',
-    type: SignOutResponseDto 
+    type: SignOutResponseDto,
   })
   @ApiResponse({ status: 401, description: 'Token inválido ou expirado' })
   async signOut(
@@ -220,14 +230,14 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Obter dados do usuário autenticado',
-    description: 'Retorna as informações do usuário atualmente autenticado'
+    description: 'Retorna as informações do usuário atualmente autenticado',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Dados do usuário',
-    type: MeResponseDto 
+    type: MeResponseDto,
   })
   @ApiResponse({ status: 401, description: 'Não autenticado' })
   async me(@CurrentUser() user: ICurrentUser) {
@@ -247,19 +257,19 @@ export class AuthController {
   @Public()
   @ApiOperation({
     summary: 'Verificar email do usuário',
-    description: 'Confirma o email do usuário usando o token enviado por email'
+    description: 'Confirma o email do usuário usando o token enviado por email',
   })
   @ApiQuery({
     name: 'token',
     required: true,
     type: String,
-    description: 'Token de verificação enviado por email'
+    description: 'Token de verificação enviado por email',
   })
   @ApiQuery({
     name: 'email',
     required: true,
     type: String,
-    description: 'Email do usuário a ser verificado'
+    description: 'Email do usuário a ser verificado',
   })
   @ApiResponse({
     status: 200,
@@ -268,15 +278,12 @@ export class AuthController {
       type: 'object',
       properties: {
         success: { type: 'boolean' },
-        message: { type: 'string' }
-      }
-    }
+        message: { type: 'string' },
+      },
+    },
   })
   @ApiResponse({ status: 400, description: 'Token inválido ou expirado' })
-  async verifyEmail(
-    @Query('token') token: string,
-    @Query('email') email: string,
-  ) {
+  async verifyEmail(@Query('token') token: string, @Query('email') email: string) {
     const maskedEmail = maskEmailForLog(email);
     const maskedToken = maskSecret(token, { visiblePrefix: 3, visibleSuffix: 2 });
 
@@ -289,13 +296,13 @@ export class AuthController {
     this.logger.warn('Verificando email do usuario', logPayload);
 
     const tokenResult = await this.supabaseAuthService.verifyEmail(token, email);
-    
+
     if (tokenResult.error) {
       throw AuthErrorFactory.invalidToken();
     }
-    
+
     const confirmResult = await this.supabaseAuthService.confirmEmailByEmail(email);
-    
+
     if (confirmResult.error) {
       throw AuthErrorFactory.badRequest(confirmResult.error.message);
     }
@@ -304,7 +311,7 @@ export class AuthController {
 
     return {
       success: true,
-      message: 'Email verificado com sucesso! Você já pode fazer login.'
+      message: 'Email verificado com sucesso! Você já pode fazer login.',
     };
   }
 }

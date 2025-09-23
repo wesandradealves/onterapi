@@ -1,5 +1,15 @@
 import { RolesEnum } from '../../auth/enums/roles.enum';
 
+export interface CreateUserCommand {
+  email: string;
+  password: string;
+  name: string;
+  cpf: string;
+  phone?: string;
+  role: RolesEnum;
+  tenantId?: string;
+}
+
 export interface ICreateUser {
   supabaseId: string;
   email: string;
@@ -10,14 +20,14 @@ export interface ICreateUser {
   tenantId?: string;
   isActive?: boolean;
   emailVerified?: boolean;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface IUpdateUser {
   name?: string;
   phone?: string;
   isActive?: boolean;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   lastLoginAt?: Date;
   emailVerified?: boolean;
 }

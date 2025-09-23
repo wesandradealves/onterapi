@@ -7,9 +7,9 @@ export const AUTH_CONSTANTS = {
   TEMP_TOKEN_EXPIRES_MINUTES: 10,
   PASSWORD_MIN_LENGTH: 8,
   FAILED_LOGIN_LOCK_MINUTES: 30,
-  
+
   DEFAULT_ROLE: 'PATIENT',
-  
+
   DEFAULT_VALUES: {
     DEVICE: 'Dispositivo desconhecido',
     IP: 'IP não disponível',
@@ -56,7 +56,7 @@ export const AUTH_MESSAGES = {
     METHOD_NOT_IMPLEMENTED: 'Método não implementado',
     INTERNAL_ERROR: 'Erro interno do servidor',
   },
-  
+
   SUCCESS: {
     LOGIN: 'Login realizado com sucesso',
     LOGOUT: 'Logout realizado com sucesso',
@@ -76,7 +76,7 @@ export const AUTH_MESSAGES = {
     PASSWORD_RESET: 'Senha redefinida com sucesso',
     PASSWORD_CHANGED: 'Senha alterada com sucesso',
   },
-  
+
   INFO: {
     TWO_FA_REQUIRED: 'Autenticação de dois fatores requerida. Por favor, insira o código.',
     CHECK_EMAIL: 'Por favor, verifique seu email para continuar.',

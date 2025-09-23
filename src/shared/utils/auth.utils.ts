@@ -8,22 +8,23 @@ export function generateSixDigitCode(): string {
 
 export function parseUserAgent(userAgent?: string): string {
   if (!userAgent) return AUTH_CONSTANTS.DEFAULT_VALUES.DEVICE;
-  
+
   if (userAgent.includes('Windows')) return 'Windows PC';
   if (userAgent.includes('Mac')) return 'Mac';
   if (userAgent.includes('Linux')) return 'Linux';
   if (userAgent.includes('iPhone')) return 'iPhone';
   if (userAgent.includes('iPad')) return 'iPad';
   if (userAgent.includes('Android')) return 'Android';
-  
+
   return AUTH_CONSTANTS.DEFAULT_VALUES.DEVICE;
 }
 
 export function maskEmail(email: string): string {
   const [local, domain] = email.split(AUTH_PATTERNS.EMAIL_SPLIT_CHAR);
-  const maskedLocal = local.length > 2 
-    ? local[0] + AUTH_PATTERNS.EMAIL_MASK_CHAR.repeat(local.length - 2) + local[local.length - 1]
-    : local;
+  const maskedLocal =
+    local.length > 2
+      ? local[0] + AUTH_PATTERNS.EMAIL_MASK_CHAR.repeat(local.length - 2) + local[local.length - 1]
+      : local;
   return `${maskedLocal}@${domain}`;
 }
 
@@ -42,7 +43,7 @@ export interface ExtractedUser {
 export function extractSupabaseUser(supabaseData: any): ExtractedUser {
   const userData = supabaseData.user || supabaseData;
   const metadata = userData.user_metadata || userData.metadata || {};
-  
+
   return {
     id: userData.id,
     email: userData.email || '',

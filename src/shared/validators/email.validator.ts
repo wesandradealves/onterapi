@@ -1,6 +1,6 @@
 export class EmailValidator {
   private static readonly EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  
+
   static isValid(email: string): boolean {
     if (!email) return false;
     return this.EMAIL_REGEX.test(email.toLowerCase());
@@ -18,13 +18,12 @@ export class EmailValidator {
 
   static mask(email: string): string | null {
     if (!this.isValid(email)) return null;
-    
+
     const [local, domain] = email.split('@');
     const visibleChars = Math.min(3, Math.floor(local.length / 2));
-    const maskedLocal = 
-      local.substring(0, visibleChars) + 
-      '*'.repeat(Math.max(local.length - visibleChars, 3));
-    
+    const maskedLocal =
+      local.substring(0, visibleChars) + '*'.repeat(Math.max(local.length - visibleChars, 3));
+
     return `${maskedLocal}@${domain}`;
   }
 }

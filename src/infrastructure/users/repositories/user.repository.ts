@@ -46,10 +46,7 @@ export class UserRepository implements IUserRepository {
       queryBuilder.andWhere('user.isActive = :isActive', { isActive: filters.isActive });
     }
 
-    queryBuilder
-      .orderBy('user.createdAt', 'DESC')
-      .skip(skip)
-      .take(limit);
+    queryBuilder.orderBy('user.createdAt', 'DESC').skip(skip).take(limit);
 
     const [data, total] = await queryBuilder.getManyAndCount();
 
@@ -100,9 +97,7 @@ export class UserRepository implements IUserRepository {
   ): Promise<boolean> {
     const queryBuilder = this.repository.createQueryBuilder('user');
 
-    queryBuilder
-      .where(`user.${field} = :value`, { value })
-      .andWhere('user.deletedAt IS NULL');
+    queryBuilder.where(`user.${field} = :value`, { value }).andWhere('user.deletedAt IS NULL');
 
     if (excludeId) {
       queryBuilder.andWhere('user.id != :excludeId', { excludeId });

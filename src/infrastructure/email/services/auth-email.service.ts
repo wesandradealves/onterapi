@@ -2,11 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { Transporter } from 'nodemailer';
-import { 
-  VerificationEmailData,
+import {
+  LoginAlertData,
   PasswordResetEmailData,
   TwoFactorCodeData,
-  LoginAlertData
+  VerificationEmailData,
 } from '../../../domain/auth/interfaces/services/email.service.interface';
 import { Result } from '../../../shared/types/result.type';
 import { MESSAGES } from '../../../shared/constants/messages.constants';
@@ -59,7 +59,7 @@ export class AuthEmailService {
         from: this.from,
         ...options,
       });
-      
+
       this.logger.log(`Email sent: ${info.messageId}`);
       return { data: undefined };
     } catch (error) {
@@ -71,7 +71,7 @@ export class AuthEmailService {
   async sendVerificationEmail(data: VerificationEmailData): Promise<Result<void>> {
     const subject = 'Verifique seu e-mail - Onterapi';
     const html = this.getVerificationEmailTemplate(data);
-    
+
     return this.sendEmail({
       to: data.to,
       subject,
@@ -82,7 +82,7 @@ export class AuthEmailService {
   async sendPasswordResetEmail(data: PasswordResetEmailData): Promise<Result<void>> {
     const subject = 'Redefinir senha - Onterapi';
     const html = this.getPasswordResetTemplate(data);
-    
+
     return this.sendEmail({
       to: data.to,
       subject,
@@ -93,7 +93,7 @@ export class AuthEmailService {
   async sendTwoFactorCodeEmail(data: TwoFactorCodeData): Promise<Result<void>> {
     const subject = 'Código de verificação - Onterapi';
     const html = this.getTwoFactorCodeTemplate(data);
-    
+
     return this.sendEmail({
       to: data.to,
       subject,
@@ -104,7 +104,7 @@ export class AuthEmailService {
   async sendLoginAlertEmail(data: LoginAlertData): Promise<Result<void>> {
     const subject = 'Alerta de novo login - Onterapi';
     const html = this.getLoginAlertTemplate(data);
-    
+
     return this.sendEmail({
       to: data.to,
       subject,

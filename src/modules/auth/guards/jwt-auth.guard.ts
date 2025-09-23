@@ -1,4 +1,4 @@
-import { Injectable, ExecutionContext, Logger, Inject } from '@nestjs/common';
+import { ExecutionContext, Inject, Injectable, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { BaseGuard } from '../../../shared/guards/base.guard';
 import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
@@ -56,13 +56,15 @@ export class JwtAuthGuard extends BaseGuard {
       id: (userData as any)?.id,
       email: (userData as any)?.email,
       role: (userData as any)?.user_metadata?.role,
-      tenantId: (userData as any)?.user_metadata?.tenantId,
+      tenantId:
+        (userData as any)?.user_metadata?.tenantId ?? (tokenResult.data as any)?.tenantId ?? null,
     });
 
     this.logger.log('Supabase user retrieved', sanitizedUserLog);
 
     const actualUser = (userData as any).user || userData;
     const metadata = actualUser.user_metadata || {};
+    const tenantId = metadata.tenantId ?? (tokenResult.data as any)?.tenantId ?? null;
 
     if (shouldLogSensitiveData()) {
       const metadataKeys = Object.keys(metadata);
@@ -81,30 +83,32 @@ export class JwtAuthGuard extends BaseGuard {
     }
 
     const emailVerified = Boolean(
-      actualUser.email_confirmed_at ||
-        metadata.emailVerified ||
-        metadata.email_verified,
+      actualUser.email_confirmed_at || metadata.emailVerified || metadata.email_verified,
     );
 
     const isActive = metadata.isActive !== false;
+
+    this.logger.log('JwtAuthGuard - contexto resolvido', {
+      userId: actualUser.id,
+      email: actualUser.email || '',
+      role: metadata.role || 'PATIENT',
+      tenantId,
+      metadataKeys: Object.keys(metadata || {}),
+    });
 
     request.user = {
       id: actualUser.id,
       email: actualUser.email || '',
       name: metadata.name || '',
       role: metadata.role || 'PATIENT',
-      tenantId: metadata.tenantId || null,
+      tenantId,
       sessionId: tokenResult.data.sessionId,
       emailVerified,
       isActive,
       bannedUntil: bannedUntilRaw,
       twoFactorEnabled: metadata.twoFactorEnabled || false,
-      createdAt: actualUser.created_at
-        ? new Date(actualUser.created_at).toISOString()
-        : undefined,
-      updatedAt: actualUser.updated_at
-        ? new Date(actualUser.updated_at).toISOString()
-        : undefined,
+      createdAt: actualUser.created_at ? new Date(actualUser.created_at).toISOString() : undefined,
+      updatedAt: actualUser.updated_at ? new Date(actualUser.updated_at).toISOString() : undefined,
       lastLoginAt: actualUser.last_sign_in_at
         ? new Date(actualUser.last_sign_in_at).toISOString()
         : null,

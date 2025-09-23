@@ -1,13 +1,15 @@
 import { z } from 'zod';
 import { emailSchema, passwordSchema } from '../validators/auth.validators';
 
-export const deviceInfoSchema = z.object({
-  userAgent: z.string().optional(),
-  ip: z.string().optional(),
-  device: z.string().optional(),
-  location: z.string().optional(),
-  trustedDevice: z.boolean().optional(),
-}).optional();
+export const deviceInfoSchema = z
+  .object({
+    userAgent: z.string().optional(),
+    ip: z.string().optional(),
+    device: z.string().optional(),
+    location: z.string().optional(),
+    trustedDevice: z.boolean().optional(),
+  })
+  .optional();
 
 export const userResponseSchema = z.object({
   id: z.string().uuid(),

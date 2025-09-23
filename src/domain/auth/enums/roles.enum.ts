@@ -29,10 +29,7 @@ export const CLINIC_ROLES = [
   RolesEnum.MANAGER,
 ];
 
-export const PUBLIC_ROLES = [
-  RolesEnum.PATIENT,
-  RolesEnum.VISITOR,
-];
+export const PUBLIC_ROLES = [RolesEnum.PATIENT, RolesEnum.VISITOR];
 
 export const ROLE_HIERARCHY: Record<RolesEnum, number> = {
   [RolesEnum.SUPER_ADMIN]: 100,

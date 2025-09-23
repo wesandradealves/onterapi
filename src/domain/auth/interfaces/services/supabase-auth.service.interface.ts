@@ -1,11 +1,11 @@
-import { Result } from '@shared/types/result.type';
+﻿import { Result } from '@shared/types/result.type';
 
 export interface ISupabaseAuthService {
   signUp(data: SignUpData): Promise<Result<SupabaseUser>>;
 
   signIn(email: string, password: string): Promise<Result<SupabaseSession>>;
 
-  signOut(accessToken: string): Promise<Result<void>>;
+  signOut(accessToken: string, userId?: string): Promise<Result<void>>;
 
   verifyEmail(token: string, email?: string): Promise<Result<void>>;
 

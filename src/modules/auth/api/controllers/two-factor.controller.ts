@@ -1,16 +1,16 @@
 import {
-  Controller,
-  Post,
   Body,
+  Controller,
+  Headers,
   HttpCode,
   HttpStatus,
   Inject,
-  Headers,
   Ip,
   Logger,
+  Post,
   UsePipes,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { ValidateTwoFADto, ValidateTwoFAResponseDto } from '../dtos/two-fa.dto';
 import { IValidateTwoFAUseCase } from '../../../../domain/auth/interfaces/use-cases/validate-two-fa.use-case.interface';
@@ -18,10 +18,10 @@ import { ISendTwoFAUseCase } from '../../../../domain/auth/interfaces/use-cases/
 
 import { Public } from '../../decorators/public.decorator';
 import {
-  ValidateTwoFAInputDTO,
-  validateTwoFAInputSchema,
   SendTwoFAInputDTO,
   sendTwoFAInputSchema,
+  ValidateTwoFAInputDTO,
+  validateTwoFAInputSchema,
 } from '../schemas/two-fa.schema';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
 import { MESSAGES } from '../../../../shared/constants/messages.constants';
@@ -41,18 +41,18 @@ export class TwoFactorController {
   @Post('validate')
   @Public()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Validar código 2FA',
-    description: 'Valida o código de autenticação de dois fatores e retorna os tokens de acesso'
+    description: 'Valida o código de autenticação de dois fatores e retorna os tokens de acesso',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: MESSAGES.AUTH.TWO_FA_VALIDATED,
-    type: ValidateTwoFAResponseDto 
+    type: ValidateTwoFAResponseDto,
   })
-  @ApiResponse({ 
-    status: 400, 
-    description: MESSAGES.AUTH.TWO_FA_INVALID 
+  @ApiResponse({
+    status: 400,
+    description: MESSAGES.AUTH.TWO_FA_INVALID,
   })
   @UsePipes(new ZodValidationPipe(validateTwoFAInputSchema))
   async validateTwoFA(
@@ -82,22 +82,20 @@ export class TwoFactorController {
   @Post('send')
   @Public()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Reenviar código 2FA',
-    description: 'Reenvia o código de autenticação de dois fatores'
+    description: 'Reenvia o código de autenticação de dois fatores',
   })
-  @ApiResponse({ 
-    status: 200, 
-    description: MESSAGES.AUTH.TWO_FA_SENT 
+  @ApiResponse({
+    status: 200,
+    description: MESSAGES.AUTH.TWO_FA_SENT,
   })
-  @ApiResponse({ 
-    status: 400, 
-    description: MESSAGES.ERRORS.AUTH.INVALID_TOKEN 
+  @ApiResponse({
+    status: 400,
+    description: MESSAGES.ERRORS.AUTH.INVALID_TOKEN,
   })
   @UsePipes(new ZodValidationPipe(sendTwoFAInputSchema))
-  async sendTwoFA(
-    @Body() dto: SendTwoFAInputDTO,
-  ) {
+  async sendTwoFA(@Body() dto: SendTwoFAInputDTO) {
     const result = await this.sendTwoFAUseCase.execute({
       tempToken: dto.tempToken,
       method: dto.method ?? 'email',

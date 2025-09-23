@@ -1,6 +1,6 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, QueryRunner, EntityManager } from 'typeorm';
+import { EntityManager, QueryRunner, Repository } from 'typeorm';
 import { IAuthRepository } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
 import { UserEntity } from '../entities/user.entity';
 import { UserSessionEntity } from '../entities/user-session.entity';
@@ -25,7 +25,7 @@ export class AuthRepository implements IAuthRepository {
 
   async findByEmail(email: string, runner?: QueryRunner): Promise<UserEntity | null> {
     const manager = runner?.manager || this.userRepository.manager;
-    
+
     const entity = await manager
       .createQueryBuilder(UserEntity, 'user')
       .where('user.email = :email', { email })
@@ -37,7 +37,7 @@ export class AuthRepository implements IAuthRepository {
 
   async findByCpf(cpf: string, runner?: QueryRunner): Promise<UserEntity | null> {
     const manager = runner?.manager || this.userRepository.manager;
-    
+
     const entity = await manager
       .createQueryBuilder(UserEntity, 'user')
       .where('user.cpf = :cpf', { cpf })
@@ -49,7 +49,7 @@ export class AuthRepository implements IAuthRepository {
 
   async findById(id: string, runner?: QueryRunner): Promise<UserEntity | null> {
     const manager = runner?.manager || this.userRepository.manager;
-    
+
     const entity = await manager
       .createQueryBuilder(UserEntity, 'user')
       .where('user.id = :id', { id })
@@ -61,7 +61,7 @@ export class AuthRepository implements IAuthRepository {
 
   async findBySupabaseId(supabaseId: string, runner?: QueryRunner): Promise<UserEntity | null> {
     const manager = runner?.manager || this.userRepository.manager;
-    
+
     const entity = await manager
       .createQueryBuilder(UserEntity, 'user')
       .where('user.supabaseId = :supabaseId', { supabaseId })
@@ -73,7 +73,7 @@ export class AuthRepository implements IAuthRepository {
 
   async create(data: Partial<UserEntity>, runner?: QueryRunner): Promise<UserEntity> {
     const manager = runner?.manager || this.userRepository.manager;
-    
+
     const entity = manager.create(UserEntity, {
       supabaseId: data.supabaseId,
       email: data.email,
@@ -95,7 +95,7 @@ export class AuthRepository implements IAuthRepository {
 
   async update(id: string, data: Partial<UserEntity>, runner?: QueryRunner): Promise<UserEntity> {
     const manager = runner?.manager || this.userRepository.manager;
-    
+
     await manager
       .createQueryBuilder()
       .update(UserEntity)
@@ -109,7 +109,9 @@ export class AuthRepository implements IAuthRepository {
         ...(data.isActive !== undefined && { isActive: data.isActive }),
         ...(data.emailVerified !== undefined && { emailVerified: data.emailVerified }),
         ...(data.lastLoginAt && { lastLoginAt: data.lastLoginAt }),
-        ...(data.failedLoginAttempts !== undefined && { failedLoginAttempts: data.failedLoginAttempts }),
+        ...(data.failedLoginAttempts !== undefined && {
+          failedLoginAttempts: data.failedLoginAttempts,
+        }),
         ...(data.lockedUntil !== undefined && { lockedUntil: data.lockedUntil }),
         ...(data.metadata && { metadata: data.metadata }),
         updatedAt: new Date(),
@@ -133,7 +135,7 @@ export class AuthRepository implements IAuthRepository {
     runner?: QueryRunner,
   ): Promise<void> {
     const manager = runner?.manager || this.sessionRepository.manager;
-    
+
     const session = manager.create(UserSessionEntity, {
       userId,
       refreshToken: token,
@@ -168,17 +170,17 @@ export class AuthRepository implements IAuthRepository {
     user.id = session.userId;
     user.supabaseId = session.userId;
     user.isActive = true;
-    
+
     return user;
   }
 
   async removeRefreshToken(token: string, runner?: QueryRunner): Promise<void> {
     const manager = runner?.manager || this.sessionRepository.manager;
-    
+
     await manager
       .createQueryBuilder()
       .update(UserSessionEntity)
-      .set({ 
+      .set({
         revokedAt: new Date(),
         revokedReason: 'User signed out',
       })
@@ -193,7 +195,7 @@ export class AuthRepository implements IAuthRepository {
     runner?: QueryRunner,
   ): Promise<void> {
     const manager = runner?.manager || this.twoFactorCodeRepository.manager;
-    
+
     await manager
       .createQueryBuilder()
       .update(TwoFactorCodeEntity)
@@ -239,7 +241,9 @@ export class AuthRepository implements IAuthRepository {
     }
 
     if (anyCode.attempts >= anyCode.maxAttempts) {
-      throw new UnauthorizedException('Conta bloqueada temporariamente. Muitas tentativas erradas.');
+      throw new UnauthorizedException(
+        'Conta bloqueada temporariamente. Muitas tentativas erradas.',
+      );
     }
 
     if (anyCode.code !== code) {
@@ -249,12 +253,14 @@ export class AuthRepository implements IAuthRepository {
         .set({ attempts: () => 'attempts + 1' })
         .where('id = :id', { id: anyCode.id })
         .execute();
-      
+
       const updatedCode = await this.twoFactorCodeRepository.findOne({ where: { id: anyCode.id } });
       if (updatedCode && updatedCode.attempts >= updatedCode.maxAttempts) {
-        throw new UnauthorizedException('Conta bloqueada temporariamente. Muitas tentativas erradas.');
+        throw new UnauthorizedException(
+          'Conta bloqueada temporariamente. Muitas tentativas erradas.',
+        );
       }
-      
+
       return false;
     }
 
@@ -263,7 +269,7 @@ export class AuthRepository implements IAuthRepository {
     await this.twoFactorCodeRepository
       .createQueryBuilder()
       .update(TwoFactorCodeEntity)
-      .set({ 
+      .set({
         isUsed: true,
         usedAt: new Date(),
       })
@@ -279,7 +285,7 @@ export class AuthRepository implements IAuthRepository {
 
     const attempts = user.failedLoginAttempts + 1;
     const maxAttempts = 5;
-    
+
     const updateData: Partial<UserEntity> = {
       failedLoginAttempts: attempts,
     };

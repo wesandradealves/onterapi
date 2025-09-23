@@ -15,7 +15,7 @@ export const VALIDATION_CONSTANTS = {
       SPECIAL: 'Senha deve conter pelo menos um caractere especial',
     },
   },
-  
+
   CPF: {
     LENGTH: 11,
     MESSAGES: {
@@ -24,7 +24,7 @@ export const VALIDATION_CONSTANTS = {
       LENGTH: 'CPF deve ter 11 dígitos',
     },
   },
-  
+
   EMAIL: {
     REGEX: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
     MESSAGES: {
@@ -32,7 +32,7 @@ export const VALIDATION_CONSTANTS = {
       REQUIRED: 'Email é obrigatório',
     },
   },
-  
+
   PHONE: {
     MIN_LENGTH: 10,
     MAX_LENGTH: 11,
@@ -42,7 +42,7 @@ export const VALIDATION_CONSTANTS = {
       MOBILE: 'Celular deve começar com 9',
     },
   },
-  
+
   NAME: {
     MIN_LENGTH: 3,
     MAX_LENGTH: 100,
@@ -54,7 +54,7 @@ export const VALIDATION_CONSTANTS = {
       FULL_NAME: 'Informe nome e sobrenome',
     },
   },
-  
+
   TWO_FA_CODE: {
     LENGTH: 6,
     REGEX: /^\d{6}$/,
@@ -63,7 +63,7 @@ export const VALIDATION_CONSTANTS = {
       REQUIRED: 'Código é obrigatório',
     },
   },
-  
+
   UUID: {
     REGEX: /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
     MESSAGES: {

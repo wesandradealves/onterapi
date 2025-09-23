@@ -1,5 +1,9 @@
 import { Result } from '@shared/types/result.type';
-import { AuthTokenPayload, RefreshTokenPayload, TwoFactorTokenPayload } from '../../types/auth.types';
+import {
+  AuthTokenPayload,
+  RefreshTokenPayload,
+  TwoFactorTokenPayload,
+} from '../../types/auth.types';
 
 export interface IJwtService {
   generateAccessToken(payload: Omit<AuthTokenPayload, 'iat' | 'exp'>): string;
@@ -14,7 +18,7 @@ export interface IJwtService {
 
   verifyTwoFactorToken(token: string): Result<TwoFactorTokenPayload>;
 
-  decode<T = any>(token: string): T | null;
+  decode<T = unknown>(token: string): T | null;
 }
 
 export const IJwtService = Symbol('IJwtService');

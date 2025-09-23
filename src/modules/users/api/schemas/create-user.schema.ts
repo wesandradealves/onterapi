@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
 import {
-  passwordValidator,
   cpfValidator,
+  passwordValidator,
   phoneValidator,
 } from '../../../../shared/validators/auth.validators';
 
@@ -14,12 +14,12 @@ export const createUserSchema = z.object({
   name: z.string().min(3, 'Nome deve ter no mínimo 3 caracteres').max(255),
   cpf: cpfValidator,
   phone: phoneValidator.optional(),
-  role: z.string().refine(
-    (val) => validRoles.includes(val as RolesEnum),
-    {
+  role: z
+    .string()
+    .refine((val) => validRoles.includes(val as RolesEnum), {
       message: `Role inválido. Valores permitidos: ${validRoles.join(', ')}`,
-    }
-  ).transform((val) => val as RolesEnum),
+    })
+    .transform((val) => val as RolesEnum),
   tenantId: z.string().uuid('ID do tenant deve ser um UUID válido').optional(),
 });
 

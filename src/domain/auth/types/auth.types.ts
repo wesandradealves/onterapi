@@ -1,5 +1,4 @@
 import { RolesEnum } from '../enums/roles.enum';
-import { DeviceInfo } from '../../../shared/types/device.types';
 
 export type AuthTokenPayload = {
   sub: string;
@@ -41,7 +40,6 @@ export type PasswordResetTokenPayload = {
   exp: number;
 };
 
-
 export type LoginAttempt = {
   email: string;
   ip: string;
@@ -57,7 +55,7 @@ export type AuditLog = {
   resource?: string;
   resourceId?: string;
   tenantId?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   ip?: string;
   userAgent?: string;
   timestamp: Date;

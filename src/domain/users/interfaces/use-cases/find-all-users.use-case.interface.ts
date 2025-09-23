@@ -1,5 +1,6 @@
 import { UserEntity } from '../../../../infrastructure/auth/entities/user.entity';
 import { Result } from '../../../../shared/types/result.type';
+import { IUserFilters } from '../../types/user.types';
 
 type FindAllUsersOutput = {
   data: UserEntity[];
@@ -12,5 +13,5 @@ type FindAllUsersOutput = {
 };
 
 export interface IFindAllUsersUseCase {
-  execute(filters: any): Promise<Result<FindAllUsersOutput>>;
+  execute(filters: IUserFilters): Promise<Result<FindAllUsersOutput>>;
 }

@@ -10,23 +10,14 @@ export function generateSavepointId(): string {
   return `savepoint_${timestamp}_${random}`;
 }
 
-export async function createSavepoint(
-  manager: EntityManager,
-  id: string,
-): Promise<void> {
+export async function createSavepoint(manager: EntityManager, id: string): Promise<void> {
   await manager.query(`SAVEPOINT ${id}`);
 }
 
-export async function rollbackToSavepoint(
-  manager: EntityManager,
-  id: string,
-): Promise<void> {
+export async function rollbackToSavepoint(manager: EntityManager, id: string): Promise<void> {
   await manager.query(`ROLLBACK TO SAVEPOINT ${id}`);
 }
 
-export async function releaseSavepoint(
-  manager: EntityManager,
-  id: string,
-): Promise<void> {
+export async function releaseSavepoint(manager: EntityManager, id: string): Promise<void> {
   await manager.query(`RELEASE SAVEPOINT ${id}`);
 }

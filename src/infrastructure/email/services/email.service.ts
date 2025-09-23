@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { AuthEmailService } from './auth-email.service';
 import { NotificationEmailService } from './notification-email.service';
-import { 
+import {
   IEmailService,
-  VerificationEmailData,
+  LoginAlertData,
   PasswordResetEmailData,
-  TwoFactorCodeData,
-  WelcomeEmailData,
   SuspiciousLoginData,
-  LoginAlertData
+  TwoFactorCodeData,
+  VerificationEmailData,
+  WelcomeEmailData,
 } from '../../../domain/auth/interfaces/services/email.service.interface';
 import { Result } from '../../../shared/types/result.type';
 

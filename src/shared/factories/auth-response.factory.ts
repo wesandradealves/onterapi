@@ -47,10 +47,7 @@ export function createUserResponse(user: {
   };
 }
 
-export function createTokenResponse(
-  tokens: AuthTokens,
-  user: AuthUser
-): TokenResponse {
+export function createTokenResponse(tokens: AuthTokens, user: AuthUser): TokenResponse {
   return {
     accessToken: tokens.accessToken,
     refreshToken: tokens.refreshToken,
@@ -69,7 +66,7 @@ export function createTwoFactorTempResponse(tempToken: string): TwoFactorTempRes
 export function createTwoFactorSendResponse(
   sentTo: string,
   method: 'email' | 'sms' = 'email',
-  attemptsRemaining: number = AUTH_CONSTANTS.TWO_FACTOR_MAX_ATTEMPTS
+  attemptsRemaining: number = AUTH_CONSTANTS.TWO_FACTOR_MAX_ATTEMPTS,
 ): TwoFactorSendResponse {
   return {
     sentTo,

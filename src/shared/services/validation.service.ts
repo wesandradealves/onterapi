@@ -32,12 +32,12 @@ export class ValidationService {
   async checkCPFUnique(cpf: string, excludeId?: string): Promise<boolean> {
     const { data } = await this.supabaseAuthService.listUsers({ page: 1, perPage: 1000 });
     const users = data?.users || [];
-    
-    const existingUser = users.find(u => {
+
+    const existingUser = users.find((u) => {
       const userCpf = u.user_metadata?.cpf;
       return userCpf === cpf && u.id !== excludeId;
     });
-    
+
     return !existingUser;
   }
 
@@ -57,8 +57,8 @@ export class ValidationService {
   async checkEmailUnique(email: string, excludeId?: string): Promise<boolean> {
     const { data } = await this.supabaseAuthService.listUsers({ page: 1, perPage: 1000 });
     const users = data?.users || [];
-    
-    const existingUser = users.find(u => u.email === email && u.id !== excludeId);
+
+    const existingUser = users.find((u) => u.email === email && u.id !== excludeId);
     return !existingUser;
   }
 

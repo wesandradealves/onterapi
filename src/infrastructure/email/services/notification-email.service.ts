@@ -3,8 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { Transporter } from 'nodemailer';
 import {
+  SuspiciousLoginData,
   WelcomeEmailData,
-  SuspiciousLoginData
 } from '../../../domain/auth/interfaces/services/email.service.interface';
 import { Result } from '../../../shared/types/result.type';
 import { MESSAGES } from '../../../shared/constants/messages.constants';
@@ -57,7 +57,7 @@ export class NotificationEmailService {
         from: this.from,
         ...options,
       });
-      
+
       this.logger.log(`Email sent: ${info.messageId}`);
       return { data: undefined };
     } catch (error) {
@@ -69,7 +69,7 @@ export class NotificationEmailService {
   async sendWelcomeEmail(data: WelcomeEmailData): Promise<Result<void>> {
     const subject = 'Bem-vindo à Onterapi!';
     const html = this.getWelcomeEmailTemplate(data);
-    
+
     return this.sendEmail({
       to: data.to,
       subject,
@@ -80,7 +80,7 @@ export class NotificationEmailService {
   async sendSuspiciousLoginEmail(data: SuspiciousLoginData): Promise<Result<void>> {
     const subject = '⚠️ Atividade suspeita detectada - Onterapi';
     const html = this.getSuspiciousLoginTemplate(data);
-    
+
     return this.sendEmail({
       to: data.to,
       subject,

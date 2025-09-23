@@ -2,15 +2,18 @@ import { z } from 'zod';
 
 export const validateTwoFAInputSchema = z.object({
   tempToken: z.string().min(1, 'Token temporário é obrigatório'),
-  code: z.string()
+  code: z
+    .string()
     .length(6, 'Código deve ter 6 dígitos')
     .regex(/^\d{6}$/, 'Código deve conter apenas números'),
   trustDevice: z.boolean().default(false),
-  deviceInfo: z.object({
-    userAgent: z.string().optional(),
-    ip: z.string().optional(),
-    device: z.string().optional(),
-  }).optional(),
+  deviceInfo: z
+    .object({
+      userAgent: z.string().optional(),
+      ip: z.string().optional(),
+      device: z.string().optional(),
+    })
+    .optional(),
 });
 
 export const validateTwoFAOutputSchema = z.object({
