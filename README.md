@@ -25,7 +25,6 @@ Plataforma SaaS multi-tenant para gestao de clinicas e terapeutas, com Supabase 
 | Role | Email | Senha | Observacoes |
 | ---- | ----- | ----- | ----------- |
 | SUPER_ADMIN | orland97@ethereal.email | XwFUUjCagc3uhmxvhM | 2FA habilitado (codigo enviado via Ethereal) |
-| SECRETARY | secretary.codex+20250923@exam.com | SenhaForte123! | Email ja verificado, sem 2FA |
 
 > As credenciais ficam em `./.env` para desenvolvimento. Sempre gere 2FA pelo endpoint `/auth/two-factor/send`.
 
@@ -109,6 +108,7 @@ EMAIL_PASS=XwFUUjCagc3uhmxvhM
 
 ## Changelog
 Mudancas recentes estao em [CHANGELOG.md](./CHANGELOG.md). Ultima versao: v0.15.0 (24/09/2025).
+
 
 
 
