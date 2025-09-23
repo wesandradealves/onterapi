@@ -10,9 +10,9 @@ export class MessageBus {
 
   async publish<T = any>(event: DomainEvent<T>): Promise<void> {
     this.logger.log(`Publishing event: ${event.eventName}`);
-    
+
     await this.eventEmitter.emitAsync(event.eventName, event);
-    
+
     this.logger.log(`Event published successfully: ${event.eventName}`);
   }
 

@@ -40,7 +40,12 @@ export function maskEmailForLog(email?: string): string {
   }
 }
 
-export function buildUserLogPayload(user: { id?: string; email?: string | null; role?: string | null; tenantId?: string | null }) {
+export function buildUserLogPayload(user: {
+  id?: string;
+  email?: string | null;
+  role?: string | null;
+  tenantId?: string | null;
+}) {
   return {
     userId: user?.id ?? 'unknown',
     email: maskEmailForLog(user?.email ?? undefined),

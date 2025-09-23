@@ -2,7 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
-import { ITwoFactorService, TwoFactorSecret } from '../../../domain/auth/interfaces/services/two-factor.service.interface';
+import {
+  ITwoFactorService,
+  TwoFactorSecret,
+} from '../../../domain/auth/interfaces/services/two-factor.service.interface';
 import { generateSixDigitCode } from '../../../shared/utils/auth.utils';
 import { generateSecureToken } from '../../../shared/utils/crypto.util';
 
@@ -66,11 +69,9 @@ export class TwoFactorService implements ITwoFactorService {
 
   generateBackupCodes(count: number = 10): string[] {
     const codes: string[] = [];
-    
+
     for (let i = 0; i < count; i++) {
-      const code = generateSecureToken(4)
-        .substring(0, 8)
-        .toUpperCase();
+      const code = generateSecureToken(4).substring(0, 8).toUpperCase();
       codes.push(code);
     }
 
@@ -79,6 +80,6 @@ export class TwoFactorService implements ITwoFactorService {
 
   validateBackupCode(codes: string[], code: string): boolean {
     const normalizedCode = code.toUpperCase().replace(/\s/g, '');
-    return codes.some(c => c === normalizedCode);
+    return codes.some((c) => c === normalizedCode);
   }
 }

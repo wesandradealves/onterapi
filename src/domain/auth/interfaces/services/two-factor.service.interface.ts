@@ -1,4 +1,3 @@
-import { Result } from '@shared/types/result.type';
 
 export interface ITwoFactorService {
   generateSecret(userId: string, email: string): TwoFactorSecret;

@@ -1,18 +1,32 @@
 import {
-  ExceptionFilter,
-  Catch,
   ArgumentsHost,
+  Catch,
+  ExceptionFilter,
   HttpException,
   HttpStatus,
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 
+type HttpExceptionObject = {
+  message?: string | string[];
+  error?: string;
+  [key: string]: unknown;
+};
+
+function toStringMessage(message: string | string[] | undefined, fallback: string): string {
+  if (Array.isArray(message)) {
+    return message.join(', ');
+  }
+
+  return typeof message === 'string' && message.trim() ? message : fallback;
+}
+
 @Catch()
 export default class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(HttpExceptionFilter.name);
 
-  catch(exception: unknown, host: ArgumentsHost) {
+  catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
@@ -24,10 +38,11 @@ export default class HttpExceptionFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       const exceptionResponse = exception.getResponse();
-      
+
       if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
-        message = (exceptionResponse as any).message || exception.message;
-        error = (exceptionResponse as any).error || exception.name;
+        const body = exceptionResponse as HttpExceptionObject;
+        message = toStringMessage(body.message, exception.message);
+        error = typeof body.error === 'string' && body.error.trim() ? body.error : exception.name;
       } else {
         message = exception.message;
       }
@@ -36,10 +51,7 @@ export default class HttpExceptionFilter implements ExceptionFilter {
       error = exception.name;
     }
 
-    this.logger.error(
-      `HTTP ${status} Error: ${message}`,
-      exception instanceof Error ? exception.stack : '',
-    );
+    this.logger.error(`HTTP ${status} Error: ${message}`, exception instanceof Error ? exception.stack : '');
 
     response.status(status).json({
       statusCode: status,

@@ -1,4 +1,4 @@
-import { Injectable, ExecutionContext } from '@nestjs/common';
+import { ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
 import { BaseGuard } from '../../../shared/guards/base.guard';
@@ -12,7 +12,7 @@ export class EmailVerifiedGuard extends BaseGuard {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const skipEmailVerification = this.reflector.get<boolean>(
       'skipEmailVerification',
-      context.getHandler()
+      context.getHandler(),
     );
 
     if (skipEmailVerification) {
@@ -22,10 +22,10 @@ export class EmailVerifiedGuard extends BaseGuard {
     const user = this.getUser(context);
 
     if (!user.emailVerified) {
-      throw AuthErrorFactory.create(
-        AuthErrorType.EMAIL_NOT_VERIFIED,
-        { userId: user.id, email: user.email }
-      );
+      throw AuthErrorFactory.create(AuthErrorType.EMAIL_NOT_VERIFIED, {
+        userId: user.id,
+        email: user.email,
+      });
     }
 
     return true;

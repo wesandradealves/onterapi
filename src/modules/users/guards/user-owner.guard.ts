@@ -1,4 +1,4 @@
-import { Injectable, ExecutionContext, Logger } from '@nestjs/common';
+import { ExecutionContext, Injectable, Logger } from '@nestjs/common';
 import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
 import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
 import { MESSAGES } from '../../../shared/constants/messages.constants';
@@ -13,11 +13,7 @@ export class UserOwnerGuard extends BaseGuard {
     const request = context.switchToHttp().getRequest();
     const targetUserId = request.params.id;
 
-    const adminRoles = [
-      RolesEnum.SUPER_ADMIN,
-      RolesEnum.ADMIN_SUPORTE,
-      RolesEnum.ADMIN_FINANCEIRO,
-    ];
+    const adminRoles = [RolesEnum.SUPER_ADMIN, RolesEnum.ADMIN_SUPORTE, RolesEnum.ADMIN_FINANCEIRO];
 
     if (adminRoles.includes(user.role as RolesEnum)) {
       this.logger.log(`${MESSAGES.GUARDS.ADMIN_ACCESS} ${targetUserId}`);
@@ -29,7 +25,11 @@ export class UserOwnerGuard extends BaseGuard {
       return true;
     }
 
-    this.logger.warn(`${MESSAGES.GUARDS.ACCESS_DENIED}: ${user.email} tentou acessar ${targetUserId}`);
-    throw AuthErrorFactory.create(AuthErrorType.ACCESS_DENIED, { reason: MESSAGES.GUARDS.ACCESS_DENIED_OWN_DATA });
+    this.logger.warn(
+      `${MESSAGES.GUARDS.ACCESS_DENIED}: ${user.email} tentou acessar ${targetUserId}`,
+    );
+    throw AuthErrorFactory.create(AuthErrorType.ACCESS_DENIED, {
+      reason: MESSAGES.GUARDS.ACCESS_DENIED_OWN_DATA,
+    });
   }
 }

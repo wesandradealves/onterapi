@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersController } from './api/controllers/users.controller';
@@ -15,11 +15,7 @@ import { UserEntity } from '../../infrastructure/auth/entities/user.entity';
 import { MessageBus } from '../../shared/messaging/message-bus';
 
 @Module({
-  imports: [
-    ConfigModule,
-    forwardRef(() => AuthModule),
-    TypeOrmModule.forFeature([UserEntity]),
-  ],
+  imports: [ConfigModule, forwardRef(() => AuthModule), TypeOrmModule.forFeature([UserEntity])],
   controllers: [UsersController],
   providers: [
     {

@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { IDeleteUserUseCase } from '../../../domain/users/interfaces/use-cases/delete-user.use-case.interface';
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { UseCaseWrapper } from '../../../shared/use-cases/use-case-wrapper';
@@ -20,9 +20,8 @@ export class DeleteUserUseCase implements IDeleteUserUseCase {
     private readonly supabaseAuthService: ISupabaseAuthService,
     private readonly messageBus: MessageBus,
   ) {
-    this.wrapper = new UseCaseWrapper(
-      this.logger,
-      async (input: DeleteUserInput) => this.handleDelete(input)
+    this.wrapper = new UseCaseWrapper(this.logger, async (input: DeleteUserInput) =>
+      this.handleDelete(input),
     );
   }
 
@@ -31,27 +30,26 @@ export class DeleteUserUseCase implements IDeleteUserUseCase {
   }
 
   private async handleDelete(input: DeleteUserInput): Promise<void> {
-      const { id, currentUserId } = input;
-      const userResult = await this.supabaseAuthService.getUserById(id);
-      
-      if (userResult.error || !userResult.data) {
-        throw AuthErrorFactory.create(AuthErrorType.USER_NOT_FOUND, { userId: id });
-      }
+    const { id, currentUserId } = input;
+    const userResult = await this.supabaseAuthService.getUserById(id);
 
-      const deleteResult = await this.supabaseAuthService.deleteUser(id);
-      
-      if (deleteResult.error) {
-        throw deleteResult.error;
-      }
+    if (userResult.error || !userResult.data) {
+      throw AuthErrorFactory.create(AuthErrorType.USER_NOT_FOUND, { userId: id });
+    }
 
-      this.logger.log(`${MESSAGES.LOGS.USER_DELETED_LOG}: ${userResult.data.email} por ${currentUserId}`);
-      
-      const event = DomainEvents.userDeleted(
-        id,
-        { deletedBy: currentUserId }
-      );
-      
-      await this.messageBus.publish(event);
-      this.logger.log(`${MESSAGES.EVENTS.USER_DELETED} para ${id}`);
+    const deleteResult = await this.supabaseAuthService.deleteUser(id);
+
+    if (deleteResult.error) {
+      throw deleteResult.error;
+    }
+
+    this.logger.log(
+      `${MESSAGES.LOGS.USER_DELETED_LOG}: ${userResult.data.email} por ${currentUserId}`,
+    );
+
+    const event = DomainEvents.userDeleted(id, { deletedBy: currentUserId });
+
+    await this.messageBus.publish(event);
+    this.logger.log(`${MESSAGES.EVENTS.USER_DELETED} para ${id}`);
   }
 }

@@ -18,13 +18,11 @@ export interface TokenGenerationInput {
 }
 
 export class AuthTokenHelper {
-  constructor(
-    private readonly jwtService: any
-  ) {}
+  constructor(private readonly jwtService: any) {}
 
   generateTokenPair(input: TokenGenerationInput): TokenPair {
     const sessionId = generateSessionId();
-    
+
     const accessToken = this.jwtService.generateAccessToken({
       sub: input.userId,
       email: input.email,
@@ -38,10 +36,10 @@ export class AuthTokenHelper {
       sessionId,
     });
 
-    const refreshExpiry = input.rememberMe 
-      ? AUTH_CONSTANTS.REFRESH_TOKEN_TRUSTED_EXPIRES_DAYS 
+    const refreshExpiry = input.rememberMe
+      ? AUTH_CONSTANTS.REFRESH_TOKEN_TRUSTED_EXPIRES_DAYS
       : AUTH_CONSTANTS.REFRESH_TOKEN_EXPIRES_DAYS;
-    
+
     const expiresAt = calculateExpirationDate(refreshExpiry);
 
     return {
@@ -57,30 +55,25 @@ export class AuthTokenHelper {
     refreshToken: string,
     expiresAt: Date,
     deviceInfo?: any,
-    authRepository?: any
+    authRepository?: any,
   ): Promise<void> {
-    await authRepository.saveRefreshToken(
-      userId,
-      refreshToken,
-      expiresAt,
-      deviceInfo
-    );
+    await authRepository.saveRefreshToken(userId, refreshToken, expiresAt, deviceInfo);
   }
 
   async generateAndSaveTokens(
     input: TokenGenerationInput,
     deviceInfo: any,
     jwtService: any,
-    authRepository: any
+    authRepository: any,
   ): Promise<TokenPair> {
     const tokens = this.generateTokenPair(input);
-    
+
     await this.saveRefreshToken(
       input.userId,
       tokens.refreshToken,
       tokens.expiresAt,
       deviceInfo,
-      authRepository
+      authRepository,
     );
 
     return tokens;

@@ -40,10 +40,7 @@ export class SupabaseService {
   }
 
   async updateUser(supabaseId: string, data: { email?: string; password?: string }) {
-    const { data: user, error } = await this.supabase.auth.admin.updateUserById(
-      supabaseId,
-      data,
-    );
+    const { data: user, error } = await this.supabase.auth.admin.updateUserById(supabaseId, data);
 
     if (error) {
       this.logger.error(`Error updating user in Supabase: ${error.message}`);

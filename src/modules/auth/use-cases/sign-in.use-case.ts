@@ -1,22 +1,37 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
-import { ISignInUseCase, SignInInput, SignInOutput } from '../../../domain/auth/interfaces/use-cases/sign-in.use-case.interface';
-import { IAuthRepository, IAuthRepositoryToken } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
+import {
+  ISignInUseCase,
+  SignInInput,
+  SignInOutput,
+} from '../../../domain/auth/interfaces/use-cases/sign-in.use-case.interface';
+import {
+  IAuthRepository,
+  IAuthRepositoryToken,
+} from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
 import { IEmailService } from '../../../domain/auth/interfaces/services/email.service.interface';
 import { AUTH_CONSTANTS } from '../../../shared/constants/auth.constants';
 import { extractSupabaseUser, normalizeLoginInfo } from '../../../shared/utils/auth.utils';
 import { maskEmailForLog } from '../../../shared/utils/logging.utils';
-import { createTokenResponse, createTwoFactorTempResponse } from '../../../shared/factories/auth-response.factory';
+import {
+  createTokenResponse,
+  createTwoFactorTempResponse,
+} from '../../../shared/factories/auth-response.factory';
 import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
 import { AuthTokenHelper } from '../../../shared/helpers/auth-token.helper';
 import { MessageBus } from '../../../shared/messaging/message-bus';
 import { DomainEvents } from '../../../shared/events/domain-events';
+import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
+import { ISendTwoFAUseCase } from '../../../domain/auth/interfaces/use-cases/send-two-fa.use-case.interface';
 
 @Injectable()
-export class SignInUseCase extends BaseUseCase<SignInInput, SignInOutput> implements ISignInUseCase {
+export class SignInUseCase
+  extends BaseUseCase<SignInInput, SignInOutput>
+  implements ISignInUseCase
+{
   protected readonly logger = new Logger(SignInUseCase.name);
 
   constructor(
@@ -28,6 +43,8 @@ export class SignInUseCase extends BaseUseCase<SignInInput, SignInOutput> implem
     private readonly jwtService: IJwtService,
     @Inject(IEmailService)
     private readonly emailService: IEmailService,
+    @Inject(ISendTwoFAUseCase)
+    private readonly sendTwoFAUseCase: ISendTwoFAUseCase,
     private readonly configService: ConfigService,
     private readonly messageBus: MessageBus,
   ) {
@@ -35,26 +52,27 @@ export class SignInUseCase extends BaseUseCase<SignInInput, SignInOutput> implem
   }
 
   protected async handle(input: SignInInput): Promise<SignInOutput> {
-      const user = await this.authenticateUser(input.email, input.password);
-      
-      if (!user) {
-        throw AuthErrorFactory.create(AuthErrorType.INVALID_CREDENTIALS, { email: input.email });
-      }
+    const user = await this.authenticateUser(input.email, input.password);
 
-      if (!user.emailConfirmed) {
-        throw AuthErrorFactory.create(AuthErrorType.EMAIL_NOT_VERIFIED, { email: input.email });
-      }
+    if (!user) {
+      throw AuthErrorFactory.create(AuthErrorType.INVALID_CREDENTIALS, { email: input.email });
+    }
 
-      if (user.twoFactorEnabled) {
-        return this.handleTwoFactorAuth(user.id) as SignInOutput;
-      }
+    if (!user.emailConfirmed) {
+      throw AuthErrorFactory.create(AuthErrorType.EMAIL_NOT_VERIFIED, { email: input.email });
+    }
 
-      const tokens = await this.generateUserTokens(user, input);
-      const output = this.createAuthOutput(tokens, user);
-      
-      await this.sendLoginNotifications(user, tokens, input);
-      
-      return output as SignInOutput;
+    const requiresTwoFactor = user.twoFactorEnabled || user.role === RolesEnum.SUPER_ADMIN;
+    if (requiresTwoFactor) {
+      return (await this.handleTwoFactorAuth(user)) as SignInOutput;
+    }
+
+    const tokens = await this.generateUserTokens(user, input);
+    const output = this.createAuthOutput(tokens, user);
+
+    await this.sendLoginNotifications(user, tokens, input);
+
+    return output as SignInOutput;
   }
 
   private async authenticateUser(email: string, password: string) {
@@ -93,8 +111,25 @@ export class SignInUseCase extends BaseUseCase<SignInInput, SignInOutput> implem
     return user;
   }
 
-  private handleTwoFactorAuth(userId: string) {
-    const tempToken = this.jwtService.generateTwoFactorToken(userId);
+  private async handleTwoFactorAuth(user: any) {
+    const tempToken = this.jwtService.generateTwoFactorToken(user.id);
+
+    const sendResult = await this.sendTwoFAUseCase.execute({
+      userId: user.id,
+      tempToken,
+      method: 'email',
+    });
+
+    if (sendResult.error) {
+      throw sendResult.error;
+    }
+
+    this.logger.log('Two-factor challenge dispatched', {
+      userId: user.id,
+      email: maskEmailForLog(user.email || ''),
+      method: 'email',
+    });
+
     return createTwoFactorTempResponse(tempToken);
   }
 
@@ -110,24 +145,24 @@ export class SignInUseCase extends BaseUseCase<SignInInput, SignInOutput> implem
       },
       input.deviceInfo,
       this.jwtService,
-      this.authRepository
+      this.authRepository,
     );
   }
 
   private createAuthOutput(tokens: any, user: any) {
     return createTokenResponse(
-      { 
-        accessToken: tokens.accessToken, 
-        refreshToken: tokens.refreshToken, 
-        expiresIn: AUTH_CONSTANTS.ACCESS_TOKEN_EXPIRES_IN 
+      {
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        expiresIn: AUTH_CONSTANTS.ACCESS_TOKEN_EXPIRES_IN,
       },
-      { 
-        id: user.id, 
-        email: user.email, 
-        name: user.name, 
-        role: user.role, 
-        tenantId: user.tenantId 
-      }
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        tenantId: user.tenantId,
+      },
     );
   }
 
@@ -143,7 +178,7 @@ export class SignInUseCase extends BaseUseCase<SignInInput, SignInOutput> implem
     }
 
     this.logger.log('Login bem-sucedido', { email: maskedEmail });
-    
+
     const event = DomainEvents.userLoggedIn(
       user.id,
       {
@@ -153,11 +188,10 @@ export class SignInUseCase extends BaseUseCase<SignInInput, SignInOutput> implem
         userAgent: loginInfo.userAgent,
         device: loginInfo.device,
       },
-      { userId: user.id }
+      { userId: user.id },
     );
-    
+
     await this.messageBus.publish(event);
     this.logger.log('Evento USER_LOGGED_IN publicado', { userId: user.id, email: maskedEmail });
   }
-
 }

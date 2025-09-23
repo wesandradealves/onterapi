@@ -1,26 +1,26 @@
 import {
-  Controller,
-  Post,
-  Get,
-  Patch,
-  Delete,
-  Param,
   Body,
-  Query,
-  UseGuards,
-  Inject,
+  Controller,
+  Delete,
+  Get,
   HttpCode,
   HttpStatus,
+  Inject,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
   UsePipes,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBody,
   ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
   ApiParam,
   ApiQuery,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../auth/guards/roles.guard';
@@ -189,7 +189,7 @@ export class UsersController {
       throw result.error;
     }
     return {
-      data: result.data.data.map(user => ({ ...user, cpf: CPFUtils.mask(user.cpf) })),
+      data: result.data.data.map((user) => ({ ...user, cpf: CPFUtils.mask(user.cpf) })),
       pagination: result.data.pagination,
     };
   }
@@ -308,14 +308,10 @@ export class UsersController {
     status: 204,
     description: 'Usuário deletado com sucesso',
   })
-  async remove(
-    @Param('id') id: string,
-    @CurrentUser() currentUser: ICurrentUser,
-  ): Promise<void> {
+  async remove(@Param('id') id: string, @CurrentUser() currentUser: ICurrentUser): Promise<void> {
     const result = await this.deleteUserUseCase.execute(id, currentUser.id);
     if (result.error) {
       throw result.error;
     }
   }
-
 }

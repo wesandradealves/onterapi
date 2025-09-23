@@ -1,126 +1,74 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
+import { IsEmail, IsEnum, IsOptional, IsString, IsUUID, Matches, MinLength } from 'class-validator';
 
 export class CreateUserInputDTO {
-  @ApiProperty({
-    description: 'Email do usuário',
-    example: 'usuario@email.com',
-  })
+  @ApiProperty({ description: 'Email do usuario', example: 'usuario@email.com' })
+  @IsEmail()
   email!: string;
 
-  @ApiProperty({
-    description: 'Senha forte (mínimo 8 caracteres, maiúscula, minúscula, número e especial)',
-    example: 'SenhaForte123!',
-  })
+  @ApiProperty({ description: 'Senha forte (minimo 8 caracteres, maiuscula, minuscula, numero e especial)', example: 'SenhaForte123!' })
+  @IsString()
+  @MinLength(8)
   password!: string;
 
-  @ApiProperty({
-    description: 'Nome completo do usuário',
-    example: 'João Silva',
-  })
+  @ApiProperty({ description: 'Nome completo do usuario', example: 'Joao Silva' })
+  @IsString()
   name!: string;
 
-  @ApiProperty({
-    description: 'CPF sem formatação (apenas números)',
-    example: '12345678901',
-  })
+  @ApiProperty({ description: 'CPF sem formatacao (apenas numeros)', example: '12345678901' })
+  @Matches(/^\d{11}$/,{ message: 'cpf must contain 11 digits' })
   cpf!: string;
 
-  @ApiProperty({
-    description: 'Telefone com DDD (apenas números)',
-    example: '11999999999',
-    required: false,
-  })
+  @ApiProperty({ description: 'Telefone com DDD (apenas numeros)', example: '11999999999', required: false })
+  @IsOptional()
+  @IsString()
   phone?: string;
 
-  @ApiProperty({
-    description: 'Role/Perfil do usuário no sistema',
-    enum: RolesEnum,
-    example: RolesEnum.PATIENT,
-  })
+  @ApiProperty({ description: 'Role/Perfil do usuario no sistema', enum: RolesEnum, example: RolesEnum.PATIENT })
+  @IsEnum(RolesEnum)
   role!: RolesEnum;
 
-  @ApiProperty({
-    description: 'ID do tenant (clínica) ao qual o usuário pertence',
-    example: '550e8400-e29b-41d4-a716-446655440000',
-    required: false,
-  })
+  @ApiProperty({ description: 'ID do tenant (clinica) ao qual o usuario pertence', example: '550e8400-e29b-41d4-a716-446655440000', required: false })
+  @IsOptional()
+  @IsUUID('4')
   tenantId?: string;
 }
 
 export class CreateUserResponseDto {
-  @ApiProperty({
-    description: 'ID único do usuário',
-    example: '550e8400-e29b-41d4-a716-446655440001',
-  })
+  @ApiProperty({ description: 'ID unico do usuario', example: '550e8400-e29b-41d4-a716-446655440001' })
   id!: string;
 
-  @ApiProperty({
-    description: 'Email do usuário',
-    example: 'usuario@email.com',
-  })
+  @ApiProperty({ description: 'Email do usuario', example: 'usuario@email.com' })
   email!: string;
 
-  @ApiProperty({
-    description: 'Nome completo do usuário',
-    example: 'João Silva',
-  })
+  @ApiProperty({ description: 'Nome completo do usuario', example: 'Joao Silva' })
   name!: string;
 
-  @ApiProperty({
-    description: 'CPF mascarado',
-    example: '123.***.***-01',
-  })
+  @ApiProperty({ description: 'CPF mascarado', example: '123.***.***-01' })
   cpf!: string;
 
-  @ApiProperty({
-    description: 'Telefone com DDD',
-    example: '11999999999',
-    required: false,
-  })
+  @ApiProperty({ description: 'Telefone com DDD', example: '11999999999', required: false })
   phone?: string;
 
-  @ApiProperty({
-    description: 'Role/Perfil do usuário',
-    enum: RolesEnum,
-    example: RolesEnum.PATIENT,
-  })
+  @ApiProperty({ description: 'Role/Perfil do usuario', enum: RolesEnum, example: RolesEnum.PATIENT })
   role!: RolesEnum;
 
-  @ApiProperty({
-    description: 'ID do tenant (clínica)',
-    example: '550e8400-e29b-41d4-a716-446655440000',
-    required: false,
-  })
+  @ApiProperty({ description: 'ID do tenant (clinica)', example: '550e8400-e29b-41d4-a716-446655440000', required: false })
   tenantId?: string;
 
-  @ApiProperty({
-    description: 'Indica se o usuário está ativo',
-    example: true,
-  })
+  @ApiProperty({ description: 'Indica se o usuario esta ativo', example: true })
   isActive!: boolean;
 
-  @ApiProperty({
-    description: 'Indica se o email foi verificado',
-    example: false,
-  })
+  @ApiProperty({ description: 'Indica se o email foi verificado', example: false })
   emailVerified!: boolean;
 
-  @ApiProperty({
-    description: 'Indica se 2FA está habilitado',
-    example: false,
-  })
+  @ApiProperty({ description: 'Indica se 2FA esta habilitado', example: false })
   twoFactorEnabled!: boolean;
 
-  @ApiProperty({
-    description: 'Data de criação',
-    example: '2025-01-09T10:00:00Z',
-  })
+  @ApiProperty({ description: 'Data de criacao', example: '2025-01-09T10:00:00Z' })
   createdAt!: Date;
 
-  @ApiProperty({
-    description: 'Data da última atualização',
-    example: '2025-01-09T10:00:00Z',
-  })
+  @ApiProperty({ description: 'Data da ultima atualizacao', example: '2025-01-09T10:00:00Z' })
   updatedAt!: Date;
 }

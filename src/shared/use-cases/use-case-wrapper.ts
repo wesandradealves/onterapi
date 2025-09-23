@@ -7,7 +7,7 @@ export class UseCaseWrapper<TInput, TOutput> {
 
   constructor(
     private readonly logger: Logger,
-    private readonly handler: (input: TInput) => Promise<TOutput>
+    private readonly handler: (input: TInput) => Promise<TOutput>,
   ) {
     this.internalUseCase = new InternalUseCase<TInput, TOutput>(logger, handler);
   }
@@ -19,10 +19,10 @@ export class UseCaseWrapper<TInput, TOutput> {
 
 class InternalUseCase<TInput, TOutput> extends BaseUseCase<TInput, TOutput> {
   protected readonly logger: Logger;
-  
+
   constructor(
     logger: Logger,
-    private readonly handlerFn: (input: TInput) => Promise<TOutput>
+    private readonly handlerFn: (input: TInput) => Promise<TOutput>,
   ) {
     super();
     this.logger = logger;

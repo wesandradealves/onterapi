@@ -11,11 +11,7 @@ export const cpfSchema = z
     message: 'CPF inválido',
   });
 
-export const emailSchema = z
-  .string()
-  .email('Email inválido')
-  .toLowerCase()
-  .trim();
+export const emailSchema = z.string().email('Email inválido').toLowerCase().trim();
 
 export const passwordSchema = z
   .string()
@@ -31,14 +27,17 @@ export const phoneSchema = z
   .refine((val) => val.length === 10 || val.length === 11, {
     message: 'Telefone deve ter 10 ou 11 dígitos',
   })
-  .refine((val) => {
-    if (val.length === 11) {
-      return val[2] === '9';
-    }
-    return true;
-  }, {
-    message: 'Celular deve começar com 9',
-  });
+  .refine(
+    (val) => {
+      if (val.length === 11) {
+        return val[2] === '9';
+      }
+      return true;
+    },
+    {
+      message: 'Celular deve começar com 9',
+    },
+  );
 
 export const fullNameSchema = z
   .string()

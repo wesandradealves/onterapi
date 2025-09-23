@@ -1,4 +1,9 @@
-import { RolesEnum, ROLE_HIERARCHY, INTERNAL_ROLES, CLINIC_ROLES } from '../../domain/auth/enums/roles.enum';
+import {
+  CLINIC_ROLES,
+  INTERNAL_ROLES,
+  ROLE_HIERARCHY,
+  RolesEnum,
+} from '../../domain/auth/enums/roles.enum';
 
 export class RolesUtil {
   static canPerformAction(userRole: RolesEnum, requiredRole: RolesEnum): boolean {
@@ -16,11 +21,9 @@ export class RolesUtil {
   }
 
   static isAdminRole(role: RolesEnum): boolean {
-    return [
-      RolesEnum.SUPER_ADMIN,
-      RolesEnum.ADMIN_SUPORTE,
-      RolesEnum.ADMIN_FINANCEIRO,
-    ].includes(role);
+    return [RolesEnum.SUPER_ADMIN, RolesEnum.ADMIN_SUPORTE, RolesEnum.ADMIN_FINANCEIRO].includes(
+      role,
+    );
   }
 
   static getRoleLevel(role: RolesEnum): number {

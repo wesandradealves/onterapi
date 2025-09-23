@@ -21,7 +21,10 @@ import { ISupabaseAuthService } from '../../domain/auth/interfaces/services/supa
 import { IJwtService } from '../../domain/auth/interfaces/services/jwt.service.interface';
 import { ITwoFactorService } from '../../domain/auth/interfaces/services/two-factor.service.interface';
 import { IEmailService } from '../../domain/auth/interfaces/services/email.service.interface';
-import { IAuthRepository, IAuthRepositoryToken } from '../../domain/auth/interfaces/repositories/auth.repository.interface';
+import {
+  IAuthRepository,
+  IAuthRepositoryToken,
+} from '../../domain/auth/interfaces/repositories/auth.repository.interface';
 
 import { SignInUseCase } from './use-cases/sign-in.use-case';
 import { SignOutUseCase } from './use-cases/sign-out.use-case';
@@ -130,11 +133,6 @@ const useCaseProviders: Provider[] = [
     AuthEmailService,
     NotificationEmailService,
   ],
-  exports: [
-    ...serviceProviders,
-    JwtAuthGuard,
-    RolesGuard,
-    TenantGuard,
-  ],
+  exports: [...serviceProviders, JwtAuthGuard, RolesGuard, TenantGuard],
 })
 export class AuthModule {}

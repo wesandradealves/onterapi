@@ -1,6 +1,6 @@
-import { Injectable, ExecutionContext, Logger } from '@nestjs/common';
+import { ExecutionContext, Injectable, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { RolesEnum, INTERNAL_ROLES } from '../../../domain/auth/enums/roles.enum';
+import { INTERNAL_ROLES, RolesEnum } from '../../../domain/auth/enums/roles.enum';
 import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
 import { MESSAGES } from '../../../shared/constants/messages.constants';
 import { BaseGuard } from '../../../shared/guards/base.guard';
@@ -22,13 +22,15 @@ export class TenantGuard extends BaseGuard {
     }
 
     const requestTenantId = this.extractTenantId(request);
-    
+
     if (!requestTenantId) {
       return true;
     }
 
     if (user.tenantId !== requestTenantId) {
-      this.logger.warn(`${MESSAGES.GUARDS.ACCESS_DENIED_TENANT} ${requestTenantId} para usuário ${user.email}`);
+      this.logger.warn(
+        `${MESSAGES.GUARDS.ACCESS_DENIED_TENANT} ${requestTenantId} para usuário ${user.email}`,
+      );
       throw AuthErrorFactory.create(AuthErrorType.TENANT_ACCESS_DENIED);
     }
 

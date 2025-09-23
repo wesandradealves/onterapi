@@ -13,7 +13,7 @@ export const MESSAGES = {
     VERIFICATION_EMAIL_SENT: 'Email de verificação enviado',
     WELCOME_EMAIL_SENT: 'Email de boas-vindas enviado',
   },
-  
+
   USER: {
     CREATED: 'Usuário criado com sucesso',
     UPDATED: 'Usuário atualizado com sucesso',
@@ -25,13 +25,13 @@ export const MESSAGES = {
     CPF_AVAILABLE: 'CPF disponível',
     EMAIL_DUPLICATE: 'Email já cadastrado',
   },
-  
+
   VALIDATION: {
     CHECKING_CPF: 'Verificando CPF duplicado',
     TOTAL_USERS: 'Total de usuários no Supabase',
     COMPARING_CPF: 'Comparando CPF',
   },
-  
+
   EVENTS: {
     USER_LOGGED_IN: 'Evento USER_LOGGED_IN publicado',
     USER_LOGGED_OUT: 'Evento USER_LOGGED_OUT publicado',
@@ -44,7 +44,7 @@ export const MESSAGES = {
     TWO_FA_VALIDATED: 'Evento TWO_FA_VALIDATED publicado',
     TWO_FA_FAILED: 'Evento TWO_FA_FAILED publicado',
   },
-  
+
   ERRORS: {
     AUTH: {
       INVALID_CREDENTIALS: 'Credenciais inválidas',
@@ -58,7 +58,7 @@ export const MESSAGES = {
       TOO_MANY_ATTEMPTS: 'Muitas tentativas. Tente novamente mais tarde',
       METHOD_NOT_IMPLEMENTED: 'Método não implementado',
     },
-    
+
     USER: {
       CREATE_ERROR: 'Erro ao criar usuário',
       UPDATE_ERROR: 'Erro ao atualizar usuário',
@@ -66,7 +66,7 @@ export const MESSAGES = {
       FIND_ERROR: 'Erro ao buscar usuário',
       LIST_ERROR: 'Erro ao listar usuários',
     },
-    
+
     SUPABASE: {
       CREATE_ERROR: 'Erro ao criar usuário no Supabase',
       UPDATE_ERROR: 'Erro ao atualizar usuário no Supabase',
@@ -76,12 +76,12 @@ export const MESSAGES = {
       SIGN_IN_ERROR: 'Erro ao fazer login no Supabase',
       SIGN_OUT_ERROR: 'Erro ao fazer logout no Supabase',
     },
-    
+
     EMAIL: {
       SEND_ERROR: 'Erro ao enviar email',
       TEMPLATE_ERROR: 'Erro ao gerar template de email',
     },
-    
+
     VALIDATION: {
       REQUIRED_FIELD: 'Campo obrigatório',
       INVALID_FORMAT: 'Formato inválido',
@@ -89,7 +89,7 @@ export const MESSAGES = {
       MAX_LENGTH: 'Tamanho máximo excedido',
     },
   },
-  
+
   GUARDS: {
     CHECKING_PERMISSIONS: 'Verificando permissões para usuário',
     ROLES_REQUIRED: 'Roles requeridas',
@@ -102,7 +102,7 @@ export const MESSAGES = {
     ACCESSING_OWN_DATA: 'Usuário acessando próprios dados',
     ADMIN_ACCESS: 'Admin acessando usuário',
   },
-  
+
   LOGS: {
     FULL_USER_DATA: 'Dados completos do usuário',
     FINAL_USER_ROLE: 'Role final do usuário',
