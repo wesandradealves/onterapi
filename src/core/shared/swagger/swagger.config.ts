@@ -27,6 +27,13 @@ export default class Swagger {
     });
 
     SwaggerModule.setup(pathName, app, document, {
+      customSiteTitle: 'OnTerapi API Docs',
+      customfavIcon: 'https://nestjs.com/img/logo_text.svg',
+      customCssUrl: 'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.10.3/swagger-ui.min.css',
+      customJs: [
+        'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.10.3/swagger-ui-bundle.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.10.3/swagger-ui-standalone-preset.min.js',
+      ],
       swaggerOptions: {
         persistAuthorization: true,
         tagsSorter: 'alpha',
