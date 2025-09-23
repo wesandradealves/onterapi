@@ -6,6 +6,13 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [Unreleased]
 
+### Changed
+- Documentacao do Swagger atualizada para listar os roles exigidos nos modulos Auth, Two-Factor, Patients e Users.
+
+### Fixed
+- Remocao de artefatos de encoding nas descricoes dos endpoints documentados no Swagger.
+
+
 ## [0.14.0] - 2025-09-23
 
 ### Added

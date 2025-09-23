@@ -102,7 +102,9 @@ export class PatientsController {
   )
   @ApiOperation({
     summary: 'Listar pacientes',
-    description: 'Retorna a listagem paginada de pacientes do tenant atual.',
+    description: `Retorna a listagem paginada de pacientes do tenant atual.
+
+**Roles:** CLINIC_OWNER, PROFESSIONAL, SECRETARY, MANAGER, SUPER_ADMIN`,
   })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -152,7 +154,12 @@ export class PatientsController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.PROFESSIONAL, RolesEnum.SECRETARY, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Criar paciente' })
+  @ApiOperation({
+    summary: 'Criar paciente',
+    description: `Cria um novo paciente para o tenant atual.
+
+**Roles:** CLINIC_OWNER, PROFESSIONAL, SECRETARY, SUPER_ADMIN`,
+  })
   @ApiResponse({ status: 201, type: PatientResponseDto })
   @ApiBody({ type: CreatePatientDto })
   
@@ -221,7 +228,12 @@ export class PatientsController {
     RolesEnum.MANAGER,
     RolesEnum.SUPER_ADMIN,
   )
-  @ApiOperation({ summary: 'Detalhes do paciente' })
+  @ApiOperation({
+    summary: 'Detalhes do paciente',
+    description: `Retorna informações completas do paciente informado.
+
+**Roles:** CLINIC_OWNER, PROFESSIONAL, SECRETARY, MANAGER, SUPER_ADMIN`,
+  })
   @ApiParam({
     name: 'id',
     description: 'Identificador do paciente',
@@ -283,7 +295,12 @@ export class PatientsController {
     RolesEnum.MANAGER,
     RolesEnum.SUPER_ADMIN,
   )
-  @ApiOperation({ summary: 'Atualizar paciente' })
+  @ApiOperation({
+    summary: 'Atualizar paciente',
+    description: `Atualiza dados cadastrais do paciente.
+
+**Roles:** CLINIC_OWNER, PROFESSIONAL, SECRETARY, MANAGER, SUPER_ADMIN`,
+  })
   @ApiParam({ name: 'id', description: 'Identificador do paciente' })
   @ApiResponse({ status: 200, type: PatientResponseDto })
   
@@ -346,7 +363,12 @@ export class PatientsController {
   @Post(':id/transfer')
   @HttpCode(HttpStatus.OK)
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Transferir paciente para outro profissional' })
+  @ApiOperation({
+    summary: 'Transferir paciente para outro profissional',
+    description: `Transfere o paciente para outro profissional dentro do tenant.
+
+**Roles:** CLINIC_OWNER, MANAGER, SUPER_ADMIN`,
+  })
   @ApiParam({ name: 'id', description: 'Identificador do paciente' })
   @ApiResponse({ status: 200, type: PatientResponseDto })
   
@@ -381,7 +403,12 @@ export class PatientsController {
   @Post(':id/archive')
   @HttpCode(HttpStatus.OK)
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Arquivar paciente' })
+  @ApiOperation({
+    summary: 'Arquivar paciente',
+    description: `Arquiva um paciente e opcionalmente dados relacionados.
+
+**Roles:** CLINIC_OWNER, MANAGER, SUPER_ADMIN`,
+  })
   @ApiParam({ name: 'id', description: 'Identificador do paciente' })
   @ApiResponse({ status: 200, description: 'Paciente arquivado' })
   
@@ -416,7 +443,12 @@ export class PatientsController {
     RolesEnum.SUPER_ADMIN,
     RolesEnum.ADMIN_FINANCEIRO,
   )
-  @ApiOperation({ summary: 'Exportar pacientes' })
+  @ApiOperation({
+    summary: 'Exportar pacientes',
+    description: `Gera uma solicitação de exportação com filtros opcionais.
+
+**Roles:** CLINIC_OWNER, MANAGER, SUPER_ADMIN, ADMIN_FINANCEIRO`,
+  })
   @ApiResponse({
     status: 202,
     description: 'Exportacao enfileirada',

@@ -69,16 +69,18 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Autenticar usuário',
-    description: `Autentica um usuário com email e senha. 
-    
-    **Funcionalidades:**
-    - Valida credenciais no Supabase Auth
-    - Gera tokens JWT (access e refresh)
-    - Envia email de alerta de login com IP, dispositivo e localização
-    - Suporta autenticação em dois fatores (2FA)
-    
-    **Emails enviados:**
-    - Email de alerta de login bem-sucedido com detalhes do acesso`,
+    description: `Autentica um usuário com email e senha.
+
+**Funcionalidades:**
+- Valida credenciais no Supabase Auth
+- Gera tokens JWT (access e refresh)
+- Envia email de alerta de login com IP, dispositivo e localização
+- Suporta autenticação em dois fatores (2FA)
+
+**Emails enviados:**
+- Email de alerta de login bem-sucedido com detalhes do acesso
+
+**Roles:** Público`,
   })
   @ApiBody({
     type: SignInDto,
@@ -133,7 +135,9 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Renovar token de acesso',
-    description: 'Usa o refresh token para obter um novo access token',
+    description: `Usa o refresh token para obter um novo access token.
+
+**Roles:** Público`,
   })
   @ApiBody({
     type: RefreshTokenDto,
@@ -175,7 +179,9 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Fazer logout',
-    description: 'Encerra a sessão do usuário, invalidando tokens',
+    description: `Encerra a sessão do usuário, invalidando tokens.
+
+**Roles:** Qualquer usuário autenticado`,
   })
   @ApiBody({
     type: SignOutDto,
@@ -232,7 +238,9 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Obter dados do usuário autenticado',
-    description: 'Retorna as informações do usuário atualmente autenticado',
+    description: `Retorna as informações do usuário atualmente autenticado.
+
+**Roles:** Qualquer usuário autenticado`,
   })
   @ApiResponse({
     status: 200,
@@ -257,7 +265,9 @@ export class AuthController {
   @Public()
   @ApiOperation({
     summary: 'Verificar email do usuário',
-    description: 'Confirma o email do usuário usando o token enviado por email',
+    description: `Confirma o email do usuário usando o token enviado por email.
+
+**Roles:** Público`,
   })
   @ApiQuery({
     name: 'token',

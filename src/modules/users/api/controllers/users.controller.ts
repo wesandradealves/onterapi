@@ -68,24 +68,26 @@ export class UsersController {
   @ApiOperation({
     summary: 'Criar novo usuário',
     description: `Cadastro de novo usuário no sistema.
-    
-    **Funcionalidades:**
-    - Cria usuário no Supabase Auth
-    - Valida CPF brasileiro
-    - Valida unicidade de email
-    - Define role e permissões
-    - Auto-confirma email para desenvolvimento
-    
-    **Emails enviados:**
-    - Email de verificação com link para confirmar conta
-    - Email de boas-vindas com informações da plataforma
-    
-    **Roles disponíveis:**
-    - PATIENT: Paciente
-    - PROFESSIONAL: Profissional de saúde
-    - SECRETARY: Secretária
-    - CLINIC_OWNER: Proprietário de clínica
-    - SUPER_ADMIN: Administrador do sistema`,
+
+**Funcionalidades:**
+- Cria usuário no Supabase Auth
+- Valida CPF brasileiro
+- Valida unicidade de email
+- Define role e permissões
+- Auto-confirma email para desenvolvimento
+
+**Emails enviados:**
+- Email de verificação com link para confirmar conta
+- Email de boas-vindas com informações da plataforma
+
+**Roles disponíveis:**
+- PATIENT: Paciente
+- PROFESSIONAL: Profissional de saúde
+- SECRETARY: Secretária
+- CLINIC_OWNER: Proprietário de clínica
+- SUPER_ADMIN: Administrador do sistema
+
+**Roles:** Público`,
   })
   @ApiBody({
     type: CreateUserInputDTO,
@@ -141,7 +143,9 @@ export class UsersController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Listar todos usuários',
-    description: 'Apenas administradores podem listar todos os usuários',
+    description: `Apenas administradores podem listar todos os usuários.
+
+**Roles:** SUPER_ADMIN, ADMIN_SUPORTE`,
   })
   @ApiQuery({
     name: 'page',
@@ -199,7 +203,9 @@ export class UsersController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Buscar usuário por ID',
-    description: 'Administrador ou o próprio usuário podem visualizar',
+    description: `Administrador (SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO) ou o próprio usuário podem visualizar.
+
+**Roles:** SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO ou o próprio usuário autenticado`,
   })
   @ApiParam({
     name: 'id',
@@ -232,7 +238,9 @@ export class UsersController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Atualizar usuário',
-    description: 'Administrador ou o próprio usuário podem atualizar',
+    description: `Administrador (SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO) ou o próprio usuário podem atualizar.
+
+**Roles:** SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO ou o próprio usuário autenticado`,
   })
   @ApiParam({
     name: 'id',
@@ -297,7 +305,9 @@ export class UsersController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Deletar usuário',
-    description: 'Soft delete - Administrador ou o próprio usuário podem deletar',
+    description: `Soft delete realizado por administradores (SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO) ou pelo próprio usuário.
+
+**Roles:** SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO ou o próprio usuário autenticado`,
   })
   @ApiParam({
     name: 'id',

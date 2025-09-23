@@ -43,7 +43,9 @@ export class TwoFactorController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Validar código 2FA',
-    description: 'Valida o código de autenticação de dois fatores e retorna os tokens de acesso',
+    description: `Valida o código de autenticação de dois fatores e retorna os tokens de acesso.
+
+**Roles:** Público`,
   })
   @ApiResponse({
     status: 200,
@@ -84,7 +86,9 @@ export class TwoFactorController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Reenviar código 2FA',
-    description: 'Reenvia o código de autenticação de dois fatores',
+    description: `Reenvia o código de autenticação de dois fatores.
+
+**Roles:** Público`,
   })
   @ApiResponse({
     status: 200,
