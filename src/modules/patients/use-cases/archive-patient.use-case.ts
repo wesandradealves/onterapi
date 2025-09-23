@@ -31,7 +31,7 @@ export class ArchivePatientUseCase
   }
 
   protected async handle(input: ArchivePatientInput): Promise<void> {
-    const existing = await this.patientRepository.findById(input.tenantId, input.patientId);
+    const existing = await this.patientRepository.findBySlug(input.tenantId, input.patientSlug);
 
     if (!existing) {
       throw PatientErrorFactory.notFound();
@@ -42,20 +42,20 @@ export class ArchivePatientUseCase
       throw PatientErrorFactory.unauthorized();
     }
 
-    const { requesterRole, ...payload } = input as any;
+    const payload: ArchivePatientInput = { ...input, patientId: existing.id };
     await this.patientRepository.archive(payload);
 
     await this.auditService.register('patient.archived', {
       tenantId: input.tenantId,
-      patientId: input.patientId,
+      patientId: existing.id,
       reason: input.reason,
       requestedBy: input.requestedBy,
     });
 
-    await this.notificationService.notifyArchive(input.patientId, input.tenantId, input.reason);
+    await this.notificationService.notifyArchive(existing.id, input.tenantId, input.reason);
 
     const event = DomainEvents.patientArchived(
-      input.patientId,
+      existing.id,
       { tenantId: input.tenantId, reason: input.reason },
       { userId: input.requestedBy },
     );

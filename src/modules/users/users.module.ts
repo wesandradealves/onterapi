@@ -4,7 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersController } from './api/controllers/users.controller';
 import { CreateUserUseCase } from './use-cases/create-user.use-case';
 import { FindAllUsersUseCase } from './use-cases/find-all-users.use-case';
-import { FindUserByIdUseCase } from './use-cases/find-user-by-id.use-case';
+import { FindUserBySlugUseCase } from './use-cases/find-user-by-slug.use-case';
 import { UpdateUserUseCase } from './use-cases/update-user.use-case';
 import { DeleteUserUseCase } from './use-cases/delete-user.use-case';
 import { UserOwnerGuard } from './guards/user-owner.guard';
@@ -13,6 +13,7 @@ import { AuthModule } from '../auth/auth.module';
 import { UserRepository } from '../../infrastructure/users/repositories/user.repository';
 import { UserEntity } from '../../infrastructure/auth/entities/user.entity';
 import { MessageBus } from '../../shared/messaging/message-bus';
+import { FindUserBySlugUseCaseToken } from '../../domain/users/interfaces/use-cases/find-user-by-slug.use-case.interface';
 
 @Module({
   imports: [ConfigModule, forwardRef(() => AuthModule), TypeOrmModule.forFeature([UserEntity])],
@@ -31,8 +32,8 @@ import { MessageBus } from '../../shared/messaging/message-bus';
       useClass: FindAllUsersUseCase,
     },
     {
-      provide: 'IFindUserByIdUseCase',
-      useClass: FindUserByIdUseCase,
+      provide: FindUserBySlugUseCaseToken,
+      useClass: FindUserBySlugUseCase,
     },
     {
       provide: 'IUpdateUserUseCase',
@@ -44,7 +45,7 @@ import { MessageBus } from '../../shared/messaging/message-bus';
     },
     CreateUserUseCase,
     FindAllUsersUseCase,
-    FindUserByIdUseCase,
+    FindUserBySlugUseCase,
     UpdateUserUseCase,
     DeleteUserUseCase,
     UserOwnerGuard,

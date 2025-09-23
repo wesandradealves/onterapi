@@ -39,6 +39,9 @@ export class CreateUserResponseDto {
   @ApiProperty({ description: 'ID unico do usuario', example: '550e8400-e29b-41d4-a716-446655440001' })
   id!: string;
 
+  @ApiProperty({ description: 'Slug unico do usuario', example: 'joao-silva' })
+  slug!: string;
+
   @ApiProperty({ description: 'Email do usuario', example: 'usuario@email.com' })
   email!: string;
 

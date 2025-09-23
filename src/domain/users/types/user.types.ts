@@ -42,6 +42,7 @@ export interface IUserFilters {
 
 export interface IUserResponse {
   id: string;
+  slug: string;
   email: string;
   name: string;
   cpf: string;

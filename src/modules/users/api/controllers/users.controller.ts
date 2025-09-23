@@ -32,7 +32,10 @@ import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
 import { ICurrentUser } from '../../../../domain/auth/interfaces/current-user.interface';
 import { ICreateUserUseCase } from '../../../../domain/users/interfaces/use-cases/create-user.use-case.interface';
 import { IFindAllUsersUseCase } from '../../../../domain/users/interfaces/use-cases/find-all-users.use-case.interface';
-import { IFindUserByIdUseCase } from '../../../../domain/users/interfaces/use-cases/find-user-by-id.use-case.interface';
+import {
+  IFindUserBySlugUseCase,
+  FindUserBySlugUseCaseToken,
+} from '../../../../domain/users/interfaces/use-cases/find-user-by-slug.use-case.interface';
 import { IUpdateUserUseCase } from '../../../../domain/users/interfaces/use-cases/update-user.use-case.interface';
 import { IDeleteUserUseCase } from '../../../../domain/users/interfaces/use-cases/delete-user.use-case.interface';
 import { CreateUserInputDTO, CreateUserResponseDto } from '../dtos/create-user.dto';
@@ -43,7 +46,6 @@ import { createUserSchema } from '../schemas/create-user.schema';
 import { updateUserSchema } from '../schemas/update-user.schema';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
 import { CPFUtils } from '../../../../shared/utils/cpf.utils';
-import { UserMapper } from '../../../../shared/mappers/user.mapper';
 import { AuthErrorFactory } from '../../../../shared/factories/auth-error.factory';
 
 @ApiTags('Users')
@@ -54,8 +56,8 @@ export class UsersController {
     private readonly createUserUseCase: ICreateUserUseCase,
     @Inject('IFindAllUsersUseCase')
     private readonly findAllUsersUseCase: IFindAllUsersUseCase,
-    @Inject('IFindUserByIdUseCase')
-    private readonly findUserByIdUseCase: IFindUserByIdUseCase,
+    @Inject(FindUserBySlugUseCaseToken)
+    private readonly findUserBySlugUseCase: IFindUserBySlugUseCase,
     @Inject('IUpdateUserUseCase')
     private readonly updateUserUseCase: IUpdateUserUseCase,
     @Inject('IDeleteUserUseCase')
@@ -134,7 +136,7 @@ export class UsersController {
       throw result.error;
     }
     const maskedUser = { ...result.data, cpf: CPFUtils.mask(result.data.cpf) };
-    return maskedUser as UserResponseDto;
+    return maskedUser as CreateUserResponseDto;
   }
 
   @Get()
@@ -198,31 +200,31 @@ export class UsersController {
     };
   }
 
-  @Get(':id')
+  @Get(':slug')
   @UseGuards(JwtAuthGuard, UserOwnerGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Buscar usuário por ID',
-    description: `Administrador (SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO) ou o próprio usuário podem visualizar.
+    summary: 'Buscar usuario por slug',
+    description: `Administrador (SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO) ou o proprio usuario podem visualizar.
 
-**Roles:** SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO ou o próprio usuário autenticado`,
+**Roles:** SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO ou o proprio usuario autenticado`,
   })
   @ApiParam({
-    name: 'id',
-    description: 'UUID do usuário',
-    example: '550e8400-e29b-41d4-a716-446655440001',
+    name: 'slug',
+    description: 'Slug do usuario',
+    example: 'joao-silva',
   })
   @ApiResponse({
     status: 200,
-    description: 'Usuário encontrado',
+    description: 'Usuario encontrado',
     type: UserResponseDto,
   })
   @ApiResponse({
     status: 404,
-    description: 'Usuário não encontrado',
+    description: 'Usuario nao encontrado',
   })
-  async findOne(@Param('id') id: string): Promise<UserResponseDto> {
-    const result = await this.findUserByIdUseCase.execute(id);
+  async findOne(@Param('slug') slug: string): Promise<UserResponseDto> {
+    const result = await this.findUserBySlugUseCase.execute(slug);
     if (result.error) {
       throw result.error;
     }
@@ -233,23 +235,23 @@ export class UsersController {
     return maskedUser as UserResponseDto;
   }
 
-  @Patch(':id')
+  @Patch(':slug')
   @UseGuards(JwtAuthGuard, UserOwnerGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Atualizar usuário',
-    description: `Administrador (SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO) ou o próprio usuário podem atualizar.
+    summary: 'Atualizar usuario',
+    description: `Administrador (SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO) ou o proprio usuario podem atualizar.
 
-**Roles:** SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO ou o próprio usuário autenticado`,
+**Roles:** SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO ou o proprio usuario autenticado`,
   })
   @ApiParam({
-    name: 'id',
-    description: 'UUID do usuário',
-    example: '550e8400-e29b-41d4-a716-446655440001',
+    name: 'slug',
+    description: 'Slug do usuario',
+    example: 'joao-silva',
   })
   @ApiBody({
     type: UpdateUserDto,
-    description: 'Dados para atualização',
+    description: 'Dados para atualizacao',
     examples: {
       updateName: {
         summary: 'Atualizar nome',
@@ -286,11 +288,11 @@ export class UsersController {
     type: UserResponseDto,
   })
   async update(
-    @Param('id') id: string,
+    @Param('slug') slug: string,
     @Body() dto: UpdateUserDto,
     @CurrentUser() currentUser: ICurrentUser,
   ): Promise<UserResponseDto> {
-    const result = await this.updateUserUseCase.execute(id, dto, currentUser.id);
+    const result = await this.updateUserUseCase.execute(slug, dto, currentUser.id);
     if (result.error) {
       throw result.error;
     }
@@ -299,27 +301,27 @@ export class UsersController {
     return maskedUser as UserResponseDto;
   }
 
-  @Delete(':id')
+  @Delete(':slug')
   @UseGuards(JwtAuthGuard, UserOwnerGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Deletar usuário',
-    description: `Soft delete realizado por administradores (SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO) ou pelo próprio usuário.
+      summary: 'Deletar usuario',
+      description: `Soft delete realizado por administradores (SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO) ou pelo proprio usuario.
 
-**Roles:** SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO ou o próprio usuário autenticado`,
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'UUID do usuário',
-    example: '550e8400-e29b-41d4-a716-446655440001',
-  })
-  @ApiResponse({
-    status: 204,
-    description: 'Usuário deletado com sucesso',
-  })
-  async remove(@Param('id') id: string, @CurrentUser() currentUser: ICurrentUser): Promise<void> {
-    const result = await this.deleteUserUseCase.execute(id, currentUser.id);
+**Roles:** SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO ou o proprio usuario autenticado`,
+    })
+    @ApiParam({
+      name: 'slug',
+      description: 'Slug do usuario',
+      example: 'joao-silva',
+    })
+    @ApiResponse({
+      status: 204,
+      description: 'Usuario deletado com sucesso',
+    })
+    async remove(@Param('slug') slug: string, @CurrentUser() currentUser: ICurrentUser): Promise<void> {
+      const result = await this.deleteUserUseCase.execute(slug, currentUser.id);
     if (result.error) {
       throw result.error;
     }
