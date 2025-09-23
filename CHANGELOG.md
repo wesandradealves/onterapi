@@ -6,16 +6,6 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [Unreleased]
 
-### Changed
-- Documentacao do Swagger atualizada para listar os roles exigidos nos modulos Auth, Two-Factor, Patients e Users.
-- Fluxo de Two-Factor no Swagger atualizado: payload de validação documentado e endpoint manual de reenvio oculto.
-- Swagger: removido esquema de API key não utilizado para evitar confusão na autenticação.
-- Filtros da listagem de pacientes no Swagger exibem enums reais (status, risco, quickFilter) alinhados às validações de back-end.
-
-### Fixed
-- Remocao de artefatos de encoding nas descricoes dos endpoints documentados no Swagger.
-
-
 ## [0.14.0] - 2025-09-23
 
 ### Added
@@ -27,10 +17,15 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 - SignOutUseCase passa a informar o `userId` ao Supabase e ignora assinaturas invalidas sem gerar erro.
 - DTO `SignOutDto` agora valida `refreshToken` e `allDevices` com class-validator.
 - README reescrito com instrucoes atualizadas, fluxos de teste e troubleshooting.
+- Documentacao do Swagger atualizada para listar os roles exigidos nos modulos Auth, Two-Factor, Patients e Users.
+- Fluxo de Two-Factor no Swagger atualizado: payload de validação documentado e endpoint manual de reenvio oculto.
+- Swagger: removido esquema de API key não utilizado para evitar confusão na autenticação.
+- Filtros da listagem de pacientes no Swagger exibem enums reais (status, risco, quickFilter) alinhados às validações de back-end.
 
 ### Fixed
 - Logout em todos os dispositivos nao gera mais warning `invalid JWT` do Supabase.
 - Exportacao de pacientes respeita roles (SECRETARY bloqueada) e registra jobs pendentes corretamente.
+- Remocao de artefatos de encoding nas descricoes dos endpoints documentados no Swagger.
 
 ## [0.13.1] - 2025-09-21
 
