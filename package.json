@@ -1,7 +1,7 @@
 {
   "name": "@onterapi/backend",
-  "version": "0.1.0",
-  "description": "OnTerapi v4 - Sistema de Gestão para Terapias Integrativas",
+  "version": "0.15.0",
+  "description": "OnTerapi v4 - Sistema de Gestao para Terapias Integrativas",
   "private": true,
   "license": "PROPRIETARY",
   "author": {
@@ -34,9 +34,12 @@
     "migration:generate": "typeorm-ts-node-commonjs migration:generate",
     "migration:run": "typeorm-ts-node-commonjs migration:run",
     "migration:revert": "typeorm-ts-node-commonjs migration:revert",
+    "backfill:user-slugs": "ts-node scripts/backfill-supabase-user-slugs.ts",
+    "sync:users": "ts-node scripts/sync-users-from-supabase.ts",
     "seed:run": "ts-node src/infrastructure/database/seeds/run-seed.ts",
     "docs:generate": "compodoc -p tsconfig.json -s",
-    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s"
+    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s",
+    "prune:users": "ts-node scripts/prune-users.ts"
   },
   "dependencies": {
     "@nestjs/bull": "^10.0.1",

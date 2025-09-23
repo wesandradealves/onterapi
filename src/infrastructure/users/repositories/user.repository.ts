@@ -61,6 +61,22 @@ export class UserRepository implements IUserRepository {
       .getOne();
   }
 
+  async findBySlug(slug: string): Promise<UserEntity | null> {
+    return await this.repository
+      .createQueryBuilder('user')
+      .where('user.slug = :slug', { slug })
+      .andWhere('user.deletedAt IS NULL')
+      .getOne();
+  }
+
+  async findBySupabaseId(supabaseId: string): Promise<UserEntity | null> {
+    return await this.repository
+      .createQueryBuilder('user')
+      .where('user.supabaseId = :supabaseId', { supabaseId })
+      .andWhere('user.deletedAt IS NULL')
+      .getOne();
+  }
+
   async findByEmail(email: string): Promise<UserEntity | null> {
     return await this.repository
       .createQueryBuilder('user')
@@ -78,7 +94,12 @@ export class UserRepository implements IUserRepository {
   }
 
   async update(id: string, data: Partial<UserEntity>): Promise<UserEntity> {
-    await this.repository.update(id, data);
+    const payload = { ...data };
+    if ('slug' in payload) {
+      delete (payload as Partial<UserEntity>).slug;
+    }
+
+    await this.repository.update(id, payload);
     const updated = await this.findById(id);
     if (!updated) {
       throw AuthErrorFactory.userNotFound();

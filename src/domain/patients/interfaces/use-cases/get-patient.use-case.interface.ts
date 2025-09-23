@@ -6,7 +6,7 @@ export interface IGetPatientUseCase {
     tenantId: string;
     requesterId: string;
     requesterRole: string;
-    patientId: string;
+    patientSlug: string;
   }): Promise<
     Result<{
       patient: Patient;

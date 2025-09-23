@@ -16,6 +16,7 @@ import {
 } from '../../../domain/patients/types/patient.types';
 import { SupabaseService } from '../../auth/services/supabase.service';
 import { PatientMapper } from '../../../shared/mappers/patient.mapper';
+import { appendSlugSuffix, slugify } from '../../../shared/utils/slug.util';
 
 const toISODate = (value?: Date): string | null => (value ? value.toISOString() : null);
 const normaliseString = (value?: string | null): string | undefined =>
@@ -31,8 +32,77 @@ export class PatientRepository implements IPatientRepository {
     return this.supabaseService.getClient();
   }
 
+  private async patientSlugExists(tenantId: string, slug: string, excludeId?: string): Promise<boolean> {
+    let query = this.client
+      .from('patients')
+      .select('id', { head: true, count: 'exact' })
+      .eq('clinic_id', tenantId)
+      .eq('slug', slug);
+
+    if (excludeId) {
+      query = query.neq('id', excludeId);
+    }
+
+    const { count, error } = await query;
+
+    if (error) {
+      this.logger.error('Failed to verify patient slug uniqueness', { tenantId, slug, error });
+      throw error;
+    }
+
+    return (count ?? 0) > 0;
+  }
+
+  private async generateUniqueSlug(tenantId: string, fullName: string, excludeId?: string): Promise<string> {
+    const baseSlug = slugify(fullName || 'paciente');
+    let slug = baseSlug;
+    let counter = 1;
+
+    while (await this.patientSlugExists(tenantId, slug, excludeId)) {
+      slug = appendSlugSuffix(baseSlug, ++counter);
+    }
+
+    return slug;
+  }
+
+  private async resolvePatientIdOrThrow(
+    tenantId: string,
+    identifiers: { patientId?: string; patientSlug?: string },
+  ): Promise<string> {
+    if (identifiers.patientId) {
+      return identifiers.patientId;
+    }
+
+    if (!identifiers.patientSlug) {
+      throw new Error('Patient identifier is required');
+    }
+
+    const { data, error } = await this.client
+      .from('patients')
+      .select('id')
+      .eq('clinic_id', tenantId)
+      .eq('slug', identifiers.patientSlug)
+      .maybeSingle();
+
+    if (error) {
+      this.logger.error('Failed to resolve patient by slug', {
+        tenantId,
+        slug: identifiers.patientSlug,
+        error,
+      });
+      throw error;
+    }
+
+    if (!data) {
+      throw new Error('Patient not found');
+    }
+
+    return data.id;
+  }
+
   async create(input: CreatePatientInput): Promise<Patient> {
     const now = new Date().toISOString();
+    const slug = await this.generateUniqueSlug(input.tenantId, input.fullName);
 
     const medicalHistory = {
       fullName: input.fullName,
@@ -53,6 +123,7 @@ export class PatientRepository implements IPatientRepository {
 
     const payload = {
       id: uuid(),
+      slug,
       clinic_id: input.tenantId,
       user_id: null,
       professional_id: input.professionalId ?? null,
@@ -159,6 +230,26 @@ export class PatientRepository implements IPatientRepository {
     return PatientMapper.toDomain(data as any);
   }
 
+  async findBySlug(tenantId: string, slug: string): Promise<Patient | null> {
+    const { data, error } = await this.client
+      .from('patients')
+      .select('*')
+      .eq('clinic_id', tenantId)
+      .eq('slug', slug)
+      .maybeSingle();
+
+    if (error) {
+      this.logger.error('Failed to load patient by slug', { tenantId, slug, error });
+      throw error;
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    return PatientMapper.toDomain(data as any);
+  }
+
   async findSummary(tenantId: string, patientId: string): Promise<PatientSummary> {
     this.logger.log('patient summaries not available, returning defaults', { tenantId, patientId });
     return {
@@ -183,11 +274,13 @@ export class PatientRepository implements IPatientRepository {
   }
 
   async update(input: UpdatePatientInput): Promise<Patient> {
+    const patientId = await this.resolvePatientIdOrThrow(input.tenantId, input);
+
     const existing = await this.client
       .from('patients')
       .select('medical_history, emergency_contact, allergies, current_medications')
       .eq('clinic_id', input.tenantId)
-      .eq('id', input.patientId)
+      .eq('id', patientId)
       .maybeSingle();
 
     if (existing.error) {
@@ -237,7 +330,7 @@ export class PatientRepository implements IPatientRepository {
       .from('patients')
       .update(payload)
       .eq('clinic_id', input.tenantId)
-      .eq('id', input.patientId)
+      .eq('id', patientId)
       .select('*')
       .single();
 
@@ -250,6 +343,8 @@ export class PatientRepository implements IPatientRepository {
   }
 
   async transfer(input: TransferPatientInput): Promise<Patient> {
+    const patientId = await this.resolvePatientIdOrThrow(input.tenantId, input);
+
     const payload = {
       professional_id: input.toProfessionalId,
       medical_history: {
@@ -263,7 +358,7 @@ export class PatientRepository implements IPatientRepository {
       .from('patients')
       .update(payload)
       .eq('clinic_id', input.tenantId)
-      .eq('id', input.patientId)
+      .eq('id', patientId)
       .select('*')
       .single();
 
@@ -276,12 +371,14 @@ export class PatientRepository implements IPatientRepository {
   }
 
   async archive(input: ArchivePatientInput): Promise<void> {
+    const patientId = await this.resolvePatientIdOrThrow(input.tenantId, input);
+
     const now = new Date().toISOString();
     const { data, error } = await this.client
       .from('patients')
       .select('medical_history')
       .eq('clinic_id', input.tenantId)
-      .eq('id', input.patientId)
+      .eq('id', patientId)
       .maybeSingle();
 
     if (error) {
@@ -306,7 +403,7 @@ export class PatientRepository implements IPatientRepository {
       .from('patients')
       .update({ medical_history: updatedHistory, updated_at: now })
       .eq('clinic_id', input.tenantId)
-      .eq('id', input.patientId);
+      .eq('id', patientId);
 
     if (updateResult.error) {
       this.logger.error('Failed to archive patient', updateResult.error);

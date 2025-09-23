@@ -31,7 +31,7 @@ export class TransferPatientUseCase
   }
 
   protected async handle(input: TransferPatientInput): Promise<Patient> {
-    const patient = await this.patientRepository.findById(input.tenantId, input.patientId);
+    const patient = await this.patientRepository.findBySlug(input.tenantId, input.patientSlug);
 
     if (!patient) {
       throw PatientErrorFactory.notFound();
@@ -50,12 +50,12 @@ export class TransferPatientUseCase
       throw PatientErrorFactory.unauthorized('Paciente já vinculado a outro profissional');
     }
 
-    const { requesterRole, ...payload } = input as any;
+    const payload: TransferPatientInput = { ...input, patientId: patient.id };
     const updated = await this.patientRepository.transfer(payload);
 
     await this.auditService.register('patient.transferred', {
       tenantId: input.tenantId,
-      patientId: input.patientId,
+      patientId: patient.id,
       fromProfessionalId: patient.professionalId,
       toProfessionalId: input.toProfessionalId,
       requestedBy: input.requestedBy,

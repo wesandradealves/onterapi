@@ -1,11 +1,9 @@
 import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
-import { UserMapper } from '../../../shared/mappers/user.mapper';
 import { ICreateUserUseCase } from '../../../domain/users/interfaces/use-cases/create-user.use-case.interface';
 import { IUserRepository } from '../../../domain/users/interfaces/repositories/user.repository.interface';
 import { UserEntity } from '../../../infrastructure/auth/entities/user.entity';
 import { CreateUserInputDTO } from '../api/dtos/create-user.dto';
 import { createUserSchema } from '../api/schemas/create-user.schema';
-import { hashPassword } from '../../../shared/utils/crypto.util';
 import { SupabaseService } from '../../../infrastructure/auth/services/supabase.service';
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { IEmailService } from '../../../domain/auth/interfaces/services/email.service.interface';
@@ -18,6 +16,7 @@ import { MessageBus } from '../../../shared/messaging/message-bus';
 import { DomainEvents } from '../../../shared/events/domain-events';
 import { AuthErrorFactory } from '../../../shared/factories/auth-error.factory';
 import { MESSAGES } from '../../../shared/constants/messages.constants';
+import { appendSlugSuffix, slugify } from '../../../shared/utils/slug.util';
 
 @Injectable()
 export class CreateUserUseCase
@@ -51,6 +50,24 @@ export class CreateUserUseCase
 
     this.logger.log(MESSAGES.VALIDATION.CHECKING_CPF);
 
+    const baseSlug = slugify(validatedData.name);
+    let slug = baseSlug;
+    let counter = 1;
+
+    while (await this.userRepository.findBySlug(slug)) {
+      slug = appendSlugSuffix(baseSlug, ++counter);
+    }
+
+    const metadataPayload = {
+      name: validatedData.name,
+      role: validatedData.role,
+      cpf: validatedData.cpf,
+      phone: validatedData.phone,
+      tenantId: validatedData.tenantId,
+      isActive: true,
+      slug,
+    };
+
     const listResult = await this.supabaseAuthService.listUsers({ perPage: 1000 });
     const allUsers = listResult.data?.users ?? [];
 
@@ -78,14 +95,7 @@ export class CreateUserUseCase
     const result = await this.supabaseAuthService.signUp({
       email: validatedData.email,
       password: validatedData.password,
-      metadata: {
-        name: validatedData.name,
-        role: validatedData.role,
-        cpf: validatedData.cpf,
-        phone: validatedData.phone,
-        tenantId: validatedData.tenantId,
-        isActive: true,
-      },
+      metadata: metadataPayload,
     });
 
     const supabaseUser = result.data;
@@ -124,6 +134,20 @@ export class CreateUserUseCase
       role: validatedData.role,
     });
 
+    const savedUser = await this.userRepository.create({
+      supabaseId: supabaseUser.id,
+      slug,
+      email: supabaseUser.email || validatedData.email,
+      name: validatedData.name,
+      cpf: validatedData.cpf,
+      phone: validatedData.phone ?? undefined,
+      role: validatedData.role,
+      tenantId: validatedData.tenantId,
+      isActive: true,
+      emailVerified: false,
+      metadata: metadataPayload,
+    });
+
     const userCreatedEvent = DomainEvents.userCreated(
       supabaseUser.id,
       {
@@ -133,8 +157,9 @@ export class CreateUserUseCase
         cpf: validatedData.cpf,
         phone: validatedData.phone,
         tenantId: validatedData.tenantId,
+        slug,
       },
-      { userId: supabaseUser.id },
+      { userId: supabaseUser.id, slug },
     );
 
     await this.messageBus.publish(userCreatedEvent);
@@ -147,26 +172,15 @@ export class CreateUserUseCase
         name: validatedData.name,
         role: validatedData.role,
         registeredAt: new Date().toISOString(),
+        slug,
       },
-      { userId: supabaseUser.id },
+      { userId: supabaseUser.id, slug },
     );
 
     await this.messageBus.publish(userRegisteredEvent);
     this.logger.log(`Evento USER_REGISTERED publicado para ${supabaseUser.email}`);
 
-    const userWithMetadata = {
-      ...supabaseUser,
-      user_metadata: {
-        name: validatedData.name,
-        cpf: validatedData.cpf,
-        phone: validatedData.phone,
-        role: validatedData.role,
-        tenantId: validatedData.tenantId,
-        isActive: true,
-      },
-    };
-
-    return UserMapper.fromSupabaseToEntity(userWithMetadata);
+    return savedUser;
   }
 
   private generateVerificationToken(): string {

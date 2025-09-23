@@ -38,6 +38,7 @@ export interface PatientTag {
 
 export interface Patient {
   id: string;
+  slug: string;
   tenantId: string;
   professionalId?: string;
   fullName: string;
@@ -76,6 +77,7 @@ export interface PatientListFilters {
 
 export interface PatientListItem {
   id: string;
+  slug: string;
   fullName: string;
   shortName?: string;
   status: PatientStatus;
@@ -132,7 +134,8 @@ export interface CreatePatientInput {
 }
 
 export interface UpdatePatientInput {
-  patientId: string;
+  patientSlug: string;
+  patientId?: string;
   tenantId: string;
   updatedBy: string;
   requesterRole: string;
@@ -148,7 +151,8 @@ export interface UpdatePatientInput {
 }
 
 export interface TransferPatientInput {
-  patientId: string;
+  patientSlug: string;
+  patientId?: string;
   tenantId: string;
   requestedBy: string;
   requesterRole: string;
@@ -159,7 +163,8 @@ export interface TransferPatientInput {
 }
 
 export interface ArchivePatientInput {
-  patientId: string;
+  patientSlug: string;
+  patientId?: string;
   tenantId: string;
   requestedBy: string;
   requesterRole: string;
