@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
-import { Transporter } from 'nodemailer';
+import { Resend } from 'resend';
 import {
   SuspiciousLoginData,
   WelcomeEmailData,
@@ -19,46 +18,41 @@ export interface EmailOptions {
 @Injectable()
 export class NotificationEmailService {
   private readonly logger = new Logger(NotificationEmailService.name);
-  private transporter: Transporter;
+  private readonly resend: Resend;
   private readonly from: string;
 
   constructor(private readonly configService: ConfigService) {
-    const host = this.configService.get<string>('EMAIL_HOST');
-    const port = this.configService.get<number>('EMAIL_PORT');
-    const user = this.configService.get<string>('EMAIL_USER');
-    const pass = this.configService.get<string>('EMAIL_PASS');
-    this.from = this.configService.get<string>('EMAIL_FROM') || 'noreply@onterapi.com';
-
-    this.transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465,
-      auth: {
-        user,
-        pass,
-      },
-    });
-
-    this.verifyConnection();
-  }
-
-  private async verifyConnection() {
-    try {
-      await this.transporter.verify();
-      this.logger.log('Email service connected successfully');
-    } catch (error) {
-      this.logger.error('Failed to connect to email service', error);
+    const apiKey = this.configService.get<string>('RESEND_API_KEY');
+    if (!apiKey) {
+      throw new Error('Missing required configuration: RESEND_API_KEY');
     }
+    const defaultFrom = 'Onterapi <onboarding@resend.dev>';
+    this.resend = new Resend(apiKey);
+    this.from = this.configService.get<string>('EMAIL_FROM') || defaultFrom;
   }
 
   private async sendEmail(options: EmailOptions): Promise<Result<void>> {
     try {
-      const info = await this.transporter.sendMail({
+      const response = await this.resend.emails.send({
         from: this.from,
-        ...options,
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+        text: options.text,
       });
 
-      this.logger.log(`Email sent: ${info.messageId}`);
+      if (response.error) {
+        const error = new Error(response.error.message);
+        this.logger.error(MESSAGES.ERRORS.EMAIL.SEND_ERROR, error);
+        return { error };
+      }
+
+      if (response.data?.id) {
+        this.logger.log('Email sent: ' + response.data.id);
+      } else {
+        this.logger.log('Email sent');
+      }
+
       return { data: undefined };
     } catch (error) {
       this.logger.error(MESSAGES.ERRORS.EMAIL.SEND_ERROR, error);
@@ -67,7 +61,7 @@ export class NotificationEmailService {
   }
 
   async sendWelcomeEmail(data: WelcomeEmailData): Promise<Result<void>> {
-    const subject = 'Bem-vindo à Onterapi!';
+    const subject = 'Bem-vindo � Onterapi!';
     const html = this.getWelcomeEmailTemplate(data);
 
     return this.sendEmail({
@@ -78,7 +72,7 @@ export class NotificationEmailService {
   }
 
   async sendSuspiciousLoginEmail(data: SuspiciousLoginData): Promise<Result<void>> {
-    const subject = '⚠️ Atividade suspeita detectada - Onterapi';
+    const subject = '?? Atividade suspeita detectada - Onterapi';
     const html = this.getSuspiciousLoginTemplate(data);
 
     return this.sendEmail({
@@ -87,7 +81,6 @@ export class NotificationEmailService {
       html,
     });
   }
-
   private getWelcomeEmailTemplate(data: WelcomeEmailData): string {
     const roleNames: Record<string, string> = {
       USER: 'Usuário',
@@ -265,3 +258,5 @@ export class NotificationEmailService {
     `;
   }
 }
+
+
