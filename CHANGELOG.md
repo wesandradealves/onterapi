@@ -6,11 +6,14 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [Unreleased]
 
+## [0.16.0] - 2025-09-24
+
 ### Changed
 - Provedor de email migrado para Resend, substituindo o transporte SMTP local e atualizando variáveis de ambiente.
+- Remetente padrão apontando para Onterapi <noreply@onterapi.com.br> nos envs e integrações.
 
 ### Fixed
-- Corrigido o carregamento de metadados do TypeORM em ambiente serverless habilitando `autoLoadEntities`, evitando erro `EntityMetadataNotFoundError` no login da Vercel.
+- Corrigido o carregamento de metadados do TypeORM em ambiente serverless habilitando utoLoadEntities, evitando erro EntityMetadataNotFoundError no login da Vercel.
 
 
 ## [0.15.0] - 2025-09-24
