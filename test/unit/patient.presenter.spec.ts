@@ -152,4 +152,32 @@ describe('PatientPresenter', () => {
     expect(listItem.nextAppointmentAt).toBeUndefined();
     expect(listItem.lastAppointmentAt).toBe('2025-01-02T10:00:00.000Z');
   });
+  it('mantem undefined para datas e tags ausentes', () => {
+    const patient = buildPatient();
+
+    const listItem = PatientPresenter.listItem({
+      id: patient.id,
+      slug: patient.slug,
+      fullName: patient.fullName,
+      shortName: patient.shortName,
+      status: patient.status,
+      riskLevel: patient.riskLevel,
+      cpfMasked: '***',
+      contact: patient.contact,
+      professionalId: patient.professionalId,
+      professionalName: undefined,
+      nextAppointmentAt: null,
+      lastAppointmentAt: null,
+      tags: null as any,
+      revenueTotal: 0,
+      createdAt: patient.createdAt,
+      updatedAt: patient.updatedAt,
+    });
+
+    expect(listItem.nextAppointmentAt).toBeUndefined();
+    expect(listItem.lastAppointmentAt).toBeUndefined();
+    expect(listItem.tags).toBeUndefined();
+  });
 });
+
+

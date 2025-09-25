@@ -20,4 +20,25 @@ describe('ZodValidationPipe', () => {
 
     loggerSpy.mockRestore();
   });
+  it('ignora validacao para tipos nao suportados', () => {
+    const pipe = new ZodValidationPipe(schema);
+    const payload = { name: '' };
+
+    const result = pipe.transform(payload, { type: 'custom' } as any);
+
+    expect(result).toBe(payload);
+  });
+
+  it('encapsula erros nao Zod em BadRequest generico', () => {
+    const nonZodSchema = {
+      parse: jest.fn(() => {
+        throw new Error('boom');
+      }),
+    } as any;
+
+    const pipe = new ZodValidationPipe(nonZodSchema);
+
+    expect(() => pipe.transform({}, { type: 'body' } as any)).toThrow('Validation failed');
+  });
 });
+

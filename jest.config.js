@@ -14,6 +14,8 @@ module.exports = {
   },
   collectCoverageFrom: [
     'src/modules/**/presenters/**/*.ts',
+    'src/modules/patients/use-cases/**/*.ts',
+    'src/shared/use-cases/**/*.ts',
     'src/shared/pipes/zod-validation.pipe.ts',
     'src/shared/utils/cpf.utils.ts',
     'src/shared/utils/role.utils.ts',
@@ -25,10 +27,12 @@ module.exports = {
   reporters: ['default'],
   coverageThreshold: {
     global: {
-      statements: 70,
-      branches: 50,
-      functions: 70,
-      lines: 70,
+      statements: 100,
+      branches: 100,
+      functions: 100,
+      lines: 100,
     },
   },
 };
+
+

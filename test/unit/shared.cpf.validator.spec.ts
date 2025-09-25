@@ -11,7 +11,8 @@ describe('CPFValidator', () => {
   });
 
   it('retorna false para digitos verificadores invalidos', () => {
-    expect(CPFValidator.isValid('12345678901')).toBe(false);
+    expect(CPFValidator.isValid('39053344715')).toBe(false);
+    expect(CPFValidator.isValid('12345678902')).toBe(false);
   });
 
   it('retorna true para CPF valido', () => {
@@ -27,5 +28,10 @@ describe('CPFValidator', () => {
   it('formata apenas quando tamanho correto', () => {
     expect(CPFValidator.format('39053344705')).toBe('390.533.447-05');
     expect(CPFValidator.format('123')).toBe('123');
+  });
+
+  it('aceita CPF com resto ajustado para zero', () => {
+    expect(CPFValidator.isValid('00000000604')).toBe(true);
+    expect(CPFValidator.isValid('00000001830')).toBe(true);
   });
 });
