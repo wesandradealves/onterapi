@@ -14,6 +14,7 @@ import { ApiBody, ApiExcludeEndpoint, ApiOperation, ApiResponse, ApiTags } from 
 import { Request } from 'express';
 
 import { ValidateTwoFADto, ValidateTwoFAResponseDto } from '../dtos/two-fa.dto';
+import { unwrapResult } from '../../../../shared/types/result.type';
 import { IValidateTwoFAUseCase } from '../../../../domain/auth/interfaces/use-cases/validate-two-fa.use-case.interface';
 import { ISendTwoFAUseCase } from '../../../../domain/auth/interfaces/use-cases/send-two-fa.use-case.interface';
 
@@ -85,23 +86,19 @@ export class TwoFactorController {
 
     const resolvedIp = dto.deviceInfo?.ip ?? ip;
 
-    const result = await this.validateTwoFAUseCase.execute({
-      tempToken: dto.tempToken,
-      code: dto.code,
-      trustDevice: dto.trustDevice,
-      userId: '',
-      deviceInfo: {
-        ...dto.deviceInfo,
-        userAgent: resolvedUserAgent,
-        ip: resolvedIp,
-      },
-    });
-
-    if (result.error) {
-      throw result.error;
-    }
-
-    return result.data as ValidateTwoFAResponseDto;
+    return unwrapResult(
+      await this.validateTwoFAUseCase.execute({
+        tempToken: dto.tempToken,
+        code: dto.code,
+        trustDevice: dto.trustDevice,
+        userId: '',
+        deviceInfo: {
+          ...dto.deviceInfo,
+          userAgent: resolvedUserAgent,
+          ip: resolvedIp,
+        },
+      }),
+    ) as ValidateTwoFAResponseDto;
   }
 
   @Post('send')
@@ -110,16 +107,12 @@ export class TwoFactorController {
   @HttpCode(HttpStatus.OK)
   @UsePipes(new ZodValidationPipe(sendTwoFAInputSchema))
   async sendTwoFA(@Body() dto: SendTwoFAInputDTO) {
-    const result = await this.sendTwoFAUseCase.execute({
-      tempToken: dto.tempToken,
-      method: dto.method ?? 'email',
-      userId: '',
-    });
-
-    if (result.error) {
-      throw result.error;
-    }
-
-    return result.data;
+    return unwrapResult(
+      await this.sendTwoFAUseCase.execute({
+        tempToken: dto.tempToken,
+        method: dto.method ?? 'email',
+        userId: '',
+      }),
+    );
   }
 }

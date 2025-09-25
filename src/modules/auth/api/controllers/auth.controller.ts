@@ -26,6 +26,7 @@ import {
 import { SignInDto, SignInResponseDto } from '../dtos/sign-in.dto';
 import { RefreshTokenDto, RefreshTokenResponseDto } from '../dtos/refresh.dto';
 import { MeResponseDto, SignOutDto, SignOutResponseDto } from '../dtos/sign-out.dto';
+import { unwrapResult } from '../../../../shared/types/result.type';
 
 import { ISignInUseCase } from '../../../../domain/auth/interfaces/use-cases/sign-in.use-case.interface';
 import { ISignOutUseCase } from '../../../../domain/auth/interfaces/use-cases/sign-out.use-case.interface';
@@ -121,13 +122,7 @@ export class AuthController {
       deviceInfo: dto.deviceInfo || {},
     };
 
-    const result = await this.signInUseCase.execute(input);
-
-    if (result.error) {
-      throw result.error;
-    }
-
-    return result.data;
+    return unwrapResult(await this.signInUseCase.execute(input));
   }
 
   @Post('refresh')
@@ -164,13 +159,7 @@ export class AuthController {
       deviceInfo: dto.deviceInfo || {},
     };
 
-    const result = await this.refreshTokenUseCase.execute(input);
-
-    if (result.error) {
-      throw result.error;
-    }
-
-    return result.data;
+    return unwrapResult(await this.refreshTokenUseCase.execute(input));
   }
 
   @Post('sign-out')
@@ -219,18 +208,14 @@ export class AuthController {
   ) {
     const accessToken = authorization?.replace('Bearer ', '') || '';
 
-    const result = await this.signOutUseCase.execute({
-      userId: user.id,
-      accessToken,
-      refreshToken: dto?.refreshToken,
-      allDevices: dto?.allDevices,
-    });
-
-    if (result.error) {
-      throw result.error;
-    }
-
-    return result.data;
+    return unwrapResult(
+      await this.signOutUseCase.execute({
+        userId: user.id,
+        accessToken,
+        refreshToken: dto?.refreshToken,
+        allDevices: dto?.allDevices,
+      }),
+    );
   }
 
   @Get('me')

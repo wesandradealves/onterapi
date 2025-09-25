@@ -43,11 +43,10 @@ import { UpdateUserDto } from '../dtos/update-user.dto';
 import { UserResponseDto } from '../dtos/user-response.dto';
 import { ListUsersDto, ListUsersResponseDto } from '../dtos/list-users.dto';
 import { UserPresenter } from '../presenters/user.presenter';
+import { unwrapResult } from '../../../../shared/types/result.type';
 import { createUserSchema } from '../schemas/create-user.schema';
 import { updateUserSchema } from '../schemas/update-user.schema';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
-import { AuthErrorFactory } from '../../../../shared/factories/auth-error.factory';
-import { UserEntity } from '../../../../infrastructure/auth/entities/user.entity';
 
 @ApiTags('Users')
 @Controller('users')
@@ -132,11 +131,8 @@ export class UsersController {
   })
   @UsePipes(new ZodValidationPipe(createUserSchema))
   async create(@Body() dto: CreateUserInputDTO): Promise<CreateUserResponseDto> {
-    const result = await this.createUserUseCase.execute(dto);
-    if (result.error) {
-      throw result.error;
-    }
-    return UserPresenter.toCreateResponse(result.data);
+    const user = unwrapResult(await this.createUserUseCase.execute(dto));
+    return UserPresenter.toCreateResponse(user);
   }
 
   @Get()
@@ -190,13 +186,10 @@ export class UsersController {
     type: ListUsersResponseDto,
   })
   async findAll(@Query() filters: ListUsersDto): Promise<ListUsersResponseDto> {
-    const result = await this.findAllUsersUseCase.execute(filters);
-    if (result.error) {
-      throw result.error;
-    }
+    const payload = unwrapResult(await this.findAllUsersUseCase.execute(filters));
     return {
-      data: result.data.data.map((user) => UserPresenter.toResponse(user)),
-      pagination: result.data.pagination,
+      data: payload.data.map((user) => UserPresenter.toResponse(user)),
+      pagination: payload.pagination,
     };
   }
 
@@ -224,14 +217,8 @@ export class UsersController {
     description: 'Usuario nao encontrado',
   })
   async findOne(@Param('slug') slug: string): Promise<UserResponseDto> {
-    const result = await this.findUserBySlugUseCase.execute(slug);
-    if (result.error) {
-      throw result.error;
-    }
-    if (!result.data) {
-      throw AuthErrorFactory.userNotFound();
-    }
-    return UserPresenter.toResponse(result.data);
+    const user = unwrapResult(await this.findUserBySlugUseCase.execute(slug));
+    return UserPresenter.toResponse(user);
   }
 
   @Patch(':slug')
@@ -291,11 +278,8 @@ export class UsersController {
     @Body() dto: UpdateUserDto,
     @CurrentUser() currentUser: ICurrentUser,
   ): Promise<UserResponseDto> {
-    const result = await this.updateUserUseCase.execute(slug, dto, currentUser.id);
-    if (result.error) {
-      throw result.error;
-    }
-    return UserPresenter.toResponse(result.data);
+    const updated = unwrapResult(await this.updateUserUseCase.execute(slug, dto, currentUser.id));
+    return UserPresenter.toResponse(updated);
   }
 
   @Delete(':slug')
@@ -318,9 +302,6 @@ export class UsersController {
     description: 'Usuario deletado com sucesso',
   })
   async remove(@Param('slug') slug: string, @CurrentUser() currentUser: ICurrentUser): Promise<void> {
-    const result = await this.deleteUserUseCase.execute(slug, currentUser.id);
-    if (result.error) {
-      throw result.error;
-    }
+    unwrapResult(await this.deleteUserUseCase.execute(slug, currentUser.id));
   }
 }
