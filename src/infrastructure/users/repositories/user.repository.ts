@@ -109,6 +109,15 @@ export class UserRepository implements IUserRepository {
       delete (payload as Partial<UserEntity>).slug;
     }
 
+    if ('role' in payload && payload.role) {
+      const mappedRole = mapRoleToDatabase(payload.role as RolesEnum | string);
+      if (mappedRole) {
+        (payload as Partial<UserEntity>).role = mappedRole as unknown as RolesEnum;
+      } else {
+        delete (payload as Partial<UserEntity>).role;
+      }
+    }
+
     await this.repository.update(id, payload);
     const updated = await this.findById(id);
     if (!updated) {

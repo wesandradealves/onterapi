@@ -5,6 +5,11 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o projeto adota [Versionamento Semantico](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
+### Changed
+- `CreateUserUseCase` agora valida CPF usando o repositório local antes de chamar o Supabase, evitando paginações custosas e garantindo duplicidade correta.
+
+### Fixed
+- `UserRepository.update` aplica `mapRoleToDatabase` antes de persistir e recebeu teste unitário para prevenir regressão.
 
 ### Security
 - Remoção dos arquivos `.env` reais do repositório e inclusão de `.env.example`/`.env.production.example` para guiar a configuração segura de credenciais.
