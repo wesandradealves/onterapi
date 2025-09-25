@@ -17,6 +17,7 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 - QUALITY_BASELINE.md atualizado com novas notas, metas e evidências alinhadas à cobertura total.
 - Script npm test:cov agora executa em modo sequencial (--runInBand) para evitar falhas intermitentes dos workers.
 - coverageThreshold global no Jest elevado para 100% de statements/branches/functions/lines.
+- PatientsController passou a confiar no ZodValidationPipe, removendo parses duplicados sem quebrar os DTOs do Swagger.
 
 ### Fixed
 
