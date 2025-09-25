@@ -3,6 +3,7 @@
   Controller,
   Delete,
   Get,
+  NotFoundException,
   HttpCode,
   HttpStatus,
   Inject,
@@ -225,6 +226,11 @@ export class UsersController {
   })
   async findOne(@Param('slug') slug: string): Promise<UserResponseDto> {
     const user = unwrapResult(await this.findUserBySlugUseCase.execute(slug));
+
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
     return UserPresenter.toResponse(user);
   }
 
@@ -313,3 +319,4 @@ export class UsersController {
     unwrapResult(await this.deleteUserUseCase.execute(slug, currentUser.id));
   }
 }
+

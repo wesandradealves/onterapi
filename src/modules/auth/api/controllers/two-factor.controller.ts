@@ -17,7 +17,8 @@ import { unwrapResult } from '../../../../shared/types/result.type';
 import { IValidateTwoFAUseCase } from '../../../../domain/auth/interfaces/use-cases/validate-two-fa.use-case.interface';
 import { ISendTwoFAUseCase } from '../../../../domain/auth/interfaces/use-cases/send-two-fa.use-case.interface';
 
-import { Public } from '../../decorators/public.decorator';\r\nimport { toSendTwoFAInput, toValidateTwoFAInput } from '../mappers/auth-request.mapper';
+import { Public } from '../../decorators/public.decorator';
+import { toSendTwoFAInput, toValidateTwoFAInput } from '../mappers/auth-request.mapper';
 import {
   SendTwoFAInputDTO,
   sendTwoFAInputSchema,
@@ -98,6 +99,7 @@ export class TwoFactorController {
     return unwrapResult(await this.sendTwoFAUseCase.execute(toSendTwoFAInput(dto)));
   }
 }
+
 
 
 
