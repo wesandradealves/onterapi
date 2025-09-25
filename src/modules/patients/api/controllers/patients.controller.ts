@@ -46,6 +46,7 @@ import { ArchivePatientDto } from '../dtos/archive-patient.dto';
 import { ExportPatientsDto } from '../dtos/export-patients.dto';
 import { PatientResponseDto, PatientsListResponseDto } from '../dtos/patient-response.dto';
 import { PatientPresenter } from '../presenters/patient.presenter';
+import { unwrapResult } from '../../../../shared/types/result.type';
 import { PatientDetailDto } from '../dtos/patient-detail.dto';
 import { createPatientSchema } from '../schemas/create-patient.schema';
 import { updatePatientSchema } from '../schemas/update-patient.schema';
@@ -127,24 +128,22 @@ export class PatientsController {
       quickFilter: query.quickFilter,
     };
 
-    const result = await this.listPatientsUseCase.execute({
-      tenantId,
-      requesterId: currentUser.id,
-      requesterRole: currentUser.role,
-      filters,
-      page: query.page,
-      limit: query.limit,
-      sortBy: query.sortBy,
-      sortOrder: query.sortOrder,
-    });
-
-    if (result.error) {
-      throw result.error;
-    }
+    const payload = unwrapResult(
+      await this.listPatientsUseCase.execute({
+        tenantId,
+        requesterId: currentUser.id,
+        requesterRole: currentUser.role,
+        filters,
+        page: query.page,
+        limit: query.limit,
+        sortBy: query.sortBy,
+        sortOrder: query.sortOrder,
+      }),
+    );
 
     return {
-      data: result.data.data.map((patient: PatientListItem) => PatientPresenter.listItem(patient)),
-      total: result.data.total,
+      data: payload.data.map((patient: PatientListItem) => PatientPresenter.listItem(patient)),
+      total: payload.total,
     };
   }
 
@@ -207,13 +206,9 @@ export class PatientsController {
       status: body.status as any,
     };
 
-    const result = await this.createPatientUseCase.execute(input);
+    const patient = unwrapResult(await this.createPatientUseCase.execute(input));
 
-    if (result.error) {
-      throw result.error;
-    }
-
-    return PatientPresenter.summary(result.data);
+    return PatientPresenter.summary(patient);
   }
 
   @Get(':slug')
@@ -243,18 +238,14 @@ export class PatientsController {
   ): Promise<PatientDetailDto> {
     const tenantId = this.getTenant(currentUser, tenantHeader);
 
-    const result = await this.getPatientUseCase.execute({
-      tenantId,
-      requesterId: currentUser.id,
-      requesterRole: currentUser.role,
-      patientSlug,
-    });
-
-    if (result.error) {
-      throw result.error;
-    }
-
-    const { patient, summary, timeline, insights, quickActions } = result.data;
+    const { patient, summary, timeline, insights, quickActions } = unwrapResult(
+      await this.getPatientUseCase.execute({
+        tenantId,
+        requesterId: currentUser.id,
+        requesterRole: currentUser.role,
+        patientSlug,
+      }),
+    );
 
     return {
       patient: PatientPresenter.detail(patient),
@@ -348,12 +339,9 @@ export class PatientsController {
       professionalId: parsed.professionalId ?? undefined,
     };
 
-    const result = await this.updatePatientUseCase.execute(input);
-    if (result.error) {
-      throw result.error;
-    }
+    const updated = unwrapResult(await this.updatePatientUseCase.execute(input));
 
-    return PatientPresenter.summary(result.data);
+    return PatientPresenter.summary(updated);
   }
 
   @Post(':slug/transfer')
@@ -388,12 +376,9 @@ export class PatientsController {
       effectiveAt: parsed.effectiveAt ? new Date(parsed.effectiveAt) : undefined,
     };
 
-    const result = await this.transferPatientUseCase.execute(input);
-    if (result.error) {
-      throw result.error;
-    }
+    const transferred = unwrapResult(await this.transferPatientUseCase.execute(input));
 
-    return PatientPresenter.summary(result.data);
+    return PatientPresenter.summary(transferred);
   }
 
   @Post(':slug/archive')
@@ -425,10 +410,7 @@ export class PatientsController {
       archiveRelatedData: parsed.archiveRelatedData,
     };
 
-    const result = await this.archivePatientUseCase.execute(input);
-    if (result.error) {
-      throw result.error;
-    }
+    unwrapResult(await this.archivePatientUseCase.execute(input));
   }
 
   @Post('export')
@@ -471,12 +453,7 @@ export class PatientsController {
       includeMedicalData: parsed.includeMedicalData,
     };
 
-    const result = await this.exportPatientsUseCase.execute(request);
-    if (result.error) {
-      throw result.error;
-    }
-
-    return result.data;
+    return unwrapResult(await this.exportPatientsUseCase.execute(request));
   }
 
   private getTenant(currentUser: ICurrentUser, tenantOverride?: string | null): string {
