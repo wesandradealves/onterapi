@@ -47,6 +47,7 @@ import { updateUserSchema } from '../schemas/update-user.schema';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
 import { CPFUtils } from '../../../../shared/utils/cpf.utils';
 import { AuthErrorFactory } from '../../../../shared/factories/auth-error.factory';
+import { UserEntity } from '../../../../infrastructure/auth/entities/user.entity';
 
 @ApiTags('Users')
 @Controller('users')
@@ -135,8 +136,7 @@ export class UsersController {
     if (result.error) {
       throw result.error;
     }
-    const maskedUser = { ...result.data, cpf: CPFUtils.mask(result.data.cpf) };
-    return maskedUser as CreateUserResponseDto;
+    return this.buildCreateUserResponse(result.data);
   }
 
   @Get()
@@ -195,7 +195,7 @@ export class UsersController {
       throw result.error;
     }
     return {
-      data: result.data.data.map((user) => ({ ...user, cpf: CPFUtils.mask(user.cpf) })),
+      data: result.data.data.map((user) => this.buildUserResponse(user)),
       pagination: result.data.pagination,
     };
   }
@@ -231,8 +231,7 @@ export class UsersController {
     if (!result.data) {
       throw AuthErrorFactory.userNotFound();
     }
-    const maskedUser = { ...result.data, cpf: CPFUtils.mask(result.data.cpf) };
-    return maskedUser as UserResponseDto;
+    return this.buildUserResponse(result.data);
   }
 
   @Patch(':slug')
@@ -296,9 +295,7 @@ export class UsersController {
     if (result.error) {
       throw result.error;
     }
-    const user = result.data;
-    const maskedUser = { ...user, cpf: CPFUtils.mask(user.cpf) };
-    return maskedUser as UserResponseDto;
+    return this.buildUserResponse(result.data);
   }
 
   @Delete(':slug')
@@ -326,4 +323,43 @@ export class UsersController {
       throw result.error;
     }
   }
+
+  private buildUserResponse(user: UserEntity, maskCpf = true): UserResponseDto {
+    return {
+      id: user.id,
+      slug: user.slug,
+      email: user.email,
+      name: user.name,
+      cpf: maskCpf ? CPFUtils.mask(user.cpf) : user.cpf,
+      phone: user.phone ?? undefined,
+      role: user.role,
+      tenantId: user.tenantId ?? undefined,
+      isActive: user.isActive,
+      emailVerified: user.emailVerified,
+      twoFactorEnabled: user.twoFactorEnabled,
+      lastLoginAt: user.lastLoginAt ?? undefined,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+  }
+
+  private buildCreateUserResponse(user: UserEntity): CreateUserResponseDto {
+    const response = this.buildUserResponse(user);
+    return {
+      id: response.id,
+      slug: response.slug,
+      email: response.email,
+      name: response.name,
+      cpf: response.cpf,
+      phone: response.phone,
+      role: response.role,
+      tenantId: response.tenantId,
+      isActive: response.isActive,
+      emailVerified: response.emailVerified,
+      twoFactorEnabled: response.twoFactorEnabled,
+      createdAt: response.createdAt,
+      updatedAt: response.updatedAt,
+    };
+  }
+
 }

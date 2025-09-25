@@ -5,6 +5,7 @@ import {
   passwordValidator,
   phoneValidator,
 } from '../../../../shared/validators/auth.validators';
+import { mapRoleToDomain } from '../../../../shared/utils/role.utils';
 
 const validRoles = Object.values(RolesEnum);
 
@@ -16,10 +17,20 @@ export const createUserSchema = z.object({
   phone: phoneValidator.optional(),
   role: z
     .string()
-    .refine((val) => validRoles.includes(val as RolesEnum), {
-      message: `Role inválido. Valores permitidos: ${validRoles.join(', ')}`,
-    })
-    .transform((val) => val as RolesEnum),
+    .transform((val, ctx) => {
+      const normalized = String(val).trim();
+      const mapped = mapRoleToDomain(normalized);
+
+      if (!mapped) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Role inválido. Valores permitidos: ${validRoles.join(', ')}`,
+        });
+        return z.NEVER;
+      }
+
+      return mapped;
+    }),
   tenantId: z.string().uuid('ID do tenant deve ser um UUID válido').optional(),
 });
 

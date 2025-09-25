@@ -56,7 +56,7 @@ export class CreatePatientDto {
   @IsString()
   whatsapp?: string;
 
-  @ApiPropertyOptional({ description: 'CEP (somente números)', example: '01310930' })
+  @ApiPropertyOptional({ description: 'CEP (somente nÃºmeros)', example: '01310930' })
   @IsOptional()
   @IsString()
   zipCode?: string;
@@ -66,7 +66,7 @@ export class CreatePatientDto {
   @IsString()
   street?: string;
 
-  @ApiPropertyOptional({ description: 'Número', example: '1000' })
+  @ApiPropertyOptional({ description: 'NÃºmero', example: '1000' })
   @IsOptional()
   @IsString()
   number?: string;
@@ -81,7 +81,7 @@ export class CreatePatientDto {
   @IsString()
   district?: string;
 
-  @ApiPropertyOptional({ description: 'Cidade', example: 'São Paulo' })
+  @ApiPropertyOptional({ description: 'Cidade', example: 'SÃ£o Paulo' })
   @IsOptional()
   @IsString()
   city?: string;
@@ -91,7 +91,7 @@ export class CreatePatientDto {
   @IsString()
   state?: string;
 
-  @ApiPropertyOptional({ description: 'País', example: 'Brasil' })
+  @ApiPropertyOptional({ description: 'PaÃ­s', example: 'Brasil' })
   @IsOptional()
   @IsString()
   country?: string;
@@ -102,7 +102,7 @@ export class CreatePatientDto {
   @IsString({ each: true })
   allergies?: string[];
 
-  @ApiPropertyOptional({ description: 'Condicoes crônicas', example: ['diabetes tipo 2'] })
+  @ApiPropertyOptional({ description: 'CondiÃ§Ãµes crÃ´nicas', example: ['diabetes tipo 2'] })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
@@ -138,3 +138,4 @@ export class CreatePatientDto {
   @IsString()
   status?: string;
 }
+

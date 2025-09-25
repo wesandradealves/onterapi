@@ -85,7 +85,7 @@ export class AuthEmailService {
   }
 
   async sendTwoFactorCodeEmail(data: TwoFactorCodeData): Promise<Result<void>> {
-    const subject = 'Código de verificação - Onterapi';
+    const subject = 'CÃ³digo de verificaÃ§Ã£o - Onterapi';
     const html = this.getTwoFactorCodeTemplate(data);
 
     return this.sendEmail({
@@ -257,4 +257,5 @@ export class AuthEmailService {
     `;
   }
 }
+
 

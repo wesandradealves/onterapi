@@ -1,5 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
+import { mapRoleToDomain } from '../../../../shared/utils/role.utils';
+import { Transform } from 'class-transformer';
 import { IsEmail, IsEnum, IsOptional, IsString, IsUUID, Matches, MinLength } from 'class-validator';
 
 export class CreateUserInputDTO {
@@ -26,6 +28,18 @@ export class CreateUserInputDTO {
   phone?: string;
 
   @ApiProperty({ description: 'Role/Perfil do usuario no sistema', enum: RolesEnum, example: RolesEnum.PATIENT })
+  @Transform(({ value }) => {
+    if (value === undefined || value === null) {
+      return value;
+    }
+
+    const mapped = mapRoleToDomain(String(value));
+    if (mapped) {
+      return mapped;
+    }
+
+    return String(value).toUpperCase();
+  })
   @IsEnum(RolesEnum)
   role!: RolesEnum;
 

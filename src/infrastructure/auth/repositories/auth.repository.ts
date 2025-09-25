@@ -7,6 +7,7 @@ import { UserSessionEntity } from '../entities/user-session.entity';
 import { TwoFactorCodeEntity } from '../entities/two-factor-code.entity';
 import { LoginAttemptEntity } from '../entities/login-attempt.entity';
 import { AuthErrorFactory } from '../../../shared/factories/auth-error.factory';
+import { mapRoleToDatabase } from '../../../shared/utils/role.utils';
 
 @Injectable()
 export class AuthRepository implements IAuthRepository {
@@ -102,7 +103,7 @@ export class AuthRepository implements IAuthRepository {
       .set({
         ...(data.name && { name: data.name }),
         ...(data.phone !== undefined && { phone: data.phone }),
-        ...(data.role && { role: data.role }),
+        ...(data.role && { role: mapRoleToDatabase(data.role) }),
         ...(data.tenantId !== undefined && { tenantId: data.tenantId }),
         ...(data.twoFactorEnabled !== undefined && { twoFactorEnabled: data.twoFactorEnabled }),
         ...(data.twoFactorSecret !== undefined && { twoFactorSecret: data.twoFactorSecret }),

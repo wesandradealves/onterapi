@@ -61,7 +61,7 @@ export class NotificationEmailService {
   }
 
   async sendWelcomeEmail(data: WelcomeEmailData): Promise<Result<void>> {
-    const subject = 'Bem-vindo à Onterapi!';
+    const subject = 'Bem-vindo Ã  Onterapi!';
     const html = this.getWelcomeEmailTemplate(data);
 
     return this.sendEmail({
@@ -72,7 +72,7 @@ export class NotificationEmailService {
   }
 
   async sendSuspiciousLoginEmail(data: SuspiciousLoginData): Promise<Result<void>> {
-    const subject = '?? Atividade suspeita detectada - Onterapi';
+    const subject = 'Atividade suspeita detectada - Onterapi';
     const html = this.getSuspiciousLoginTemplate(data);
 
     return this.sendEmail({
@@ -258,5 +258,6 @@ export class NotificationEmailService {
     `;
   }
 }
+
 
 

@@ -9,7 +9,7 @@ export class TransferPatientDto {
   @IsUUID('4')
   toProfessionalId!: string;
 
-  @ApiProperty({ description: 'Motivo da transferência', example: 'Especialista em ortomolecular' })
+  @ApiProperty({ description: 'Motivo da transferÃªncia', example: 'Especialista em ortomolecular' })
   @IsString()
   reason!: string;
 
@@ -18,3 +18,4 @@ export class TransferPatientDto {
   @IsDateString()
   effectiveAt?: string;
 }
+

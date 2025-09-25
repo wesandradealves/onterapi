@@ -1,4 +1,4 @@
-﻿import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { AuthErrorFactory } from '../../../shared/factories/auth-error.factory';
@@ -428,8 +428,16 @@ export class SupabaseAuthService implements ISupabaseAuthService {
       const { error } = await this.supabase.auth.admin.deleteUser(userId);
 
       if (error) {
-        this.logger.error(`Supabase deleteUser error: ${error.message}`);
-        return { error: new Error(error.message) };
+        const message = error.message || 'Supabase deleteUser failed';
+        const normalized = message.toLowerCase();
+
+        if (normalized.includes('user not found')) {
+          this.logger.debug(`Supabase deleteUser: user already absent in auth provider (${userId})`);
+          return { data: undefined };
+        }
+
+        this.logger.error(`Supabase deleteUser error: ${message} (userId: ${userId})`);
+        return { error: new Error(message) };
       }
 
       return { data: undefined };
@@ -439,4 +447,6 @@ export class SupabaseAuthService implements ISupabaseAuthService {
     }
   }
 }
+
+
 

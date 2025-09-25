@@ -3,8 +3,8 @@ import { IsBoolean, IsObject, IsOptional, IsPhoneNumber, IsString } from 'class-
 
 export class UpdateUserDto {
   @ApiProperty({
-    description: 'Nome completo do usu·rio',
-    example: 'Jo„o Silva Santos',
+    description: 'Nome completo do usu√°rio',
+    example: 'Jo√£o Silva Santos',
     required: false,
   })
   @IsOptional()
@@ -12,7 +12,7 @@ export class UpdateUserDto {
   name?: string;
 
   @ApiProperty({
-    description: 'Telefone com DDD (apenas n˙meros)',
+    description: 'Telefone com DDD (apenas n√∫meros)',
     example: '11888888888',
     required: false,
   })
@@ -21,7 +21,7 @@ export class UpdateUserDto {
   phone?: string;
 
   @ApiProperty({
-    description: 'Status ativo/inativo do usu·rio',
+    description: 'Status ativo/inativo do usu√°rio',
     example: true,
     required: false,
   })
@@ -30,7 +30,7 @@ export class UpdateUserDto {
   isActive?: boolean;
 
   @ApiProperty({
-    description: 'Metadados adicionais do usu·rio',
+    description: 'Metadados adicionais do usu√°rio',
     example: { preferredLanguage: 'pt-BR', theme: 'dark' },
     required: false,
   })
@@ -38,3 +38,4 @@ export class UpdateUserDto {
   @IsObject()
   metadata?: Record<string, any>;
 }
+

@@ -9,7 +9,7 @@ import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/s
 import { IEmailService } from '../../../domain/auth/interfaces/services/email.service.interface';
 import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
 import { ConfigService } from '@nestjs/config';
-import { generateSecureToken } from '../../../shared/utils/crypto.util';
+import { generateSecureToken, hashPassword } from '../../../shared/utils/crypto.util';
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import { Result } from '../../../shared/types/result.type';
 import { MessageBus } from '../../../shared/messaging/message-bus';
@@ -90,7 +90,7 @@ export class CreateUserUseCase
 
     this.logger.log(MESSAGES.USER.CPF_AVAILABLE);
 
-    const roleForDB = validatedData.role.toLowerCase().replace(/_/g, '_');
+    const passwordHash = await hashPassword(validatedData.password);
 
     const result = await this.supabaseAuthService.signUp({
       email: validatedData.email,
@@ -110,7 +110,7 @@ export class CreateUserUseCase
 
     const verificationToken = this.generateVerificationToken();
 
-    const baseUrl = this.configService.get<string>('APP_URL') || 'http://localhost:3001';
+    const baseUrl = this.configService.get<string>('APP_URL') || 'http://localhost:3000';
     const verificationLink = `${baseUrl}/auth/verify-email?token=${verificationToken}&email=${supabaseUser.email}`;
 
     const emailResult = await this.emailService.sendVerificationEmail({
@@ -146,6 +146,7 @@ export class CreateUserUseCase
       isActive: true,
       emailVerified: false,
       metadata: metadataPayload,
+      password_hash: passwordHash,
     });
 
     const userCreatedEvent = DomainEvents.userCreated(
@@ -205,3 +206,4 @@ export class CreateUserUseCase
     }
   }
 }
+

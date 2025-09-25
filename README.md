@@ -22,11 +22,9 @@ Plataforma SaaS multi-tenant para gestao de clinicas e terapeutas, com Supabase 
 - DRY/Clean Architecture com BaseUseCase, BaseGuard e MessageBus unificados
 
 ## Credenciais de Teste
-| Role | Email | Senha | Observacoes |
-| ---- | ----- | ----- | ----------- |
-| SUPER_ADMIN | orland97@ethereal.email | XwFUUjCagc3uhmxvhM | 2FA habilitado (c�digo enviado via Resend) |
+Não mantemos mais credenciais padrão em repositório. Gere usuários administrativos manualmente via `/users` e armazene os acessos em um cofre seguro.
 
-> As credenciais ficam em `./.env` para desenvolvimento. Sempre gere 2FA pelo endpoint `/auth/two-factor/send`.
+> Para fluxos locais, utilize os dados de ambiente em `./.env` e gere o 2FA pelo endpoint `/auth/two-factor/send` quando necessário.
 
 ## Fluxo de Autenticacao
 1. `POST /auth/sign-in` com email/senha. Super admin exige 2FA automaticamente.
@@ -104,8 +102,7 @@ EMAIL_FROM="Onterapi <onboarding@resend.dev>"
 - **Supabase signOut error: invalid JWT**: agora tratado como `debug`, fluxo segue normalmente.
 - **Token nao fornecido**: verifique header `Authorization: Bearer <accessToken>`.
 - **Tenant invalido**: sempre enviar o tenant real ou deixar o guard resolver via metadata.
-- **Emails/Resend**: conferir painel do Resend ou a caixa do destinat�rio configurado para visualizar credenciais e codigos 2FA.
+- **Emails/Resend**: conferir painel do Resend ou a caixa do destinatário configurado para visualizar credenciais e códigos 2FA.
 
 ## Changelog
 Mudancas recentes estao em [CHANGELOG.md](./CHANGELOG.md). Ultima versao: v0.15.0 (24/09/2025).
-

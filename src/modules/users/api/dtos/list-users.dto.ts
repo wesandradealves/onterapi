@@ -2,6 +2,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsBoolean, IsEnum, IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
 import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
+import { mapRoleToDomain } from '../../../../shared/utils/role.utils';
 import { UserResponseDto } from './user-response.dto';
 
 export class ListUsersDto {
@@ -22,6 +23,19 @@ export class ListUsersDto {
 
   @ApiPropertyOptional({ description: 'Filtrar por role/perfil', enum: RolesEnum, example: RolesEnum.PATIENT })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (value === undefined || value === null) {
+      return undefined;
+    }
+
+    const normalized = String(value).trim();
+    const mapped = mapRoleToDomain(normalized);
+    if (mapped) {
+      return mapped;
+    }
+
+    return normalized.toUpperCase();
+  })
   @IsEnum(RolesEnum)
   role?: RolesEnum;
 

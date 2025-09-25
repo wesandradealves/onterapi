@@ -24,13 +24,14 @@ export class ExportPatientsDto {
   @IsString({ each: true })
   status?: string[];
 
-  @ApiPropertyOptional({ description: 'Filtro r·pido', example: 'inactive_30_days' })
+  @ApiPropertyOptional({ description: 'Filtro r√°pido', example: 'inactive_30_days' })
   @IsOptional()
   @IsString()
   quickFilter?: string;
 
-  @ApiPropertyOptional({ description: 'Incluir dados clÌnicos', example: false })
+  @ApiPropertyOptional({ description: 'Incluir dados cl√≠nicos', example: false })
   @IsOptional()
   @IsBoolean()
   includeMedicalData?: boolean;
 }
+
