@@ -1,4 +1,4 @@
-﻿import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import { IGetPatientUseCase } from '../../../domain/patients/interfaces/use-cases/get-patient.use-case.interface';
@@ -11,9 +11,11 @@ import {
   PatientSummary,
   PatientTimelineEntry,
 } from '../../../domain/patients/types/patient.types';
+import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
 import { PatientAISuggestionsService } from '../../../infrastructure/patients/services/patient-ai-suggestions.service';
 import { PatientAuditService } from '../../../infrastructure/patients/services/patient-audit.service';
 import { PatientErrorFactory } from '../../../shared/factories/patient-error.factory';
+import { mapRoleToDomain } from '../../../shared/utils/role.utils';
 
 interface GetPatientInput {
   tenantId: string;
@@ -85,20 +87,24 @@ export class GetPatientUseCase
   }
 
   private ensurePermissions(input: GetPatientInput, patient: Patient) {
-    const role = input.requesterRole?.toUpperCase();
+    const role = mapRoleToDomain(input.requesterRole);
 
-    if (role === 'SUPER_ADMIN' || role === 'CLINIC_OWNER' || role === 'GESTOR') {
+    if (!role) {
+      throw PatientErrorFactory.unauthorized();
+    }
+
+    if ([RolesEnum.SUPER_ADMIN, RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER].includes(role)) {
       return;
     }
 
-    if (role === 'PROFISSIONAL' || role === 'PROFESSIONAL') {
+    if (role === RolesEnum.PROFESSIONAL) {
       if (patient.professionalId && patient.professionalId !== input.requesterId) {
         throw PatientErrorFactory.unauthorized();
       }
       return;
     }
 
-    if (role === 'SECRETARIA' || role === 'SECRETARY') {
+    if (role === RolesEnum.SECRETARY) {
       return;
     }
 
@@ -107,17 +113,17 @@ export class GetPatientUseCase
 
   private buildQuickActions(role: string, patient: Patient): string[] {
     const actions: string[] = [];
-    const normalizedRole = role?.toUpperCase();
+    const normalizedRole = mapRoleToDomain(role);
 
-    if (normalizedRole === 'PROFESSIONAL' || normalizedRole === 'PROFISSIONAL') {
+    if (normalizedRole === RolesEnum.PROFESSIONAL) {
       actions.push('create_appointment', 'add_note', 'open_anamnesis');
     }
 
-    if (normalizedRole === 'CLINIC_OWNER' || normalizedRole === 'GESTOR') {
+    if (normalizedRole === RolesEnum.CLINIC_OWNER || normalizedRole === RolesEnum.MANAGER) {
       actions.push('transfer_patient', 'view_financials');
     }
 
-    if (normalizedRole === 'SECRETARIA' || normalizedRole === 'SECRETARY') {
+    if (normalizedRole === RolesEnum.SECRETARY) {
       actions.push('schedule_follow_up', 'send_message');
     }
 

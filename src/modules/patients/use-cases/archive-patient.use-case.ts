@@ -7,6 +7,8 @@ import {
   IPatientRepositoryToken,
 } from '../../../domain/patients/interfaces/repositories/patient.repository.interface';
 import { ArchivePatientInput } from '../../../domain/patients/types/patient.types';
+import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
+import { mapRoleToDomain } from '../../../shared/utils/role.utils';
 import { PatientErrorFactory } from '../../../shared/factories/patient-error.factory';
 import { PatientAuditService } from '../../../infrastructure/patients/services/patient-audit.service';
 import { PatientNotificationService } from '../../../infrastructure/patients/services/patient-notification.service';
@@ -37,8 +39,10 @@ export class ArchivePatientUseCase
       throw PatientErrorFactory.notFound();
     }
 
-    const role = input.requesterRole?.toUpperCase();
-    if (!['CLINIC_OWNER', 'SUPER_ADMIN', 'GESTOR', 'MANAGER'].includes(role ?? '')) {
+    const role = mapRoleToDomain(input.requesterRole);
+    const allowedRoles: RolesEnum[] = [RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN];
+
+    if (!role || !allowedRoles.includes(role)) {
       throw PatientErrorFactory.unauthorized();
     }
 
@@ -63,3 +67,4 @@ export class ArchivePatientUseCase
     await this.messageBus.publish(event);
   }
 }
+

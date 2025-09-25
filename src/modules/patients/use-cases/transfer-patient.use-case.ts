@@ -7,9 +7,11 @@ import {
   IPatientRepositoryToken,
 } from '../../../domain/patients/interfaces/repositories/patient.repository.interface';
 import { Patient, TransferPatientInput } from '../../../domain/patients/types/patient.types';
+import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
 import { PatientErrorFactory } from '../../../shared/factories/patient-error.factory';
 import { PatientAuditService } from '../../../infrastructure/patients/services/patient-audit.service';
 import { PatientNotificationService } from '../../../infrastructure/patients/services/patient-notification.service';
+import { mapRoleToDomain } from '../../../shared/utils/role.utils';
 import { MessageBus } from '../../../shared/messaging/message-bus';
 import { DomainEvents } from '../../../shared/events/domain-events';
 
@@ -37,8 +39,10 @@ export class TransferPatientUseCase
       throw PatientErrorFactory.notFound();
     }
 
-    const role = input.requesterRole?.toUpperCase();
-    if (!['CLINIC_OWNER', 'GESTOR', 'MANAGER', 'SUPER_ADMIN'].includes(role ?? '')) {
+    const role = mapRoleToDomain(input.requesterRole);
+    const allowedRoles: RolesEnum[] = [RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN];
+
+    if (!role || !allowedRoles.includes(role)) {
       throw PatientErrorFactory.unauthorized();
     }
 
@@ -47,7 +51,7 @@ export class TransferPatientUseCase
       input.fromProfessionalId &&
       patient.professionalId !== input.fromProfessionalId
     ) {
-      throw PatientErrorFactory.unauthorized('Paciente já vinculado a outro profissional');
+      throw PatientErrorFactory.unauthorized('Paciente ja vinculado a outro profissional');
     }
 
     const payload: TransferPatientInput = { ...input, patientId: patient.id };
@@ -84,3 +88,4 @@ export class TransferPatientUseCase
     return updated;
   }
 }
+

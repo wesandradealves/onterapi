@@ -8,6 +8,9 @@ import {
 } from '../../../domain/patients/interfaces/repositories/patient.repository.interface';
 import { PatientListFilters, PatientListItem } from '../../../domain/patients/types/patient.types';
 
+import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
+import { mapRoleToDomain } from '../../../shared/utils/role.utils';
+
 @Injectable()
 export class ListPatientsUseCase
   extends BaseUseCase<
@@ -47,8 +50,8 @@ export class ListPatientsUseCase
     const { tenantId, requesterId, requesterRole } = params;
     const filters = { ...(params.filters ?? {}) };
 
-    const role = requesterRole?.toUpperCase();
-    if (role === 'PROFISSIONAL' || role === 'PROFESSIONAL') {
+    const role = mapRoleToDomain(requesterRole);
+    if (role === RolesEnum.PROFESSIONAL) {
       filters.assignedProfessionalIds = [requesterId];
     }
 
@@ -64,3 +67,4 @@ export class ListPatientsUseCase
     return result;
   }
 }
+

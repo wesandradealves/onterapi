@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { AuthErrorFactory } from '../../../shared/factories/auth-error.factory';
@@ -9,6 +9,20 @@ import {
   SupabaseUser,
 } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { Result } from '../../../shared/types/result.type';
+
+type SupabaseAuthUserRecord = {
+  id: string;
+  email?: string | null;
+  email_confirmed_at?: string | null;
+  user_metadata?: Record<string, unknown> | null;
+  metadata?: Record<string, unknown> | null;
+  created_at: string;
+  createdAt?: string | null;
+  updated_at?: string | null;
+  updatedAt?: string | null;
+  last_sign_in_at?: string | null;
+  user?: SupabaseAuthUserRecord | null;
+};
 
 @Injectable()
 export class SupabaseAuthService implements ISupabaseAuthService {
@@ -59,16 +73,7 @@ export class SupabaseAuthService implements ISupabaseAuthService {
         this.logger.log(`Verification email sent via Supabase to ${data.email}`);
       }
 
-      const user: SupabaseUser = {
-        id: authData.user.id,
-        email: authData.user.email!,
-        emailVerified: !!authData.user.email_confirmed_at,
-        metadata: authData.user.user_metadata || {},
-        createdAt: new Date(authData.user.created_at),
-        updatedAt: new Date(authData.user.updated_at || authData.user.created_at),
-      };
-
-      return { data: user };
+      return { data: this.mapUserRecord(authData.user) };
     } catch (error) {
       this.logger.error('Unexpected error in signUp', error);
       return { error: error as Error };
@@ -91,18 +96,13 @@ export class SupabaseAuthService implements ISupabaseAuthService {
         return { error: new Error('Invalid credentials') };
       }
 
+      const sessionUser = this.mapUserRecord(authData.user);
+
       const session: SupabaseSession = {
         accessToken: authData.session.access_token,
         refreshToken: authData.session.refresh_token,
         expiresIn: authData.session.expires_in || 3600,
-        user: {
-          id: authData.user.id,
-          email: authData.user.email!,
-          emailVerified: !!authData.user.email_confirmed_at,
-          metadata: authData.user.user_metadata || {},
-          createdAt: new Date(authData.user.created_at),
-          updatedAt: new Date(authData.user.updated_at || authData.user.created_at),
-        },
+        user: sessionUser,
       };
 
       return { data: session };
@@ -143,11 +143,11 @@ export class SupabaseAuthService implements ISupabaseAuthService {
   async verifyEmail(token: string, email?: string): Promise<Result<void>> {
     try {
       if (!token || token.length < 6) {
-        return { error: new Error('Token invÃ¡lido') };
+        return { error: new Error('Token invÃƒÂ¡lido') };
       }
 
       if (token.includes('test-token') || token === '123456') {
-        return { error: new Error('Token de teste nÃ£o Ã© vÃ¡lido') };
+        return { error: new Error('Token de teste nÃƒÂ£o ÃƒÂ© vÃƒÂ¡lido') };
       }
 
       if (email) {
@@ -162,7 +162,7 @@ export class SupabaseAuthService implements ISupabaseAuthService {
             .single();
 
           if (tokenError || !tokenData) {
-            return { error: new Error('Token invÃ¡lido ou expirado') };
+            return { error: new Error('Token invÃƒÂ¡lido ou expirado') };
           }
 
           await this.supabase
@@ -183,24 +183,24 @@ export class SupabaseAuthService implements ISupabaseAuthService {
 
           if (error) {
             this.logger.error(`Erro ao verificar token OTP: ${error.message}`);
-            return { error: new Error('Token invÃ¡lido ou expirado') };
+            return { error: new Error('Token invÃƒÂ¡lido ou expirado') };
           }
 
           if (!data.user) {
-            return { error: new Error('Token invÃ¡lido') };
+            return { error: new Error('Token invÃƒÂ¡lido') };
           }
 
-          this.logger.log(`Email verificado com sucesso para usuÃ¡rio: ${data.user.email}`);
+          this.logger.log(`Email verificado com sucesso para usuÃƒÂ¡rio: ${data.user.email}`);
           return { data: undefined };
         }
       }
 
       const tokenRegex = /^[a-f0-9]{64}$/;
       if (!tokenRegex.test(token)) {
-        return { error: new Error('Formato de token invÃ¡lido') };
+        return { error: new Error('Formato de token invÃƒÂ¡lido') };
       }
 
-      return { error: new Error('Email Ã© necessÃ¡rio para validaÃ§Ã£o completa') };
+      return { error: new Error('Email ÃƒÂ© necessÃƒÂ¡rio para validaÃƒÂ§ÃƒÂ£o completa') };
     } catch (error) {
       this.logger.error('Erro inesperado ao verificar email', error);
       return { error: error as Error };
@@ -215,19 +215,19 @@ export class SupabaseAuthService implements ISupabaseAuthService {
       } = await this.supabase.auth.admin.listUsers();
 
       if (listError) {
-        this.logger.error(`Erro ao listar usuÃ¡rios: ${listError.message}`);
-        return { error: new Error('Erro ao buscar usuÃ¡rio') };
+        this.logger.error(`Erro ao listar usuÃƒÂ¡rios: ${listError.message}`);
+        return { error: new Error('Erro ao buscar usuÃƒÂ¡rio') };
       }
 
       const user = users.find((u) => u.email === email);
 
       if (!user) {
-        return { error: new Error('UsuÃ¡rio nÃ£o encontrado') };
+        return { error: new Error('UsuÃƒÂ¡rio nÃƒÂ£o encontrado') };
       }
 
       if (user.email_confirmed_at) {
-        this.logger.warn(`Email jÃ¡ confirmado para: ${email}`);
-        return { error: new Error('Email jÃ¡ foi confirmado anteriormente') };
+        this.logger.warn(`Email jÃƒÂ¡ confirmado para: ${email}`);
+        return { error: new Error('Email jÃƒÂ¡ foi confirmado anteriormente') };
       }
 
       const { error } = await this.supabase.auth.admin.updateUserById(user.id, {
@@ -318,16 +318,7 @@ export class SupabaseAuthService implements ISupabaseAuthService {
         return { error: new Error('User not found') };
       }
 
-      const user: SupabaseUser = {
-        id: userData.user.id,
-        email: userData.user.email!,
-        emailVerified: !!userData.user.email_confirmed_at,
-        metadata: userData.user.user_metadata || {},
-        createdAt: new Date(userData.user.created_at),
-        updatedAt: new Date(userData.user.updated_at || userData.user.created_at),
-      };
-
-      return { data: user };
+      return { data: this.mapUserRecord(userData.user) };
     } catch (error) {
       this.logger.error('Unexpected error in getUser', error);
       return { error: error as Error };
@@ -352,16 +343,7 @@ export class SupabaseAuthService implements ISupabaseAuthService {
         return { error: new Error('Failed to update user') };
       }
 
-      const user: SupabaseUser = {
-        id: userData.user.id,
-        email: userData.user.email!,
-        emailVerified: !!userData.user.email_confirmed_at,
-        metadata: userData.user.user_metadata || {},
-        createdAt: new Date(userData.user.created_at),
-        updatedAt: new Date(userData.user.updated_at || userData.user.created_at),
-      };
-
-      return { data: user };
+      return { data: this.mapUserRecord(userData.user) };
     } catch (error) {
       this.logger.error('Unexpected error in updateUserMetadata', error);
       return { error: error as Error };
@@ -383,18 +365,13 @@ export class SupabaseAuthService implements ISupabaseAuthService {
         return { error: new Error('Invalid refresh token') };
       }
 
+      const sessionUser = this.mapUserRecord(authData.user);
+
       const session: SupabaseSession = {
         accessToken: authData.session.access_token,
         refreshToken: authData.session.refresh_token,
         expiresIn: authData.session.expires_in || 3600,
-        user: {
-          id: authData.user.id,
-          email: authData.user.email!,
-          emailVerified: !!authData.user.email_confirmed_at,
-          metadata: authData.user.user_metadata || {},
-          createdAt: new Date(authData.user.created_at),
-          updatedAt: new Date(authData.user.updated_at || authData.user.created_at),
-        },
+        user: sessionUser,
       };
 
       return { data: session };
@@ -402,6 +379,27 @@ export class SupabaseAuthService implements ISupabaseAuthService {
       this.logger.error('Unexpected error in refreshToken', error);
       return { error: error as Error };
     }
+  }
+
+  private mapUserRecord(data: SupabaseAuthUserRecord | null | undefined): SupabaseUser {
+    const source = (data?.user ?? data) as SupabaseAuthUserRecord | null;
+
+    if (!source || !source.id) {
+      throw new Error('Supabase user payload is invalid');
+    }
+
+    const createdAt = source.created_at ?? source.createdAt ?? new Date().toISOString();
+    const updatedAt = source.updated_at ?? source.updatedAt ?? createdAt;
+    const metadata = (source.user_metadata ?? source.metadata ?? {}) as Record<string, unknown>;
+
+    return {
+      id: source.id,
+      email: source.email ?? '',
+      emailVerified: !!source.email_confirmed_at,
+      metadata,
+      createdAt: new Date(createdAt),
+      updatedAt: new Date(updatedAt),
+    };
   }
 
   async listUsers(params: { page?: number; perPage?: number }): Promise<Result<{ users: any[] }>> {
@@ -447,6 +445,8 @@ export class SupabaseAuthService implements ISupabaseAuthService {
     }
   }
 }
+
+
 
 
 
