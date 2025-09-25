@@ -45,6 +45,7 @@ import { TransferPatientDto } from '../dtos/transfer-patient.dto';
 import { ArchivePatientDto } from '../dtos/archive-patient.dto';
 import { ExportPatientsDto } from '../dtos/export-patients.dto';
 import { PatientResponseDto, PatientsListResponseDto } from '../dtos/patient-response.dto';
+import { PatientPresenter } from '../presenters/patient.presenter';
 import { PatientDetailDto } from '../dtos/patient-detail.dto';
 import { createPatientSchema } from '../schemas/create-patient.schema';
 import { updatePatientSchema } from '../schemas/update-patient.schema';
@@ -55,18 +56,15 @@ import { exportPatientsSchema } from '../schemas/export-patients.schema';
 import {
   ArchivePatientInput,
   CreatePatientInput,
-  Patient,
   PatientExportRequest,
   PatientListFilters,
   PatientListItem,
   PatientRiskLevel,
   PatientStatus,
-  PatientTag,
   PatientTimelineEntry,
   TransferPatientInput,
   UpdatePatientInput,
 } from '../../../../domain/patients/types/patient.types';
-import { CPFUtils } from '../../../../shared/utils/cpf.utils';
 import { PatientErrorFactory } from '../../../../shared/factories/patient-error.factory';
 
 @ApiTags('Patients')
@@ -118,16 +116,15 @@ export class PatientsController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<PatientsListResponseDto> {
-    const parsed = listPatientsSchema.parse(query);
-    const tenantId = this.getTenant(currentUser, tenantHeader ?? parsed.tenantId);
+    const tenantId = this.getTenant(currentUser, tenantHeader ?? query.tenantId);
 
     const filters: PatientListFilters = {
-      query: parsed.query,
-      status: parsed.status?.map((value) => value as PatientStatus),
-      riskLevel: parsed.riskLevel?.map((value) => value as PatientRiskLevel),
-      assignedProfessionalIds: parsed.professionalIds,
-      tags: parsed.tags,
-      quickFilter: parsed.quickFilter as any,
+      query: query.query,
+      status: query.status?.map((value) => value as PatientStatus),
+      riskLevel: query.riskLevel?.map((value) => value as PatientRiskLevel),
+      assignedProfessionalIds: query.professionalIds,
+      tags: query.tags,
+      quickFilter: query.quickFilter,
     };
 
     const result = await this.listPatientsUseCase.execute({
@@ -135,10 +132,10 @@ export class PatientsController {
       requesterId: currentUser.id,
       requesterRole: currentUser.role,
       filters,
-      page: parsed.page,
-      limit: parsed.limit,
-      sortBy: parsed.sortBy,
-      sortOrder: parsed.sortOrder,
+      page: query.page,
+      limit: query.limit,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
     });
 
     if (result.error) {
@@ -146,7 +143,7 @@ export class PatientsController {
     }
 
     return {
-      data: result.data.data.map((patient: PatientListItem) => this.mapListItem(patient)),
+      data: result.data.data.map((patient: PatientListItem) => PatientPresenter.listItem(patient)),
       total: result.data.total,
     };
   }
@@ -169,46 +166,45 @@ export class PatientsController {
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<PatientResponseDto> {
     const tenantId = this.getTenant(currentUser, tenantHeader ?? body?.tenantId);
-    const parsed = createPatientSchema.parse(body);
 
     const input: CreatePatientInput = {
       tenantId,
       createdBy: currentUser.id,
       requesterRole: currentUser.role,
-      professionalId: parsed.professionalId,
-      fullName: parsed.fullName,
-      cpf: parsed.cpf,
-      birthDate: parsed.birthDate ? new Date(parsed.birthDate) : undefined,
-      gender: parsed.gender,
-      maritalStatus: parsed.maritalStatus,
+      professionalId: body.professionalId,
+      fullName: body.fullName,
+      cpf: body.cpf,
+      birthDate: body.birthDate ? new Date(body.birthDate) : undefined,
+      gender: body.gender,
+      maritalStatus: body.maritalStatus,
       contact: {
-        email: parsed.email,
-        phone: parsed.phone,
-        whatsapp: parsed.whatsapp,
+        email: body.email,
+        phone: body.phone,
+        whatsapp: body.whatsapp,
       },
-      address: parsed.zipCode
+      address: body.zipCode
         ? {
-            zipCode: parsed.zipCode,
-            street: parsed.street ?? '',
-            number: parsed.number,
-            complement: parsed.complement,
-            district: parsed.district,
-            city: parsed.city ?? '',
-            state: parsed.state ?? '',
-            country: parsed.country,
+            zipCode: body.zipCode,
+            street: body.street ?? '',
+            number: body.number,
+            complement: body.complement,
+            district: body.district,
+            city: body.city ?? '',
+            state: body.state ?? '',
+            country: body.country,
           }
         : undefined,
       medical:
-        parsed.allergies || parsed.chronicConditions || parsed.medications || parsed.observations
+        body.allergies || body.chronicConditions || body.medications || body.observations
           ? {
-              allergies: parsed.allergies,
-              chronicConditions: parsed.chronicConditions,
-              medications: parsed.medications,
-              observations: parsed.observations,
+              allergies: body.allergies,
+              chronicConditions: body.chronicConditions,
+              medications: body.medications,
+              observations: body.observations,
             }
           : undefined,
-      tags: parsed.tags,
-      status: parsed.status as any,
+      tags: body.tags,
+      status: body.status as any,
     };
 
     const result = await this.createPatientUseCase.execute(input);
@@ -217,7 +213,7 @@ export class PatientsController {
       throw result.error;
     }
 
-    return this.mapPatientSummary(result.data);
+    return PatientPresenter.summary(result.data);
   }
 
   @Get(':slug')
@@ -261,7 +257,7 @@ export class PatientsController {
     const { patient, summary, timeline, insights, quickActions } = result.data;
 
     return {
-      patient: this.mapPatientDetail(patient),
+      patient: PatientPresenter.detail(patient),
       summary: {
         totals: {
           appointments: summary.totals.appointments,
@@ -357,7 +353,7 @@ export class PatientsController {
       throw result.error;
     }
 
-    return this.mapPatientSummary(result.data);
+    return PatientPresenter.summary(result.data);
   }
 
   @Post(':slug/transfer')
@@ -397,7 +393,7 @@ export class PatientsController {
       throw result.error;
     }
 
-    return this.mapPatientSummary(result.data);
+    return PatientPresenter.summary(result.data);
   }
 
   @Post(':slug/archive')
@@ -483,85 +479,6 @@ export class PatientsController {
     return result.data;
   }
 
-  private mapPatientSummary(patient: Patient): PatientResponseDto {
-    return {
-      id: patient.id,
-      slug: patient.slug,
-      fullName: patient.fullName,
-      status: patient.status,
-      cpfMasked: CPFUtils.mask(patient.cpf),
-      phone: patient.contact.phone,
-      whatsapp: patient.contact.whatsapp,
-      email: patient.contact.email,
-      nextAppointmentAt: patient.nextAppointmentAt?.toISOString(),
-      lastAppointmentAt: patient.lastAppointmentAt?.toISOString(),
-      professionalId: patient.professionalId,
-      tags: patient.tags?.map((tag: PatientTag) => tag.label),
-      createdAt: patient.createdAt.toISOString(),
-      updatedAt: patient.updatedAt.toISOString(),
-    };
-  }
-
-  private mapPatientDetail(patient: Patient) {
-    return {
-      id: patient.id,
-      slug: patient.slug,
-      fullName: patient.fullName,
-      status: patient.status,
-      cpfMasked: CPFUtils.mask(patient.cpf),
-      contact: patient.contact,
-      address: patient.address,
-      medical: patient.medical,
-      professionalId: patient.professionalId,
-      tags: patient.tags?.map((tag: PatientTag) => ({
-        id: tag.id,
-        label: tag.label,
-        color: tag.color,
-      })),
-      nextAppointmentAt: patient.nextAppointmentAt?.toISOString(),
-      lastAppointmentAt: patient.lastAppointmentAt?.toISOString(),
-      createdAt: patient.createdAt.toISOString(),
-      updatedAt: patient.updatedAt.toISOString(),
-      riskLevel: patient.riskLevel,
-    };
-  }
-
-  private mapListItem(patient: PatientListItem): PatientResponseDto {
-    const createdAt =
-      patient.createdAt instanceof Date
-        ? patient.createdAt.toISOString()
-        : String(patient.createdAt);
-    const updatedAt =
-      patient.updatedAt instanceof Date
-        ? patient.updatedAt.toISOString()
-        : String(patient.updatedAt);
-    const nextAppointmentAt =
-      patient.nextAppointmentAt instanceof Date
-        ? patient.nextAppointmentAt.toISOString()
-        : (patient.nextAppointmentAt ?? undefined);
-    const lastAppointmentAt =
-      patient.lastAppointmentAt instanceof Date
-        ? patient.lastAppointmentAt.toISOString()
-        : (patient.lastAppointmentAt ?? undefined);
-
-    return {
-      id: patient.id,
-      slug: patient.slug,
-      fullName: patient.fullName,
-      status: patient.status,
-      cpfMasked: patient.cpfMasked,
-      phone: patient.contact.phone,
-      whatsapp: patient.contact.whatsapp,
-      email: patient.contact.email,
-      nextAppointmentAt,
-      lastAppointmentAt,
-      professionalId: patient.professionalId,
-      tags: patient.tags?.map((tag: PatientTag) => tag.label),
-      createdAt,
-      updatedAt,
-    };
-  }
-
   private getTenant(currentUser: ICurrentUser, tenantOverride?: string | null): string {
     const metadata = (currentUser?.metadata ?? {}) as Record<string, unknown>;
     const normalizedOverride = typeof tenantOverride === 'string' ? tenantOverride.trim() : '';
@@ -619,3 +536,4 @@ export class PatientsController {
     return tenantId;
   }
 }
+

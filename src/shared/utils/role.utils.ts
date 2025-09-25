@@ -24,6 +24,19 @@ const ROLE_DOMAIN_MAP: Record<string, RolesEnum> = Object.entries(ROLE_DATABASE_
   {} as Record<string, RolesEnum>,
 );
 
+const ROLE_SYNONYMS: Record<string, RolesEnum> = {
+  SECRETARIA: RolesEnum.SECRETARY,
+  secretaria: RolesEnum.SECRETARY,
+  PROFISSIONAL: RolesEnum.PROFESSIONAL,
+  profissional: RolesEnum.PROFESSIONAL,
+  GESTOR: RolesEnum.MANAGER,
+  gestor: RolesEnum.MANAGER,
+};
+
+Object.entries(ROLE_SYNONYMS).forEach(([key, value]) => {
+  ROLE_DOMAIN_MAP[key] = value;
+});
+
 export function mapRoleToDatabase(role?: RolesEnum | string | null): string | undefined {
   if (!role) {
     return undefined;

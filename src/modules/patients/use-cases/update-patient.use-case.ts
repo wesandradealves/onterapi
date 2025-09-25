@@ -7,8 +7,10 @@ import {
   IPatientRepositoryToken,
 } from '../../../domain/patients/interfaces/repositories/patient.repository.interface';
 import { Patient, UpdatePatientInput } from '../../../domain/patients/types/patient.types';
+import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
 import { PatientErrorFactory } from '../../../shared/factories/patient-error.factory';
 import { PatientAuditService } from '../../../infrastructure/patients/services/patient-audit.service';
+import { mapRoleToDomain } from '../../../shared/utils/role.utils';
 import { MessageBus } from '../../../shared/messaging/message-bus';
 import { DomainEvents } from '../../../shared/events/domain-events';
 
@@ -56,29 +58,33 @@ export class UpdatePatientUseCase
   }
 
   private ensurePermissions(input: UpdatePatientInput, patient: Patient) {
-    const role = input.requesterRole?.toUpperCase();
+    const role = mapRoleToDomain(input.requesterRole);
 
-    if (role === 'CLINIC_OWNER' || role === 'SUPER_ADMIN') {
+    if (!role) {
+      throw PatientErrorFactory.unauthorized();
+    }
+
+    if ([RolesEnum.CLINIC_OWNER, RolesEnum.SUPER_ADMIN].includes(role)) {
       return;
     }
 
-    if (role === 'PROFISSIONAL' || role === 'PROFESSIONAL') {
+    if (role === RolesEnum.PROFESSIONAL) {
       if (patient.professionalId && patient.professionalId !== input.updatedBy) {
         throw PatientErrorFactory.unauthorized();
       }
       return;
     }
 
-    if (role === 'SECRETARIA' || role === 'SECRETARY') {
+    if (role === RolesEnum.SECRETARY) {
       if (input.medical || input.riskLevel) {
-        throw PatientErrorFactory.unauthorized('Secretária não pode editar dados clínicos');
+        throw PatientErrorFactory.unauthorized('Secretaria nao pode editar dados clinicos');
       }
       return;
     }
 
-    if (role === 'GESTOR' || role === 'MANAGER') {
+    if (role === RolesEnum.MANAGER) {
       if (input.medical) {
-        throw PatientErrorFactory.unauthorized('Gestor não pode editar dados clínicos');
+        throw PatientErrorFactory.unauthorized('Manager nao pode editar dados clinicos');
       }
       return;
     }

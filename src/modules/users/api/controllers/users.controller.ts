@@ -42,10 +42,10 @@ import { CreateUserInputDTO, CreateUserResponseDto } from '../dtos/create-user.d
 import { UpdateUserDto } from '../dtos/update-user.dto';
 import { UserResponseDto } from '../dtos/user-response.dto';
 import { ListUsersDto, ListUsersResponseDto } from '../dtos/list-users.dto';
+import { UserPresenter } from '../presenters/user.presenter';
 import { createUserSchema } from '../schemas/create-user.schema';
 import { updateUserSchema } from '../schemas/update-user.schema';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
-import { CPFUtils } from '../../../../shared/utils/cpf.utils';
 import { AuthErrorFactory } from '../../../../shared/factories/auth-error.factory';
 import { UserEntity } from '../../../../infrastructure/auth/entities/user.entity';
 
@@ -136,7 +136,7 @@ export class UsersController {
     if (result.error) {
       throw result.error;
     }
-    return this.buildCreateUserResponse(result.data);
+    return UserPresenter.toCreateResponse(result.data);
   }
 
   @Get()
@@ -195,7 +195,7 @@ export class UsersController {
       throw result.error;
     }
     return {
-      data: result.data.data.map((user) => this.buildUserResponse(user)),
+      data: result.data.data.map((user) => UserPresenter.toResponse(user)),
       pagination: result.data.pagination,
     };
   }
@@ -231,7 +231,7 @@ export class UsersController {
     if (!result.data) {
       throw AuthErrorFactory.userNotFound();
     }
-    return this.buildUserResponse(result.data);
+    return UserPresenter.toResponse(result.data);
   }
 
   @Patch(':slug')
@@ -295,7 +295,7 @@ export class UsersController {
     if (result.error) {
       throw result.error;
     }
-    return this.buildUserResponse(result.data);
+    return UserPresenter.toResponse(result.data);
   }
 
   @Delete(':slug')
@@ -303,63 +303,24 @@ export class UsersController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
   @ApiOperation({
-      summary: 'Deletar usuario',
-      description: `Soft delete realizado por administradores (SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO) ou pelo proprio usuario.
+    summary: 'Deletar usuario',
+    description: `Soft delete realizado por administradores (SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO) ou pelo proprio usuario.
 
 **Roles:** SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO ou o proprio usuario autenticado`,
-    })
-    @ApiParam({
-      name: 'slug',
-      description: 'Slug do usuario',
-      example: 'joao-silva',
-    })
-    @ApiResponse({
-      status: 204,
-      description: 'Usuario deletado com sucesso',
-    })
-    async remove(@Param('slug') slug: string, @CurrentUser() currentUser: ICurrentUser): Promise<void> {
-      const result = await this.deleteUserUseCase.execute(slug, currentUser.id);
+  })
+  @ApiParam({
+    name: 'slug',
+    description: 'Slug do usuario',
+    example: 'joao-silva',
+  })
+  @ApiResponse({
+    status: 204,
+    description: 'Usuario deletado com sucesso',
+  })
+  async remove(@Param('slug') slug: string, @CurrentUser() currentUser: ICurrentUser): Promise<void> {
+    const result = await this.deleteUserUseCase.execute(slug, currentUser.id);
     if (result.error) {
       throw result.error;
     }
   }
-
-  private buildUserResponse(user: UserEntity, maskCpf = true): UserResponseDto {
-    return {
-      id: user.id,
-      slug: user.slug,
-      email: user.email,
-      name: user.name,
-      cpf: maskCpf ? CPFUtils.mask(user.cpf) : user.cpf,
-      phone: user.phone ?? undefined,
-      role: user.role,
-      tenantId: user.tenantId ?? undefined,
-      isActive: user.isActive,
-      emailVerified: user.emailVerified,
-      twoFactorEnabled: user.twoFactorEnabled,
-      lastLoginAt: user.lastLoginAt ?? undefined,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    };
-  }
-
-  private buildCreateUserResponse(user: UserEntity): CreateUserResponseDto {
-    const response = this.buildUserResponse(user);
-    return {
-      id: response.id,
-      slug: response.slug,
-      email: response.email,
-      name: response.name,
-      cpf: response.cpf,
-      phone: response.phone,
-      role: response.role,
-      tenantId: response.tenantId,
-      isActive: response.isActive,
-      emailVerified: response.emailVerified,
-      twoFactorEnabled: response.twoFactorEnabled,
-      createdAt: response.createdAt,
-      updatedAt: response.updatedAt,
-    };
-  }
-
 }
