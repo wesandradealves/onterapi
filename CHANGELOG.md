@@ -6,6 +6,12 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [Unreleased]
 
+### Security
+- Remoção dos arquivos `.env` reais do repositório e inclusão de `.env.example`/`.env.production.example` para guiar a configuração segura de credenciais.
+
+### Documentation
+- README atualizado com instruções detalhadas de duplicação dos arquivos de exemplo de ambiente e lista das variáveis necessárias.
+
 ## [0.16.1] - 2025-09-25
 
 ### Changed
