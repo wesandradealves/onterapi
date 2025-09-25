@@ -98,6 +98,7 @@ describe('PatientPresenter', () => {
         riskLevel: patient.riskLevel,
       }),
     );
+    expect(detail.tags).toEqual([{ id: 'vip', label: 'VIP', color: '#ff0' }]);
   });
 
   it('retorna resumo com timestamps em ISO', () => {
@@ -107,5 +108,48 @@ describe('PatientPresenter', () => {
 
     expect(summary.createdAt).toBe(patient.createdAt.toISOString());
     expect(summary.updatedAt).toBe(patient.updatedAt.toISOString());
+  });
+
+  it('normaliza campos quando dados opcionais nao existem', () => {
+    const patient = buildPatient({
+      tags: [],
+      contact: {
+        email: undefined,
+        phone: undefined,
+        whatsapp: undefined,
+      },
+      nextAppointmentAt: 123 as any,
+      lastAppointmentAt: '2025-01-02T10:00:00.000Z',
+    });
+
+    const summary = PatientPresenter.summary(patient);
+    const detail = PatientPresenter.detail(patient);
+    const listItem = PatientPresenter.listItem({
+      id: patient.id,
+      slug: patient.slug,
+      fullName: patient.fullName,
+      shortName: patient.shortName,
+      status: patient.status,
+      riskLevel: patient.riskLevel,
+      cpfMasked: '***',
+      contact: patient.contact,
+      professionalId: patient.professionalId,
+      professionalName: undefined,
+      nextAppointmentAt: patient.nextAppointmentAt,
+      lastAppointmentAt: patient.lastAppointmentAt,
+      tags: patient.tags,
+      revenueTotal: 0,
+      createdAt: patient.createdAt,
+      updatedAt: patient.updatedAt,
+    });
+
+    expect(summary.tags).toBeUndefined();
+    expect(summary.nextAppointmentAt).toBeUndefined();
+    expect(summary.lastAppointmentAt).toBe('2025-01-02T10:00:00.000Z');
+    expect(detail.tags).toEqual([]);
+    expect(detail.nextAppointmentAt).toBeUndefined();
+    expect(listItem.tags).toBeUndefined();
+    expect(listItem.nextAppointmentAt).toBeUndefined();
+    expect(listItem.lastAppointmentAt).toBe('2025-01-02T10:00:00.000Z');
   });
 });

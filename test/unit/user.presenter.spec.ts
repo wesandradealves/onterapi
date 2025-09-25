@@ -41,4 +41,18 @@ describe('UserPresenter', () => {
       role: 'SUPER_ADMIN',
     });
   });
+
+  it('remove campos opcionais quando ausentes', () => {
+    const user = buildUser({
+      phone: null,
+      tenantId: null,
+      lastLoginAt: new Date('2025-09-24T08:00:00.000Z'),
+    });
+
+    const response = UserPresenter.toResponse(user);
+
+    expect(response.phone).toBeUndefined();
+    expect(response.tenantId).toBeUndefined();
+    expect(response.lastLoginAt).toEqual(new Date('2025-09-24T08:00:00.000Z'));
+  });
 });

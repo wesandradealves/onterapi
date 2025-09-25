@@ -8,10 +8,12 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ### Added
 - Estrutura inicial de testes automatizados com Jest (jest.config.js, tsconfig.test.json) e suites unitárias para presenters, utils e guards.
+- Suites unitarias adicionais cobrindo BaseUseCase, CPFValidator, presenters de pacientes/usuarios e CreatePatientUseCase.
 
 ### Changed
 - Controllers de Auth e Users passam a reutilizar unwrapResult, reduzindo boilerplate de tratamento de Result.
 - QUALITY_BASELINE.md atualizado com novas notas e evidências após a primeira rodada de testes.
+- Script npm test:cov agora executa em modo sequencial (--runInBand) para evitar falhas intermitentes dos workers.
 
 ### Fixed
 
