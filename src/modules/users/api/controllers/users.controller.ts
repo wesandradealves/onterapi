@@ -11,7 +11,6 @@ import {
   Post,
   Query,
   UseGuards,
-  UsePipes,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -41,11 +40,12 @@ import { IDeleteUserUseCase } from '../../../../domain/users/interfaces/use-case
 import { CreateUserInputDTO, CreateUserResponseDto } from '../dtos/create-user.dto';
 import { UpdateUserDto } from '../dtos/update-user.dto';
 import { UserResponseDto } from '../dtos/user-response.dto';
-import { ListUsersDto, ListUsersResponseDto } from '../dtos/list-users.dto';
+import { ListUsersResponseDto } from '../dtos/list-users.dto';
 import { UserPresenter } from '../presenters/user.presenter';
 import { unwrapResult } from '../../../../shared/types/result.type';
-import { createUserSchema } from '../schemas/create-user.schema';
-import { updateUserSchema } from '../schemas/update-user.schema';
+import { createUserSchema, CreateUserSchemaType } from '../schemas/create-user.schema';
+import { updateUserSchema, UpdateUserSchemaType } from '../schemas/update-user.schema';
+import { listUsersSchema, ListUsersSchema } from '../schemas/list-users.schema';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
 
 @ApiTags('Users')
@@ -129,8 +129,9 @@ export class UsersController {
     status: 409,
     description: 'Email ou CPF já cadastrado',
   })
-  @UsePipes(new ZodValidationPipe(createUserSchema))
-  async create(@Body() dto: CreateUserInputDTO): Promise<CreateUserResponseDto> {
+  async create(
+    @Body(new ZodValidationPipe(createUserSchema)) dto: CreateUserSchemaType,
+  ): Promise<CreateUserResponseDto> {
     const user = unwrapResult(await this.createUserUseCase.execute(dto));
     return UserPresenter.toCreateResponse(user);
   }
@@ -185,7 +186,9 @@ export class UsersController {
     description: 'Lista de usuários retornada com sucesso',
     type: ListUsersResponseDto,
   })
-  async findAll(@Query() filters: ListUsersDto): Promise<ListUsersResponseDto> {
+  async findAll(
+    @Query(new ZodValidationPipe(listUsersSchema)) filters: ListUsersSchema,
+  ): Promise<ListUsersResponseDto> {
     const payload = unwrapResult(await this.findAllUsersUseCase.execute(filters));
     return {
       data: payload.data.map((user) => UserPresenter.toResponse(user)),
@@ -275,7 +278,7 @@ export class UsersController {
   })
   async update(
     @Param('slug') slug: string,
-    @Body() dto: UpdateUserDto,
+    @Body(new ZodValidationPipe(updateUserSchema)) dto: UpdateUserSchemaType,
     @CurrentUser() currentUser: ICurrentUser,
   ): Promise<UserResponseDto> {
     const updated = unwrapResult(await this.updateUserUseCase.execute(slug, dto, currentUser.id));

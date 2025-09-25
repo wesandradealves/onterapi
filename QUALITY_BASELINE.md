@@ -1,4 +1,4 @@
-# Linha de Base de Qualidade - OnTerapi Backend v4
+ï»¿# Linha de Base de Qualidade - OnTerapi Backend v4
 
 - Data: 2025-09-25
 - Commit analisado: feature/coverage (worktree)
@@ -8,55 +8,47 @@
 
 | Criterio | Nota atual (0-10) | Meta | Evidencias chave |
 | --- | --- | --- | --- |
-| DRY / Reuso de codigo | 7.0 | >= 8.5 | Reuso centralizado continua nos presenters compartilhados (src/modules/patients/api/presenters/patient.presenter.ts:1, src/modules/users/api/presenters/user.presenter.ts:1). Factories e DTOs ainda duplicam mapeamentos e permanecem alvo do proximo ciclo. |
-| Automacao de qualidade | 8.5 | >= 8.5 | Gates locais agora executam 	est:unit, 	est:int e 	est:e2e antes do 	est:cov (scripts package.json:27-36), com thresholds globais de 100% em jest.config.js:23. Execucoes recentes (
-pm run test:int, 
-pm run test:e2e, 
-pm run test:cov) passaram sem intervencao manual. |
-| Testes automatizados | 9.5 | >= 9.5 | Malha cobre unidade (	est/unit/...), integracao HTTP (	est/integration/patients.controller.integration.spec.ts:1) e e2e com use cases reais (	est/e2e/patients.e2e-spec.ts:1). Cobertura agregada permanece em 100% para statements/branches/functions/lines (coverage/coverage-summary.json:1). |
-| Validacoes e contratos | 6.0 | >= 9.0 | Persistem parses redundantes e DTOs desacoplados dos schemas Zod (src/modules/patients/api/controllers/patients.controller.ts:163, src/modules/users/api/controllers/users.controller.ts:109). |
-| Governanca de dominio / RBAC | 8.0 | >= 9.0 | Autorizacao dos pacientes segue normalizada via mapRoleToDomain (ex.: src/modules/patients/use-cases/get-patient.use-case.ts:89) e agora validada nos testes de integracao/e2e (	est/integration/patients.controller.integration.spec.ts:74, 	est/e2e/patients.e2e-spec.ts:106). Modulos de agenda/financeiro continuam fora do escopo desta rodada. |
+| DRY / Reuso de codigo | 9.5 | >= 9.0 | AuthController e PatientsController delegam normalizacao de payloads aos mappers dedicados (src/modules/auth/api/controllers/auth.controller.ts:118, src/modules/auth/api/mappers/auth-request.mapper.ts:65, src/modules/patients/api/controllers/patients.controller.ts:110). |
+| Automacao de qualidade | 8.5 | >= 8.5 | Sequencia de scripts continua rodando npm run test:unit â†’ test:int â†’ test:e2e â†’ test:cov com limiar global travado em 100% (jest.config.js:12-20, package.json:23-38). |
+| Testes automatizados | 9.9 | >= 9.5 | 131 testes cobrindo unidade/integracao/e2e e mappers recem-criados, mantendo cobertura global 100% (test/unit/modules.auth/auth-request.mapper.spec.ts:1, test/integration/patients.controller.integration.spec.ts:1, coverage/coverage-summary.json:1). |
+| Validacoes e contratos | 8.7 | >= 9.0 | Fluxos de auth passam por schemas Zod e mappers antes dos use cases (src/modules/auth/api/controllers/two-factor.controller.ts:40, src/modules/auth/api/mappers/auth-request.mapper.ts:117), eliminando objetos montados manualmente. |
+| Governanca de dominio / RBAC | 8.0 | >= 9.0 | Guardas e casos de uso continuam reforcando roles/tenant com auditoria (src/modules/patients/use-cases/get-patient.use-case.ts:89, test/e2e/patients.e2e-spec.ts:58). |
 
 ## Observacoes Detalhadas
 
 ### DRY e reuso
-- Nenhuma regressao identificada: presenters e utilitarios permanecem reutilizados.
-- Falta enderecar os spreads repetidos nos DTOs para elevar a nota no proximo ciclo.
+- AuthController, TwoFactorController e PatientsController compartilham resolucao de contexto/mapeamento via helpers, removendo spreads repetidos e normalizacoes ad-hoc.
+- Mapper de auth cobre device info, tokens e defaults (two-factor-client), garantindo consistencia entre sign-in, refresh, sign-out e 2FA.
+- Proximo alvo de DRY e extrair mappers equivalentes para usuarios (CRUD/filters) e demias modulos (agenda/financeiro).
 
 ### Automacao e scripts
-- 	est:cov falha se cobertura global cair abaixo de 100% (jest.config.js:23);
-- Novo combo 	est:int e 	est:e2e roda em série (package.json:33-34), garantindo verificacoes de controller/use case com mocks e repositório em memória.
-- Ainda nao existe pipeline CI consumindo os scripts; gate continua manual.
+- Fluxo local permanece linear (unit â†’ int â†’ e2e â†’ cov) com collectCoverageFrom ampliado para mappers de auth/pacientes.
+- Aguardando pipeline CI para rodar mesmos gates de forma automatizada.
 
 ### Testes
-- 102 testes executam em ~9s cobrindo use cases, presenters, utils, integracao HTTP e e2e.
-- Suites de integracao validam normalizacao de tenants e Zod (	est/integration/patients.controller.integration.spec.ts:37).
-- E2E exercita GetPatientUseCase e ListPatientsUseCase com repositório em memoria e mocks de auditoria/IA (	est/e2e/patients.e2e-spec.ts:44).
-- Suites de integracao/e2e para modulos de usuarios/auth ainda pendentes.
+- Novo spec cobre todos os ramos do mapper de auth, incluindo arrays de headers e fallback de valores.
+- Contagem total de 131 testes em ~17s; branch coverage mantida em 100% global.
+- Suites de integracao/e2e seguem focadas em pacientes; auth/users ainda carecem de exercicios ponta-a-ponta.
 
 ### Validacao e contratos
-- Controllers continuam chamando schema.parse apos o ZodValidationPipe; remover duplicidade segue prioridade.
-- Swagger/DTOs nao refletem as mesmas mensagens dos schemas Zod.
+- Todos os endpoints de auth e pacientes agora consomem dados ja validados pelo ZodValidationPipe + mapper, preservando DTOs para Swagger.
+- Fallbacks de device/ip centralizados evitam divergencia de comportamento entre endpoints.
 
 ### RBAC e dominio
-- Cobertura de testes garante que ensurePermissions e uildQuickActions sigam regras de negocio inclusive para roles internas.
-- Agendas e financeiro ainda precisam migrar para a mesma estrategia.
+- Sem mudancas nas politicas; validacoes de role/tenant permanecem nos use cases existentes.
+- Ainda necessario expandir cobertura para agenda/financeiro antes de elevar a meta.
 
 ## Testes Executados
-- 
-pm run test:unit
-- 
-pm run test:int
-- 
-pm run test:e2e
-- 
-pm run test:cov
+- npm run test:unit
+- npm run test:int
+- npm run test:e2e
+- npm run test:cov
 
 ## Proximos Passos Prioritarios
-1. Expandir suites de integracao/e2e para os modulos de usuarios e auth, cobrindo fluxos de login/2FA e CRUD completo.
-2. Remover parses duplicados nos controllers e alinhar DTOs aos schemas Zod.
-3. Refatorar factories/DTOs para consumir presenters/mappers compartilhados, elevando a nota DRY.
-4. Integrar os scripts check:quality, 	est:int, 	est:e2e ao pipeline CI para enforcement continuo.
-5. Mapear modulos restantes (financeiro, agendas) para aplicar as mesmas regras de RBAC e adicionar cobertura automatizada correspondente.
+1. Extrair mapper/normalizacao semelhantes para o modulo de usuarios (create/update/list) e eliminar spreads residuais de metadata.
+2. Expandir suites de integracao/e2e para fluxos de auth e usuarios, garantindo rastreabilidade completa de RBAC.
+3. Automatizar lint + testes + cobertura em pipeline CI com gates de 100%.
+4. Planejar mesma abordagem de mappers para agenda/financeiro, reforcando DRY e contratos nesses dominios.
+5. Consolidar factories/logging sensivel verificando reutilizacao das mascaras em todos os fluxos de auth.
 
 Este documento serve como baseline; reavalie os criterios depois de cada entrega significativa.

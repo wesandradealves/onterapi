@@ -1,4 +1,4 @@
-import {
+﻿import {
   Body,
   Controller,
   HttpCode,
@@ -8,7 +8,6 @@ import {
   Logger,
   Post,
   Req,
-  UsePipes,
 } from '@nestjs/common';
 import { ApiBody, ApiExcludeEndpoint, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
@@ -18,7 +17,7 @@ import { unwrapResult } from '../../../../shared/types/result.type';
 import { IValidateTwoFAUseCase } from '../../../../domain/auth/interfaces/use-cases/validate-two-fa.use-case.interface';
 import { ISendTwoFAUseCase } from '../../../../domain/auth/interfaces/use-cases/send-two-fa.use-case.interface';
 
-import { Public } from '../../decorators/public.decorator';
+import { Public } from '../../decorators/public.decorator';\r\nimport { toSendTwoFAInput, toValidateTwoFAInput } from '../mappers/auth-request.mapper';
 import {
   SendTwoFAInputDTO,
   sendTwoFAInputSchema,
@@ -44,17 +43,17 @@ export class TwoFactorController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Validar código 2FA',
-    description: `Valida o código de autenticação de dois fatores e retorna os tokens de acesso.
+    summary: 'Validar cÃ³digo 2FA',
+    description: `Valida o cÃ³digo de autenticaÃ§Ã£o de dois fatores e retorna os tokens de acesso.
 
-**Roles:** Público`,
+**Roles:** PÃºblico`,
   })
   @ApiBody({
     type: ValidateTwoFADto,
-    description: 'Payload necessário para validar o código 2FA gerado após o login.',
+    description: 'Payload necessÃ¡rio para validar o cÃ³digo 2FA gerado apÃ³s o login.',
     examples: {
       padrao: {
-        summary: 'Validação padrão',
+        summary: 'ValidaÃ§Ã£o padrÃ£o',
         value: {
           tempToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
           code: '123456',
@@ -72,32 +71,20 @@ export class TwoFactorController {
     status: 400,
     description: MESSAGES.AUTH.TWO_FA_INVALID,
   })
-  @UsePipes(new ZodValidationPipe(validateTwoFAInputSchema))
   async validateTwoFA(
-    @Body() dto: ValidateTwoFAInputDTO,
+    @Body(new ZodValidationPipe(validateTwoFAInputSchema)) dto: ValidateTwoFAInputDTO,
     @Req() request: Request,
     @Ip() ip: string,
   ): Promise<ValidateTwoFAResponseDto> {
-    const userAgentHeader = request.headers['user-agent'];
-    const resolvedUserAgent =
-      dto.deviceInfo?.userAgent ??
-      (Array.isArray(userAgentHeader) ? userAgentHeader[0] : userAgentHeader) ??
-      'two-factor-client';
+    const fingerprint = {
+      userAgentHeader: request.headers['user-agent'],
+      ip,
+    };
 
-    const resolvedIp = dto.deviceInfo?.ip ?? ip;
+    const input = toValidateTwoFAInput(dto, fingerprint);
 
     return unwrapResult(
-      await this.validateTwoFAUseCase.execute({
-        tempToken: dto.tempToken,
-        code: dto.code,
-        trustDevice: dto.trustDevice,
-        userId: '',
-        deviceInfo: {
-          ...dto.deviceInfo,
-          userAgent: resolvedUserAgent,
-          ip: resolvedIp,
-        },
-      }),
+      await this.validateTwoFAUseCase.execute(input),
     ) as ValidateTwoFAResponseDto;
   }
 
@@ -105,14 +92,12 @@ export class TwoFactorController {
   @ApiExcludeEndpoint()
   @Public()
   @HttpCode(HttpStatus.OK)
-  @UsePipes(new ZodValidationPipe(sendTwoFAInputSchema))
-  async sendTwoFA(@Body() dto: SendTwoFAInputDTO) {
-    return unwrapResult(
-      await this.sendTwoFAUseCase.execute({
-        tempToken: dto.tempToken,
-        method: dto.method ?? 'email',
-        userId: '',
-      }),
-    );
+  async sendTwoFA(
+    @Body(new ZodValidationPipe(sendTwoFAInputSchema)) dto: SendTwoFAInputDTO,
+  ) {
+    return unwrapResult(await this.sendTwoFAUseCase.execute(toSendTwoFAInput(dto)));
   }
 }
+
+
+

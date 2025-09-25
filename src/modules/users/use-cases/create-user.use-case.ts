@@ -2,8 +2,7 @@ import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
 import { ICreateUserUseCase } from '../../../domain/users/interfaces/use-cases/create-user.use-case.interface';
 import { IUserRepository } from '../../../domain/users/interfaces/repositories/user.repository.interface';
 import { UserEntity } from '../../../infrastructure/auth/entities/user.entity';
-import { CreateUserInputDTO } from '../api/dtos/create-user.dto';
-import { createUserSchema } from '../api/schemas/create-user.schema';
+import { CreateUserCommand } from '../../../domain/users/types/user.types';
 import { SupabaseService } from '../../../infrastructure/auth/services/supabase.service';
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { IEmailService } from '../../../domain/auth/interfaces/services/email.service.interface';
@@ -20,7 +19,7 @@ import { appendSlugSuffix, slugify } from '../../../shared/utils/slug.util';
 
 @Injectable()
 export class CreateUserUseCase
-  extends BaseUseCase<CreateUserInputDTO, UserEntity>
+  extends BaseUseCase<CreateUserCommand, UserEntity>
   implements ICreateUserUseCase
 {
   protected readonly logger = new Logger(CreateUserUseCase.name);
@@ -41,16 +40,14 @@ export class CreateUserUseCase
     super();
   }
 
-  async execute(dto: CreateUserInputDTO): Promise<Result<UserEntity>> {
+  async execute(dto: CreateUserCommand): Promise<Result<UserEntity>> {
     return super.execute(dto);
   }
 
-  protected async handle(dto: CreateUserInputDTO): Promise<UserEntity> {
-    const validatedData = createUserSchema.parse(dto);
-
+  protected async handle(dto: CreateUserCommand): Promise<UserEntity> {
     this.logger.log(MESSAGES.VALIDATION.CHECKING_CPF);
 
-    const baseSlug = slugify(validatedData.name);
+    const baseSlug = slugify(dto.name);
     let slug = baseSlug;
     let counter = 1;
 
@@ -59,16 +56,16 @@ export class CreateUserUseCase
     }
 
     const metadataPayload = {
-      name: validatedData.name,
-      role: validatedData.role,
-      cpf: validatedData.cpf,
-      phone: validatedData.phone,
-      tenantId: validatedData.tenantId,
+      name: dto.name,
+      role: dto.role,
+      cpf: dto.cpf,
+      phone: dto.phone,
+      tenantId: dto.tenantId,
       isActive: true,
       slug,
     };
 
-    const existingUser = await this.userRepository.findByCpf(validatedData.cpf);
+    const existingUser = await this.userRepository.findByCpf(dto.cpf);
 
     if (existingUser) {
       this.logger.warn(MESSAGES.USER.CPF_DUPLICATE);
@@ -77,11 +74,11 @@ export class CreateUserUseCase
 
     this.logger.log(MESSAGES.USER.CPF_AVAILABLE);
 
-    const passwordHash = await hashPassword(validatedData.password);
+    const passwordHash = await hashPassword(dto.password);
 
     const result = await this.supabaseAuthService.signUp({
-      email: validatedData.email,
-      password: validatedData.password,
+      email: dto.email,
+      password: dto.password,
       metadata: metadataPayload,
     });
 
@@ -102,7 +99,7 @@ export class CreateUserUseCase
 
     const emailResult = await this.emailService.sendVerificationEmail({
       to: supabaseUser.email,
-      name: validatedData.name,
+      name: dto.name,
       verificationLink,
       expiresIn: '24 horas',
     });
@@ -117,19 +114,19 @@ export class CreateUserUseCase
 
     await this.emailService.sendWelcomeEmail({
       to: supabaseUser.email || '',
-      name: validatedData.name,
-      role: validatedData.role,
+      name: dto.name,
+      role: dto.role,
     });
 
     const savedUser = await this.userRepository.create({
       supabaseId: supabaseUser.id,
       slug,
-      email: supabaseUser.email || validatedData.email,
-      name: validatedData.name,
-      cpf: validatedData.cpf,
-      phone: validatedData.phone ?? undefined,
-      role: validatedData.role,
-      tenantId: validatedData.tenantId,
+      email: supabaseUser.email || dto.email,
+      name: dto.name,
+      cpf: dto.cpf,
+      phone: dto.phone ?? undefined,
+      role: dto.role,
+      tenantId: dto.tenantId,
       isActive: true,
       emailVerified: false,
       metadata: metadataPayload,
@@ -140,11 +137,11 @@ export class CreateUserUseCase
       supabaseUser.id,
       {
         email: supabaseUser.email,
-        name: validatedData.name,
-        role: validatedData.role,
-        cpf: validatedData.cpf,
-        phone: validatedData.phone,
-        tenantId: validatedData.tenantId,
+        name: dto.name,
+        role: dto.role,
+        cpf: dto.cpf,
+        phone: dto.phone,
+        tenantId: dto.tenantId,
         slug,
       },
       { userId: supabaseUser.id, slug },
@@ -157,8 +154,8 @@ export class CreateUserUseCase
       supabaseUser.id,
       {
         email: supabaseUser.email,
-        name: validatedData.name,
-        role: validatedData.role,
+        name: dto.name,
+        role: dto.role,
         registeredAt: new Date().toISOString(),
         slug,
       },

@@ -1,41 +1,31 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsObject, IsOptional, IsPhoneNumber, IsString } from 'class-validator';
 
 export class UpdateUserDto {
   @ApiProperty({
-    description: 'Nome completo do usuário',
-    example: 'João Silva Santos',
-    required: false,
+    description: 'Nome completo do usuario',
+    example: 'Joao Silva Santos',
+    required: false
   })
-  @IsOptional()
-  @IsString()
   name?: string;
 
   @ApiProperty({
-    description: 'Telefone com DDD (apenas números)',
+    description: 'Telefone com DDD (apenas numeros)',
     example: '11888888888',
-    required: false,
+    required: false
   })
-  @IsOptional()
-  @IsString()
   phone?: string;
 
   @ApiProperty({
-    description: 'Status ativo/inativo do usuário',
+    description: 'Status ativo/inativo do usuario',
     example: true,
-    required: false,
+    required: false
   })
-  @IsOptional()
-  @IsBoolean()
   isActive?: boolean;
 
   @ApiProperty({
-    description: 'Metadados adicionais do usuário',
+    description: 'Metadados adicionais do usuario',
     example: { preferredLanguage: 'pt-BR', theme: 'dark' },
-    required: false,
+    required: false
   })
-  @IsOptional()
-  @IsObject()
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
-

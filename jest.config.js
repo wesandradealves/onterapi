@@ -1,4 +1,4 @@
-const { pathsToModuleNameMapper } = require('ts-jest');
+﻿const { pathsToModuleNameMapper } = require('ts-jest');
 const { compilerOptions } = require('./tsconfig.json');
 
 module.exports = {
@@ -15,6 +15,8 @@ module.exports = {
   collectCoverageFrom: [
     'src/modules/**/presenters/**/*.ts',
     'src/modules/patients/use-cases/**/*.ts',
+    'src/modules/patients/api/mappers/**/*.ts',
+    'src/modules/auth/api/mappers/**/*.ts',
     'src/shared/use-cases/**/*.ts',
     'src/shared/pipes/zod-validation.pipe.ts',
     'src/shared/utils/cpf.utils.ts',
@@ -34,5 +36,7 @@ module.exports = {
     },
   },
 };
+
+
 
 
