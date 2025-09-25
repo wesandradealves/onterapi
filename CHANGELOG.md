@@ -8,24 +8,24 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ### Added
 
-- Adicionado script CLI npm run assign-super-admin-tenant para alinhar tenants de SUPER_ADMIN entre Supabase e banco relacional.
-
 ### Changed
-
-- `CreateUserUseCase` agora valida CPF usando o repositório local antes de chamar o Supabase, evitando paginações custosas e garantindo duplicidade correta.
 
 ### Fixed
 
-- `UserRepository.update` aplica `mapRoleToDatabase` antes de persistir e recebeu teste unitário para prevenir regressão.
-
 ### Security
-
-- Remoção dos arquivos `.env` reais do repositório e inclusão de `.env.example`/`.env.production.example` para guiar a configuração segura de credenciais.
 
 ### Documentation
 
-- README e onterapi-dev.md atualizados com orientacoes para SUPER_ADMIN (variavel SUPER_ADMIN_TENANT_ID e script de sincronizacao).
-- README atualizado com instruções detalhadas de duplicação dos arquivos de exemplo de ambiente e lista das variáveis necessárias.
+## [0.16.3] - 2025-09-25
+
+### Added
+- Adicionado script CLI npm run assign-super-admin-tenant para alinhar tenants de SUPER_ADMIN entre Supabase e banco relacional.
+
+### DRY & Refactors
+- Centralizado formata��o de respostas de pacientes e usu�rios em presenters compartilhados, eliminando mapeamentos duplicados nos controllers.
+- SupabaseAuthService passou a normalizar objetos de usu�rio via helper �nico (`mapUserRecord`), reutilizado nos fluxos de sign-up/sign-in/get/refresh.
+- Use cases de pacientes reutilizam `mapRoleToDomain`/`RolesEnum`, removendo verifica��es de role baseadas em strings PT/EN.
+- `ZodValidationPipe` passou a utilizar `Logger` em vez de `console.error`, mantendo observabilidade consistente.
 
 ## [0.16.1] - 2025-09-25
 
@@ -52,7 +52,6 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [0.15.0] - 2025-09-24
 
-### Added
 
 - Suporte a slugs unicos para usuarios e pacientes, com migracao TypeORM e utilitario compartilhado para gerar/backfill.
 - Scripts CLI `npm run backfill:user-slugs`, `npm run sync:users` e `npm run prune:users` para manter Supabase e banco relacional alinhados.
@@ -71,7 +70,6 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [0.14.0] - 2025-09-23
 
-### Added
 
 - Modulo completo de pacientes (CRUD, filtros, transferencia, arquivamento) integrado ao Supabase.
 - Endpoint `/patients/export` persistindo pedidos na tabela `patient_exports` com filtros armazenados.
@@ -141,7 +139,6 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [0.13.0] - 2025-09-04
 
-### Added
 
 - **Validação de email obrigatória para login**
   - Usuários não podem fazer login sem confirmar email
@@ -173,7 +170,6 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [0.12.0] - 2025-09-03
 
-### Added
 
 - **BaseUseCase para eliminação de duplicação de try-catch**
   - Criado BaseUseCase abstrato que centraliza tratamento de erros
@@ -241,7 +237,6 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [0.11.0] - 2025-09-03
 
-### Added
 
 - **Sistema de Eventos Integrado aos Use Cases**
   - 7 eventos publicados em use cases críticos
@@ -287,7 +282,6 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [0.10.0] - 2025-09-03
 
-### Added
 
 - **Sistema de Mensageria Completo**
   - MessageBus implementado com EventEmitter2
@@ -370,7 +364,6 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [0.8.0] - 2025-09-03
 
-### Added
 
 - **Contador de Tentativas no 2FA**
   - Sistema de bloqueio após 3 tentativas erradas
@@ -401,7 +394,6 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [0.7.0] - 2025-09-03
 
-### Added
 
 - **Two-Factor Authentication (2FA) Completo**
   - Criada tabela `two_factor_codes` no Supabase Cloud
@@ -436,7 +428,6 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [0.6.0] - 2025-09-03
 
-### Added
 
 - **Sistema de Verificação de Email com Tokens Seguros**
   - Criada tabela `email_verification_tokens` no Supabase
@@ -484,7 +475,6 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
   - Agora extrai corretamente o role do metadata do Supabase
   - RolesGuard funcionando adequadamente após correção
 
-### Added
 
 - **Configuração SUPABASE_SERVICE_ROLE_KEY**: Adicionada chave de serviço ao .env
   - Necessária para operações administrativas do Supabase
@@ -502,7 +492,6 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [0.5.0] - 2025-09-02
 
-### Added
 
 - **Sistema de Autenticação 100% Supabase Cloud**
   - Remoção completa de banco de dados local
@@ -556,7 +545,6 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [0.4.1] - 2025-09-02
 
-### Added
 
 - **Serviço de Email Completo** - Infraestrutura para envio de emails
   - EmailService implementado com Nodemailer
@@ -593,7 +581,6 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [0.4.0] - 2025-09-02
 
-### Added
 
 - **Módulo Users CRUD Completo** - Gestão completa de usuários
   - Create, Read, Update, Delete com permissões granulares
@@ -635,7 +622,6 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [0.3.1] - 2025-09-02
 
-### Added
 
 - **Documentação Swagger Completa**
   - @ApiBody com types e examples em todos endpoints
@@ -664,7 +650,6 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [0.3.0] - 2025-09-01
 
-### Added
 
 - **Módulo de Autenticação Completo** - Arquitetura DDD e Clean Architecture
   - **Domain Layer**: Entidades puras, interfaces de use cases, repositórios e serviços
@@ -737,7 +722,6 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 - Configurações de produção inline no api/index.ts (helmet, validation)
 - Logger condicional baseado em NODE_ENV
 
-### Added
 
 - ValidationPipe global configurado no handler serverless
 - Helmet.js para segurança em produção
@@ -759,7 +743,6 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [0.2.1-alpha.1] - 2025-08-31
 
-### Added
 
 - Suporte completo para deploy serverless na Vercel
 - Configuração de edge functions otimizada
@@ -767,7 +750,6 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [0.2.0-alpha.1] - 2025-08-31
 
-### Added
 
 - Integração completa com Supabase (PostgreSQL hospedado)
 - Swagger UI configurado e funcional em `/api`

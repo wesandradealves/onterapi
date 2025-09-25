@@ -1,9 +1,11 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+﻿import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import { ICreatePatientUseCase } from '../../../domain/patients/interfaces/use-cases/create-patient.use-case.interface';
 import { CreatePatientInput, Patient } from '../../../domain/patients/types/patient.types';
+import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
 import { PatientNotificationService } from '../../../infrastructure/patients/services/patient-notification.service';
+import { mapRoleToDomain } from '../../../shared/utils/role.utils';
 import { PatientAuditService } from '../../../infrastructure/patients/services/patient-audit.service';
 import { MessageBus } from '../../../shared/messaging/message-bus';
 import { DomainEvents } from '../../../shared/events/domain-events';
@@ -31,17 +33,15 @@ export class CreatePatientUseCase
   }
 
   protected async handle(input: CreatePatientInput): Promise<Patient> {
-    const role = input.requesterRole?.toUpperCase();
-    if (
-      ![
-        'CLINIC_OWNER',
-        'SECRETARIA',
-        'SECRETARY',
-        'PROFISSIONAL',
-        'PROFESSIONAL',
-        'SUPER_ADMIN',
-      ].includes(role ?? '')
-    ) {
+    const normalizedRole = mapRoleToDomain(input.requesterRole);
+    const allowedRoles: RolesEnum[] = [
+      RolesEnum.CLINIC_OWNER,
+      RolesEnum.SECRETARY,
+      RolesEnum.PROFESSIONAL,
+      RolesEnum.SUPER_ADMIN,
+    ];
+
+    if (!normalizedRole || !allowedRoles.includes(normalizedRole)) {
       throw PatientErrorFactory.unauthorized();
     }
 
@@ -78,3 +78,5 @@ export class CreatePatientUseCase
     return patient;
   }
 }
+
+

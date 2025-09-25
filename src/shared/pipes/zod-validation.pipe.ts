@@ -1,7 +1,9 @@
-import { ArgumentMetadata, BadRequestException, PipeTransform } from '@nestjs/common';
+﻿import { ArgumentMetadata, BadRequestException, Logger, PipeTransform } from '@nestjs/common';
 import { ZodError, ZodSchema } from 'zod';
 
 export class ZodValidationPipe implements PipeTransform {
+  private readonly logger = new Logger(ZodValidationPipe.name);
+
   constructor(private schema: ZodSchema) {}
 
   transform(value: unknown, metadata: ArgumentMetadata) {
@@ -21,8 +23,7 @@ export class ZodValidationPipe implements PipeTransform {
           return `${field}: ${err.message}`;
         });
 
-        console.error('Zod Validation Errors:', errorMessages);
-        console.error('Input value:', value);
+        this.logger.error(`Zod validation errors: ${errorMessages.join(' | ')}`);
 
         throw new BadRequestException(errorMessages);
       }
@@ -30,3 +31,4 @@ export class ZodValidationPipe implements PipeTransform {
     }
   }
 }
+
