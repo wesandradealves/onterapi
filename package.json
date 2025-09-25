@@ -39,7 +39,8 @@
                     "seed:run":  "ts-node src/infrastructure/database/seeds/run-seed.ts",
                     "docs:generate":  "compodoc -p tsconfig.json -s",
                     "changelog":  "conventional-changelog -p angular -i CHANGELOG.md -s",
-                    "prune:users":  "ts-node scripts/prune-users.ts"
+                    "prune:users":  "ts-node scripts/prune-users.ts",
+                    "assign:super-admin-tenant":  "ts-node scripts/assign-super-admin-tenant.ts"
                 },
     "dependencies":  {
                          "@nestjs/bull":  "^10.0.1",
@@ -134,5 +135,3 @@
                                       }
              }
 }
-
-

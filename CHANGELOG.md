@@ -5,6 +5,9 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o projeto adota [Versionamento Semantico](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
+### Added
+- Adicionado script CLI npm run assign-super-admin-tenant para alinhar tenants de SUPER_ADMIN entre Supabase e banco relacional.
+
 ### Changed
 - `CreateUserUseCase` agora valida CPF usando o repositório local antes de chamar o Supabase, evitando paginações custosas e garantindo duplicidade correta.
 
@@ -15,6 +18,7 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 - Remoção dos arquivos `.env` reais do repositório e inclusão de `.env.example`/`.env.production.example` para guiar a configuração segura de credenciais.
 
 ### Documentation
+- README e onterapi-dev.md atualizados com orientacoes para SUPER_ADMIN (variavel SUPER_ADMIN_TENANT_ID e script de sincronizacao).
 - README atualizado com instruções detalhadas de duplicação dos arquivos de exemplo de ambiente e lista das variáveis necessárias.
 
 ## [0.16.1] - 2025-09-25

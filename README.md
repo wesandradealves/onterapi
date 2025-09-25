@@ -62,6 +62,7 @@ Rotas principais:
 - Atualizacoes refletem metadata e sessoes (`user_sessions`) para refresh tokens.
 - Script `npm run backfill:user-slugs` sincroniza o slug do banco relacional com o metadata do Supabase Auth para contas legadas.
 - Script `npm run sync:users` garante que apenas os usuarios presentes no Postgres estejam registrados no Supabase Auth (executa insert/update e remove contas extras).
+- Script `npm run assign-super-admin-tenant` vincula o tenant padrao aos SUPER_ADMIN no Supabase e atualiza a coluna tenant_id da base relacional.
 
 ## Exportacao de Pacientes
 - `POST /patients/export` enfileira solicitacao na tabela `patient_exports`.
@@ -97,6 +98,7 @@ DB_DATABASE=<DB_DATABASE>
 JWT_ACCESS_SECRET=<JWT_ACCESS_SECRET>
 JWT_REFRESH_SECRET=<JWT_REFRESH_SECRET>
 JWT_2FA_SECRET=<JWT_2FA_SECRET>
+SUPER_ADMIN_TENANT_ID=<SUPER_ADMIN_TENANT_ID>
 RESEND_API_KEY=<RESEND_API_KEY>
 EMAIL_FROM="Onterapi <noreply@onterapi.com.br>"
 CORS_ORIGIN=http://localhost:3000
@@ -116,7 +118,7 @@ CORS_ORIGIN=http://localhost:3000
 ## Troubleshooting
 - **Supabase signOut error: invalid JWT**: agora tratado como `debug`, fluxo segue normalmente.
 - **Token nao fornecido**: verifique header `Authorization: Bearer <accessToken>`.
-- **Tenant invalido**: sempre enviar o tenant real ou deixar o guard resolver via metadata.
+- **Tenant invalido**: sempre enviar o tenant real ou deixar o guard resolver via metadata. Execute `npm run assign-super-admin-tenant` apos criar/atualizar tenants internos para garantir que os SUPER_ADMIN recebam o tenant padrao.
 - **Emails/Resend**: conferir painel do Resend ou a caixa do destinatário configurado para visualizar credenciais e códigos 2FA.
 
 ## Changelog
