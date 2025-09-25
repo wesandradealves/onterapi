@@ -9,6 +9,8 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
+
+import { mapRoleToDatabase, mapRoleToDomain, ROLE_DATABASE_VALUES } from '../../../shared/utils/role.utils';
 import { UserSessionEntity } from './user-session.entity';
 import { UserPermissionEntity } from './user-permission.entity';
 
@@ -43,12 +45,23 @@ export class UserEntity {
   @Column({ type: 'varchar', length: 20, nullable: true })
   phone?: string;
 
-  @Column({
-    type: 'enum',
-    enum: RolesEnum,
-    default: RolesEnum.PATIENT,
-  })
-  role!: RolesEnum;
+  @Column({ name: 'role', type: 'enum', enum: ROLE_DATABASE_VALUES, enumName: 'user_role', default: 'patient' })
+  private roleInternal!: string;
+
+  get role(): RolesEnum {
+    return mapRoleToDomain(this.roleInternal) ?? RolesEnum.PATIENT;
+  }
+
+  set role(value: RolesEnum | string) {
+    const mapped = mapRoleToDatabase(value) ?? mapRoleToDatabase(RolesEnum.PATIENT);
+
+    if (!mapped) {
+      this.roleInternal = mapRoleToDatabase(RolesEnum.PATIENT)!;
+      return;
+    }
+
+    this.roleInternal = mapped;
+  }
 
   @Column({ name: 'tenant_id', type: 'uuid', nullable: true })
   tenantId?: string;
@@ -104,3 +117,9 @@ export class UserEntity {
   @OneToMany(() => UserPermissionEntity, (permission) => permission.user)
   permissions!: UserPermissionEntity[];
 }
+
+
+
+
+
+

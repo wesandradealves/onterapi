@@ -22,16 +22,14 @@ Plataforma SaaS multi-tenant para gestao de clinicas e terapeutas, com Supabase 
 - DRY/Clean Architecture com BaseUseCase, BaseGuard e MessageBus unificados
 
 ## Credenciais de Teste
-| Role | Email | Senha | Observacoes |
-| ---- | ----- | ----- | ----------- |
-| SUPER_ADMIN | orland97@ethereal.email | XwFUUjCagc3uhmxvhM | 2FA habilitado (codigo enviado via Ethereal) |
+Não mantemos mais credenciais padrão em repositório. Gere usuários administrativos manualmente via `/users` e armazene os acessos em um cofre seguro.
 
-> As credenciais ficam em `./.env` para desenvolvimento. Sempre gere 2FA pelo endpoint `/auth/two-factor/send`.
+> Para fluxos locais, utilize os dados de ambiente em `./.env` e gere o 2FA pelo endpoint `/auth/two-factor/send` quando necessário.
 
 ## Fluxo de Autenticacao
 1. `POST /auth/sign-in` com email/senha. Super admin exige 2FA automaticamente.
 2. `POST /auth/two-factor/send` com `tempToken` recebido.
-3. Buscar codigo 2FA em `two_factor_codes` (via Supabase REST) ou pelo email Ethereal.
+3. Buscar codigo 2FA em `two_factor_codes` (via Supabase REST) ou pelo painel Resend ou caixa de entrada configurada.
 4. `POST /auth/two-factor/validate` com `tempToken` + `code`.
 5. A partir do access token:
    - `GET /auth/me`
@@ -86,8 +84,8 @@ SUPABASE_ANON_KEY=...
 JWT_ACCESS_SECRET=...
 JWT_REFRESH_SECRET=...
 JWT_2FA_SECRET=...
-EMAIL_USER=orland97@ethereal.email
-EMAIL_PASS=XwFUUjCagc3uhmxvhM
+RESEND_API_KEY=re_onterapi_dev_key
+EMAIL_FROM="Onterapi <onboarding@resend.dev>"
 ```
 
 > Para evitar erros IPv6 use o pooler do Supabase (`aws-0-sa-east-1.pooler.supabase.com:6543`) e defina `NODE_OPTIONS=--dns-result-order=ipv4first`.
@@ -104,11 +102,7 @@ EMAIL_PASS=XwFUUjCagc3uhmxvhM
 - **Supabase signOut error: invalid JWT**: agora tratado como `debug`, fluxo segue normalmente.
 - **Token nao fornecido**: verifique header `Authorization: Bearer <accessToken>`.
 - **Tenant invalido**: sempre enviar o tenant real ou deixar o guard resolver via metadata.
-- **Emails/Ethereal**: conferir caixa de saida do Ethereal para visualizar credenciais e codigos 2FA.
+- **Emails/Resend**: conferir painel do Resend ou a caixa do destinatário configurado para visualizar credenciais e códigos 2FA.
 
 ## Changelog
 Mudancas recentes estao em [CHANGELOG.md](./CHANGELOG.md). Ultima versao: v0.15.0 (24/09/2025).
-
-
-
-

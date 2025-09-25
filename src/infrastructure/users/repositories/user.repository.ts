@@ -4,6 +4,8 @@ import { Repository } from 'typeorm';
 import { UserEntity } from '../../auth/entities/user.entity';
 import { IUserRepository } from '../../../domain/users/interfaces/repositories/user.repository.interface';
 import { AuthErrorFactory } from '../../../shared/factories/auth-error.factory';
+import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
+import { mapRoleToDatabase } from '../../../shared/utils/role.utils';
 
 @Injectable()
 export class UserRepository implements IUserRepository {
@@ -16,6 +18,11 @@ export class UserRepository implements IUserRepository {
 
   async create(data: Partial<UserEntity>): Promise<UserEntity> {
     const user = this.repository.create(data);
+
+    if (data.role) {
+      user.role = data.role as RolesEnum | string;
+    }
+
     return await this.repository.save(user);
   }
 
@@ -35,7 +42,10 @@ export class UserRepository implements IUserRepository {
     queryBuilder.where('user.deletedAt IS NULL');
 
     if (filters.role) {
-      queryBuilder.andWhere('user.role = :role', { role: filters.role });
+      const roleFilter = mapRoleToDatabase(filters.role);
+      if (roleFilter) {
+        queryBuilder.andWhere('user.role = :role', { role: roleFilter });
+      }
     }
 
     if (filters.tenantId) {

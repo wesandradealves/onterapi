@@ -3,8 +3,8 @@ import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 export class ArchivePatientDto {
   @ApiPropertyOptional({
-    description: 'Motivo da arquivaÁ„o',
-    example: 'Paciente inativo h· mais de 2 anos',
+    description: 'Motivo da arquiva√ß√£o',
+    example: 'Paciente inativo h√° mais de 2 anos',
   })
   @IsOptional()
   @IsString()
@@ -15,3 +15,4 @@ export class ArchivePatientDto {
   @IsBoolean()
   archiveRelatedData?: boolean;
 }
+

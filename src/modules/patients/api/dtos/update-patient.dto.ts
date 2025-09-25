@@ -42,7 +42,7 @@ export class UpdatePatientDto {
   @IsString()
   street?: string;
 
-  @ApiPropertyOptional({ description: 'Número', example: '1000' })
+  @ApiPropertyOptional({ description: 'NÃºmero', example: '1000' })
   @IsOptional()
   @IsString()
   number?: string;
@@ -57,7 +57,7 @@ export class UpdatePatientDto {
   @IsString()
   district?: string;
 
-  @ApiPropertyOptional({ description: 'Cidade', example: 'São Paulo' })
+  @ApiPropertyOptional({ description: 'Cidade', example: 'SÃ£o Paulo' })
   @IsOptional()
   @IsString()
   city?: string;
@@ -67,7 +67,7 @@ export class UpdatePatientDto {
   @IsString()
   state?: string;
 
-  @ApiPropertyOptional({ description: 'País', example: 'Brasil' })
+  @ApiPropertyOptional({ description: 'PaÃ­s', example: 'Brasil' })
   @IsOptional()
   @IsString()
   country?: string;
@@ -78,19 +78,19 @@ export class UpdatePatientDto {
   @IsString({ each: true })
   allergies?: string[];
 
-  @ApiPropertyOptional({ description: 'Condições crônicas', example: ['hipertensão'] })
+  @ApiPropertyOptional({ description: 'CondiÃ§Ãµes crÃ´nicas', example: ['hipertensÃ£o'] })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   chronicConditions?: string[];
 
-  @ApiPropertyOptional({ description: 'Medicações em uso', example: ['Losartana 50mg'] })
+  @ApiPropertyOptional({ description: 'MedicaÃ§Ãµes em uso', example: ['Losartana 50mg'] })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   medications?: string[];
 
-  @ApiPropertyOptional({ description: 'Observações clínicas' })
+  @ApiPropertyOptional({ description: 'ObservaÃ§Ãµes clÃ­nicas' })
   @IsOptional()
   @IsString()
   observations?: string;
@@ -101,16 +101,18 @@ export class UpdatePatientDto {
   @IsString({ each: true })
   tags?: string[];
 
-  @ApiPropertyOptional({ description: 'Nível de risco', example: 'medium' })
+  @ApiPropertyOptional({ description: 'NÃ­vel de risco', example: 'medium' })
   @IsOptional()
   @IsString()
   riskLevel?: string;
 
   @ApiPropertyOptional({
-    description: 'Profissional responsável',
+    description: 'Profissional responsÃ¡vel',
     example: 'b3a1f6b6-6f14-4f42-8c4a-bf508f124d55',
   })
   @IsOptional()
   @IsUUID('4')
   professionalId?: string | null;
 }
+
+

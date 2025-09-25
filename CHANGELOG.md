@@ -6,8 +6,25 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [Unreleased]
 
+## [0.16.1] - 2025-09-25
+
+### Changed
+- APP_URL configurado explicitamente para desenvolvimento (http://localhost:3000) e produção (https://onterapi.vercel.app), alinhando os links usados pelos e-mails transacionais.
+- DTOs de pacientes e usuários atualizados com descrições e exemplos acentuados corretamente.
+
 ### Fixed
-- Corrigido o carregamento de metadados do TypeORM em ambiente serverless habilitando `autoLoadEntities`, evitando erro `EntityMetadataNotFoundError` no login da Vercel.
+- SupabaseAuthService.deleteUser ignora respostas "user not found" do Supabase e segue com o soft delete local.
+- Assuntos dos e-mails de verificação, 2FA e boas-vindas corrigidos para exibir acentuação adequada.
+
+
+## [0.16.0] - 2025-09-24
+
+### Changed
+- Provedor de email migrado para Resend, substituindo o transporte SMTP local e atualizando variáveis de ambiente.
+- Remetente padrão apontando para Onterapi <noreply@onterapi.com.br> nos envs e integrações.
+
+### Fixed
+- Corrigido o carregamento de metadados do TypeORM em ambiente serverless habilitando utoLoadEntities, evitando erro EntityMetadataNotFoundError no login da Vercel.
 
 
 ## [0.15.0] - 2025-09-24
@@ -98,4 +115,3 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [0.12.0] - 2025-09-03
 ...
-
