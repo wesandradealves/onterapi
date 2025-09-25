@@ -17,6 +17,7 @@ module.exports = {
     'src/modules/patients/use-cases/**/*.ts',
     'src/modules/patients/api/mappers/**/*.ts',
     'src/modules/auth/api/mappers/**/*.ts',
+    'src/modules/users/api/mappers/**/*.ts',
     'src/shared/use-cases/**/*.ts',
     'src/shared/pipes/zod-validation.pipe.ts',
     'src/shared/utils/cpf.utils.ts',
@@ -36,7 +37,3 @@ module.exports = {
     },
   },
 };
-
-
-
-

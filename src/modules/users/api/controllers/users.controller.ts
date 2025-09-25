@@ -1,4 +1,4 @@
-import {
+﻿import {
   Body,
   Controller,
   Delete,
@@ -46,6 +46,7 @@ import { unwrapResult } from '../../../../shared/types/result.type';
 import { createUserSchema, CreateUserSchemaType } from '../schemas/create-user.schema';
 import { updateUserSchema, UpdateUserSchemaType } from '../schemas/update-user.schema';
 import { listUsersSchema, ListUsersSchema } from '../schemas/list-users.schema';
+import { toCreateUserCommand, toUpdateUserInput, toUserFilters } from '../mappers/user-request.mapper';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
 
 @ApiTags('Users')
@@ -132,7 +133,8 @@ export class UsersController {
   async create(
     @Body(new ZodValidationPipe(createUserSchema)) dto: CreateUserSchemaType,
   ): Promise<CreateUserResponseDto> {
-    const user = unwrapResult(await this.createUserUseCase.execute(dto));
+    const command = toCreateUserCommand(dto);
+    const user = unwrapResult(await this.createUserUseCase.execute(command));
     return UserPresenter.toCreateResponse(user);
   }
 
@@ -165,7 +167,7 @@ export class UsersController {
     required: false,
     enum: RolesEnum,
     description: 'Filtrar por role/perfil',
-    example: 'PATIENT',
+    example: RolesEnum.PATIENT,
   })
   @ApiQuery({
     name: 'tenantId',
@@ -188,8 +190,10 @@ export class UsersController {
   })
   async findAll(
     @Query(new ZodValidationPipe(listUsersSchema)) filters: ListUsersSchema,
+    @CurrentUser() currentUser: ICurrentUser,
   ): Promise<ListUsersResponseDto> {
-    const payload = unwrapResult(await this.findAllUsersUseCase.execute(filters));
+    const normalizedFilters = toUserFilters(filters, { currentUser });
+    const payload = unwrapResult(await this.findAllUsersUseCase.execute(normalizedFilters));
     return {
       data: payload.data.map((user) => UserPresenter.toResponse(user)),
       pagination: payload.pagination,
@@ -281,7 +285,8 @@ export class UsersController {
     @Body(new ZodValidationPipe(updateUserSchema)) dto: UpdateUserSchemaType,
     @CurrentUser() currentUser: ICurrentUser,
   ): Promise<UserResponseDto> {
-    const updated = unwrapResult(await this.updateUserUseCase.execute(slug, dto, currentUser.id));
+    const updateInput = toUpdateUserInput(dto);
+    const updated = unwrapResult(await this.updateUserUseCase.execute(slug, updateInput, currentUser.id));
     return UserPresenter.toResponse(updated);
   }
 

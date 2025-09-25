@@ -1,4 +1,5 @@
 ﻿### Added
+- Suite unitaria dedicada ao user-request.mapper garantindo cobertura integral (test/unit/modules.users.user-request.mapper.spec.ts).
 - Estrutura inicial de testes automatizados com Jest (jest.config.js, tsconfig.test.json) e suites unitarias para presenters, utils e guards.
 - Suites unitarias adicionais cobrindo BaseUseCase, CPFValidator, presenters de pacientes/usuarios e CreatePatientUseCase.
 - Cobertura unitaria estendida para 100% dos casos de uso de pacientes, pipe Zod, validator de CPF e UseCaseWrapper.
@@ -10,6 +11,7 @@
 - Mapper compartilhado para normalizacao dos fluxos de auth (src/modules/auth/api/mappers/auth-request.mapper.ts) coberto por testes dedicados (test/unit/modules.auth/auth-request.mapper.spec.ts).
 
 ### Changed
+- UsersController delega normalizacao de create/list/update ao mapper compartilhado, usando ZodValidationPipe e fallback de tenant (src/modules/users/api/controllers/users.controller.ts:97).
 - Controllers de Auth e Users passam a reutilizar unwrapResult, reduzindo boilerplate de tratamento de Result.
 - QUALITY_BASELINE.md atualizado com novas notas, metas e evidencias alinhadas a cobertura total.
 - Script npm test:cov agora executa em modo sequencial (--runInBand) para evitar falhas intermitentes dos workers.
@@ -809,6 +811,7 @@
 ---
 
 _Mantenha este arquivo atualizado a cada release_
+
 
 
 
