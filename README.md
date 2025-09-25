@@ -62,6 +62,7 @@ Rotas principais:
 - Atualizacoes refletem metadata e sessoes (`user_sessions`) para refresh tokens.
 - Script `npm run backfill:user-slugs` sincroniza o slug do banco relacional com o metadata do Supabase Auth para contas legadas.
 - Script `npm run sync:users` garante que apenas os usuarios presentes no Postgres estejam registrados no Supabase Auth (executa insert/update e remove contas extras).
+- Script `npm run assign-super-admin-tenant` vincula o tenant padrao aos SUPER_ADMIN no Supabase e atualiza a coluna tenant_id da base relacional.
 
 ## Exportacao de Pacientes
 - `POST /patients/export` enfileira solicitacao na tabela `patient_exports`.
@@ -76,17 +77,33 @@ npm run build
 npm run start:dev
 ```
 
-Variaveis chave (`.env`):
+### Configuracao de Ambiente
+
+1. Copie o arquivo de referencia `.env.example` para `.env` e preencha os placeholders com as credenciais locais.
+2. Para staging/producao, use `.env.production.example` como guia e configure as variaveis diretamente no provedor (ex.: Vercel, Railway) em vez de manter segredos no repositorio.
+3. Sempre que novas variaveis forem adicionadas, atualize os arquivos de exemplo para manter o time sincronizado.
+
+Principais variaveis utilizadas em desenvolvimento:
+
 ```
-SUPABASE_URL=https://ogffdaemylaezxpunmop.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=...
-SUPABASE_ANON_KEY=...
-JWT_ACCESS_SECRET=...
-JWT_REFRESH_SECRET=...
-JWT_2FA_SECRET=...
-RESEND_API_KEY=re_onterapi_dev_key
-EMAIL_FROM="Onterapi <onboarding@resend.dev>"
+APP_URL=http://localhost:3000
+SUPABASE_URL=<SUPABASE_URL>
+SUPABASE_ANON_KEY=<SUPABASE_ANON_KEY>
+SUPABASE_SERVICE_ROLE_KEY=<SUPABASE_SERVICE_ROLE_KEY>
+DB_HOST=<DB_HOST>
+DB_PORT=<DB_PORT>
+DB_USERNAME=<DB_USERNAME>
+DB_PASSWORD=<DB_PASSWORD>
+DB_DATABASE=<DB_DATABASE>
+JWT_ACCESS_SECRET=<JWT_ACCESS_SECRET>
+JWT_REFRESH_SECRET=<JWT_REFRESH_SECRET>
+JWT_2FA_SECRET=<JWT_2FA_SECRET>
+SUPER_ADMIN_TENANT_ID=<SUPER_ADMIN_TENANT_ID>
+RESEND_API_KEY=<RESEND_API_KEY>
+EMAIL_FROM="Onterapi <noreply@onterapi.com.br>"
+CORS_ORIGIN=http://localhost:3000
 ```
+
 
 > Para evitar erros IPv6 use o pooler do Supabase (`aws-0-sa-east-1.pooler.supabase.com:6543`) e defina `NODE_OPTIONS=--dns-result-order=ipv4first`.
 
@@ -101,7 +118,7 @@ EMAIL_FROM="Onterapi <onboarding@resend.dev>"
 ## Troubleshooting
 - **Supabase signOut error: invalid JWT**: agora tratado como `debug`, fluxo segue normalmente.
 - **Token nao fornecido**: verifique header `Authorization: Bearer <accessToken>`.
-- **Tenant invalido**: sempre enviar o tenant real ou deixar o guard resolver via metadata.
+- **Tenant invalido**: sempre enviar o tenant real ou deixar o guard resolver via metadata. Execute `npm run assign-super-admin-tenant` apos criar/atualizar tenants internos para garantir que os SUPER_ADMIN recebam o tenant padrao.
 - **Emails/Resend**: conferir painel do Resend ou a caixa do destinatário configurado para visualizar credenciais e códigos 2FA.
 
 ## Changelog

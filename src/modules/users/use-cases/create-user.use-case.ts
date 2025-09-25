@@ -68,22 +68,9 @@ export class CreateUserUseCase
       slug,
     };
 
-    const listResult = await this.supabaseAuthService.listUsers({ perPage: 1000 });
-    const allUsers = listResult.data?.users ?? [];
+    const existingUser = await this.userRepository.findByCpf(validatedData.cpf);
 
-    if (listResult.error) {
-      this.logger.error(MESSAGES.ERRORS.SUPABASE.LIST_ERROR, listResult.error);
-    }
-
-    this.logger.log(MESSAGES.VALIDATION.TOTAL_USERS + ': ' + allUsers.length);
-
-    const existingUserWithCpf = allUsers.find((user) => {
-      const userCpf = user.user_metadata?.cpf;
-      this.logger.log(MESSAGES.VALIDATION.COMPARING_CPF);
-      return userCpf === validatedData.cpf;
-    });
-
-    if (existingUserWithCpf) {
+    if (existingUser) {
       this.logger.warn(MESSAGES.USER.CPF_DUPLICATE);
       throw new ConflictException(MESSAGES.USER.CPF_DUPLICATE);
     }
