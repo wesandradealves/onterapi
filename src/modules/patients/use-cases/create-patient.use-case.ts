@@ -1,4 +1,4 @@
-﻿import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import { ICreatePatientUseCase } from '../../../domain/patients/interfaces/use-cases/create-patient.use-case.interface';
@@ -78,5 +78,3 @@ export class CreatePatientUseCase
     return patient;
   }
 }
-
-

@@ -1,4 +1,4 @@
-import { ExecutionContext, INestApplication } from '@nestjs/common';
+﻿import { ExecutionContext, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
@@ -62,7 +62,10 @@ class InMemoryPatientRepository implements IPatientRepository {
   }
 
   async findBySlug(tenantId: string, slug: string): Promise<Patient | null> {
-    return this.patients.find((patient) => patient.tenantId === tenantId && patient.slug === slug) ?? null;
+    return (
+      this.patients.find((patient) => patient.tenantId === tenantId && patient.slug === slug) ??
+      null
+    );
   }
 
   async findSummary(_tenantId: string, patientId: string): Promise<PatientSummary> {
@@ -86,7 +89,9 @@ class InMemoryPatientRepository implements IPatientRepository {
     sortOrder?: 'asc' | 'desc';
   }): Promise<{ data: PatientListItem[]; total: number }> {
     this.lastFindAllParams = params;
-    const filtered = this.listItems.filter((item) => item.slug.includes(params.filters?.query ?? ''));
+    const filtered = this.listItems.filter((item) =>
+      item.slug.includes(params.filters?.query ?? ''),
+    );
     return { data: filtered, total: filtered.length };
   }
 
@@ -128,28 +133,82 @@ describe('PatientsController (e2e)', () => {
   const now = new Date('2025-03-01T12:00:00.000Z');
   const patient: Patient = {
     id: 'patient-1',
+
     slug: 'patient-joao',
+
     tenantId: 'tenant-1',
+
     professionalId: 'professional-1',
+
     fullName: 'Joao da Silva',
+
+    shortName: 'Joao',
+
     cpf: '39053344705',
+
     status: 'active',
+
     emailVerified: true,
+
+    preferredLanguage: undefined,
+
     contact: { email: 'joao@example.com', phone: '11999990000', whatsapp: '11999990000' },
-    createdAt: now,
-    updatedAt: now,
-    riskLevel: 'medium',
+
+    address: undefined,
+
+    medical: {
+      allergies: [],
+
+      chronicConditions: [],
+
+      preExistingConditions: [],
+
+      medications: [],
+
+      continuousMedications: [],
+
+      observations: undefined,
+
+      bloodType: undefined,
+
+      lifestyle: undefined,
+
+      heightCm: undefined,
+
+      weightKg: undefined,
+    },
+
     tags: [{ id: 'vip', label: 'VIP', color: '#f00' }],
+
+    riskLevel: 'medium',
+
+    lastAppointmentAt: now,
+
+    nextAppointmentAt: now,
+
+    acceptedTerms: true,
+
+    acceptedTermsAt: now,
+
+    createdAt: now,
+
+    updatedAt: now,
+
+    archivedAt: undefined,
   } as Patient;
 
   const listItem: PatientListItem = {
     id: patient.id,
     slug: patient.slug,
     fullName: patient.fullName,
+    shortName: patient.shortName,
     status: 'active',
     riskLevel: 'medium',
     cpfMasked: '390.***.***.05',
     contact: patient.contact,
+    medical: patient.medical,
+    acceptedTerms: true,
+    acceptedTermsAt: now,
     professionalId: patient.professionalId,
     professionalName: 'Dra. Example',
     nextAppointmentAt: now,
@@ -280,10 +339,6 @@ describe('PatientsController (e2e)', () => {
   it('bloqueia acesso quando role nao mapeada tenta consultar detalhes', async () => {
     currentUser.role = RolesEnum.VISITOR;
 
-    await request(app.getHttpServer())
-      .get(`/patients/${patient.slug}`)
-      .expect(403);
+    await request(app.getHttpServer()).get(`/patients/${patient.slug}`).expect(403);
   });
 });
-
-

@@ -14,14 +14,19 @@ import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/s
 import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.service.interface';
 import { IEmailService } from '../../../domain/auth/interfaces/services/email.service.interface';
 import { AUTH_CONSTANTS } from '../../../shared/constants/auth.constants';
-import { extractSupabaseUser, normalizeLoginInfo } from '../../../shared/utils/auth.utils';
+import {
+  ExtractedUser,
+  extractSupabaseUser,
+  normalizeDeviceInfo,
+  normalizeLoginInfo,
+} from '../../../shared/utils/auth.utils';
 import { maskEmailForLog } from '../../../shared/utils/logging.utils';
 import {
   createTokenResponse,
   createTwoFactorTempResponse,
 } from '../../../shared/factories/auth-response.factory';
 import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
-import { AuthTokenHelper } from '../../../shared/helpers/auth-token.helper';
+import { AuthTokenHelper, TokenPair } from '../../../shared/helpers/auth-token.helper';
 import { MessageBus } from '../../../shared/messaging/message-bus';
 import { DomainEvents } from '../../../shared/events/domain-events';
 import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
@@ -64,7 +69,7 @@ export class SignInUseCase
 
     const requiresTwoFactor = user.twoFactorEnabled || user.role === RolesEnum.SUPER_ADMIN;
     if (requiresTwoFactor) {
-      return (await this.handleTwoFactorAuth(user)) as SignInOutput;
+      return this.handleTwoFactorAuth(user);
     }
 
     const tokens = await this.generateUserTokens(user, input);
@@ -75,7 +80,7 @@ export class SignInUseCase
     return output as SignInOutput;
   }
 
-  private async authenticateUser(email: string, password: string) {
+  private async authenticateUser(email: string, password: string): Promise<ExtractedUser | null> {
     if (await this.authRepository.isUserLocked(email)) {
       const maskedEmail = maskEmailForLog(email);
       this.logger.warn('Conta bloqueada', { email: maskedEmail });
@@ -111,7 +116,7 @@ export class SignInUseCase
     return user;
   }
 
-  private async handleTwoFactorAuth(user: any) {
+  private async handleTwoFactorAuth(user: ExtractedUser): Promise<SignInOutput> {
     const tempToken = this.jwtService.generateTwoFactorToken(user.id);
 
     const sendResult = await this.sendTwoFAUseCase.execute({
@@ -133,9 +138,9 @@ export class SignInUseCase
     return createTwoFactorTempResponse(tempToken);
   }
 
-  private async generateUserTokens(user: any, input: SignInInput) {
-    const tokenHelper = new AuthTokenHelper(this.jwtService);
-    return await tokenHelper.generateAndSaveTokens(
+  private async generateUserTokens(user: ExtractedUser, input: SignInInput): Promise<TokenPair> {
+    const tokenHelper = new AuthTokenHelper(this.jwtService, this.authRepository);
+    return tokenHelper.generateAndSaveTokens(
       {
         userId: user.id,
         email: user.email,
@@ -143,13 +148,11 @@ export class SignInUseCase
         tenantId: user.tenantId,
         rememberMe: input.rememberMe,
       },
-      input.deviceInfo,
-      this.jwtService,
-      this.authRepository,
+      normalizeDeviceInfo(input.deviceInfo),
     );
   }
 
-  private createAuthOutput(tokens: any, user: any) {
+  private createAuthOutput(tokens: TokenPair, user: ExtractedUser): SignInOutput {
     return createTokenResponse(
       {
         accessToken: tokens.accessToken,
@@ -166,8 +169,12 @@ export class SignInUseCase
     );
   }
 
-  private async sendLoginNotifications(user: any, tokens: any, input: SignInInput) {
-    const loginInfo = normalizeLoginInfo(user, input.deviceInfo);
+  private async sendLoginNotifications(
+    user: ExtractedUser,
+    tokens: TokenPair,
+    input: SignInInput,
+  ): Promise<void> {
+    const loginInfo = normalizeLoginInfo(user, normalizeDeviceInfo(input.deviceInfo));
     const maskedEmail = maskEmailForLog(user.email || '');
 
     const emailResult = await this.emailService.sendLoginAlertEmail(loginInfo);

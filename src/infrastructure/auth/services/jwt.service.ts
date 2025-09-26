@@ -97,7 +97,7 @@ export class JwtService implements IJwtService {
     return value;
   }
 
-  decode<T = any>(token: string): T | null {
+  decode<T = unknown>(token: string): T | null {
     try {
       return this.nestJwtService.decode(token) as T;
     } catch (error) {

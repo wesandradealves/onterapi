@@ -15,12 +15,36 @@ import {
   UpdatePatientInput,
 } from '../../../domain/patients/types/patient.types';
 import { SupabaseService } from '../../auth/services/supabase.service';
-import { PatientMapper } from '../../../shared/mappers/patient.mapper';
+import { PatientMapper, SupabasePatientRecord } from '../../../shared/mappers/patient.mapper';
 import { appendSlugSuffix, slugify } from '../../../shared/utils/slug.util';
 
 const toISODate = (value?: Date): string | null => (value ? value.toISOString() : null);
 const normaliseString = (value?: string | null): string | undefined =>
   value && value.trim().length ? value.trim() : undefined;
+
+const toJsonRecord = (value: unknown): Record<string, unknown> => {
+  if (!value) {
+    return {};
+  }
+
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed && typeof parsed === 'object') {
+        return { ...(parsed as Record<string, unknown>) };
+      }
+      return {};
+    } catch {
+      return {};
+    }
+  }
+
+  if (typeof value === 'object') {
+    return { ...(value as Record<string, unknown>) };
+  }
+
+  return {};
+};
 
 @Injectable()
 export class PatientRepository implements IPatientRepository {
@@ -32,7 +56,11 @@ export class PatientRepository implements IPatientRepository {
     return this.supabaseService.getClient();
   }
 
-  private async patientSlugExists(tenantId: string, slug: string, excludeId?: string): Promise<boolean> {
+  private async patientSlugExists(
+    tenantId: string,
+    slug: string,
+    excludeId?: string,
+  ): Promise<boolean> {
     let query = this.client
       .from('patients')
       .select('id', { head: true, count: 'exact' })
@@ -53,7 +81,11 @@ export class PatientRepository implements IPatientRepository {
     return (count ?? 0) > 0;
   }
 
-  private async generateUniqueSlug(tenantId: string, fullName: string, excludeId?: string): Promise<string> {
+  private async generateUniqueSlug(
+    tenantId: string,
+    fullName: string,
+    excludeId?: string,
+  ): Promise<string> {
     const baseSlug = slugify(fullName || 'paciente');
     let slug = baseSlug;
     let counter = 1;
@@ -113,6 +145,15 @@ export class PatientRepository implements IPatientRepository {
       observations: input.medical?.observations,
       address: input.address ?? undefined,
       chronicConditions: input.medical?.chronicConditions ?? undefined,
+      preExistingConditions: input.medical?.preExistingConditions ?? undefined,
+      continuousMedications: input.medical?.continuousMedications ?? undefined,
+      heightCm: input.medical?.heightCm ?? undefined,
+      weightKg: input.medical?.weightKg ?? undefined,
+      bloodType: input.medical?.bloodType ?? undefined,
+      lifestyle: input.medical?.lifestyle ?? undefined,
+      acceptedTerms: input.acceptedTerms,
+      acceptedTermsAt:
+        input.acceptedTermsAt?.toISOString() ?? (input.acceptedTerms ? now : undefined),
     };
 
     const emergencyContact = {
@@ -144,7 +185,7 @@ export class PatientRepository implements IPatientRepository {
       throw error || new Error('Unable to create patient');
     }
 
-    return PatientMapper.toDomain(data as any);
+    return PatientMapper.toDomain(data as SupabasePatientRecord);
   }
 
   private buildListQuery(tenantId: string, filters?: PatientListFilters) {
@@ -202,7 +243,9 @@ export class PatientRepository implements IPatientRepository {
       throw error;
     }
 
-    const items = (data || []).map((record: any) => PatientMapper.toListItem(record));
+    const items = (data || []).map((record: SupabasePatientRecord) =>
+      PatientMapper.toListItem(record),
+    );
 
     return {
       data: items,
@@ -227,7 +270,7 @@ export class PatientRepository implements IPatientRepository {
       return null;
     }
 
-    return PatientMapper.toDomain(data as any);
+    return PatientMapper.toDomain(data as SupabasePatientRecord);
   }
 
   async findBySlug(tenantId: string, slug: string): Promise<Patient | null> {
@@ -247,7 +290,7 @@ export class PatientRepository implements IPatientRepository {
       return null;
     }
 
-    return PatientMapper.toDomain(data as any);
+    return PatientMapper.toDomain(data as SupabasePatientRecord);
   }
 
   async findSummary(tenantId: string, patientId: string): Promise<PatientSummary> {
@@ -292,11 +335,42 @@ export class PatientRepository implements IPatientRepository {
       throw new Error('Patient not found');
     }
 
-    const currentHistory = (existing.data.medical_history as Record<string, unknown>) || {};
-    const currentEmergency = (existing.data.emergency_contact as Record<string, unknown>) || {};
+    const currentHistory = toJsonRecord(existing.data.medical_history);
+    const currentEmergency = toJsonRecord(existing.data.emergency_contact);
 
     const existingCpf = normaliseString(currentHistory.cpf as string | undefined);
     const requestedShortName = input.shortName ?? input.fullName?.split(' ')[0];
+
+    const now = new Date().toISOString();
+
+    const existingAcceptedTerms =
+      typeof currentHistory.acceptedTerms === 'boolean'
+        ? (currentHistory.acceptedTerms as boolean)
+        : false;
+    const existingAcceptedTermsAt =
+      typeof currentHistory.acceptedTermsAt === 'string'
+        ? (currentHistory.acceptedTermsAt as string)
+        : undefined;
+
+    let acceptedTerms = existingAcceptedTerms;
+    let acceptedTermsAt = existingAcceptedTermsAt;
+
+    if (typeof input.acceptedTerms === 'boolean') {
+      acceptedTerms = input.acceptedTerms;
+      if (!acceptedTerms) {
+        acceptedTermsAt = undefined;
+      }
+    }
+
+    if (input.acceptedTermsAt) {
+      acceptedTermsAt = input.acceptedTermsAt.toISOString();
+    } else if (
+      typeof input.acceptedTerms === 'boolean' &&
+      input.acceptedTerms &&
+      !acceptedTermsAt
+    ) {
+      acceptedTermsAt = now;
+    }
 
     const updatedHistory = {
       ...currentHistory,
@@ -307,7 +381,17 @@ export class PatientRepository implements IPatientRepository {
       tags: input.tags ?? (currentHistory.tags as string[] | undefined) ?? [],
       observations: input.medical?.observations ?? currentHistory.observations,
       chronicConditions: input.medical?.chronicConditions ?? currentHistory.chronicConditions,
+      preExistingConditions:
+        input.medical?.preExistingConditions ?? currentHistory.preExistingConditions,
+      continuousMedications:
+        input.medical?.continuousMedications ?? currentHistory.continuousMedications,
+      heightCm: input.medical?.heightCm ?? currentHistory.heightCm,
+      weightKg: input.medical?.weightKg ?? currentHistory.weightKg,
+      bloodType: input.medical?.bloodType ?? currentHistory.bloodType,
+      lifestyle: input.medical?.lifestyle ?? currentHistory.lifestyle,
       address: input.address ?? currentHistory.address,
+      acceptedTerms,
+      acceptedTermsAt,
     };
 
     const updatedEmergency = {
@@ -323,7 +407,7 @@ export class PatientRepository implements IPatientRepository {
       emergency_contact: updatedEmergency,
       allergies: input.medical?.allergies ?? existing.data.allergies ?? [],
       current_medications: input.medical?.medications ?? existing.data.current_medications ?? [],
-      updated_at: new Date().toISOString(),
+      updated_at: now,
     };
 
     const { data, error } = await this.client
@@ -339,18 +423,42 @@ export class PatientRepository implements IPatientRepository {
       throw error || new Error('Patient not found');
     }
 
-    return PatientMapper.toDomain(data as any);
+    return PatientMapper.toDomain(data as SupabasePatientRecord);
   }
 
   async transfer(input: TransferPatientInput): Promise<Patient> {
     const patientId = await this.resolvePatientIdOrThrow(input.tenantId, input);
 
+    const { data: existingRecord, error: fetchError } = await this.client
+      .from('patients')
+      .select('medical_history, professional_id')
+      .eq('clinic_id', input.tenantId)
+      .eq('id', patientId)
+      .maybeSingle<{
+        medical_history: Record<string, unknown> | null;
+        professional_id: string | null;
+      }>();
+
+    if (fetchError) {
+      this.logger.error('Failed to load patient before transfer', fetchError);
+      throw fetchError;
+    }
+
+    if (!existingRecord) {
+      throw new Error('Patient not found');
+    }
+
+    const currentHistory = toJsonRecord(existingRecord.medical_history);
+
+    const updatedHistory: Record<string, unknown> = {
+      ...currentHistory,
+      lastTransferReason: input.reason,
+      lastTransferAt: toISODate(input.effectiveAt ?? new Date()),
+    };
+
     const payload = {
       professional_id: input.toProfessionalId,
-      medical_history: {
-        lastTransferReason: input.reason,
-        lastTransferAt: toISODate(input.effectiveAt ?? new Date()),
-      },
+      medical_history: updatedHistory,
       updated_at: new Date().toISOString(),
     };
 
@@ -367,7 +475,7 @@ export class PatientRepository implements IPatientRepository {
       throw error || new Error('Patient not found');
     }
 
-    return PatientMapper.toDomain(data as any);
+    return PatientMapper.toDomain(data as SupabasePatientRecord);
   }
 
   async archive(input: ArchivePatientInput): Promise<void> {
@@ -449,7 +557,7 @@ export class PatientRepository implements IPatientRepository {
       throw error || new Error('Patient not found');
     }
 
-    return PatientMapper.toDomain(data as any);
+    return PatientMapper.toDomain(data as SupabasePatientRecord);
   }
 
   async existsByCpf(tenantId: string, cpf: string, excludePatientId?: string): Promise<boolean> {
@@ -485,7 +593,7 @@ export class PatientRepository implements IPatientRepository {
       throw error;
     }
 
-    return (data || []).map((record: any) => PatientMapper.toListItem(record));
+    return (data || []).map((record: SupabasePatientRecord) => PatientMapper.toListItem(record));
   }
 
   async export(request: PatientExportRequest): Promise<string> {

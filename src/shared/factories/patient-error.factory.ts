@@ -2,7 +2,12 @@ import { BadRequestException, ForbiddenException, NotFoundException } from '@nes
 
 export class PatientErrorFactory {
   static duplicateCpf(cpf: string): BadRequestException {
-    return new BadRequestException('Paciente com CPF ja cadastrado');
+    const trimmedCpf = cpf.trim();
+    const message = trimmedCpf
+      ? `Paciente com CPF ${trimmedCpf} ja cadastrado`
+      : 'Paciente com CPF ja cadastrado';
+
+    return new BadRequestException(message);
   }
 
   static notFound(): NotFoundException {

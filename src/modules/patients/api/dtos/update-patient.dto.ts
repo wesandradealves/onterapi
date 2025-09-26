@@ -1,14 +1,16 @@
-﻿import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+
+import { PatientContinuousMedicationDto } from './create-patient.dto';
 
 export class UpdatePatientDto {
-  @ApiPropertyOptional({ description: 'Nome completo', example: 'Maria S. Andrade' })
+  @ApiPropertyOptional({ description: 'Nome completo', example: 'Maria Silva' })
   fullName?: string;
 
-  @ApiPropertyOptional({ description: 'Nome curto', example: 'Maria Andrade' })
+  @ApiPropertyOptional({ description: 'Nome curto para exibicao', example: 'Maria' })
   shortName?: string;
 
-  @ApiPropertyOptional({ description: 'Status do paciente', example: 'active' })
-  status?: string;
+  @ApiPropertyOptional({ description: 'Email do paciente', example: 'maria@example.com' })
+  email?: string;
 
   @ApiPropertyOptional({ description: 'Telefone principal', example: '+5511999998888' })
   phone?: string;
@@ -16,10 +18,7 @@ export class UpdatePatientDto {
   @ApiPropertyOptional({ description: 'WhatsApp', example: '+5511988887777' })
   whatsapp?: string;
 
-  @ApiPropertyOptional({ description: 'Email', example: 'maria@example.com' })
-  email?: string;
-
-  @ApiPropertyOptional({ description: 'CEP', example: '01310930' })
+  @ApiPropertyOptional({ description: 'CEP (somente numeros)', example: '01310930' })
   zipCode?: string;
 
   @ApiPropertyOptional({ description: 'Rua/Avenida', example: 'Avenida Paulista' })
@@ -46,24 +45,45 @@ export class UpdatePatientDto {
   @ApiPropertyOptional({ description: 'Alergias', example: ['penicilina'] })
   allergies?: string[];
 
-  @ApiPropertyOptional({ description: 'Condicoes cronicas', example: ['hipertensao'] })
+  @ApiPropertyOptional({ description: 'Condicoes cronicas', example: ['diabetes tipo 2'] })
   chronicConditions?: string[];
 
-  @ApiPropertyOptional({ description: 'Medicacoes em uso', example: ['Losartana 50mg'] })
+  @ApiPropertyOptional({ description: 'Condicoes pre-existentes', example: ['hipertensao'] })
+  preExistingConditions?: string[];
+
+  @ApiPropertyOptional({ description: 'Medicacoes em uso', example: ['Metformina 850mg'] })
   medications?: string[];
 
-  @ApiPropertyOptional({ description: 'Observacoes clinicas' })
+  @ApiPropertyOptional({
+    description: 'Medicacao continua registrada no cadastro',
+    type: () => [PatientContinuousMedicationDto],
+  })
+  continuousMedications?: PatientContinuousMedicationDto[];
+
+  @ApiPropertyOptional({ description: 'Altura em centimetros', example: 172 })
+  heightCm?: number;
+
+  @ApiPropertyOptional({ description: 'Peso em quilogramas', example: 68.5 })
+  weightKg?: number;
+
+  @ApiPropertyOptional({ description: 'Observacoes clinicas relevantes' })
   observations?: string;
+
+  @ApiPropertyOptional({ description: 'Status do paciente', example: 'active' })
+  status?: string;
 
   @ApiPropertyOptional({ description: 'Tags do paciente', example: ['VIP'] })
   tags?: string[];
 
+  @ApiPropertyOptional({ description: 'Identificador do profissional responsavel' })
+  professionalId?: string | null;
+
   @ApiPropertyOptional({ description: 'Nivel de risco', example: 'medium' })
   riskLevel?: string;
 
-  @ApiPropertyOptional({
-    description: 'Profissional responsavel',
-    example: 'b3a1f6b6-6f14-4f42-8c4a-bf508f124d55',
-  })
-  professionalId?: string | null;
+  @ApiPropertyOptional({ description: 'Confirmacao de aceite dos termos' })
+  acceptedTerms?: boolean;
+
+  @ApiPropertyOptional({ description: 'Data/hora do aceite (ISO)' })
+  acceptedTermsAt?: string;
 }

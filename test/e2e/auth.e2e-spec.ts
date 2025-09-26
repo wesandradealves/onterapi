@@ -19,8 +19,29 @@ import {
   SignOutInput,
   SignOutOutput,
 } from '@domain/auth/interfaces/use-cases/sign-out.use-case.interface';
-import { ISupabaseAuthService, SupabaseUser, SupabaseSession } from '@domain/auth/interfaces/services/supabase-auth.service.interface';
-import { success, failure, Result } from '@shared/types/result.type';
+import {
+  IResendVerificationEmailUseCase,
+  ResendVerificationEmailInput,
+  ResendVerificationEmailOutput,
+} from '@domain/auth/interfaces/use-cases/resend-verification-email.use-case.interface';
+import {
+  IRequestPasswordResetUseCase,
+  RequestPasswordResetInput,
+  RequestPasswordResetOutput,
+} from '@domain/auth/interfaces/use-cases/request-password-reset.use-case.interface';
+import {
+  ConfirmPasswordResetInput,
+  ConfirmPasswordResetOutput,
+  IConfirmPasswordResetUseCase,
+} from '@domain/auth/interfaces/use-cases/confirm-password-reset.use-case.interface';
+import {
+  ISupabaseAuthService,
+  SupabaseGeneratedLink,
+  SupabaseGenerateLinkOptions,
+  SupabaseSession,
+  SupabaseUser,
+} from '@domain/auth/interfaces/services/supabase-auth.service.interface';
+import { failure, Result, success } from '@shared/types/result.type';
 import { ICurrentUser } from '@modules/auth/decorators/current-user.decorator';
 
 class StubSignInUseCase implements ISignInUseCase {
@@ -61,7 +82,53 @@ class StubSignOutUseCase implements ISignOutUseCase {
 
   async execute(input: SignOutInput) {
     this.lastInput = input;
-    return success<SignOutOutput>({ message: 'Sessões revogadas', revokedSessions: input.allDevices ? 2 : 1 });
+    return success<SignOutOutput>({
+      message: 'Sessões revogadas',
+      revokedSessions: input.allDevices ? 2 : 1,
+    });
+  }
+}
+
+class StubResendVerificationEmailUseCase implements IResendVerificationEmailUseCase {
+  public lastInput?: ResendVerificationEmailInput;
+  public response: ResendVerificationEmailOutput = {
+    delivered: true,
+    alreadyVerified: false,
+    message: 'ok',
+  };
+
+  async execute(input: ResendVerificationEmailInput) {
+    this.lastInput = input;
+    return success(this.response);
+  }
+}
+
+class StubRequestPasswordResetUseCase implements IRequestPasswordResetUseCase {
+  public lastInput?: RequestPasswordResetInput;
+  public response: RequestPasswordResetOutput = {
+    delivered: true,
+    message: 'email enviado',
+  };
+
+  async execute(input: RequestPasswordResetInput) {
+    this.lastInput = input;
+    return success(this.response);
+  }
+}
+
+class StubConfirmPasswordResetUseCase implements IConfirmPasswordResetUseCase {
+  public lastInput?: ConfirmPasswordResetInput;
+  public response: ConfirmPasswordResetOutput = {
+    success: true,
+    message: 'senha alterada',
+  };
+
+  async execute(input: ConfirmPasswordResetInput) {
+    if (!input.accessToken) {
+      return failure(new UnauthorizedException('Token inválido'));
+    }
+    this.lastInput = input;
+    return success(this.response);
   }
 }
 
@@ -83,46 +150,83 @@ class StubSupabaseAuthService implements ISupabaseAuthService {
     return success<void>(undefined);
   }
 
-  // Métodos não utilizados neste cenário de teste
+  // Métodos não exercitados nestes cenários
   /* eslint-disable @typescript-eslint/no-unused-vars */
-  async signUp(): Promise<Result<SupabaseUser>> { return failure(new Error('Not implemented')); }
-  async signIn(): Promise<Result<SupabaseSession>> { return failure(new Error('Not implemented')); }
-  async signOut(): Promise<Result<void>> { return failure(new Error('Not implemented')); }
-  async resetPassword(): Promise<Result<void>> { return failure(new Error('Not implemented')); }
-  async updatePassword(): Promise<Result<void>> { return failure(new Error('Not implemented')); }
-  async getUser(): Promise<Result<SupabaseUser>> { return failure(new Error('Not implemented')); }
-  async getUserById(): Promise<Result<any>> { return failure(new Error('Not implemented')); }
-  async updateUserMetadata(): Promise<Result<SupabaseUser>> { return failure(new Error('Not implemented')); }
-  async refreshToken(): Promise<Result<SupabaseSession>> { return failure(new Error('Not implemented')); }
-  async listUsers(): Promise<Result<{ users: any[] }>> { return failure(new Error('Not implemented')); }
-  async deleteUser(): Promise<Result<void>> { return failure(new Error('Not implemented')); }
+  async signUp(): Promise<Result<SupabaseUser>> {
+    return failure(new Error('Not implemented'));
+  }
+  async signIn(): Promise<Result<SupabaseSession>> {
+    return failure(new Error('Not implemented'));
+  }
+  async signOut(): Promise<Result<void>> {
+    return failure(new Error('Not implemented'));
+  }
+  async resetPassword(): Promise<Result<void>> {
+    return failure(new Error('Not implemented'));
+  }
+  async updatePassword(): Promise<Result<void>> {
+    return failure(new Error('Not implemented'));
+  }
+  async getUser(): Promise<Result<SupabaseUser>> {
+    return failure(new Error('Not implemented'));
+  }
+  async getUserById(): Promise<Result<SupabaseUser>> {
+    return failure(new Error('Not implemented'));
+  }
+  async updateUserMetadata(): Promise<Result<SupabaseUser>> {
+    return failure(new Error('Not implemented'));
+  }
+  async refreshToken(): Promise<Result<SupabaseSession>> {
+    return failure(new Error('Not implemented'));
+  }
+  async listUsers(): Promise<Result<{ users: SupabaseUser[] }>> {
+    return failure(new Error('Not implemented'));
+  }
+  async deleteUser(): Promise<Result<void>> {
+    return failure(new Error('Not implemented'));
+  }
+  async generateVerificationLink(
+    _email: string,
+    _options?: SupabaseGenerateLinkOptions,
+  ): Promise<Result<SupabaseGeneratedLink>> {
+    return failure(new Error('Not implemented'));
+  }
+  async generatePasswordResetLink(
+    _email: string,
+    _options?: SupabaseGenerateLinkOptions,
+  ): Promise<Result<SupabaseGeneratedLink>> {
+    return failure(new Error('Not implemented'));
+  }
   /* eslint-enable @typescript-eslint/no-unused-vars */
 }
+
+const currentUser: ICurrentUser = {
+  id: 'user-1',
+  email: 'user@example.com',
+  name: 'Usuário',
+  role: 'PATIENT',
+  tenantId: 'tenant-1',
+  sessionId: 'session-1',
+  metadata: {},
+} as ICurrentUser;
 
 describe('AuthController (e2e)', () => {
   let app: INestApplication;
   let signInUseCase: StubSignInUseCase;
   let refreshUseCase: StubRefreshTokenUseCase;
   let signOutUseCase: StubSignOutUseCase;
+  let resendUseCase: StubResendVerificationEmailUseCase;
+  let requestResetUseCase: StubRequestPasswordResetUseCase;
+  let confirmResetUseCase: StubConfirmPasswordResetUseCase;
   let supabaseService: StubSupabaseAuthService;
-
-  const currentUser: ICurrentUser = {
-    id: 'user-1',
-    email: 'user@example.com',
-    name: 'Usuário',
-    role: 'PATIENT',
-    tenantId: 'tenant-1',
-    sessionId: 'session-1',
-    metadata: {},
-    createdAt: '2025-03-10T10:00:00.000Z',
-    emailVerified: true,
-    twoFactorEnabled: false,
-  } as ICurrentUser;
 
   beforeAll(async () => {
     signInUseCase = new StubSignInUseCase();
     refreshUseCase = new StubRefreshTokenUseCase();
     signOutUseCase = new StubSignOutUseCase();
+    resendUseCase = new StubResendVerificationEmailUseCase();
+    requestResetUseCase = new StubRequestPasswordResetUseCase();
+    confirmResetUseCase = new StubConfirmPasswordResetUseCase();
     supabaseService = new StubSupabaseAuthService();
 
     const moduleRef: TestingModule = await Test.createTestingModule({
@@ -131,6 +235,9 @@ describe('AuthController (e2e)', () => {
         { provide: ISignInUseCase, useValue: signInUseCase },
         { provide: IRefreshTokenUseCase, useValue: refreshUseCase },
         { provide: ISignOutUseCase, useValue: signOutUseCase },
+        { provide: IResendVerificationEmailUseCase, useValue: resendUseCase },
+        { provide: IRequestPasswordResetUseCase, useValue: requestResetUseCase },
+        { provide: IConfirmPasswordResetUseCase, useValue: confirmResetUseCase },
         { provide: ISupabaseAuthService, useValue: supabaseService },
       ],
     })
@@ -218,6 +325,65 @@ describe('AuthController (e2e)', () => {
     });
   });
 
+  it('reenvia email de verificacao capturando ip e user agent', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/verification/resend')
+      .set('user-agent', 'jest-agent')
+      .set('x-forwarded-for', '45.0.0.1')
+      .send({ email: 'user@example.com' })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.delivered).toBe(true);
+      });
+
+    expect(resendUseCase.lastInput).toEqual({
+      email: 'user@example.com',
+      requesterIp: '45.0.0.1',
+      userAgent: 'jest-agent',
+    });
+  });
+
+  it('solicita reset de senha registrando fingerprint', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/password/reset/request')
+      .set('user-agent', 'jest-agent')
+      .set('x-forwarded-for', '50.0.0.1')
+      .send({ email: 'reset@example.com' })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.delivered).toBe(true);
+      });
+
+    expect(requestResetUseCase.lastInput).toEqual({
+      email: 'reset@example.com',
+      requesterIp: '50.0.0.1',
+      userAgent: 'jest-agent',
+    });
+  });
+
+  it('confirma reset de senha utilizando use case dedicado', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/password/reset/confirm')
+      .send({ accessToken: 'token', newPassword: 'NovaSenha123!' })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.success).toBe(true);
+      });
+
+    expect(confirmResetUseCase.lastInput).toEqual({
+      accessToken: 'token',
+      newPassword: 'NovaSenha123!',
+      refreshToken: undefined,
+    });
+  });
+
+  it('retorna 400 quando confirmacao de reset é inválida', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/password/reset/confirm')
+      .send({ accessToken: '', newPassword: '123' })
+      .expect(400);
+  });
+
   it('retorna dados do usuário autenticado em /me', async () => {
     await request(app.getHttpServer())
       .get('/auth/me')
@@ -237,7 +403,10 @@ describe('AuthController (e2e)', () => {
         expect(body.success).toBe(true);
       });
 
-    expect(supabaseService.verifiedTokens).toContainEqual({ token: 'valid-token', email: 'user@example.com' });
+    expect(supabaseService.verifiedTokens).toContainEqual({
+      token: 'valid-token',
+      email: 'user@example.com',
+    });
   });
 
   it('retorna 401 quando token de verificação é inválido', async () => {
@@ -247,8 +416,3 @@ describe('AuthController (e2e)', () => {
       .expect(401);
   });
 });
-
-
-
-
-

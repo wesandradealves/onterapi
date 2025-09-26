@@ -1,4 +1,4 @@
-﻿import { z } from 'zod';
+import { z } from 'zod';
 import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
 import { mapRoleToDomain } from '../../../../shared/utils/role.utils';
 
@@ -11,19 +11,22 @@ const unwrapSingleValue = (value: unknown): unknown => {
 
 const optionalInt = (min: number, max?: number) =>
   z
-    .preprocess((value) => {
-      const raw = unwrapSingleValue(value);
-      if (raw === undefined || raw === null || raw === '') {
-        return undefined;
-      }
+    .preprocess(
+      (value) => {
+        const raw = unwrapSingleValue(value);
+        if (raw === undefined || raw === null || raw === '') {
+          return undefined;
+        }
 
-      const parsed = Number(raw);
-      if (Number.isNaN(parsed)) {
-        return raw;
-      }
+        const parsed = Number(raw);
+        if (Number.isNaN(parsed)) {
+          return raw;
+        }
 
-      return parsed;
-    }, max ? z.number().int().min(min).max(max) : z.number().int().min(min))
+        return parsed;
+      },
+      max ? z.number().int().min(min).max(max) : z.number().int().min(min),
+    )
     .optional();
 
 const optionalBoolean = z

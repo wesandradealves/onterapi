@@ -1,4 +1,4 @@
-﻿import {
+import {
   Body,
   Controller,
   Get,
@@ -6,13 +6,13 @@
   HttpCode,
   HttpStatus,
   Inject,
+  Logger,
   Param,
   Patch,
   Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { Logger } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -61,7 +61,10 @@ import {
   toTransferPatientInput,
   toUpdatePatientInput,
 } from '../mappers/patient-request.mapper';
-import { PatientListItem, PatientTimelineEntry } from '../../../../domain/patients/types/patient.types';
+import {
+  PatientListItem,
+  PatientTimelineEntry,
+} from '../../../../domain/patients/types/patient.types';
 import { PatientErrorFactory } from '../../../../shared/factories/patient-error.factory';
 
 @ApiTags('Patients')
@@ -145,7 +148,6 @@ export class PatientsController {
   })
   @ApiResponse({ status: 201, type: PatientResponseDto })
   @ApiBody({ type: CreatePatientDto })
-  
   async create(
     @Body(new ZodValidationPipe(createPatientSchema)) body: CreatePatientSchema,
     @CurrentUser() currentUser: ICurrentUser,
@@ -332,7 +334,10 @@ export class PatientsController {
     return unwrapResult(await this.exportPatientsUseCase.execute(request));
   }
 
-  private resolveContext(currentUser: ICurrentUser, tenantOverride?: string | null): PatientRequestContext {
+  private resolveContext(
+    currentUser: ICurrentUser,
+    tenantOverride?: string | null,
+  ): PatientRequestContext {
     return {
       tenantId: this.getTenant(currentUser, tenantOverride),
       userId: currentUser.id,
@@ -341,15 +346,22 @@ export class PatientsController {
   }
 
   private getTenant(currentUser: ICurrentUser, tenantOverride?: string | null): string {
-    const metadata = (currentUser?.metadata ?? {}) as Record<string, unknown>;
+    const metadata = (currentUser.metadata ?? {}) as Record<string, unknown>;
     const normalizedOverride = typeof tenantOverride === 'string' ? tenantOverride.trim() : '';
     const isSuperAdmin = currentUser.role === RolesEnum.SUPER_ADMIN;
 
-    const knownTenantIds = [
-      currentUser?.tenantId,
-      (metadata as any)?.tenantId as string | undefined,
-      (metadata as any)?.tenant_id as string | undefined,
-    ]
+    const metadataTenantIdRaw = metadata['tenantId'];
+    const metadataTenantLegacyRaw = metadata['tenant_id'];
+    const metadataTenantId =
+      typeof metadataTenantIdRaw === 'string' && metadataTenantIdRaw.trim().length
+        ? metadataTenantIdRaw.trim()
+        : undefined;
+    const metadataTenantLegacy =
+      typeof metadataTenantLegacyRaw === 'string' && metadataTenantLegacyRaw.trim().length
+        ? metadataTenantLegacyRaw.trim()
+        : undefined;
+
+    const knownTenantIds = [currentUser?.tenantId, metadataTenantId, metadataTenantLegacy]
       .filter((value): value is string => Boolean(value && String(value).trim().length))
       .map((value) => String(value).trim());
 
@@ -380,31 +392,24 @@ export class PatientsController {
       role: currentUser.role,
       tenantOverride: normalizedOverride || null,
       tokenTenantId: currentUser?.tenantId ?? null,
-      metadataTenantId: (metadata as any)?.tenantId ?? null,
-      metadataTenantLegacy: (metadata as any)?.tenant_id ?? null,
+      metadataTenantId: metadataTenantId ?? null,
+      metadataTenantLegacy: metadataTenantLegacy ?? null,
     });
 
     if (!tenantId) {
       const debug =
         'Usuario sem tenant associado' +
-        ' | tenantOverride=' + String(normalizedOverride || 'null') +
-        ' | tokenTenantId=' + String(currentUser?.tenantId ?? 'null') +
-        ' | metadataTenantId=' + String((metadata as any)?.tenantId ?? 'null') +
-        ' | metadataTenantLegacy=' + String((metadata as any)?.tenant_id ?? 'null');
+        ' | tenantOverride=' +
+        String(normalizedOverride || 'null') +
+        ' | tokenTenantId=' +
+        String(currentUser?.tenantId ?? 'null') +
+        ' | metadataTenantId=' +
+        String(metadataTenantId ?? 'null') +
+        ' | metadataTenantLegacy=' +
+        String(metadataTenantLegacy ?? 'null');
       throw PatientErrorFactory.unauthorized(debug);
     }
 
     return tenantId;
   }
 }
-
-
-
-
-
-
-
-
-
-
-

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+﻿import { Inject, Injectable } from '@nestjs/common';
 import { CPFValidator } from '../validators/cpf.validator';
 import { EmailValidator } from '../validators/email.validator';
 import { PhoneValidator } from '../validators/phone.validator';
@@ -7,7 +7,6 @@ import { CEPValidator } from '../validators/cep.validator';
 import { CRMValidator } from '../validators/crm.validator';
 import { CNSValidator } from '../validators/cns.validator';
 import { ISupabaseAuthService } from '../../domain/auth/interfaces/services/supabase-auth.service.interface';
-import { Inject } from '@nestjs/common';
 
 @Injectable()
 export class ValidationService {
@@ -34,7 +33,7 @@ export class ValidationService {
     const users = data?.users || [];
 
     const existingUser = users.find((u) => {
-      const userCpf = u.user_metadata?.cpf;
+      const userCpf = u.metadata?.cpf;
       return userCpf === cpf && u.id !== excludeId;
     });
 
@@ -128,8 +127,20 @@ export class ValidationService {
   }
 
   // Generic Validations
-  isRequired(value: any): boolean {
-    return value !== null && value !== undefined && value !== '';
+  isRequired(value: unknown): boolean {
+    if (value === null || value === undefined) {
+      return false;
+    }
+
+    if (typeof value === 'string') {
+      return value.trim().length > 0;
+    }
+
+    if (Array.isArray(value)) {
+      return value.length > 0;
+    }
+
+    return true;
   }
 
   minLength(value: string, min: number): boolean {
@@ -144,15 +155,15 @@ export class ValidationService {
     return value >= min && value <= max;
   }
 
-  isDate(value: any): boolean {
-    return value instanceof Date && !isNaN(value.getTime());
+  isDate(value: unknown): value is Date {
+    return value instanceof Date && !Number.isNaN(value.getTime());
   }
 
-  isFutureDate(value: Date): boolean {
+  isFutureDate(value: unknown): boolean {
     return this.isDate(value) && value > new Date();
   }
 
-  isPastDate(value: Date): boolean {
+  isPastDate(value: unknown): boolean {
     return this.isDate(value) && value < new Date();
   }
 }

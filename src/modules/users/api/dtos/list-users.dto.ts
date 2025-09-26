@@ -9,10 +9,17 @@ export class ListUsersDto {
   @ApiPropertyOptional({ description: 'Limite de resultados por pagina', example: 20, default: 20 })
   limit?: number;
 
-  @ApiPropertyOptional({ description: 'Filtrar por role/perfil', enum: RolesEnum, example: RolesEnum.PATIENT })
+  @ApiPropertyOptional({
+    description: 'Filtrar por role/perfil',
+    enum: RolesEnum,
+    example: RolesEnum.PATIENT,
+  })
   role?: RolesEnum;
 
-  @ApiPropertyOptional({ description: 'Filtrar por tenant (clinica)', example: '550e8400-e29b-41d4-a716-446655440000' })
+  @ApiPropertyOptional({
+    description: 'Filtrar por tenant (clinica)',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
   tenantId?: string;
 
   @ApiPropertyOptional({ description: 'Filtrar por status ativo/inativo', example: true })

@@ -46,9 +46,8 @@ export class AddSlugToUsersAndPatients1737500000000 implements MigrationInterfac
   }
 
   private async backfillUserSlugs(queryRunner: QueryRunner) {
-    const users: Array<{ id: string; name: string | null; slug?: string | null }> = await queryRunner.query(
-      `SELECT id, name, slug FROM "users"`
-    );
+    const users: Array<{ id: string; name: string | null; slug?: string | null }> =
+      await queryRunner.query(`SELECT id, name, slug FROM "users"`);
 
     const usedSlugs = new Set<string>();
 
@@ -68,21 +67,22 @@ export class AddSlugToUsersAndPatients1737500000000 implements MigrationInterfac
 
       usedSlugs.add(slug);
 
-      await queryRunner.query(
-        `UPDATE "users" SET slug = $1 WHERE id = $2`,
-        [slug, user.id],
-      );
+      await queryRunner.query(`UPDATE "users" SET slug = $1 WHERE id = $2`, [slug, user.id]);
     }
   }
 
   private async backfillPatientSlugs(queryRunner: QueryRunner) {
-    const patients: Array<{ id: string; clinic_id: string; slug?: string | null; full_name: string | null }> =
-      await queryRunner.query(
-        `
+    const patients: Array<{
+      id: string;
+      clinic_id: string;
+      slug?: string | null;
+      full_name: string | null;
+    }> = await queryRunner.query(
+      `
           SELECT id, clinic_id, slug, medical_history->>'fullName' AS full_name
           FROM "patients"
         `,
-      );
+    );
 
     const clinicSlugMap = new Map<string, Set<string>>();
 
@@ -107,10 +107,7 @@ export class AddSlugToUsersAndPatients1737500000000 implements MigrationInterfac
       used.add(slug);
       clinicSlugMap.set(clinicId, used);
 
-      await queryRunner.query(
-        `UPDATE "patients" SET slug = $1 WHERE id = $2`,
-        [slug, patient.id],
-      );
+      await queryRunner.query(`UPDATE "patients" SET slug = $1 WHERE id = $2`, [slug, patient.id]);
     }
   }
 }

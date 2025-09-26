@@ -1,4 +1,4 @@
-# OnTerapi 
+﻿# OnTerapi 
 
 Plataforma SaaS multi-tenant para gestao de clinicas e terapeutas, com Supabase Auth, 2FA, RBAC e modulo de pacientes conectado diretamente ao storage do Supabase.
 
@@ -28,9 +28,9 @@ Plataforma SaaS multi-tenant para gestao de clinicas e terapeutas, com Supabase 
 - DRY/Clean Architecture com BaseUseCase, BaseGuard e MessageBus unificados
 
 ## Credenciais de Teste
-NÃ£o mantemos mais credenciais padrÃ£o em repositÃ³rio. Gere usuÃ¡rios administrativos manualmente via `/users` e armazene os acessos em um cofre seguro.
+NÃƒÂ£o mantemos mais credenciais padrÃƒÂ£o em repositÃƒÂ³rio. Gere usuÃƒÂ¡rios administrativos manualmente via `/users` e armazene os acessos em um cofre seguro.
 
-> Para fluxos locais, utilize os dados de ambiente em `./.env` e gere o 2FA pelo endpoint `/auth/two-factor/send` quando necessÃ¡rio.
+> Para fluxos locais, utilize os dados de ambiente em `./.env` e gere o 2FA pelo endpoint `/auth/two-factor/send` quando necessÃƒÂ¡rio.
 
 ## Fluxo de Autenticacao
 1. `POST /auth/sign-in` com email/senha. Super admin exige 2FA automaticamente.
@@ -290,7 +290,7 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 | --- | --- | --- | --- |
 | DRY / Reuso de codigo | 9.7 | >= 9.0 | Controllers de Auth, Patients e Users delegam normalizacao de payloads aos mappers dedicados, evitando duplicacao de parsers (src/modules/auth/api/controllers/auth.controller.ts:118, src/modules/patients/api/controllers/patients.controller.ts:110, src/modules/users/api/controllers/users.controller.ts:97) enquanto user-request.mapper centraliza os contratos de usuarios (src/modules/users/api/mappers/user-request.mapper.ts:13). |
 | Automacao de qualidade | 8.5 | >= 8.5 | Sequencia padrao npm run lint -> test:unit -> test:int -> test:e2e -> test:cov confirmada em 26/09 com threshold 100% (jest.config.js:12-29, package.json:23-38). |
-| Testes automatizados | 10.0 | >= 9.5 | 155 testes cobrindo unidade/int/e2e executados em 26/09, com cobertura global 100% (test/unit/modules.users.user-request.mapper.spec.ts:1, test/integration/patients.controller.integration.spec.ts:1, coverage/coverage-summary.json:1). |
+| Testes automatizados | 10.0 | >= 9.5 | 173 testes cobrindo unidade/int/e2e executados em 26/09, com cobertura global 100% (test/unit/modules.auth.resend-verification-email.use-case.spec.ts:1, test/integration/auth.controller.integration.spec.ts:1, coverage/coverage-summary.json:1). |
 | Validacoes e contratos | 9.2 | >= 9.0 | Fluxos de auth, users e patients agora passam por schemas Zod e mappers antes dos use cases (src/modules/auth/api/mappers/auth-request.mapper.ts:117, src/modules/users/api/controllers/users.controller.ts:144, src/modules/patients/api/controllers/patients.controller.ts:110). |
 | Governanca de dominio / RBAC | 8.0 | >= 9.0 | Guardas e casos de uso continuam reforcando roles/tenant com auditoria (src/modules/patients/use-cases/get-patient.use-case.ts:89, test/e2e/patients.e2e-spec.ts:58). |
 
@@ -307,7 +307,7 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 
 ### Testes
 - Novo spec cobre todos os ramos do mapper de usuarios, garantindo coercoes de tenantId e metadata.
-- Contagem total de 155 testes em ~27s; branch coverage mantida em 100% global.
+- Contagem total de 173 testes em ~13s; branch coverage mantida em 100% global.
 - Suites de integracao/e2e seguem focadas em pacientes; auth e usuarios ainda carecem de cenarios ponta-a-ponta.
 
 ### Validacao e contratos
@@ -323,13 +323,6 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 - npm run test:int
 - npm run test:e2e
 - npm run test:cov
-
-## Proximos Passos Prioritarios
-1. Replicar estrategia de mappers/presenters para agendamento e financeiro, reduzindo duplicacao nos controllers restantes.
-2. Expandir suites de integracao/e2e para fluxos de auth e usuarios, validando RBAC e 2FA ponta-a-ponta.
-3. Automatizar lint + testes + cobertura em pipeline CI com gates de 100%.
-4. Consolidar factories/logging sensivel verificando reutilizacao das mascaras em todos os fluxos de auth.
-5. Mapear contratos compartilhados de notificacoes para eliminar normalizacoes manuais em serviÃ§os externos.
 
 Este documento serve como baseline; reavalie os criterios depois de cada entrega significativa.
 ## Fluxograma do Projeto
@@ -352,7 +345,7 @@ flowchart LR
 - **Supabase signOut error: invalid JWT**: agora tratado como `debug`, fluxo segue normalmente.
 - **Token nao fornecido**: verifique header `Authorization: Bearer <accessToken>`.
 - **Tenant invalido**: sempre enviar o tenant real ou deixar o guard resolver via metadata. Execute `npm run assign-super-admin-tenant` apos criar/atualizar tenants internos para garantir que os SUPER_ADMIN recebam o tenant padrao.
-- **Emails/Resend**: conferir painel do Resend ou a caixa do destinatÃ¡rio configurado para visualizar credenciais e cÃ³digos 2FA.
+- **Emails/Resend**: conferir painel do Resend ou a caixa do destinatÃƒÂ¡rio configurado para visualizar credenciais e cÃƒÂ³digos 2FA.
 
 ## Changelog
 Mudancas recentes estao em [CHANGELOG.md](./CHANGELOG.md). Ultima versao: v0.16.2 (25/09/2025).

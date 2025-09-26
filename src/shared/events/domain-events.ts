@@ -1,5 +1,6 @@
-import { DomainEvent } from './domain-event.interface';
 import { v4 as uuidv4 } from 'uuid';
+
+import { DomainEvent, DomainEventMetadata } from './domain-event.interface';
 
 export class DomainEvents {
   static USER_CREATED = 'user.created';
@@ -14,68 +15,114 @@ export class DomainEvents {
   static TWO_FA_FAILED = 'auth.two_fa.failed';
   static PASSWORD_RESET_REQUESTED = 'auth.password.reset_requested';
   static EMAIL_VERIFIED = 'auth.email.verified';
+  static EMAIL_VERIFICATION_RESENT = 'auth.email.resent';
+  static PASSWORD_RESET_COMPLETED = 'auth.password.reset_completed';
   static PATIENT_CREATED = 'patient.created';
   static PATIENT_UPDATED = 'patient.updated';
   static PATIENT_TRANSFERRED = 'patient.transferred';
   static PATIENT_ARCHIVED = 'patient.archived';
   static PATIENT_RESTORED = 'patient.restored';
 
-  static createEvent<T = any>(
+  static createEvent<
+    TPayload = Record<string, unknown>,
+    TMetadata extends DomainEventMetadata = DomainEventMetadata,
+  >(
     eventName: string,
     aggregateId: string,
-    payload: T,
-    metadata?: any,
-  ): DomainEvent<T> {
+    payload: TPayload,
+    metadata?: TMetadata,
+  ): DomainEvent<TPayload, DomainEventMetadata & TMetadata> {
+    const mergedMetadata = {
+      ...(metadata ?? ({} as TMetadata)),
+      correlationId: metadata?.correlationId ?? uuidv4(),
+    } as DomainEventMetadata & TMetadata;
+
     return {
       eventId: uuidv4(),
       eventName,
       aggregateId,
       occurredOn: new Date(),
       payload,
-      metadata: {
-        ...metadata,
-        correlationId: metadata?.correlationId || uuidv4(),
-      },
+      metadata: mergedMetadata,
     };
   }
 
-  static userCreated(userId: string, userData: any, metadata?: any): DomainEvent {
+  static userCreated(
+    userId: string,
+    userData: Record<string, unknown>,
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
     return this.createEvent(this.USER_CREATED, userId, { userId, ...userData }, metadata);
   }
 
-  static userUpdated(userId: string, changes: any, metadata?: any): DomainEvent {
+  static userUpdated(
+    userId: string,
+    changes: Record<string, unknown>,
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
     return this.createEvent(this.USER_UPDATED, userId, { userId, changes }, metadata);
   }
 
-  static userDeleted(userId: string, metadata?: any): DomainEvent {
+  static userDeleted(userId: string, metadata?: DomainEventMetadata): DomainEvent {
     return this.createEvent(this.USER_DELETED, userId, { userId, deletedAt: new Date() }, metadata);
   }
 
-  static userLoggedIn(userId: string, sessionData: any, metadata?: any): DomainEvent {
+  static userLoggedIn(
+    userId: string,
+    sessionData: Record<string, unknown>,
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
     return this.createEvent(this.USER_LOGGED_IN, userId, { userId, ...sessionData }, metadata);
   }
 
-  static userLoggedOut(userId: string, metadata?: any): DomainEvent {
-    return this.createEvent(this.USER_LOGGED_OUT, userId, { userId, loggedOutAt: new Date() }, metadata);
+  static userLoggedOut(userId: string, metadata?: DomainEventMetadata): DomainEvent {
+    return this.createEvent(
+      this.USER_LOGGED_OUT,
+      userId,
+      { userId, loggedOutAt: new Date() },
+      metadata,
+    );
   }
 
-  static userRegistered(userId: string, userData: any, metadata?: any): DomainEvent {
+  static userRegistered(
+    userId: string,
+    userData: Record<string, unknown>,
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
     return this.createEvent(this.USER_REGISTERED, userId, { userId, ...userData }, metadata);
   }
 
-  static tokenRefreshed(userId: string, tokenData: any, metadata?: any): DomainEvent {
+  static tokenRefreshed(
+    userId: string,
+    tokenData: Record<string, unknown>,
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
     return this.createEvent(this.TOKEN_REFRESHED, userId, { userId, ...tokenData }, metadata);
   }
 
-  static twoFaSent(userId: string, channel: string, metadata?: any): DomainEvent {
-    return this.createEvent(this.TWO_FA_SENT, userId, { userId, channel, sentAt: new Date() }, metadata);
+  static twoFaSent(userId: string, channel: string, metadata?: DomainEventMetadata): DomainEvent {
+    return this.createEvent(
+      this.TWO_FA_SENT,
+      userId,
+      { userId, channel, sentAt: new Date() },
+      metadata,
+    );
   }
 
-  static twoFaValidated(userId: string, metadata?: any): DomainEvent {
-    return this.createEvent(this.TWO_FA_VALIDATED, userId, { userId, validatedAt: new Date() }, metadata);
+  static twoFaValidated(userId: string, metadata?: DomainEventMetadata): DomainEvent {
+    return this.createEvent(
+      this.TWO_FA_VALIDATED,
+      userId,
+      { userId, validatedAt: new Date() },
+      metadata,
+    );
   }
 
-  static twoFaFailed(userId: string, attemptData: any, metadata?: any): DomainEvent {
+  static twoFaFailed(
+    userId: string,
+    attemptData: Record<string, unknown>,
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
     return this.createEvent(
       this.TWO_FA_FAILED,
       userId,
@@ -84,7 +131,11 @@ export class DomainEvents {
     );
   }
 
-  static passwordResetRequested(userId: string, email: string, metadata?: any): DomainEvent {
+  static passwordResetRequested(
+    userId: string,
+    email: string,
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
     return this.createEvent(
       this.PASSWORD_RESET_REQUESTED,
       userId,
@@ -93,7 +144,7 @@ export class DomainEvents {
     );
   }
 
-  static emailVerified(userId: string, email: string, metadata?: any): DomainEvent {
+  static emailVerified(userId: string, email: string, metadata?: DomainEventMetadata): DomainEvent {
     return this.createEvent(
       this.EMAIL_VERIFIED,
       userId,
@@ -102,15 +153,58 @@ export class DomainEvents {
     );
   }
 
-  static patientCreated(patientId: string, patientData: any, metadata?: any): DomainEvent {
-    return this.createEvent(this.PATIENT_CREATED, patientId, { patientId, ...patientData }, metadata);
+  static emailVerificationResent(
+    userId: string,
+    email: string,
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.EMAIL_VERIFICATION_RESENT,
+      userId,
+      { userId, email, resentAt: new Date() },
+      metadata,
+    );
   }
 
-  static patientUpdated(patientId: string, changes: any, metadata?: any): DomainEvent {
+  static passwordResetCompleted(
+    userId: string,
+    email: string,
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.PASSWORD_RESET_COMPLETED,
+      userId,
+      { userId, email, completedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static patientCreated(
+    patientId: string,
+    patientData: Record<string, unknown>,
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.PATIENT_CREATED,
+      patientId,
+      { patientId, ...patientData },
+      metadata,
+    );
+  }
+
+  static patientUpdated(
+    patientId: string,
+    changes: Record<string, unknown>,
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
     return this.createEvent(this.PATIENT_UPDATED, patientId, { patientId, changes }, metadata);
   }
 
-  static patientTransferred(patientId: string, transferData: any, metadata?: any): DomainEvent {
+  static patientTransferred(
+    patientId: string,
+    transferData: Record<string, unknown>,
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
     return this.createEvent(
       this.PATIENT_TRANSFERRED,
       patientId,
@@ -119,7 +213,11 @@ export class DomainEvents {
     );
   }
 
-  static patientArchived(patientId: string, archiveData?: any, metadata?: any): DomainEvent {
+  static patientArchived(
+    patientId: string,
+    archiveData: Record<string, unknown> = {},
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
     return this.createEvent(
       this.PATIENT_ARCHIVED,
       patientId,
@@ -128,7 +226,7 @@ export class DomainEvents {
     );
   }
 
-  static patientRestored(patientId: string, metadata?: any): DomainEvent {
+  static patientRestored(patientId: string, metadata?: DomainEventMetadata): DomainEvent {
     return this.createEvent(
       this.PATIENT_RESTORED,
       patientId,

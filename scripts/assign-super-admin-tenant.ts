@@ -1,4 +1,4 @@
-﻿import "reflect-metadata";
+import "reflect-metadata";
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Client as PgClient } from 'pg';
 import { readFileSync } from 'fs';
@@ -6,7 +6,7 @@ import { resolve } from 'path';
 import { mapRoleToDomain } from '../src/shared/utils/role.utils';
 import { RolesEnum } from '../src/domain/auth/enums/roles.enum';
 
-type Metadata = Record<string, any>;
+type Metadata = Record<string, unknown>;
 type QueryResultWithRowCount = {
   rowCount?: number;
   rows: any[];

@@ -1,4 +1,4 @@
-import { ExecutionContext, INestApplication } from '@nestjs/common';
+﻿import { ExecutionContext, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
@@ -17,8 +17,8 @@ import { IExportPatientsUseCase } from '@domain/patients/interfaces/use-cases/ex
 import {
   Patient,
   PatientListItem,
-  PatientStatus,
   PatientRiskLevel,
+  PatientStatus,
 } from '@domain/patients/types/patient.types';
 import { Result } from '@shared/types/result.type';
 import { PatientPresenter } from '@modules/patients/api/presenters/patient.presenter';
@@ -71,8 +71,8 @@ describe('PatientsController (integration)', () => {
       .overrideGuard(JwtAuthGuard)
       .useValue({
         canActivate: (context: ExecutionContext) => {
-          const request = context.switchToHttp().getRequest();
-          request.user = currentUser;
+          const requestCtx = context.switchToHttp().getRequest();
+          requestCtx.user = currentUser;
           return true;
         },
       })
@@ -99,10 +99,18 @@ describe('PatientsController (integration)', () => {
       id: 'patient-1',
       slug: 'paciente-1',
       fullName: 'Paciente 1',
+      shortName: 'Paciente',
       status: 'active' as PatientStatus,
       riskLevel: 'medium' as PatientRiskLevel,
       cpfMasked: '111.***.***.11',
       contact: { email: 'p1@example.com', phone: '11999990000', whatsapp: '11999990000' },
+      medical: {
+        preExistingConditions: ['asma'],
+        chronicConditions: ['rinite'],
+        continuousMedications: [{ name: 'Alenia' }],
+      },
+      acceptedTerms: true,
+      acceptedTermsAt: now,
       professionalId: 'professional-1',
       professionalName: 'Dra. Example',
       nextAppointmentAt: now,
@@ -117,11 +125,14 @@ describe('PatientsController (integration)', () => {
       Promise.resolve({ data: { data: [listItem], total: 1 } }),
     );
 
-    await request(app.getHttpServer()).get('/patients').expect(200).expect(({ body }) => {
-      expect(body.total).toBe(1);
-      expect(body.data).toHaveLength(1);
-      expect(body.data[0]).toEqual(PatientPresenter.listItem(listItem));
-    });
+    await request(app.getHttpServer())
+      .get('/patients')
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.total).toBe(1);
+        expect(body.data).toHaveLength(1);
+        expect(body.data[0]).toEqual(PatientPresenter.listItem(listItem));
+      });
 
     expect(useCases.list.execute).toHaveBeenCalledWith({
       tenantId: 'tenant-1',
@@ -153,7 +164,7 @@ describe('PatientsController (integration)', () => {
     expect(useCases.list.execute).not.toHaveBeenCalled();
   });
 
-  it('cria paciente com payload normalizado e retorna resumo', async () => {
+  it('cria paciente com payload normalizado incluindo aceite de termos', async () => {
     const now = new Date('2025-02-01T10:00:00.000Z');
     const patient: Patient = {
       id: 'patient-123',
@@ -161,32 +172,73 @@ describe('PatientsController (integration)', () => {
       tenantId: 'tenant-1',
       professionalId: 'professional-1',
       fullName: 'Paciente Teste',
+      shortName: 'Paciente',
       cpf: '39053344705',
-      status: 'active' as PatientStatus,
+      birthDate: now,
+      gender: 'female',
+      maritalStatus: 'single',
+      status: 'active',
       emailVerified: true,
+      preferredLanguage: undefined,
       contact: { email: 'paciente@example.com', phone: '11999999999', whatsapp: '11999999999' },
+      address: {
+        zipCode: '01310930',
+        street: 'Avenida Paulista',
+        city: 'Sao Paulo',
+        state: 'SP',
+      },
+      medical: {
+        allergies: ['poeira'],
+        chronicConditions: ['asma'],
+        preExistingConditions: ['hipertensao'],
+        medications: ['inalador'],
+        continuousMedications: [
+          { name: 'Losartana', dosage: '50mg', frequency: '1x ao dia', condition: 'Pressao alta' },
+        ],
+        heightCm: 172,
+        weightKg: 68.5,
+        observations: 'Paciente com acompanhamentos mensais',
+      },
+      tags: [],
+      riskLevel: undefined,
+      lastAppointmentAt: undefined,
+      nextAppointmentAt: undefined,
+      acceptedTerms: true,
+      acceptedTermsAt: now,
       createdAt: now,
       updatedAt: now,
-    } as Patient;
+      archivedAt: undefined,
+    };
 
     useCases.create.execute.mockResolvedValue({ data: patient });
+
+    const requestPayload = {
+      fullName: 'Paciente Teste',
+      cpf: '39053344705',
+      birthDate: '2025-02-01T10:00:00.000Z',
+      email: 'paciente@example.com',
+      phone: '11999999999',
+      whatsapp: '11999999999',
+      allergies: ['poeira'],
+      chronicConditions: ['asma'],
+      preExistingConditions: ['hipertensao'],
+      continuousMedications: [{ name: 'Losartana', dosage: '50mg', frequency: '1x ao dia' }],
+      heightCm: 172,
+      weightKg: 68.5,
+      acceptedTerms: true,
+    };
 
     await request(app.getHttpServer())
       .post('/patients')
       .set('x-tenant-id', 'tenant-1')
-      .send({
-        fullName: 'Paciente Teste',
-        cpf: '39053344705',
-        birthDate: '2025-02-01T10:00:00.000Z',
-        email: 'paciente@example.com',
-        phone: '11999999999',
-        whatsapp: '11999999999',
-      })
+      .send(requestPayload)
       .expect(201)
       .expect(({ body }) => {
         expect(body.fullName).toBe('Paciente Teste');
         expect(body.cpfMasked).toBe('390.***.***.05');
         expect(body.createdAt).toBe(now.toISOString());
+        expect(body.acceptedTerms).toBe(true);
+        expect(body.acceptedTermsAt).toBe(now.toISOString());
       });
 
     expect(useCases.create.execute).toHaveBeenCalledWith(
@@ -196,6 +248,19 @@ describe('PatientsController (integration)', () => {
         requesterRole: currentUser.role,
         birthDate: new Date('2025-02-01T10:00:00.000Z'),
         contact: expect.objectContaining({ email: 'paciente@example.com' }),
+        medical: expect.objectContaining({
+          chronicConditions: ['asma'],
+          preExistingConditions: ['hipertensao'],
+          continuousMedications: [
+            {
+              name: 'Losartana',
+              dosage: '50mg',
+              frequency: '1x ao dia',
+              condition: undefined,
+            },
+          ],
+        }),
+        acceptedTerms: true,
       }),
     );
   });
@@ -206,10 +271,10 @@ describe('PatientsController (integration)', () => {
       .send({
         fullName: 'A',
         cpf: '123',
+        acceptedTerms: true,
       })
       .expect(400);
 
     expect(useCases.create.execute).not.toHaveBeenCalled();
   });
 });
-

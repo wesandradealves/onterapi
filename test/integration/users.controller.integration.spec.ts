@@ -1,4 +1,4 @@
-﻿import { ExecutionContext, INestApplication, NotFoundException } from '@nestjs/common';
+import { ExecutionContext, INestApplication, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
@@ -11,8 +11,8 @@ import { UserOwnerGuard } from '@modules/users/guards/user-owner.guard';
 import { ICreateUserUseCase } from '@domain/users/interfaces/use-cases/create-user.use-case.interface';
 import { IFindAllUsersUseCase } from '@domain/users/interfaces/use-cases/find-all-users.use-case.interface';
 import {
-  IFindUserBySlugUseCase,
   FindUserBySlugUseCaseToken,
+  IFindUserBySlugUseCase,
 } from '@domain/users/interfaces/use-cases/find-user-by-slug.use-case.interface';
 import { IUpdateUserUseCase } from '@domain/users/interfaces/use-cases/update-user.use-case.interface';
 import { IDeleteUserUseCase } from '@domain/users/interfaces/use-cases/delete-user.use-case.interface';
@@ -127,12 +127,12 @@ describe('UsersController (integration)', () => {
     currentUser.metadata = { slug: 'admin-slug' };
   });
 
-  it('cria usuário mapeando payload via mapper compartilhado', async () => {
+  it('cria usu�rio mapeando payload via mapper compartilhado', async () => {
     const createdUser = buildUser();
     createUseCase.execute.mockResolvedValue({ data: createdUser });
 
     await request(app.getHttpServer())
-            .post('/users')
+      .post('/users')
       .send({
         email: 'ana@example.com',
         password: 'SenhaForte123!',
@@ -164,7 +164,7 @@ describe('UsersController (integration)', () => {
     });
   });
 
-  it('lista usuários aplicando fallback de tenant e formato do presenter', async () => {
+  it('lista usu�rios aplicando fallback de tenant e formato do presenter', async () => {
     const user = buildUser();
     findAllUseCase.execute.mockResolvedValue({
       data: {
@@ -196,7 +196,7 @@ describe('UsersController (integration)', () => {
     expect(listCallArgs.isActive).toBeUndefined();
   });
 
-  it('mantém tenant informado quando recebido no filtro', async () => {
+  it('mant�m tenant informado quando recebido no filtro', async () => {
     findAllUseCase.execute.mockResolvedValue({
       data: {
         data: [],
@@ -216,7 +216,7 @@ describe('UsersController (integration)', () => {
     expect(explicitCallArgs.isActive).toBeUndefined();
   });
 
-  it('recupera usuário por slug delegando ao use case', async () => {
+  it('recupera usu�rio por slug delegando ao use case', async () => {
     const user = buildUser();
     findBySlugUseCase.execute.mockResolvedValue({ data: user });
 
@@ -235,13 +235,15 @@ describe('UsersController (integration)', () => {
     expect(findBySlugUseCase.execute).toHaveBeenCalledWith('ana-souza');
   });
 
-  it('propaga erro 404 quando usuário não encontrado', async () => {
-    findBySlugUseCase.execute.mockResolvedValue({ error: new NotFoundException('Usuário não encontrado') });
+  it('propaga erro 404 quando usu�rio n�o encontrado', async () => {
+    findBySlugUseCase.execute.mockResolvedValue({
+      error: new NotFoundException('Usu�rio n�o encontrado'),
+    });
 
     await request(app.getHttpServer()).get('/users/desconhecido').expect(404);
   });
 
-  it('atualiza usuário convertendo input para contrato de domínio', async () => {
+  it('atualiza usu�rio convertendo input para contrato de dom�nio', async () => {
     const updatedUser = buildUser({ name: 'Ana Atualizada' });
     updateUseCase.execute.mockResolvedValue({ data: updatedUser });
     currentUser.metadata = { slug: 'ana-souza' };
@@ -271,7 +273,7 @@ describe('UsersController (integration)', () => {
     );
   });
 
-  it('deleta usuário via use case mantendo contexto', async () => {
+  it('deleta usu�rio via use case mantendo contexto', async () => {
     deleteUseCase.execute.mockResolvedValue({ data: undefined });
 
     await request(app.getHttpServer()).delete('/users/ana-souza').expect(204);
@@ -279,7 +281,7 @@ describe('UsersController (integration)', () => {
     expect(deleteUseCase.execute).toHaveBeenCalledWith('ana-souza', currentUser.id);
   });
 
-  it('bloqueia criação com payload inválido retornando 400', async () => {
+  it('bloqueia cria��o com payload inv�lido retornando 400', async () => {
     await request(app.getHttpServer())
       .post('/users')
       .send({ email: 'invalido', password: '123', cpf: '999' })
@@ -288,25 +290,3 @@ describe('UsersController (integration)', () => {
     expect(createUseCase.execute).not.toHaveBeenCalled();
   });
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

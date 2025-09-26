@@ -123,4 +123,3 @@ export class SendTwoFAUseCase
     throw AuthErrorFactory.create(AuthErrorType.METHOD_NOT_IMPLEMENTED, { method });
   }
 }
-

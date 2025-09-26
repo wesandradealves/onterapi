@@ -1,4 +1,4 @@
-﻿import { Result } from '../../../../shared/types/result.type';
+import { Result } from '../../../../shared/types/result.type';
 import { Patient, UpdatePatientInput } from '../../types/patient.types';
 
 export interface IUpdatePatientUseCase {

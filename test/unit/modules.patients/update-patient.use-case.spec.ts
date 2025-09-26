@@ -230,5 +230,3 @@ describe('UpdatePatientUseCase', () => {
     expect(result.error).toBeInstanceOf(Error);
   });
 });
-
-

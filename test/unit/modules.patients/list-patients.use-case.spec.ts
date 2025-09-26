@@ -96,4 +96,3 @@ describe('ListPatientsUseCase', () => {
     expect(result).toEqual(listResult);
   });
 });
-

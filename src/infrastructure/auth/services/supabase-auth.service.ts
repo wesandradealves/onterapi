@@ -5,6 +5,8 @@ import { AuthErrorFactory } from '../../../shared/factories/auth-error.factory';
 import {
   ISupabaseAuthService,
   SignUpData,
+  SupabaseGeneratedLink,
+  SupabaseGenerateLinkOptions,
   SupabaseSession,
   SupabaseUser,
 } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
@@ -28,6 +30,7 @@ type SupabaseAuthUserRecord = {
 export class SupabaseAuthService implements ISupabaseAuthService {
   private readonly logger = new Logger(SupabaseAuthService.name);
   private readonly supabase: SupabaseClient;
+  private readonly appUrl: string;
 
   constructor(private readonly configService: ConfigService) {
     const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
@@ -36,6 +39,8 @@ export class SupabaseAuthService implements ISupabaseAuthService {
     if (!supabaseUrl || !supabaseKey) {
       throw AuthErrorFactory.internalServerError('Supabase configuration is missing');
     }
+
+    this.appUrl = this.configService.get<string>('APP_URL') ?? 'http://localhost:3000';
 
     this.supabase = createClient(supabaseUrl, supabaseKey, {
       auth: {
@@ -64,7 +69,7 @@ export class SupabaseAuthService implements ISupabaseAuthService {
       }
 
       const { error: inviteError } = await this.supabase.auth.admin.inviteUserByEmail(data.email, {
-        redirectTo: `${this.configService.get<string>('APP_URL')}/auth/confirm`,
+        redirectTo: `${this.appUrl}/auth/confirm`,
       });
 
       if (inviteError) {
@@ -125,7 +130,10 @@ export class SupabaseAuthService implements ISupabaseAuthService {
         const message = error.message || 'Supabase signOut failed';
 
         if (message.toLowerCase().includes('invalid jwt')) {
-          this.logger.debug('Supabase signOut token was not accepted by Supabase, ignoring', { userId, reason: message });
+          this.logger.debug('Supabase signOut token was not accepted by Supabase, ignoring', {
+            userId,
+            reason: message,
+          });
           return { data: undefined };
         }
 
@@ -143,11 +151,11 @@ export class SupabaseAuthService implements ISupabaseAuthService {
   async verifyEmail(token: string, email?: string): Promise<Result<void>> {
     try {
       if (!token || token.length < 6) {
-        return { error: new Error('Token invÃƒÂ¡lido') };
+        return { error: new Error('Token invÃ¡lido') };
       }
 
       if (token.includes('test-token') || token === '123456') {
-        return { error: new Error('Token de teste nÃƒÂ£o ÃƒÂ© vÃƒÂ¡lido') };
+        return { error: new Error('Token de teste nÃ£o Ã© vÃ¡lido') };
       }
 
       if (email) {
@@ -162,7 +170,7 @@ export class SupabaseAuthService implements ISupabaseAuthService {
             .single();
 
           if (tokenError || !tokenData) {
-            return { error: new Error('Token invÃƒÂ¡lido ou expirado') };
+            return { error: new Error('Token invÃ¡lido ou expirado') };
           }
 
           await this.supabase
@@ -183,24 +191,24 @@ export class SupabaseAuthService implements ISupabaseAuthService {
 
           if (error) {
             this.logger.error(`Erro ao verificar token OTP: ${error.message}`);
-            return { error: new Error('Token invÃƒÂ¡lido ou expirado') };
+            return { error: new Error('Token invÃ¡lido ou expirado') };
           }
 
           if (!data.user) {
-            return { error: new Error('Token invÃƒÂ¡lido') };
+            return { error: new Error('Token invÃ¡lido') };
           }
 
-          this.logger.log(`Email verificado com sucesso para usuÃƒÂ¡rio: ${data.user.email}`);
+          this.logger.log(`Email verificado com sucesso para usuÃ¡rio: ${data.user.email}`);
           return { data: undefined };
         }
       }
 
       const tokenRegex = /^[a-f0-9]{64}$/;
       if (!tokenRegex.test(token)) {
-        return { error: new Error('Formato de token invÃƒÂ¡lido') };
+        return { error: new Error('Formato de token invÃ¡lido') };
       }
 
-      return { error: new Error('Email ÃƒÂ© necessÃƒÂ¡rio para validaÃƒÂ§ÃƒÂ£o completa') };
+      return { error: new Error('Email Ã© necessÃ¡rio para validaÃ§Ã£o completa') };
     } catch (error) {
       this.logger.error('Erro inesperado ao verificar email', error);
       return { error: error as Error };
@@ -215,19 +223,19 @@ export class SupabaseAuthService implements ISupabaseAuthService {
       } = await this.supabase.auth.admin.listUsers();
 
       if (listError) {
-        this.logger.error(`Erro ao listar usuÃƒÂ¡rios: ${listError.message}`);
-        return { error: new Error('Erro ao buscar usuÃƒÂ¡rio') };
+        this.logger.error(`Erro ao listar usuÃ¡rios: ${listError.message}`);
+        return { error: new Error('Erro ao buscar usuÃ¡rio') };
       }
 
       const user = users.find((u) => u.email === email);
 
       if (!user) {
-        return { error: new Error('UsuÃƒÂ¡rio nÃƒÂ£o encontrado') };
+        return { error: new Error('UsuÃ¡rio nÃ£o encontrado') };
       }
 
       if (user.email_confirmed_at) {
-        this.logger.warn(`Email jÃƒÂ¡ confirmado para: ${email}`);
-        return { error: new Error('Email jÃƒÂ¡ foi confirmado anteriormente') };
+        this.logger.warn(`Email jÃ¡ confirmado para: ${email}`);
+        return { error: new Error('Email jÃ¡ foi confirmado anteriormente') };
       }
 
       const { error } = await this.supabase.auth.admin.updateUserById(user.id, {
@@ -247,7 +255,7 @@ export class SupabaseAuthService implements ISupabaseAuthService {
     }
   }
 
-  async getUserById(userId: string): Promise<Result<any>> {
+  async getUserById(userId: string): Promise<Result<SupabaseUser>> {
     try {
       const { data, error } = await this.supabase.auth.admin.getUserById(userId);
 
@@ -260,16 +268,84 @@ export class SupabaseAuthService implements ISupabaseAuthService {
         return { error: new Error('User not found') };
       }
 
-      return { data: data.user };
+      return { data: this.mapUserRecord(data.user) };
     } catch (error) {
       this.logger.error('Unexpected error in getUserById', error);
       return { error: error as Error };
     }
   }
 
+  async generateVerificationLink(
+    email: string,
+    options?: SupabaseGenerateLinkOptions,
+  ): Promise<Result<SupabaseGeneratedLink>> {
+    try {
+      const redirectTo = options?.redirectTo ?? `${this.appUrl}/auth/confirm`;
+      const { data, error } = await this.supabase.auth.admin.generateLink({
+        type: 'magiclink',
+        email,
+        options: {
+          redirectTo,
+        },
+      });
+
+      if (error) {
+        this.logger.error(`Supabase generateVerificationLink error: ${error.message}`);
+        return { error: new Error(error.message) };
+      }
+
+      const properties = (data?.properties ?? null) as Record<string, unknown> | null;
+
+      if (!properties) {
+        return { error: new Error('Supabase did not return link properties') };
+      }
+
+      const link = this.mapGeneratedLink(properties, redirectTo);
+
+      return { data: link };
+    } catch (error) {
+      this.logger.error('Unexpected error in generateVerificationLink', error);
+      return { error: error as Error };
+    }
+  }
+
+  async generatePasswordResetLink(
+    email: string,
+    options?: SupabaseGenerateLinkOptions,
+  ): Promise<Result<SupabaseGeneratedLink>> {
+    try {
+      const redirectTo = options?.redirectTo ?? `${this.appUrl}/reset-password`;
+      const { data, error } = await this.supabase.auth.admin.generateLink({
+        type: 'recovery',
+        email,
+        options: {
+          redirectTo,
+        },
+      });
+
+      if (error) {
+        this.logger.error(`Supabase generatePasswordResetLink error: ${error.message}`);
+        return { error: new Error(error.message) };
+      }
+
+      const properties = (data?.properties ?? null) as Record<string, unknown> | null;
+
+      if (!properties) {
+        return { error: new Error('Supabase did not return link properties') };
+      }
+
+      const link = this.mapGeneratedLink(properties, redirectTo);
+
+      return { data: link };
+    } catch (error) {
+      this.logger.error('Unexpected error in generatePasswordResetLink', error);
+      return { error: error as Error };
+    }
+  }
+
   async resetPassword(email: string): Promise<Result<void>> {
     try {
-      const resetUrl = `${this.configService.get<string>('APP_URL')}/reset-password`;
+      const resetUrl = `${this.appUrl}/reset-password`;
 
       const { error } = await this.supabase.auth.resetPasswordForEmail(email, {
         redirectTo: resetUrl,
@@ -287,9 +363,31 @@ export class SupabaseAuthService implements ISupabaseAuthService {
     }
   }
 
-  async updatePassword(accessToken: string, newPassword: string): Promise<Result<void>> {
+  async updatePassword(
+    accessToken: string,
+    newPassword: string,
+    _refreshToken?: string,
+  ): Promise<Result<void>> {
     try {
-      const { error } = await this.supabase.auth.updateUser({
+      if (!accessToken) {
+        this.logger.error('Supabase updatePassword called without access token');
+        return { error: new Error('Access token is required to update password') };
+      }
+
+      const { data: userData, error: fetchError } = await this.supabase.auth.getUser(accessToken);
+
+      if (fetchError) {
+        this.logger.error(`Supabase getUser error: ${fetchError.message}`);
+        return { error: new Error(fetchError.message) };
+      }
+
+      const userId = userData.user?.id;
+
+      if (!userId) {
+        return { error: new Error('User not found for password update') };
+      }
+
+      const { error } = await this.supabase.auth.admin.updateUserById(userId, {
         password: newPassword,
       });
 
@@ -327,7 +425,7 @@ export class SupabaseAuthService implements ISupabaseAuthService {
 
   async updateUserMetadata(
     userId: string,
-    metadata: Record<string, any>,
+    metadata: Record<string, unknown>,
   ): Promise<Result<SupabaseUser>> {
     try {
       const { data: userData, error } = await this.supabase.auth.admin.updateUserById(userId, {
@@ -381,6 +479,47 @@ export class SupabaseAuthService implements ISupabaseAuthService {
     }
   }
 
+  private mapGeneratedLink(
+    properties: Record<string, unknown> | null | undefined,
+    fallbackRedirect: string,
+  ): SupabaseGeneratedLink {
+    const record = (properties ?? {}) as Record<string, unknown>;
+    const actionLinkRaw = record['action_link'];
+    const actionLink = typeof actionLinkRaw === 'string' ? actionLinkRaw : '';
+
+    if (!actionLink) {
+      throw new Error('Supabase did not return an action link');
+    }
+
+    const redirectToValue = record['redirect_to'];
+    const redirectTo =
+      typeof redirectToValue === 'string' && redirectToValue.trim().length > 0
+        ? redirectToValue
+        : fallbackRedirect;
+
+    const link: SupabaseGeneratedLink = {
+      actionLink,
+      redirectTo,
+    };
+
+    const emailOtp = record['email_otp'];
+    if (typeof emailOtp === 'string' && emailOtp.trim().length > 0) {
+      link.emailOtp = emailOtp;
+    }
+
+    const hashedToken = record['hashed_token'];
+    if (typeof hashedToken === 'string' && hashedToken.trim().length > 0) {
+      link.hashedToken = hashedToken;
+    }
+
+    const verificationType = record['verification_type'];
+    if (typeof verificationType === 'string' && verificationType.trim().length > 0) {
+      link.verificationType = verificationType;
+    }
+
+    return link;
+  }
+
   private mapUserRecord(data: SupabaseAuthUserRecord | null | undefined): SupabaseUser {
     const source = (data?.user ?? data) as SupabaseAuthUserRecord | null;
 
@@ -402,7 +541,10 @@ export class SupabaseAuthService implements ISupabaseAuthService {
     };
   }
 
-  async listUsers(params: { page?: number; perPage?: number }): Promise<Result<{ users: any[] }>> {
+  async listUsers(params: {
+    page?: number;
+    perPage?: number;
+  }): Promise<Result<{ users: SupabaseUser[] }>> {
     try {
       const { data, error } = await this.supabase.auth.admin.listUsers({
         page: params.page || 1,
@@ -414,7 +556,11 @@ export class SupabaseAuthService implements ISupabaseAuthService {
         return { error: new Error(error.message) };
       }
 
-      return { data: { users: data?.users || [] } };
+      const users = (data?.users ?? []).map((user) =>
+        this.mapUserRecord(user as SupabaseAuthUserRecord),
+      );
+
+      return { data: { users } };
     } catch (error) {
       this.logger.error('Unexpected error in listUsers', error);
       return { error: error as Error };
@@ -430,7 +576,9 @@ export class SupabaseAuthService implements ISupabaseAuthService {
         const normalized = message.toLowerCase();
 
         if (normalized.includes('user not found')) {
-          this.logger.debug(`Supabase deleteUser: user already absent in auth provider (${userId})`);
+          this.logger.debug(
+            `Supabase deleteUser: user already absent in auth provider (${userId})`,
+          );
           return { data: undefined };
         }
 
@@ -445,8 +593,3 @@ export class SupabaseAuthService implements ISupabaseAuthService {
     }
   }
 }
-
-
-
-
-

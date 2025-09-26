@@ -4,7 +4,11 @@ import request from 'supertest';
 
 import { AuthController } from '@modules/auth/api/controllers/auth.controller';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
-import { ISignInUseCase, SignInInput, SignInOutput } from '@domain/auth/interfaces/use-cases/sign-in.use-case.interface';
+import {
+  ISignInUseCase,
+  SignInInput,
+  SignInOutput,
+} from '@domain/auth/interfaces/use-cases/sign-in.use-case.interface';
 import {
   IRefreshTokenUseCase,
   RefreshTokenInput,
@@ -15,10 +19,27 @@ import {
   SignOutInput,
   SignOutOutput,
 } from '@domain/auth/interfaces/use-cases/sign-out.use-case.interface';
+import {
+  IResendVerificationEmailUseCase,
+  ResendVerificationEmailInput,
+  ResendVerificationEmailOutput,
+} from '@domain/auth/interfaces/use-cases/resend-verification-email.use-case.interface';
+import {
+  IRequestPasswordResetUseCase,
+  RequestPasswordResetInput,
+  RequestPasswordResetOutput,
+} from '@domain/auth/interfaces/use-cases/request-password-reset.use-case.interface';
+import {
+  ConfirmPasswordResetInput,
+  ConfirmPasswordResetOutput,
+  IConfirmPasswordResetUseCase,
+} from '@domain/auth/interfaces/use-cases/confirm-password-reset.use-case.interface';
 import { ISupabaseAuthService } from '@domain/auth/interfaces/services/supabase-auth.service.interface';
 import { ICurrentUser } from '@modules/auth/decorators/current-user.decorator';
 
-const createMock = <TInput, TOutput>() => ({ execute: jest.fn<Promise<{ data: TOutput }>, [TInput]>() });
+const createMock = <TInput, TOutput>() => ({
+  execute: jest.fn<Promise<{ data: TOutput }>, [TInput]>(),
+});
 
 describe('AuthController (integration)', () => {
   let app: INestApplication;
@@ -36,6 +57,12 @@ describe('AuthController (integration)', () => {
   const signInUseCase = createMock<SignInInput, SignInOutput>();
   const refreshUseCase = createMock<RefreshTokenInput, RefreshTokenOutput>();
   const signOutUseCase = createMock<SignOutInput, SignOutOutput>();
+  const resendVerificationUseCase = createMock<
+    ResendVerificationEmailInput,
+    ResendVerificationEmailOutput
+  >();
+  const requestResetUseCase = createMock<RequestPasswordResetInput, RequestPasswordResetOutput>();
+  const confirmResetUseCase = createMock<ConfirmPasswordResetInput, ConfirmPasswordResetOutput>();
   const supabaseAuthService = {
     verifyEmail: jest.fn(),
     confirmEmailByEmail: jest.fn(),
@@ -48,14 +75,17 @@ describe('AuthController (integration)', () => {
         { provide: ISignInUseCase, useValue: signInUseCase },
         { provide: IRefreshTokenUseCase, useValue: refreshUseCase },
         { provide: ISignOutUseCase, useValue: signOutUseCase },
+        { provide: IResendVerificationEmailUseCase, useValue: resendVerificationUseCase },
+        { provide: IRequestPasswordResetUseCase, useValue: requestResetUseCase },
+        { provide: IConfirmPasswordResetUseCase, useValue: confirmResetUseCase },
         { provide: ISupabaseAuthService, useValue: supabaseAuthService },
       ],
     })
       .overrideGuard(JwtAuthGuard)
       .useValue({
         canActivate: (context: ExecutionContext) => {
-          const request = context.switchToHttp().getRequest();
-          request.user = currentUser;
+          const req = context.switchToHttp().getRequest();
+          req.user = currentUser;
           return true;
         },
       })
@@ -156,6 +186,80 @@ describe('AuthController (integration)', () => {
     });
   });
 
+  it('reenvia email de verificacao usando dados de cabecalho', async () => {
+    resendVerificationUseCase.execute.mockResolvedValue({
+      data: { delivered: true, alreadyVerified: false, message: 'ok' },
+    });
+
+    await request(app.getHttpServer())
+      .post('/auth/verification/resend')
+      .set('user-agent', 'jest-agent')
+      .set('x-forwarded-for', '45.0.0.1')
+      .send({ email: 'user@example.com' })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.delivered).toBe(true);
+        expect(body.alreadyVerified).toBe(false);
+      });
+
+    expect(resendVerificationUseCase.execute).toHaveBeenCalledWith({
+      email: 'user@example.com',
+      requesterIp: '45.0.0.1',
+      userAgent: 'jest-agent',
+    });
+  });
+
+  it('solicita reset de senha com dados sanitizados', async () => {
+    requestResetUseCase.execute.mockResolvedValue({
+      data: { delivered: true, message: 'email enviado' },
+    });
+
+    await request(app.getHttpServer())
+      .post('/auth/password/reset/request')
+      .set('user-agent', 'jest-agent')
+      .set('x-forwarded-for', '50.0.0.1')
+      .send({ email: 'reset@example.com' })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.delivered).toBe(true);
+      });
+
+    expect(requestResetUseCase.execute).toHaveBeenCalledWith({
+      email: 'reset@example.com',
+      requesterIp: '50.0.0.1',
+      userAgent: 'jest-agent',
+    });
+  });
+
+  it('confirma reset de senha delegando ao use case', async () => {
+    confirmResetUseCase.execute.mockResolvedValue({
+      data: { success: true, message: 'senha alterada' },
+    });
+
+    await request(app.getHttpServer())
+      .post('/auth/password/reset/confirm')
+      .send({ accessToken: 'token', newPassword: 'NovaSenha123!' })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.success).toBe(true);
+      });
+
+    expect(confirmResetUseCase.execute).toHaveBeenCalledWith({
+      accessToken: 'token',
+      newPassword: 'NovaSenha123!',
+      refreshToken: undefined,
+    });
+  });
+
+  it('retorna 400 quando payload de confirmacao e invalido', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/password/reset/confirm')
+      .send({ accessToken: '', newPassword: '123' })
+      .expect(400);
+
+    expect(confirmResetUseCase.execute).not.toHaveBeenCalled();
+  });
+
   it('retorna dados do usuário autenticado em /me', async () => {
     const now = new Date('2025-03-10T10:00:00.000Z');
     currentUser.createdAt = now;
@@ -184,7 +288,7 @@ describe('AuthController (integration)', () => {
     (supabaseAuthService.confirmEmailByEmail as jest.Mock).mockResolvedValue({ data: undefined });
 
     await request(app.getHttpServer())
-            .get('/auth/verify-email')
+      .get('/auth/verify-email')
       .query({ token: 'token-123', email: 'user@example.com' })
       .expect(200)
       .expect(({ body }) => {
@@ -193,7 +297,6 @@ describe('AuthController (integration)', () => {
       });
 
     expect(supabaseAuthService.verifyEmail).toHaveBeenCalledWith('token-123', 'user@example.com');
-    expect(supabaseAuthService.confirmEmailByEmail).toHaveBeenCalledWith('user@example.com');
     expect(supabaseAuthService.confirmEmailByEmail).toHaveBeenCalledWith('user@example.com');
   });
 
@@ -206,10 +309,3 @@ describe('AuthController (integration)', () => {
     expect(signInUseCase.execute).not.toHaveBeenCalled();
   });
 });
-
-
-
-
-
-
-

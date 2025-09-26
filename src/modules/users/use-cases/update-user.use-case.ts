@@ -62,7 +62,10 @@ export class UpdateUserUseCase implements IUpdateUserUseCase {
     }
 
     const supabaseUser = userResult.data as SupabaseUser;
-    const currentMetadata = (supabaseUser.user_metadata || supabaseUser.metadata || {}) as Record<string, unknown>;
+    const currentMetadata = (supabaseUser.user_metadata || supabaseUser.metadata || {}) as Record<
+      string,
+      unknown
+    >;
 
     const updatedMetadata = {
       ...currentMetadata,
@@ -96,7 +99,9 @@ export class UpdateUserUseCase implements IUpdateUserUseCase {
 
     this.logger.log(`${MESSAGES.LOGS.USER_UPDATED}: ${refreshed.email} por ${currentUserId}`);
 
-    const event = DomainEvents.userUpdated(refreshed.id, dto, { userId: currentUserId });
+    const event = DomainEvents.userUpdated(refreshed.id, { ...dto } as Record<string, unknown>, {
+      userId: currentUserId,
+    });
 
     await this.messageBus.publish(event);
     this.logger.log(`${MESSAGES.EVENTS.USER_UPDATED} para ${refreshed.id}`);

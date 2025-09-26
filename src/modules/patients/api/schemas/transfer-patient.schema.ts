@@ -1,4 +1,4 @@
-﻿import { z } from 'zod';
+import { z } from 'zod';
 
 export const transferPatientSchema = z.object({
   toProfessionalId: z.string().uuid(),

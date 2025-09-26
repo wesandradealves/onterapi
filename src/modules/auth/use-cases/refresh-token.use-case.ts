@@ -12,7 +12,7 @@ import { IJwtService } from '../../../domain/auth/interfaces/services/jwt.servic
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import { AUTH_CONSTANTS } from '../../../shared/constants/auth.constants';
-import { extractSupabaseUser } from '../../../shared/utils/auth.utils';
+import { extractSupabaseUser, normalizeDeviceInfo } from '../../../shared/utils/auth.utils';
 import { maskEmailForLog } from '../../../shared/utils/logging.utils';
 import { createTokenResponse } from '../../../shared/factories/auth-response.factory';
 import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
@@ -73,7 +73,7 @@ export class RefreshTokenUseCase
 
     await this.authRepository.removeRefreshToken(input.refreshToken);
 
-    const tokenHelper = new AuthTokenHelper(this.jwtService);
+    const tokenHelper = new AuthTokenHelper(this.jwtService, this.authRepository);
     const tokens = await tokenHelper.generateAndSaveTokens(
       {
         userId: user.id,
@@ -82,9 +82,7 @@ export class RefreshTokenUseCase
         tenantId: user.tenantId,
         rememberMe: false,
       },
-      input.deviceInfo,
-      this.jwtService,
-      this.authRepository,
+      normalizeDeviceInfo(input.deviceInfo),
     );
 
     const output = createTokenResponse(

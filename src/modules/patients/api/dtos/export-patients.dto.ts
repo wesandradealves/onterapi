@@ -1,4 +1,4 @@
-﻿import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 const EXPORT_FORMATS = ['pdf', 'csv', 'excel', 'vcard'] as const;
 

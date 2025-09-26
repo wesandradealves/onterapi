@@ -1,4 +1,4 @@
-Ôªøimport { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class SignOutDto {
   @ApiProperty({
@@ -25,7 +25,7 @@ export class SignOutResponseDto {
   message!: string;
 
   @ApiProperty({
-    description: 'N√∫mero de sess√µes revogadas',
+    description: 'N˙mero de sessıes revogadas',
     example: 1,
   })
   revokedSessions!: number;
@@ -33,38 +33,38 @@ export class SignOutResponseDto {
 
 export class MeResponseDto {
   @ApiProperty({
-    description: 'ID do usu√°rio',
+    description: 'ID do usu·rio',
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
   id!: string;
 
   @ApiProperty({
-    description: 'Email do usu√°rio',
+    description: 'Email do usu·rio',
     example: 'usuario@example.com',
   })
   email!: string;
 
   @ApiProperty({
-    description: 'Nome completo do usu√°rio',
-    example: 'Jo√£o Silva',
+    description: 'Nome completo do usu·rio',
+    example: 'Jo„o Silva',
   })
   name!: string;
 
   @ApiProperty({
-    description: 'Role do usu√°rio',
+    description: 'Role do usu·rio',
     example: 'PROFESSIONAL',
   })
   role!: string;
 
   @ApiProperty({
-    description: 'ID do tenant (cl√≠nica)',
+    description: 'ID do tenant (clÌnica)',
     example: 'clinic-123',
     required: false,
   })
   tenantId?: string;
 
   @ApiProperty({
-    description: 'Data de cria√ß√£o da conta',
+    description: 'Data de criaÁ„o da conta',
     example: '2024-01-01T00:00:00Z',
   })
   createdAt!: string;

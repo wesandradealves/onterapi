@@ -13,6 +13,8 @@ export interface ValidateTwoFAInput {
     userAgent?: string;
     ip?: string;
     device?: string;
+    location?: string;
+    trustedDevice?: boolean;
   };
 }
 

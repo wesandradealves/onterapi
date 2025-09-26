@@ -1,4 +1,4 @@
-﻿import { ICurrentUser } from '../../../../domain/auth/interfaces/current-user.interface';
+import { ICurrentUser } from '../../../../domain/auth/interfaces/current-user.interface';
 import {
   CreateUserCommand,
   IUpdateUser,
@@ -12,9 +12,7 @@ export interface UserRequestContext {
   currentUser?: Pick<ICurrentUser, 'tenantId'> | null;
 }
 
-export const toCreateUserCommand = (
-  dto: CreateUserSchemaType,
-): CreateUserCommand => ({
+export const toCreateUserCommand = (dto: CreateUserSchemaType): CreateUserCommand => ({
   email: dto.email,
   password: dto.password,
   name: dto.name,
@@ -24,9 +22,7 @@ export const toCreateUserCommand = (
   tenantId: dto.tenantId,
 });
 
-export const toUpdateUserInput = (
-  dto: UpdateUserSchemaType,
-): IUpdateUser => ({
+export const toUpdateUserInput = (dto: UpdateUserSchemaType): IUpdateUser => ({
   name: dto.name,
   phone: dto.phone,
   isActive: dto.isActive,

@@ -37,7 +37,9 @@ export class UserOwnerGuard extends BaseGuard {
     }
 
     const attemptedTarget = targetSlug ?? targetUserId ?? 'desconhecido';
-    this.logger.warn(`${MESSAGES.GUARDS.ACCESS_DENIED}: ${user.email} tentou acessar ${attemptedTarget}`);
+    this.logger.warn(
+      `${MESSAGES.GUARDS.ACCESS_DENIED}: ${user.email} tentou acessar ${attemptedTarget}`,
+    );
 
     throw AuthErrorFactory.create(AuthErrorType.ACCESS_DENIED, {
       reason: MESSAGES.GUARDS.ACCESS_DENIED_OWN_DATA,

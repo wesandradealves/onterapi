@@ -1,4 +1,4 @@
-﻿import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import {
   ISignOutUseCase,
@@ -84,7 +84,7 @@ export class SignOutUseCase
     });
     await this.messageBus.publish(event);
 
-    this.logger.log(`Logout realizado para usuário ${input.userId}`);
+    this.logger.log(`Logout realizado para usu�rio ${input.userId}`);
     return output;
   }
 }

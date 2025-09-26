@@ -15,7 +15,9 @@ describe('ZodValidationPipe', () => {
     const pipe = new ZodValidationPipe(schema);
     const loggerSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
 
-    expect(() => pipe.transform({ name: '' }, { type: 'body' } as any)).toThrow(BadRequestException);
+    expect(() => pipe.transform({ name: '' }, { type: 'body' } as any)).toThrow(
+      BadRequestException,
+    );
     expect(loggerSpy).toHaveBeenCalledWith(expect.stringContaining('Zod validation errors'));
 
     loggerSpy.mockRestore();
@@ -41,4 +43,3 @@ describe('ZodValidationPipe', () => {
     expect(() => pipe.transform({}, { type: 'body' } as any)).toThrow('Validation failed');
   });
 });
-

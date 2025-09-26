@@ -11,7 +11,9 @@ describe('UserRepository', () => {
       } as unknown as Repository<UserEntity>;
 
       const userRepository = new UserRepository(repositoryMock);
-      const findByIdSpy = jest.spyOn(userRepository, 'findById').mockResolvedValue({} as UserEntity);
+      const findByIdSpy = jest
+        .spyOn(userRepository, 'findById')
+        .mockResolvedValue({} as UserEntity);
 
       await userRepository.update('user-id', { role: RolesEnum.SUPER_ADMIN });
 

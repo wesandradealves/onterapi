@@ -4,19 +4,20 @@ import { RolesEnum } from '@domain/auth/enums/roles.enum';
 describe('TenantGuard', () => {
   let guard: TenantGuard;
 
-  const buildContext = (user: any, requestOverride: any = {}) => ({
-    switchToHttp: () => ({
-      getRequest: () => ({ user, ...requestOverride }),
-    }),
-    getHandler: () => ({}),
-    getClass: () => ({}),
-  }) as any;
+  const buildContext = (user: any, requestOverride: any = {}) =>
+    ({
+      switchToHttp: () => ({
+        getRequest: () => ({ user, ...requestOverride }),
+      }),
+      getHandler: () => ({}),
+      getClass: () => ({}),
+    }) as any;
 
   beforeEach(() => {
     guard = new TenantGuard({} as any);
   });
 
-  it('permite quando usuário interno', () => {
+  it('permite quando usuï¿½rio interno', () => {
     const context = buildContext({ role: RolesEnum.SUPER_ADMIN });
     expect(guard.canActivate(context)).toBe(true);
   });
@@ -29,7 +30,7 @@ describe('TenantGuard', () => {
     expect(guard.canActivate(context)).toBe(true);
   });
 
-  it('lança quando tenant diferente', () => {
+  it('lanï¿½a quando tenant diferente', () => {
     const context = buildContext(
       { role: RolesEnum.PROFESSIONAL, tenantId: 'tenant-1', email: 'u@example.com' },
       { headers: { 'x-tenant-id': 'tenant-2' } },

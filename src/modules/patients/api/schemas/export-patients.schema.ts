@@ -1,4 +1,4 @@
-﻿import { z } from 'zod';
+import { z } from 'zod';
 
 export const exportPatientsSchema = z.object({
   format: z.enum(['pdf', 'csv', 'excel', 'vcard']),

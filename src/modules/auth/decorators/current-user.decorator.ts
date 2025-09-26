@@ -14,14 +14,25 @@ export interface ICurrentUser {
   createdAt?: string;
   updatedAt?: string;
   lastLoginAt?: string | null;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
+type RequestWithUser = {
+  user?: ICurrentUser;
+};
+
 export const CurrentUser = createParamDecorator(
-  (data: keyof ICurrentUser | undefined, ctx: ExecutionContext): ICurrentUser | any => {
-    const request = ctx.switchToHttp().getRequest();
+  (
+    data: keyof ICurrentUser | undefined,
+    ctx: ExecutionContext,
+  ): ICurrentUser | ICurrentUser[keyof ICurrentUser] | undefined => {
+    const request = ctx.switchToHttp().getRequest<RequestWithUser>();
     const user = request.user;
 
-    return data ? user?.[data] : user;
+    if (!data) {
+      return user;
+    }
+
+    return user ? user[data] : undefined;
   },
 );

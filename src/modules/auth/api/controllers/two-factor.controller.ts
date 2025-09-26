@@ -1,4 +1,4 @@
-﻿import {
+import {
   Body,
   Controller,
   HttpCode,
@@ -44,17 +44,17 @@ export class TwoFactorController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Validar cÃ³digo 2FA',
-    description: `Valida o cÃ³digo de autenticaÃ§Ã£o de dois fatores e retorna os tokens de acesso.
+    summary: 'Validar código 2FA',
+    description: `Valida o código de autenticação de dois fatores e retorna os tokens de acesso.
 
-**Roles:** PÃºblico`,
+**Roles:** Público`,
   })
   @ApiBody({
     type: ValidateTwoFADto,
-    description: 'Payload necessÃ¡rio para validar o cÃ³digo 2FA gerado apÃ³s o login.',
+    description: 'Payload necessário para validar o código 2FA gerado após o login.',
     examples: {
       padrao: {
-        summary: 'ValidaÃ§Ã£o padrÃ£o',
+        summary: 'Validação padrão',
         value: {
           tempToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
           code: '123456',
@@ -84,22 +84,14 @@ export class TwoFactorController {
 
     const input = toValidateTwoFAInput(dto, fingerprint);
 
-    return unwrapResult(
-      await this.validateTwoFAUseCase.execute(input),
-    ) as ValidateTwoFAResponseDto;
+    return unwrapResult(await this.validateTwoFAUseCase.execute(input)) as ValidateTwoFAResponseDto;
   }
 
   @Post('send')
   @ApiExcludeEndpoint()
   @Public()
   @HttpCode(HttpStatus.OK)
-  async sendTwoFA(
-    @Body(new ZodValidationPipe(sendTwoFAInputSchema)) dto: SendTwoFAInputDTO,
-  ) {
+  async sendTwoFA(@Body(new ZodValidationPipe(sendTwoFAInputSchema)) dto: SendTwoFAInputDTO) {
     return unwrapResult(await this.sendTwoFAUseCase.execute(toSendTwoFAInput(dto)));
   }
 }
-
-
-
-

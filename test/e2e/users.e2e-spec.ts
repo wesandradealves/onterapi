@@ -1,4 +1,4 @@
-﻿import { ExecutionContext, INestApplication, NotFoundException, Injectable } from '@nestjs/common';
+import { ExecutionContext, INestApplication, Injectable, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
@@ -11,14 +11,14 @@ import { UserOwnerGuard } from '@modules/users/guards/user-owner.guard';
 import { ICreateUserUseCase } from '@domain/users/interfaces/use-cases/create-user.use-case.interface';
 import { IFindAllUsersUseCase } from '@domain/users/interfaces/use-cases/find-all-users.use-case.interface';
 import {
-  IFindUserBySlugUseCase,
   FindUserBySlugUseCaseToken,
+  IFindUserBySlugUseCase,
 } from '@domain/users/interfaces/use-cases/find-user-by-slug.use-case.interface';
 import { IUpdateUserUseCase } from '@domain/users/interfaces/use-cases/update-user.use-case.interface';
 import { IDeleteUserUseCase } from '@domain/users/interfaces/use-cases/delete-user.use-case.interface';
 import { CreateUserCommand, IUpdateUser, IUserFilters } from '@domain/users/types/user.types';
 import { UserEntity } from '@infrastructure/auth/entities/user.entity';
-import { success, failure, Result } from '@shared/types/result.type';
+import { failure, Result, success } from '@shared/types/result.type';
 
 const DEFAULT_TENANT_ID = '550e8400-e29b-41d4-a716-446655440000';
 
@@ -98,7 +98,7 @@ class InMemoryUsersStore {
   public update(slug: string, data: IUpdateUser): UserEntity {
     const user = this.findBySlug(slug);
     if (!user) {
-      throw new NotFoundException('Usuário não encontrado');
+      throw new NotFoundException('Usu�rio n�o encontrado');
     }
 
     if (data.name) {
@@ -173,7 +173,7 @@ class InMemoryFindUserBySlugUseCase implements IFindUserBySlugUseCase {
   async execute(slug: string): Promise<Result<UserEntity>> {
     const user = this.store.findBySlug(slug);
     if (!user) {
-      return failure(new NotFoundException('Usuário não encontrado'));
+      return failure(new NotFoundException('Usu�rio n�o encontrado'));
     }
     return success(user);
   }
@@ -207,7 +207,7 @@ describe('UsersController (e2e)', () => {
     supabaseId: 'supabase-seed',
     slug: 'joao-silva',
     email: 'joao@clinic.com',
-    name: 'João Silva',
+    name: 'Jo�o Silva',
     cpf: '52998224725',
     phone: '11999990000',
     role: RolesEnum.PROFESSIONAL,
@@ -293,7 +293,7 @@ describe('UsersController (e2e)', () => {
     await app.close();
   });
 
-  it('lista usuários existentes com paginação padrão', async () => {
+  it('lista usu�rios existentes com pagina��o padr�o', async () => {
     await request(app.getHttpServer())
       .get('/users')
       .expect(200)
@@ -303,7 +303,7 @@ describe('UsersController (e2e)', () => {
       });
   });
 
-  it('cria, atualiza e remove um usuário mantendo cobertura do fluxo completo', async () => {
+  it('cria, atualiza e remove um usu�rio mantendo cobertura do fluxo completo', async () => {
     // Create
     const createResponse = await request(app.getHttpServer())
       .post('/users')
@@ -347,22 +347,3 @@ describe('UsersController (e2e)', () => {
     await request(app.getHttpServer()).get(`/users/${slug}`).expect(404);
   });
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
