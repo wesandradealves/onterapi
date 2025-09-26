@@ -4,16 +4,14 @@ import { RolesEnum } from '@domain/auth/enums/roles.enum';
 import { MESSAGES } from '@shared/constants/messages.constants';
 
 describe('UserOwnerGuard', () => {
-  const buildContext = (
-    user: any,
-    params: Record<string, string | undefined>,
-  ): ExecutionContext => ({
-    switchToHttp: () => ({
-      getRequest: () => ({ params, user }),
-    }),
-    getHandler: () => ({}),
-    getClass: () => ({}),
-  }) as unknown as ExecutionContext;
+  const buildContext = (user: any, params: Record<string, string | undefined>): ExecutionContext =>
+    ({
+      switchToHttp: () => ({
+        getRequest: () => ({ params, user }),
+      }),
+      getHandler: () => ({}),
+      getClass: () => ({}),
+    }) as unknown as ExecutionContext;
 
   const guard = new UserOwnerGuard();
 
@@ -23,10 +21,7 @@ describe('UserOwnerGuard', () => {
   });
 
   it('permite acesso quando userId corresponde', () => {
-    const context = buildContext(
-      { id: 'user-1', role: RolesEnum.PROFESSIONAL },
-      { id: 'user-1' },
-    );
+    const context = buildContext({ id: 'user-1', role: RolesEnum.PROFESSIONAL }, { id: 'user-1' });
     expect(guard.canActivate(context)).toBe(true);
   });
 
@@ -38,9 +33,14 @@ describe('UserOwnerGuard', () => {
     expect(guard.canActivate(context)).toBe(true);
   });
 
-  it('lança quando não possui permissão', () => {
+  it('lanï¿½a quando nï¿½o possui permissï¿½o', () => {
     const context = buildContext(
-      { id: 'user-1', metadata: { slug: 'user-slug' }, role: RolesEnum.PROFESSIONAL, email: 'u@example.com' },
+      {
+        id: 'user-1',
+        metadata: { slug: 'user-slug' },
+        role: RolesEnum.PROFESSIONAL,
+        email: 'u@example.com',
+      },
       { slug: 'other-slug' },
     );
     expect(() => guard.canActivate(context)).toThrowError(MESSAGES.GUARDS.ACCESS_DENIED_OWN_DATA);

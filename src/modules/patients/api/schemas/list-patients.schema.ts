@@ -2,7 +2,12 @@ import { z } from 'zod';
 
 const statusEnum = z.enum(['new', 'active', 'inactive', 'in_treatment', 'finished']);
 const riskLevelEnum = z.enum(['low', 'medium', 'high']);
-const quickFilterEnum = z.enum(['inactive_30_days', 'no_anamnesis', 'needs_follow_up', 'birthday_week']);
+const quickFilterEnum = z.enum([
+  'inactive_30_days',
+  'no_anamnesis',
+  'needs_follow_up',
+  'birthday_week',
+]);
 
 const normalizeToArray = <T>(value: T | T[] | undefined): T[] | undefined => {
   if (value === undefined) {

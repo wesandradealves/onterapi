@@ -191,5 +191,3 @@ describe('GetPatientUseCase', () => {
     expect(repository.findSummary).not.toHaveBeenCalled();
   });
 });
-
-

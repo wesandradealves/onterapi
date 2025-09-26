@@ -1,4 +1,4 @@
-﻿import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ArchivePatientDto {
   @ApiPropertyOptional({

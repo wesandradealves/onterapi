@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { UserEntity } from '../../auth/entities/user.entity';
 import { IUserRepository } from '../../../domain/users/interfaces/repositories/user.repository.interface';
 import { AuthErrorFactory } from '../../../shared/factories/auth-error.factory';
@@ -118,7 +119,7 @@ export class UserRepository implements IUserRepository {
       }
     }
 
-    await this.repository.update(id, payload);
+    await this.repository.update(id, payload as QueryDeepPartialEntity<UserEntity>);
     const updated = await this.findById(id);
     if (!updated) {
       throw AuthErrorFactory.userNotFound();

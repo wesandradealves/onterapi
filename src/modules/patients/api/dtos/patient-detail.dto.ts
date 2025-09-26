@@ -1,10 +1,11 @@
-﻿import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { PatientDetailPatientDto } from './patient-response.dto';
 
 export class PatientDetailSummaryDto {
   @ApiProperty({ description: 'Total de consultas', example: 25 })
   appointments!: number;
 
-  @ApiProperty({ description: 'Consultas concluídas', example: 22 })
+  @ApiProperty({ description: 'Consultas concluidas', example: 22 })
   completedAppointments!: number;
 
   @ApiProperty({ description: 'Cancelamentos', example: 1 })
@@ -18,8 +19,8 @@ export class PatientDetailSummaryDto {
 }
 
 export class PatientDetailDto {
-  @ApiProperty({ description: 'Dados do paciente', type: () => Object })
-  patient!: any;
+  @ApiProperty({ description: 'Dados do paciente', type: PatientDetailPatientDto })
+  patient!: PatientDetailPatientDto;
 
   @ApiProperty({ description: 'Resumo', type: PatientDetailSummaryDto })
   summary!: {
@@ -29,7 +30,7 @@ export class PatientDetailDto {
   };
 
   @ApiProperty({ description: 'Linha do tempo', isArray: true, type: () => Object })
-  timeline!: any[];
+  timeline!: Array<Record<string, unknown>>;
 
   @ApiPropertyOptional({ description: 'Insights sugeridos' })
   insights?: {
@@ -38,6 +39,6 @@ export class PatientDetailDto {
     risks?: string[];
   };
 
-  @ApiProperty({ description: 'Ações rápidas sugeridas', isArray: true, type: String })
+  @ApiProperty({ description: 'Acoes rapidas sugeridas', isArray: true, type: String })
   quickActions!: string[];
 }

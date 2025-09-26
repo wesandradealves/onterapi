@@ -1,5 +1,4 @@
 ﻿import {
-  BadRequestException,
   Body,
   Controller,
   Get,
@@ -23,6 +22,18 @@ import {
 } from '@nestjs/swagger';
 
 import { SignInDto, SignInResponseDto } from '../dtos/sign-in.dto';
+import {
+  ResendVerificationEmailDto,
+  ResendVerificationEmailResponseDto,
+} from '../dtos/resend-verification.dto';
+import {
+  RequestPasswordResetDto,
+  RequestPasswordResetResponseDto,
+} from '../dtos/request-password-reset.dto';
+import {
+  ConfirmPasswordResetDto,
+  ConfirmPasswordResetResponseDto,
+} from '../dtos/confirm-password-reset.dto';
 import { RefreshTokenDto, RefreshTokenResponseDto } from '../dtos/refresh.dto';
 import { MeResponseDto, SignOutDto, SignOutResponseDto } from '../dtos/sign-out.dto';
 import { unwrapResult } from '../../../../shared/types/result.type';
@@ -31,6 +42,9 @@ import { ISignInUseCase } from '../../../../domain/auth/interfaces/use-cases/sig
 import { ISignOutUseCase } from '../../../../domain/auth/interfaces/use-cases/sign-out.use-case.interface';
 import { IRefreshTokenUseCase } from '../../../../domain/auth/interfaces/use-cases/refresh-token.use-case.interface';
 
+import { IResendVerificationEmailUseCase } from '../../../../domain/auth/interfaces/use-cases/resend-verification-email.use-case.interface';
+import { IRequestPasswordResetUseCase } from '../../../../domain/auth/interfaces/use-cases/request-password-reset.use-case.interface';
+import { IConfirmPasswordResetUseCase } from '../../../../domain/auth/interfaces/use-cases/confirm-password-reset.use-case.interface';
 import { ISupabaseAuthService } from '../../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
@@ -38,11 +52,30 @@ import { Public } from '../../decorators/public.decorator';
 import { CurrentUser, ICurrentUser } from '../../decorators/current-user.decorator';
 
 import { SignInInputDTO, signInInputSchema } from '../schemas/sign-in.schema';
+import {
+  resendVerificationEmailSchema,
+  ResendVerificationEmailSchemaType,
+} from '../schemas/resend-verification.schema';
+import {
+  requestPasswordResetSchema,
+  RequestPasswordResetSchemaType,
+} from '../schemas/request-password-reset.schema';
+import {
+  confirmPasswordResetSchema,
+  ConfirmPasswordResetSchemaType,
+} from '../schemas/confirm-password-reset.schema';
 import { RefreshTokenInputDTO, refreshTokenInputSchema } from '../schemas/refresh.schema';
 
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
 import { signOutSchema, SignOutSchemaType } from '../schemas/sign-out.schema';
-import { toSignInInput, toRefreshTokenInput, toSignOutInput } from '../mappers/auth-request.mapper';
+import {
+  toConfirmPasswordResetInput,
+  toRefreshTokenInput,
+  toRequestPasswordResetInput,
+  toResendVerificationEmailInput,
+  toSignInInput,
+  toSignOutInput,
+} from '../mappers/auth-request.mapper';
 import { AuthErrorFactory } from '../../../../shared/factories/auth-error.factory';
 import {
   maskEmailForLog,
@@ -62,10 +95,15 @@ export class AuthController {
     private readonly signOutUseCase: ISignOutUseCase,
     @Inject(IRefreshTokenUseCase)
     private readonly refreshTokenUseCase: IRefreshTokenUseCase,
+    @Inject(IResendVerificationEmailUseCase)
+    private readonly resendVerificationEmailUseCase: IResendVerificationEmailUseCase,
+    @Inject(IRequestPasswordResetUseCase)
+    private readonly requestPasswordResetUseCase: IRequestPasswordResetUseCase,
+    @Inject(IConfirmPasswordResetUseCase)
+    private readonly confirmPasswordResetUseCase: IConfirmPasswordResetUseCase,
     @Inject(ISupabaseAuthService)
     private readonly supabaseAuthService: ISupabaseAuthService,
   ) {}
-
   @Post('sign-in')
   @Public()
   @HttpCode(HttpStatus.OK)
@@ -163,6 +201,114 @@ export class AuthController {
     return unwrapResult(await this.refreshTokenUseCase.execute(input));
   }
 
+  @Post('verification/resend')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Reenviar email de verificacao',
+    description: 'Reenvia o link de verificacao para usuarios que ainda nao confirmaram o email.',
+  })
+  @ApiBody({
+    type: ResendVerificationEmailDto,
+    examples: {
+      default: {
+        summary: 'Reenvio padrao',
+        value: { email: 'usuario@example.com' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Resultado do reenvio',
+    type: ResendVerificationEmailResponseDto,
+  })
+  async resendVerificationEmail(
+    @Body(new ZodValidationPipe(resendVerificationEmailSchema))
+    dto: ResendVerificationEmailSchemaType,
+    @Ip() ip: string,
+    @Headers('user-agent') userAgent?: string,
+    @Headers('x-forwarded-for') forwardedFor?: string,
+  ) {
+    const requestIp = forwardedFor?.split(',')[0]?.trim() || ip;
+
+    const input = toResendVerificationEmailInput(dto, {
+      ip: requestIp,
+      userAgentHeader: userAgent,
+    });
+
+    return unwrapResult(await this.resendVerificationEmailUseCase.execute(input));
+  }
+
+  @Post('password/reset/request')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Solicitar reset de senha',
+    description: 'Envia as instrucoes de redefinicao de senha para o email informado.',
+  })
+  @ApiBody({
+    type: RequestPasswordResetDto,
+    examples: {
+      default: {
+        summary: 'Solicitacao padrao',
+        value: { email: 'usuario@example.com' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Resultado da solicitacao de reset',
+    type: RequestPasswordResetResponseDto,
+  })
+  async requestPasswordReset(
+    @Body(new ZodValidationPipe(requestPasswordResetSchema))
+    dto: RequestPasswordResetSchemaType,
+    @Ip() ip: string,
+    @Headers('user-agent') userAgent?: string,
+    @Headers('x-forwarded-for') forwardedFor?: string,
+  ) {
+    const requestIp = forwardedFor?.split(',')[0]?.trim() || ip;
+
+    const input = toRequestPasswordResetInput(dto, {
+      ip: requestIp,
+      userAgentHeader: userAgent,
+    });
+
+    return unwrapResult(await this.requestPasswordResetUseCase.execute(input));
+  }
+
+  @Post('password/reset/confirm')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Confirmar reset de senha',
+    description: 'Confirma a redefinicao de senha a partir do token enviado pelo Supabase.',
+  })
+  @ApiBody({
+    type: ConfirmPasswordResetDto,
+    examples: {
+      default: {
+        summary: 'Confirmacao padrao',
+        value: {
+          accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+          newPassword: 'SenhaForte123!',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Senha redefinida com sucesso',
+    type: ConfirmPasswordResetResponseDto,
+  })
+  async confirmPasswordReset(
+    @Body(new ZodValidationPipe(confirmPasswordResetSchema))
+    dto: ConfirmPasswordResetSchemaType,
+  ) {
+    const input = toConfirmPasswordResetInput(dto);
+
+    return unwrapResult(await this.confirmPasswordResetUseCase.execute(input));
+  }
   @Post('sign-out')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
@@ -304,7 +450,3 @@ export class AuthController {
     };
   }
 }
-
-
-
-

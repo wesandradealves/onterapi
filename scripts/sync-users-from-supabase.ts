@@ -6,7 +6,7 @@ import { readFileSync } from 'fs';
 import { slugify } from '../src/shared/utils/slug.util';
 import { randomUUID } from 'crypto';
 
-type Metadata = Record<string, any>;
+type Metadata = Record<string, unknown>;
 
 const loadEnv = () => {
   const envFile = resolve(__dirname, '../.env');

@@ -10,7 +10,11 @@ import {
 } from 'typeorm';
 import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
 
-import { mapRoleToDatabase, mapRoleToDomain, ROLE_DATABASE_VALUES } from '../../../shared/utils/role.utils';
+import {
+  mapRoleToDatabase,
+  mapRoleToDomain,
+  ROLE_DATABASE_VALUES,
+} from '../../../shared/utils/role.utils';
 import { UserSessionEntity } from './user-session.entity';
 import { UserPermissionEntity } from './user-permission.entity';
 
@@ -45,7 +49,13 @@ export class UserEntity {
   @Column({ type: 'varchar', length: 20, nullable: true })
   phone?: string;
 
-  @Column({ name: 'role', type: 'enum', enum: ROLE_DATABASE_VALUES, enumName: 'user_role', default: 'patient' })
+  @Column({
+    name: 'role',
+    type: 'enum',
+    enum: ROLE_DATABASE_VALUES,
+    enumName: 'user_role',
+    default: 'patient',
+  })
   private roleInternal!: string;
 
   get role(): RolesEnum {
@@ -100,7 +110,7 @@ export class UserEntity {
   lockedUntil?: Date;
 
   @Column({ type: 'jsonb', nullable: true })
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
@@ -117,9 +127,3 @@ export class UserEntity {
   @OneToMany(() => UserPermissionEntity, (permission) => permission.user)
   permissions!: UserPermissionEntity[];
 }
-
-
-
-
-
-

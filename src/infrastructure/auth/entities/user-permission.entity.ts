@@ -36,7 +36,7 @@ export class UserPermissionEntity {
   expiresAt?: Date;
 
   @Column({ type: 'jsonb', nullable: true })
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

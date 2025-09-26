@@ -7,7 +7,7 @@ export class CreateUserInputDTO {
 
   @ApiProperty({
     description: 'Senha forte (minimo 8 caracteres, maiuscula, minuscula, numero e especial)',
-    example: 'SenhaForte123!'
+    example: 'SenhaForte123!',
   })
   password!: string;
 
@@ -17,26 +17,33 @@ export class CreateUserInputDTO {
   @ApiProperty({ description: 'CPF sem formatacao (apenas numeros)', example: '12345678901' })
   cpf!: string;
 
-  @ApiProperty({ description: 'Telefone com DDD (apenas numeros)', example: '11999999999', required: false })
+  @ApiProperty({
+    description: 'Telefone com DDD (apenas numeros)',
+    example: '11999999999',
+    required: false,
+  })
   phone?: string;
 
   @ApiProperty({
     description: 'Role/Perfil do usuario no sistema',
     enum: RolesEnum,
-    example: RolesEnum.PATIENT
+    example: RolesEnum.PATIENT,
   })
   role!: RolesEnum;
 
   @ApiProperty({
     description: 'ID do tenant (clinica) ao qual o usuario pertence',
     example: '550e8400-e29b-41d4-a716-446655440000',
-    required: false
+    required: false,
   })
   tenantId?: string;
 }
 
 export class CreateUserResponseDto {
-  @ApiProperty({ description: 'ID unico do usuario', example: '550e8400-e29b-41d4-a716-446655440001' })
+  @ApiProperty({
+    description: 'ID unico do usuario',
+    example: '550e8400-e29b-41d4-a716-446655440001',
+  })
   id!: string;
 
   @ApiProperty({ description: 'Slug unico do usuario', example: 'joao-silva' })
@@ -54,13 +61,17 @@ export class CreateUserResponseDto {
   @ApiProperty({ description: 'Telefone com DDD', example: '11999999999', required: false })
   phone?: string;
 
-  @ApiProperty({ description: 'Role/Perfil do usuario', enum: RolesEnum, example: RolesEnum.PATIENT })
+  @ApiProperty({
+    description: 'Role/Perfil do usuario',
+    enum: RolesEnum,
+    example: RolesEnum.PATIENT,
+  })
   role!: RolesEnum;
 
   @ApiProperty({
     description: 'ID do tenant (clinica)',
     example: '550e8400-e29b-41d4-a716-446655440000',
-    required: false
+    required: false,
   })
   tenantId?: string;
 

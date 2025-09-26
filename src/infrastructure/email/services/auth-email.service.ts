@@ -257,5 +257,3 @@ export class AuthEmailService {
     `;
   }
 }
-
-

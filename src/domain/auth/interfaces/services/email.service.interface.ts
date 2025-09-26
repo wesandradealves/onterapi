@@ -12,6 +12,8 @@ export interface IEmailService {
   sendSuspiciousLoginAlert(data: SuspiciousLoginData): Promise<Result<void>>;
 
   sendLoginAlertEmail(data: LoginAlertData): Promise<Result<void>>;
+
+  sendPasswordChangedEmail(data: PasswordChangedEmailData): Promise<Result<void>>;
 }
 
 export interface VerificationEmailData {
@@ -59,6 +61,14 @@ export interface LoginAlertData {
   userAgent: string;
   location: string;
   device: string;
+}
+
+export interface PasswordChangedEmailData {
+  to: string;
+  name: string;
+  changedAt: Date;
+  ip?: string;
+  device?: string;
 }
 
 export const IEmailService = Symbol('IEmailService');

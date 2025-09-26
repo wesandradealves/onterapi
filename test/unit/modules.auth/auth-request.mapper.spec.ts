@@ -2,7 +2,10 @@
   extractAccessToken,
   normalizeDeviceInfo,
   RequestFingerprint,
+  toConfirmPasswordResetInput,
   toRefreshTokenInput,
+  toRequestPasswordResetInput,
+  toResendVerificationEmailInput,
   toSendTwoFAInput,
   toSignInInput,
   toSignOutInput,
@@ -10,10 +13,7 @@
 } from '@modules/auth/api/mappers/auth-request.mapper';
 import { SignInInputDTO } from '@modules/auth/api/schemas/sign-in.schema';
 import { RefreshTokenInputDTO } from '@modules/auth/api/schemas/refresh.schema';
-import {
-  SendTwoFAInputDTO,
-  ValidateTwoFAInputDTO,
-} from '@modules/auth/api/schemas/two-fa.schema';
+import { SendTwoFAInputDTO, ValidateTwoFAInputDTO } from '@modules/auth/api/schemas/two-fa.schema';
 import { SignOutSchemaType } from '@modules/auth/api/schemas/sign-out.schema';
 
 describe('auth-request.mapper', () => {
@@ -128,6 +128,7 @@ describe('auth-request.mapper', () => {
       method: 'email',
     });
   });
+
   it('descarta header array vazio ao montar payload de sign-in', () => {
     const dto: SignInInputDTO = {
       email: 'user@example.com',
@@ -144,7 +145,43 @@ describe('auth-request.mapper', () => {
     const normalized = normalizeDeviceInfo({ userAgent: '   ' }, { ip: ' \t ' });
     expect(normalized).toEqual({});
   });
+
+  it('monta input de reenvio de verificacao usando cabecalho', () => {
+    const input = toResendVerificationEmailInput({ email: 'user@example.com' } as any, {
+      ip: ' 10.0.0.1 ',
+      userAgentHeader: ' Mozilla ',
+    });
+
+    expect(input).toEqual({
+      email: 'user@example.com',
+      requesterIp: '10.0.0.1',
+      userAgent: 'Mozilla',
+    });
+  });
+
+  it('monta input de solicitacao de reset com sanitizacao', () => {
+    const input = toRequestPasswordResetInput({ email: 'reset@example.com' } as any, {
+      ip: ' 172.16.0.5 ',
+      userAgentHeader: ['CustomAgent'],
+    });
+
+    expect(input).toEqual({
+      email: 'reset@example.com',
+      requesterIp: '172.16.0.5',
+      userAgent: 'CustomAgent',
+    });
+  });
+
+  it('monta input de confirmacao de reset com dados basicos', () => {
+    const dto = {
+      accessToken: 'access-token',
+      newPassword: 'NovaSenha123!',
+    } as any;
+
+    expect(toConfirmPasswordResetInput(dto)).toEqual({
+      accessToken: 'access-token',
+      newPassword: 'NovaSenha123!',
+      refreshToken: undefined,
+    });
+  });
 });
-
-
-

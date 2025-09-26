@@ -1,4 +1,4 @@
-﻿import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import { IArchivePatientUseCase } from '../../../domain/patients/interfaces/use-cases/archive-patient.use-case.interface';
@@ -40,7 +40,11 @@ export class ArchivePatientUseCase
     }
 
     const role = mapRoleToDomain(input.requesterRole);
-    const allowedRoles: RolesEnum[] = [RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN];
+    const allowedRoles: RolesEnum[] = [
+      RolesEnum.CLINIC_OWNER,
+      RolesEnum.MANAGER,
+      RolesEnum.SUPER_ADMIN,
+    ];
 
     if (!role || !allowedRoles.includes(role)) {
       throw PatientErrorFactory.unauthorized();
@@ -67,4 +71,3 @@ export class ArchivePatientUseCase
     await this.messageBus.publish(event);
   }
 }
-

@@ -15,22 +15,20 @@ export const createUserSchema = z.object({
   name: z.string().min(3, 'Nome deve ter no mínimo 3 caracteres').max(255),
   cpf: cpfValidator,
   phone: phoneValidator.optional(),
-  role: z
-    .string()
-    .transform((val, ctx) => {
-      const normalized = String(val).trim();
-      const mapped = mapRoleToDomain(normalized);
+  role: z.string().transform((val, ctx) => {
+    const normalized = String(val).trim();
+    const mapped = mapRoleToDomain(normalized);
 
-      if (!mapped) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `Role inválido. Valores permitidos: ${validRoles.join(', ')}`,
-        });
-        return z.NEVER;
-      }
+    if (!mapped) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Role inválido. Valores permitidos: ${validRoles.join(', ')}`,
+      });
+      return z.NEVER;
+    }
 
-      return mapped;
-    }),
+    return mapped;
+  }),
   tenantId: z.string().uuid('ID do tenant deve ser um UUID válido').optional(),
 });
 

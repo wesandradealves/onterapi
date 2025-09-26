@@ -1,12 +1,13 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+﻿import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, QueryRunner, Repository } from 'typeorm';
+import { QueryRunner, Repository } from 'typeorm';
 import { IAuthRepository } from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
 import { UserEntity } from '../entities/user.entity';
 import { UserSessionEntity } from '../entities/user-session.entity';
 import { TwoFactorCodeEntity } from '../entities/two-factor-code.entity';
 import { LoginAttemptEntity } from '../entities/login-attempt.entity';
 import { AuthErrorFactory } from '../../../shared/factories/auth-error.factory';
+import { DeviceInfo } from '../../../shared/types/device.types';
 import { mapRoleToDatabase } from '../../../shared/utils/role.utils';
 
 @Injectable()
@@ -132,7 +133,7 @@ export class AuthRepository implements IAuthRepository {
     userId: string,
     token: string,
     expiresAt: Date,
-    deviceInfo?: any,
+    deviceInfo?: DeviceInfo,
     runner?: QueryRunner,
   ): Promise<void> {
     const manager = runner?.manager || this.sessionRepository.manager;
@@ -215,7 +216,7 @@ export class AuthRepository implements IAuthRepository {
     await manager.save(twoFactorCode);
   }
 
-  async findValidTwoFactorCode(userId: string): Promise<any> {
+  async findValidTwoFactorCode(userId: string): Promise<TwoFactorCodeEntity | null> {
     const twoFactorCode = await this.twoFactorCodeRepository
       .createQueryBuilder('code')
       .where('code.userId = :userId', { userId })
@@ -229,7 +230,7 @@ export class AuthRepository implements IAuthRepository {
   }
 
   async validateTwoFactorCode(userId: string, code: string): Promise<boolean> {
-    const anyCode = await this.twoFactorCodeRepository
+    const codeRecord = await this.twoFactorCodeRepository
       .createQueryBuilder('code')
       .where('code.userId = :userId', { userId })
       .andWhere('code.expiresAt > :now', { now: new Date() })
@@ -237,25 +238,27 @@ export class AuthRepository implements IAuthRepository {
       .orderBy('code.createdAt', 'DESC')
       .getOne();
 
-    if (!anyCode) {
+    if (!codeRecord) {
       return false;
     }
 
-    if (anyCode.attempts >= anyCode.maxAttempts) {
+    if (codeRecord.attempts >= codeRecord.maxAttempts) {
       throw new UnauthorizedException(
         'Conta bloqueada temporariamente. Muitas tentativas erradas.',
       );
     }
 
-    if (anyCode.code !== code) {
+    if (codeRecord.code !== code) {
       await this.twoFactorCodeRepository
         .createQueryBuilder()
         .update(TwoFactorCodeEntity)
         .set({ attempts: () => 'attempts + 1' })
-        .where('id = :id', { id: anyCode.id })
+        .where('id = :id', { id: codeRecord.id })
         .execute();
 
-      const updatedCode = await this.twoFactorCodeRepository.findOne({ where: { id: anyCode.id } });
+      const updatedCode = await this.twoFactorCodeRepository.findOne({
+        where: { id: codeRecord.id },
+      });
       if (updatedCode && updatedCode.attempts >= updatedCode.maxAttempts) {
         throw new UnauthorizedException(
           'Conta bloqueada temporariamente. Muitas tentativas erradas.',
@@ -265,7 +268,7 @@ export class AuthRepository implements IAuthRepository {
       return false;
     }
 
-    const twoFactorCode = anyCode;
+    const twoFactorCode = codeRecord;
 
     await this.twoFactorCodeRepository
       .createQueryBuilder()

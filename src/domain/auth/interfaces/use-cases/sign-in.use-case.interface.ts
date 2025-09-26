@@ -12,6 +12,8 @@ export interface SignInInput {
     userAgent?: string;
     ip?: string;
     device?: string;
+    location?: string;
+    trustedDevice?: boolean;
   };
 }
 

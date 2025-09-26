@@ -1,4 +1,4 @@
-﻿import { ZodError } from 'zod';
+import { ZodError } from 'zod';
 import { signOutSchema } from '@modules/auth/api/schemas/sign-out.schema';
 
 describe('signOutSchema', () => {

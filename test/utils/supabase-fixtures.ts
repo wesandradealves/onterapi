@@ -1,4 +1,4 @@
-﻿export interface SupabaseUserFixture {
+export interface SupabaseUserFixture {
   id?: string;
   email?: string;
   email_confirmed_at?: string | null;

@@ -51,7 +51,10 @@ export default class HttpExceptionFilter implements ExceptionFilter {
       error = exception.name;
     }
 
-    this.logger.error(`HTTP ${status} Error: ${message}`, exception instanceof Error ? exception.stack : '');
+    this.logger.error(
+      `HTTP ${status} Error: ${message}`,
+      exception instanceof Error ? exception.stack : '',
+    );
 
     response.status(status).json({
       statusCode: status,

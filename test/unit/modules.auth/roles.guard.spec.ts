@@ -6,13 +6,14 @@ describe('RolesGuard', () => {
   let reflector: jest.Mocked<Reflector>;
   let guard: RolesGuard;
 
-  const buildContext = (user: any) => ({
-    switchToHttp: () => ({
-      getRequest: () => ({ user }),
-    }),
-    getHandler: () => ({}),
-    getClass: () => ({}),
-  }) as any;
+  const buildContext = (user: any) =>
+    ({
+      switchToHttp: () => ({
+        getRequest: () => ({ user }),
+      }),
+      getHandler: () => ({}),
+      getClass: () => ({}),
+    }) as any;
 
   beforeEach(() => {
     reflector = {
@@ -21,18 +22,18 @@ describe('RolesGuard', () => {
     guard = new RolesGuard(reflector);
   });
 
-  it('permite acesso quando handler não especifica roles', () => {
+  it('permite acesso quando handler nï¿½o especifica roles', () => {
     reflector.getAllAndOverride.mockReturnValue(undefined);
     expect(guard.canActivate(buildContext({ role: RolesEnum.PROFESSIONAL }))).toBe(true);
   });
 
-  it('permite acesso quando role está autorizada', () => {
+  it('permite acesso quando role estï¿½ autorizada', () => {
     reflector.getAllAndOverride.mockReturnValue([RolesEnum.SUPER_ADMIN]);
     const context = buildContext({ role: RolesEnum.SUPER_ADMIN });
     expect(guard.canActivate(context)).toBe(true);
   });
 
-  it('bloqueia acesso para role não autorizada', () => {
+  it('bloqueia acesso para role nï¿½o autorizada', () => {
     reflector.getAllAndOverride.mockReturnValue([RolesEnum.SUPER_ADMIN]);
     const context = buildContext({ role: RolesEnum.PROFESSIONAL, email: 'u@example.com' });
     expect(() => guard.canActivate(context)).toThrow(/insuficiente/);

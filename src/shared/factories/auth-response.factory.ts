@@ -4,9 +4,9 @@ import { v4 as uuidv4 } from 'uuid';
 export interface AuthUser {
   id: string;
   email: string;
-  name?: string;
-  role?: string;
-  tenantId?: string | null;
+  name: string;
+  role: string;
+  tenantId?: string;
 }
 
 export interface AuthTokens {
@@ -41,9 +41,9 @@ export function createUserResponse(user: {
   return {
     id: user.id,
     email: user.email,
-    name: user.name,
-    role: user.role,
-    tenantId: user.tenantId,
+    name: user.name ?? '',
+    role: user.role ?? '',
+    tenantId: user.tenantId ?? undefined,
   };
 }
 

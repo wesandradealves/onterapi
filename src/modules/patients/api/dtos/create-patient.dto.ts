@@ -1,4 +1,18 @@
-﻿import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+export class PatientContinuousMedicationDto {
+  @ApiProperty({ description: 'Nome da medicacao', example: 'Losartana' })
+  name!: string;
+
+  @ApiPropertyOptional({ description: 'Dosagem prescrita', example: '50mg' })
+  dosage?: string;
+
+  @ApiPropertyOptional({ description: 'Frequencia de uso', example: '2x ao dia' })
+  frequency?: string;
+
+  @ApiPropertyOptional({ description: 'Condicao associada', example: 'Hipertensao' })
+  condition?: string;
+}
 
 export class CreatePatientDto {
   @ApiPropertyOptional({
@@ -61,8 +75,23 @@ export class CreatePatientDto {
   @ApiPropertyOptional({ description: 'Condicoes cronicas', example: ['diabetes tipo 2'] })
   chronicConditions?: string[];
 
+  @ApiPropertyOptional({ description: 'Condicoes pre-existentes', example: ['hipertensao'] })
+  preExistingConditions?: string[];
+
   @ApiPropertyOptional({ description: 'Medicacoes em uso', example: ['Metformina 850mg'] })
   medications?: string[];
+
+  @ApiPropertyOptional({
+    description: 'Medicacao continua informada no cadastro',
+    type: () => [PatientContinuousMedicationDto],
+  })
+  continuousMedications?: PatientContinuousMedicationDto[];
+
+  @ApiPropertyOptional({ description: 'Altura em centimetros', example: 172 })
+  heightCm?: number;
+
+  @ApiPropertyOptional({ description: 'Peso em quilogramas', example: 68.5 })
+  weightKg?: number;
 
   @ApiPropertyOptional({ description: 'Observacoes clinicas relevantes' })
   observations?: string;
@@ -78,4 +107,13 @@ export class CreatePatientDto {
 
   @ApiPropertyOptional({ description: 'Status inicial do paciente', example: 'active' })
   status?: string;
+
+  @ApiProperty({ description: 'Confirmacao de aceite dos termos de uso', example: true })
+  acceptedTerms!: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Data/hora do aceite (ISO)',
+    example: '2024-09-20T18:45:00Z',
+  })
+  acceptedTermsAt?: string;
 }

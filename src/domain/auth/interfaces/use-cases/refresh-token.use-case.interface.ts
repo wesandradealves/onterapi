@@ -10,6 +10,8 @@ export interface RefreshTokenInput {
     userAgent?: string;
     ip?: string;
     device?: string;
+    location?: string;
+    trustedDevice?: boolean;
   };
 }
 

@@ -1,4 +1,3 @@
-
 export interface ITwoFactorService {
   generateSecret(userId: string, email: string): TwoFactorSecret;
 

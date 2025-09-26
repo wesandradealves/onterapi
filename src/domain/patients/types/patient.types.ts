@@ -1,4 +1,4 @@
-export type PatientStatus = 'new' | 'active' | 'inactive' | 'in_treatment' | 'finished';
+﻿export type PatientStatus = 'new' | 'active' | 'inactive' | 'in_treatment' | 'finished';
 
 export type PatientRiskLevel = 'low' | 'medium' | 'high';
 
@@ -21,13 +21,24 @@ export interface PatientContact {
   emergencyContactPhone?: string;
 }
 
+export interface PatientContinuousMedication {
+  name: string;
+  dosage?: string;
+  frequency?: string;
+  condition?: string;
+}
+
 export interface PatientMedicalInfo {
   allergies?: string[];
   chronicConditions?: string[];
+  preExistingConditions?: string[];
   medications?: string[];
+  continuousMedications?: PatientContinuousMedication[];
   observations?: string;
   bloodType?: string;
   lifestyle?: string;
+  heightCm?: number;
+  weightKg?: number;
 }
 
 export interface PatientTag {
@@ -57,6 +68,8 @@ export interface Patient {
   riskLevel?: PatientRiskLevel;
   lastAppointmentAt?: Date;
   nextAppointmentAt?: Date;
+  acceptedTerms: boolean;
+  acceptedTermsAt?: Date;
   createdAt: Date;
   updatedAt: Date;
   archivedAt?: Date;
@@ -84,6 +97,9 @@ export interface PatientListItem {
   riskLevel?: PatientRiskLevel;
   cpfMasked: string;
   contact: Pick<PatientContact, 'phone' | 'whatsapp' | 'email'>;
+  medical?: PatientMedicalInfo;
+  acceptedTerms: boolean;
+  acceptedTermsAt?: Date;
   professionalId?: string;
   professionalName?: string;
   nextAppointmentAt?: Date;
@@ -131,6 +147,8 @@ export interface CreatePatientInput {
   medical?: PatientMedicalInfo;
   tags?: string[];
   status?: PatientStatus;
+  acceptedTerms: boolean;
+  acceptedTermsAt?: Date;
 }
 
 export interface UpdatePatientInput {
@@ -148,6 +166,8 @@ export interface UpdatePatientInput {
   tags?: string[];
   riskLevel?: PatientRiskLevel;
   professionalId?: string | null;
+  acceptedTerms?: boolean;
+  acceptedTermsAt?: Date;
 }
 
 export interface TransferPatientInput {

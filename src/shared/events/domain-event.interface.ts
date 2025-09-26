@@ -1,14 +1,19 @@
-export interface DomainEvent<T = any> {
+export interface DomainEventMetadata {
+  userId?: string;
+  tenantId?: string;
+  correlationId?: string;
+  causationId?: string;
+  [key: string]: unknown;
+}
+
+export interface DomainEvent<
+  TPayload = Record<string, unknown>,
+  TMetadata extends DomainEventMetadata = DomainEventMetadata,
+> {
   eventId: string;
   eventName: string;
   aggregateId: string;
   occurredOn: Date;
-  payload: T;
-  metadata?: {
-    userId?: string;
-    tenantId?: string;
-    correlationId?: string;
-    causationId?: string;
-    [key: string]: any;
-  };
+  payload: TPayload;
+  metadata?: TMetadata;
 }

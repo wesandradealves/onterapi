@@ -24,7 +24,7 @@ export class SupabaseService {
     });
   }
 
-  async createUser(email: string, password: string, metadata?: any) {
+  async createUser(email: string, password: string, metadata?: Record<string, unknown>) {
     const { data, error } = await this.supabase.auth.admin.createUser({
       email,
       password,

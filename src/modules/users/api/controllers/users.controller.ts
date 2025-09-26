@@ -1,12 +1,12 @@
-Ôªøimport {
+import {
   Body,
   Controller,
   Delete,
   Get,
-  NotFoundException,
   HttpCode,
   HttpStatus,
   Inject,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -33,8 +33,8 @@ import { ICurrentUser } from '../../../../domain/auth/interfaces/current-user.in
 import { ICreateUserUseCase } from '../../../../domain/users/interfaces/use-cases/create-user.use-case.interface';
 import { IFindAllUsersUseCase } from '../../../../domain/users/interfaces/use-cases/find-all-users.use-case.interface';
 import {
-  IFindUserBySlugUseCase,
   FindUserBySlugUseCaseToken,
+  IFindUserBySlugUseCase,
 } from '../../../../domain/users/interfaces/use-cases/find-user-by-slug.use-case.interface';
 import { IUpdateUserUseCase } from '../../../../domain/users/interfaces/use-cases/update-user.use-case.interface';
 import { IDeleteUserUseCase } from '../../../../domain/users/interfaces/use-cases/delete-user.use-case.interface';
@@ -47,7 +47,11 @@ import { unwrapResult } from '../../../../shared/types/result.type';
 import { createUserSchema, CreateUserSchemaType } from '../schemas/create-user.schema';
 import { updateUserSchema, UpdateUserSchemaType } from '../schemas/update-user.schema';
 import { listUsersSchema, ListUsersSchema } from '../schemas/list-users.schema';
-import { toCreateUserCommand, toUpdateUserInput, toUserFilters } from '../mappers/user-request.mapper';
+import {
+  toCreateUserCommand,
+  toUpdateUserInput,
+  toUserFilters,
+} from '../mappers/user-request.mapper';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
 
 @ApiTags('Users')
@@ -70,39 +74,39 @@ export class UsersController {
   @Public()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
-    summary: 'Criar novo usu√°rio',
-    description: `Cadastro de novo usu√°rio no sistema.
+    summary: 'Criar novo usu·rio',
+    description: `Cadastro de novo usu·rio no sistema.
 
 **Funcionalidades:**
-- Cria usu√°rio no Supabase Auth
+- Cria usu·rio no Supabase Auth
 - Valida CPF brasileiro
 - Valida unicidade de email
-- Define role e permiss√µes
+- Define role e permissıes
 - Auto-confirma email para desenvolvimento
 
 **Emails enviados:**
-- Email de verifica√ß√£o com link para confirmar conta
-- Email de boas-vindas com informa√ß√µes da plataforma
+- Email de verificaÁ„o com link para confirmar conta
+- Email de boas-vindas com informaÁıes da plataforma
 
-**Roles dispon√≠veis:**
+**Roles disponÌveis:**
 - PATIENT: Paciente
-- PROFESSIONAL: Profissional de sa√∫de
-- SECRETARY: Secret√°ria
-- CLINIC_OWNER: Propriet√°rio de cl√≠nica
+- PROFESSIONAL: Profissional de sa˙de
+- SECRETARY: Secret·ria
+- CLINIC_OWNER: Propriet·rio de clÌnica
 - SUPER_ADMIN: Administrador do sistema
 
-**Roles:** P√∫blico`,
+**Roles:** P˙blico`,
   })
   @ApiBody({
     type: CreateUserInputDTO,
-    description: 'Dados do novo usu√°rio',
+    description: 'Dados do novo usu·rio',
     examples: {
       patient: {
         summary: 'Paciente',
         value: {
           email: 'joao.silva@email.com',
           password: 'SenhaForte123!',
-          name: 'Jo√£o Silva',
+          name: 'Jo„o Silva',
           cpf: '12345678901',
           phone: '11999999999',
           role: 'PATIENT',
@@ -124,12 +128,12 @@ export class UsersController {
   })
   @ApiResponse({
     status: 201,
-    description: 'Usu√°rio criado com sucesso',
+    description: 'Usu·rio criado com sucesso',
     type: CreateUserResponseDto,
   })
   @ApiResponse({
     status: 409,
-    description: 'Email ou CPF j√° cadastrado',
+    description: 'Email ou CPF j· cadastrado',
   })
   async create(
     @Body(new ZodValidationPipe(createUserSchema)) dto: CreateUserSchemaType,
@@ -144,8 +148,8 @@ export class UsersController {
   @Roles(RolesEnum.SUPER_ADMIN, RolesEnum.ADMIN_SUPORTE)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Listar todos usu√°rios',
-    description: `Apenas administradores podem listar todos os usu√°rios.
+    summary: 'Listar todos usu·rios',
+    description: `Apenas administradores podem listar todos os usu·rios.
 
 **Roles:** SUPER_ADMIN, ADMIN_SUPORTE`,
   })
@@ -153,14 +157,14 @@ export class UsersController {
     name: 'page',
     required: false,
     type: Number,
-    description: 'P√°gina da listagem',
+    description: 'P·gina da listagem',
     example: 1,
   })
   @ApiQuery({
     name: 'limit',
     required: false,
     type: Number,
-    description: 'Limite de resultados por p√°gina',
+    description: 'Limite de resultados por p·gina',
     example: 20,
   })
   @ApiQuery({
@@ -174,7 +178,7 @@ export class UsersController {
     name: 'tenantId',
     required: false,
     type: String,
-    description: 'Filtrar por tenant (cl√≠nica)',
+    description: 'Filtrar por tenant (clÌnica)',
     example: '550e8400-e29b-41d4-a716-446655440000',
   })
   @ApiQuery({
@@ -186,7 +190,7 @@ export class UsersController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Lista de usu√°rios retornada com sucesso',
+    description: 'Lista de usu·rios retornada com sucesso',
     type: ListUsersResponseDto,
   })
   async findAll(
@@ -228,7 +232,7 @@ export class UsersController {
     const user = unwrapResult(await this.findUserBySlugUseCase.execute(slug));
 
     if (!user) {
-      throw new NotFoundException('Usu√°rio n√£o encontrado');
+      throw new NotFoundException('Usu·rio n„o encontrado');
     }
 
     return UserPresenter.toResponse(user);
@@ -255,7 +259,7 @@ export class UsersController {
       updateName: {
         summary: 'Atualizar nome',
         value: {
-          name: 'Jo√£o Silva Santos',
+          name: 'Jo„o Silva Santos',
         },
       },
       updatePhone: {
@@ -265,7 +269,7 @@ export class UsersController {
         },
       },
       deactivate: {
-        summary: 'Desativar usu√°rio',
+        summary: 'Desativar usu·rio',
         value: {
           isActive: false,
         },
@@ -283,7 +287,7 @@ export class UsersController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Usu√°rio atualizado com sucesso',
+    description: 'Usu·rio atualizado com sucesso',
     type: UserResponseDto,
   })
   async update(
@@ -292,7 +296,9 @@ export class UsersController {
     @CurrentUser() currentUser: ICurrentUser,
   ): Promise<UserResponseDto> {
     const updateInput = toUpdateUserInput(dto);
-    const updated = unwrapResult(await this.updateUserUseCase.execute(slug, updateInput, currentUser.id));
+    const updated = unwrapResult(
+      await this.updateUserUseCase.execute(slug, updateInput, currentUser.id),
+    );
     return UserPresenter.toResponse(updated);
   }
 
@@ -315,8 +321,10 @@ export class UsersController {
     status: 204,
     description: 'Usuario deletado com sucesso',
   })
-  async remove(@Param('slug') slug: string, @CurrentUser() currentUser: ICurrentUser): Promise<void> {
+  async remove(
+    @Param('slug') slug: string,
+    @CurrentUser() currentUser: ICurrentUser,
+  ): Promise<void> {
     unwrapResult(await this.deleteUserUseCase.execute(slug, currentUser.id));
   }
 }
-

@@ -1,4 +1,4 @@
-﻿import { NestFactory } from '@nestjs/core';
+import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../src/app.module';

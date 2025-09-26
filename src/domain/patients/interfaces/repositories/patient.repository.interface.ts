@@ -1,4 +1,4 @@
-﻿import {
+import {
   ArchivePatientInput,
   CreatePatientInput,
   Patient,

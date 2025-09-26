@@ -6,13 +6,14 @@ describe('EmailVerifiedGuard', () => {
   let reflector: jest.Mocked<Reflector>;
   let guard: EmailVerifiedGuard;
 
-  const buildContext = (user: any) => ({
-    switchToHttp: () => ({
-      getRequest: () => ({ user }),
-    }),
-    getHandler: () => ({}),
-    getClass: () => ({}),
-  }) as any;
+  const buildContext = (user: any) =>
+    ({
+      switchToHttp: () => ({
+        getRequest: () => ({ user }),
+      }),
+      getHandler: () => ({}),
+      getClass: () => ({}),
+    }) as any;
 
   beforeEach(() => {
     reflector = {

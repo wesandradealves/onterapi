@@ -1,4 +1,4 @@
-﻿import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import { IUpdatePatientUseCase } from '../../../domain/patients/interfaces/use-cases/update-patient.use-case.interface';
@@ -112,4 +112,3 @@ export class UpdatePatientUseCase
     return diff;
   }
 }
-

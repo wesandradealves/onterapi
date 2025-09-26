@@ -21,21 +21,24 @@ import { ISupabaseAuthService } from '../../domain/auth/interfaces/services/supa
 import { IJwtService } from '../../domain/auth/interfaces/services/jwt.service.interface';
 import { ITwoFactorService } from '../../domain/auth/interfaces/services/two-factor.service.interface';
 import { IEmailService } from '../../domain/auth/interfaces/services/email.service.interface';
-import {
-  IAuthRepository,
-  IAuthRepositoryToken,
-} from '../../domain/auth/interfaces/repositories/auth.repository.interface';
+import { IAuthRepositoryToken } from '../../domain/auth/interfaces/repositories/auth.repository.interface';
 
 import { SignInUseCase } from './use-cases/sign-in.use-case';
 import { SignOutUseCase } from './use-cases/sign-out.use-case';
 import { RefreshTokenUseCase } from './use-cases/refresh-token.use-case';
 import { ValidateTwoFAUseCase } from './use-cases/validate-two-fa.use-case';
 import { SendTwoFAUseCase } from './use-cases/send-two-fa.use-case';
+import { ResendVerificationEmailUseCase } from './use-cases/resend-verification-email.use-case';
+import { RequestPasswordResetUseCase } from './use-cases/request-password-reset.use-case';
+import { ConfirmPasswordResetUseCase } from './use-cases/confirm-password-reset.use-case';
 import { ISignInUseCase } from '../../domain/auth/interfaces/use-cases/sign-in.use-case.interface';
 import { ISignOutUseCase } from '../../domain/auth/interfaces/use-cases/sign-out.use-case.interface';
 import { IRefreshTokenUseCase } from '../../domain/auth/interfaces/use-cases/refresh-token.use-case.interface';
 import { IValidateTwoFAUseCase } from '../../domain/auth/interfaces/use-cases/validate-two-fa.use-case.interface';
 import { ISendTwoFAUseCase } from '../../domain/auth/interfaces/use-cases/send-two-fa.use-case.interface';
+import { IResendVerificationEmailUseCase } from '../../domain/auth/interfaces/use-cases/resend-verification-email.use-case.interface';
+import { IRequestPasswordResetUseCase } from '../../domain/auth/interfaces/use-cases/request-password-reset.use-case.interface';
+import { IConfirmPasswordResetUseCase } from '../../domain/auth/interfaces/use-cases/confirm-password-reset.use-case.interface';
 
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
@@ -89,6 +92,18 @@ const useCaseProviders: Provider[] = [
   {
     provide: ISendTwoFAUseCase,
     useClass: SendTwoFAUseCase,
+  },
+  {
+    provide: IResendVerificationEmailUseCase,
+    useClass: ResendVerificationEmailUseCase,
+  },
+  {
+    provide: IRequestPasswordResetUseCase,
+    useClass: RequestPasswordResetUseCase,
+  },
+  {
+    provide: IConfirmPasswordResetUseCase,
+    useClass: ConfirmPasswordResetUseCase,
   },
 ];
 

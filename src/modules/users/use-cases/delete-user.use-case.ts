@@ -1,4 +1,4 @@
-﻿import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { IDeleteUserUseCase } from '../../../domain/users/interfaces/use-cases/delete-user.use-case.interface';
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { IUserRepository } from '../../../domain/users/interfaces/repositories/user.repository.interface';

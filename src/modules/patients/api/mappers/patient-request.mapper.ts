@@ -1,8 +1,9 @@
-﻿import {
+import {
   ArchivePatientInput,
   CreatePatientInput,
   PatientAddress,
   PatientContact,
+  PatientContinuousMedication,
   PatientExportRequest,
   PatientListFilters,
   PatientMedicalInfo,
@@ -41,19 +42,41 @@ interface AddressPayload {
   country?: string;
 }
 
+interface ContinuousMedicationPayload {
+  name?: string;
+  dosage?: string;
+  frequency?: string;
+  condition?: string;
+}
+
 interface MedicalPayload {
   allergies?: string[];
   chronicConditions?: string[];
+  preExistingConditions?: string[];
   medications?: string[];
+  continuousMedications?: ContinuousMedicationPayload[];
+  heightCm?: number;
+  weightKg?: number;
   observations?: string;
 }
 
+const hasValue = (value: unknown): boolean => {
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+  return value !== undefined && value !== null && value !== '';
+};
+
 const hasMedicalData = (payload: MedicalPayload): boolean => {
-  return Boolean(
-    (payload.allergies && payload.allergies.length) ||
-      (payload.chronicConditions && payload.chronicConditions.length) ||
-      (payload.medications && payload.medications.length) ||
-      payload.observations,
+  return (
+    hasValue(payload.allergies) ||
+    hasValue(payload.chronicConditions) ||
+    hasValue(payload.preExistingConditions) ||
+    hasValue(payload.medications) ||
+    hasValue(payload.continuousMedications) ||
+    hasValue(payload.heightCm) ||
+    hasValue(payload.weightKg) ||
+    hasValue(payload.observations)
   );
 };
 
@@ -80,17 +103,81 @@ const mapAddress = (payload: AddressPayload): PatientAddress | undefined => {
   };
 };
 
+const mapContinuousMedications = (
+  payload?: ContinuousMedicationPayload[],
+): PatientContinuousMedication[] | undefined => {
+  if (!payload || !payload.length) {
+    return undefined;
+  }
+
+  const sanitized: PatientContinuousMedication[] = [];
+
+  for (const item of payload) {
+    if (!item?.name) {
+      continue;
+    }
+
+    const name = item.name.trim();
+
+    if (!name) {
+      continue;
+    }
+
+    const entry: PatientContinuousMedication = { name };
+
+    if (item.dosage?.trim()) {
+      entry.dosage = item.dosage.trim();
+    }
+
+    if (item.frequency?.trim()) {
+      entry.frequency = item.frequency.trim();
+    }
+
+    if (item.condition?.trim()) {
+      entry.condition = item.condition.trim();
+    }
+
+    sanitized.push(entry);
+  }
+
+  return sanitized.length ? sanitized : undefined;
+};
+
 const mapMedical = (payload: MedicalPayload): PatientMedicalInfo | undefined => {
   if (!hasMedicalData(payload)) {
     return undefined;
   }
 
-  return {
-    allergies: payload.allergies,
-    chronicConditions: payload.chronicConditions,
-    medications: payload.medications,
-    observations: payload.observations,
-  };
+  const medical: PatientMedicalInfo = {};
+
+  if (payload.allergies) {
+    medical.allergies = payload.allergies;
+  }
+  if (payload.chronicConditions) {
+    medical.chronicConditions = payload.chronicConditions;
+  }
+  if (payload.preExistingConditions) {
+    medical.preExistingConditions = payload.preExistingConditions;
+  }
+  if (payload.medications) {
+    medical.medications = payload.medications;
+  }
+  const continuousMedications = mapContinuousMedications(payload.continuousMedications);
+
+  if (continuousMedications) {
+    medical.continuousMedications = continuousMedications;
+  }
+  if (hasValue(payload.heightCm)) {
+    medical.heightCm = payload.heightCm;
+  }
+  if (hasValue(payload.weightKg)) {
+    medical.weightKg = payload.weightKg;
+  }
+  if (payload.observations) {
+    medical.observations = payload.observations;
+  }
+
+  return Object.keys(medical).length ? medical : undefined;
 };
 
 export const toCreatePatientInput = (
@@ -112,6 +199,8 @@ export const toCreatePatientInput = (
     medical: mapMedical(schema),
     tags: schema.tags,
     status: schema.status as PatientStatus | undefined,
+    acceptedTerms: schema.acceptedTerms,
+    acceptedTermsAt: schema.acceptedTermsAt ? new Date(schema.acceptedTermsAt) : undefined,
   };
 };
 
@@ -134,6 +223,8 @@ export const toUpdatePatientInput = (
     tags: schema.tags,
     riskLevel: schema.riskLevel as PatientRiskLevel | undefined,
     professionalId: schema.professionalId ?? undefined,
+    acceptedTerms: schema.acceptedTerms,
+    acceptedTermsAt: schema.acceptedTermsAt ? new Date(schema.acceptedTermsAt) : undefined,
   };
 };
 
@@ -197,4 +288,8 @@ export const toPatientListFilters = (schema: ListPatientsSchema): PatientListFil
     tags: schema.tags,
     quickFilter: schema.quickFilter as PatientListFilters['quickFilter'],
   };
+};
+
+export const __patientRequestMapperInternals = {
+  mapContinuousMedications,
 };

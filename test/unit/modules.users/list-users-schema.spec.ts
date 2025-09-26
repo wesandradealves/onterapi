@@ -1,4 +1,4 @@
-﻿import { ZodError } from 'zod';
+import { ZodError } from 'zod';
 import { RolesEnum } from '@domain/auth/enums/roles.enum';
 import { listUsersSchema } from '@modules/users/api/schemas/list-users.schema';
 

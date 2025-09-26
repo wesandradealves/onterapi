@@ -10,4 +10,5 @@ export interface ICurrentUser {
   emailVerified?: boolean;
   twoFactorEnabled?: boolean;
   isActive?: boolean;
+  metadata?: Record<string, unknown>;
 }

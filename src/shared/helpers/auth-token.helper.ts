@@ -1,6 +1,10 @@
+import { IAuthRepository } from '../../domain/auth/interfaces/repositories/auth.repository.interface';
+import { IJwtService } from '../../domain/auth/interfaces/services/jwt.service.interface';
+import { DeviceInfo } from '../types/device.types';
 import { AUTH_CONSTANTS } from '../constants/auth.constants';
 import { calculateExpirationDate } from '../utils/auth.utils';
 import { generateSessionId } from '../factories/auth-response.factory';
+import { RolesEnum } from '../../domain/auth/enums/roles.enum';
 
 export interface TokenPair {
   accessToken: string;
@@ -12,13 +16,16 @@ export interface TokenPair {
 export interface TokenGenerationInput {
   userId: string;
   email: string;
-  role: string;
+  role: RolesEnum;
   tenantId?: string;
   rememberMe?: boolean;
 }
 
 export class AuthTokenHelper {
-  constructor(private readonly jwtService: any) {}
+  constructor(
+    private readonly jwtService: IJwtService,
+    private readonly authRepository: IAuthRepository,
+  ) {}
 
   generateTokenPair(input: TokenGenerationInput): TokenPair {
     const sessionId = generateSessionId();
@@ -27,7 +34,7 @@ export class AuthTokenHelper {
       sub: input.userId,
       email: input.email,
       role: input.role,
-      tenantId: input.tenantId || '',
+      tenantId: input.tenantId ?? '',
       sessionId,
     });
 
@@ -54,27 +61,18 @@ export class AuthTokenHelper {
     userId: string,
     refreshToken: string,
     expiresAt: Date,
-    deviceInfo?: any,
-    authRepository?: any,
+    deviceInfo?: DeviceInfo,
   ): Promise<void> {
-    await authRepository.saveRefreshToken(userId, refreshToken, expiresAt, deviceInfo);
+    await this.authRepository.saveRefreshToken(userId, refreshToken, expiresAt, deviceInfo);
   }
 
   async generateAndSaveTokens(
     input: TokenGenerationInput,
-    deviceInfo: any,
-    jwtService: any,
-    authRepository: any,
+    deviceInfo: DeviceInfo | undefined,
   ): Promise<TokenPair> {
     const tokens = this.generateTokenPair(input);
 
-    await this.saveRefreshToken(
-      input.userId,
-      tokens.refreshToken,
-      tokens.expiresAt,
-      deviceInfo,
-      authRepository,
-    );
+    await this.saveRefreshToken(input.userId, tokens.refreshToken, tokens.expiresAt, deviceInfo);
 
     return tokens;
   }

@@ -3,10 +3,10 @@ import {
   ConflictException,
   ForbiddenException,
   HttpException,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { Logger } from '@nestjs/common';
 import { AUTH_MESSAGES } from '../constants/auth.constants';
 
 export enum AuthErrorType {
@@ -40,7 +40,7 @@ interface AuthErrorContext {
   email?: string;
   tenantId?: string;
   attemptCount?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export class AuthErrorFactory {
@@ -143,7 +143,7 @@ export class AuthErrorFactory {
     }
   }
 
-  static createResult<T = any>(type: AuthErrorType, context?: AuthErrorContext): { error: Error } {
+  static createResult(type: AuthErrorType, context?: AuthErrorContext): { error: Error } {
     return { error: this.create(type, context) };
   }
 

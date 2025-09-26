@@ -13,7 +13,11 @@ import { ITwoFactorService } from '../../../domain/auth/interfaces/services/two-
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import { AUTH_CONSTANTS } from '../../../shared/constants/auth.constants';
-import { extractSupabaseUser } from '../../../shared/utils/auth.utils';
+import {
+  ExtractedUser,
+  extractSupabaseUser,
+  normalizeDeviceInfo,
+} from '../../../shared/utils/auth.utils';
 import { createTokenResponse } from '../../../shared/factories/auth-response.factory';
 import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
 import { AuthTokenHelper } from '../../../shared/helpers/auth-token.helper';
@@ -56,11 +60,11 @@ export class ValidateTwoFAUseCase
       throw AuthErrorFactory.create(AuthErrorType.USER_NOT_FOUND, { userId });
     }
 
-    const user = extractSupabaseUser(supabaseUser);
+    const user: ExtractedUser = extractSupabaseUser(supabaseUser);
 
     this.logger.log(MESSAGES.LOGS.TWO_FA_CODE_VALIDATING);
 
-    const isValidCode = await this.validateCode(user.id, user.twoFactorSecret!, input.code);
+    const isValidCode = await this.validateCode(user.id, user.twoFactorSecret, input.code);
     if (!isValidCode) {
       this.logger.warn(`${MESSAGES.LOGS.TWO_FA_CODE_INVALID} ${user.email}`);
 
@@ -81,7 +85,7 @@ export class ValidateTwoFAUseCase
 
     this.logger.log(MESSAGES.LOGS.TWO_FA_CODE_VALID);
 
-    const tokenHelper = new AuthTokenHelper(this.jwtService);
+    const tokenHelper = new AuthTokenHelper(this.jwtService, this.authRepository);
     const tokens = await tokenHelper.generateAndSaveTokens(
       {
         userId: user.id,
@@ -90,12 +94,10 @@ export class ValidateTwoFAUseCase
         tenantId: user.tenantId,
         rememberMe: input.trustDevice,
       },
-      {
+      normalizeDeviceInfo({
         ...input.deviceInfo,
         trustedDevice: input.trustDevice,
-      },
-      this.jwtService,
-      this.authRepository,
+      }),
     );
 
     const { error: updateError } = await this.supabaseAuthService.updateUserMetadata(user.id, {
@@ -126,7 +128,11 @@ export class ValidateTwoFAUseCase
     return output as ValidateTwoFAOutput;
   }
 
-  private async validateCode(userId: string, secret: string, code: string): Promise<boolean> {
+  private async validateCode(
+    userId: string,
+    secret: string | null | undefined,
+    code: string,
+  ): Promise<boolean> {
     if (secret && this.twoFactorService.verifyTOTP(secret, code)) {
       return true;
     }

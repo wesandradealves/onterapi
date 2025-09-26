@@ -1,4 +1,4 @@
-﻿import { Result } from '../../../../shared/types/result.type';
+import { Result } from '../../../../shared/types/result.type';
 import { Patient, PatientSummary, PatientTimelineEntry } from '../../types/patient.types';
 
 export interface IGetPatientUseCase {
