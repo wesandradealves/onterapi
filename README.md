@@ -181,7 +181,7 @@ Resultados recentes: 150 testes executados; cobertura global 100% (`npm run test
 
 2. **Sign-in com 2FA habilitado**
    ```powershell
-   '{"email":"wesandradealves@gmail.com","password":"Wes@03122530"}' |
+   '{"email":"EMAIL","password":"PASSWORD"}' |
      Set-Content -NoNewline -Path payloads/auth-sign-in.json
 
    $signIn = curl.exe -s -X POST "$BASE_URL/auth/sign-in" \
@@ -354,4 +354,5 @@ flowchart LR
 
 ## Changelog
 Mudancas recentes estao em [CHANGELOG.md](./CHANGELOG.md). Ultima versao: v0.16.2 (25/09/2025).
+
 
