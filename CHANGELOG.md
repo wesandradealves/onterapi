@@ -6,7 +6,8 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [Unreleased]
 
-### Added
+### Documentation
+- Fluxograma atualizado para indicar os testes automatizados do modulo Auth.
 
 ### Changed
 

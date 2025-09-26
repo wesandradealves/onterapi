@@ -342,6 +342,7 @@ flowchart LR
     Users --> SupabaseDB[(Supabase Postgres)]
     Patients --> SupabaseDB
     Auth --> MessageBus[(MessageBus / Eventos)]
+    Auth --> Tests[[Testes Automatizados]]
     Users --> Tests[[Testes Automatizados]]
     Patients --> Tests
 ```
