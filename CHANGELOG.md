@@ -6,9 +6,6 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [Unreleased]
 
-### Documentation
-- Fluxograma atualizado para indicar os testes automatizados do modulo Auth.
-
 ### Changed
 
 ### Fixed
@@ -16,6 +13,9 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 ### Security
 
 ### Documentation
+- Fluxograma atualizado para indicar os testes automatizados do modulo Auth.
+- README atualizado com baseline de qualidade de 26/09 (totais de 155 testes, cobertura 100%) e payload de pacientes ampliado com campos clinicos.
+- coverage/coverage-summary.json versionado para preservar a referencia de cobertura plena.
 
 ## [0.16.4] - 2025-09-25
 
@@ -837,6 +837,8 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 ---
 
 _Mantenha este arquivo atualizado a cada release_
+
+
 
 
 

@@ -51,6 +51,7 @@ NÃ£o mantemos mais credenciais padrÃ£o em repositÃ³rio. Gere usuÃ¡rios a
 - Filtros suportados: `status`, `riskLevel`, `tags`, `query`, paginacao e ordenacao (`createdAt`, `updatedAt`, `fullName`).
 - Transferencia, arquivamento e restauro respeitam roles (somente OWNER/MANAGER/SUPER_ADMIN).
 - Validacao de CPF (duplicidade por tenant) com mensagens traduzidas.
+- Campos clinicos adicionais armazenados: condicoes pre-existentes, medicacao continua (nome/dosagem/frequencia/condicao), altura (cm), peso (kg) e aceite obrigatorio de termos de uso para novos pacientes.
 - DTOs e schemas (Zod) garantem payload limpo.
 
 Rotas principais:
@@ -238,7 +239,7 @@ Resultados recentes: 150 testes executados; cobertura global 100% (`npm run test
 
 6. **Fluxo completo de PATIENTS**
    ```powershell
-   '{"fullName":"Paciente Curl","cpf":"<CPF_VALIDO>","birthDate":"1990-05-01T00:00:00.000Z","email":"paciente.curl.<timestamp>@onterapi.com","phone":"11988887777","whatsapp":"11988887777","zipCode":"01310930","street":"Rua Curl","number":"123","district":"Centro","city":"Sao Paulo","state":"SP","country":"BR","tags":["curl-test"],"professionalId":"38f5f077-2042-4283-9308-b6bb73e18183"}' |
+   '{"fullName":"Paciente Curl","cpf":"<CPF_VALIDO>","birthDate":"1990-05-01T00:00:00.000Z","email":"paciente.curl.<timestamp>@onterapi.com","phone":"11988887777","whatsapp":"11988887777","zipCode":"01310930","street":"Rua Curl","number":"123","district":"Centro","city":"Sao Paulo","state":"SP","country":"BR","tags":["curl-test"],"preExistingConditions":["hipertensao"],"continuousMedications":[{"name":"Losartana","dosage":"50mg","frequency":"1x ao dia"}],"heightCm":170,"weightKg":72.5,"acceptedTerms":true,"professionalId":"38f5f077-2042-4283-9308-b6bb73e18183"}' |
      Set-Content -NoNewline -Path payloads/patients-create.json
    $createdPatient = curl.exe -s -X POST "$BASE_URL/patients" -H "Authorization: Bearer $accessToken" \
      -H "Content-Type: application/json" --data @payloads/patients-create.json | ConvertFrom-Json
@@ -279,8 +280,8 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 
 ## Linha de Base de Qualidade
 
-- Data: 2025-09-25
-- Commit analisado: feature/coverage (worktree)
+- Data: 2025-09-26
+- Commit analisado: feature/patients-new-fields (worktree)
 - Ambiente: desenvolvimento local (Node 22.18.0)
 
 ## Pontuacao Atual
@@ -288,8 +289,8 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 | Criterio | Nota atual (0-10) | Meta | Evidencias chave |
 | --- | --- | --- | --- |
 | DRY / Reuso de codigo | 9.7 | >= 9.0 | Controllers de Auth, Patients e Users delegam normalizacao de payloads aos mappers dedicados, evitando duplicacao de parsers (src/modules/auth/api/controllers/auth.controller.ts:118, src/modules/patients/api/controllers/patients.controller.ts:110, src/modules/users/api/controllers/users.controller.ts:97) enquanto user-request.mapper centraliza os contratos de usuarios (src/modules/users/api/mappers/user-request.mapper.ts:13). |
-| Automacao de qualidade | 8.5 | >= 8.5 | Sequencia padrao npm run test:unit â†’ test:int â†’ test:e2e â†’ test:cov se mantÃ©m com limiar global travado em 100% (jest.config.js:12-29, package.json:23-38). |
-| Testes automatizados | 10.0 | >= 9.5 | 136 testes cobrindo unidade/integracao/e2e e todos os mappers, mantendo cobertura global 100% (test/unit/modules.users.user-request.mapper.spec.ts:1, test/integration/patients.controller.integration.spec.ts:1, coverage/coverage-summary.json:1). |
+| Automacao de qualidade | 8.5 | >= 8.5 | Sequencia padrao npm run lint -> test:unit -> test:int -> test:e2e -> test:cov confirmada em 26/09 com threshold 100% (jest.config.js:12-29, package.json:23-38). |
+| Testes automatizados | 10.0 | >= 9.5 | 155 testes cobrindo unidade/int/e2e executados em 26/09, com cobertura global 100% (test/unit/modules.users.user-request.mapper.spec.ts:1, test/integration/patients.controller.integration.spec.ts:1, coverage/coverage-summary.json:1). |
 | Validacoes e contratos | 9.2 | >= 9.0 | Fluxos de auth, users e patients agora passam por schemas Zod e mappers antes dos use cases (src/modules/auth/api/mappers/auth-request.mapper.ts:117, src/modules/users/api/controllers/users.controller.ts:144, src/modules/patients/api/controllers/patients.controller.ts:110). |
 | Governanca de dominio / RBAC | 8.0 | >= 9.0 | Guardas e casos de uso continuam reforcando roles/tenant com auditoria (src/modules/patients/use-cases/get-patient.use-case.ts:89, test/e2e/patients.e2e-spec.ts:58). |
 
@@ -301,12 +302,12 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 - Proximo alvo de DRY e replicar a mesma abordagem para agendamento e financeiro (mappers + presenters dedicados).
 
 ### Automacao e scripts
-- Fluxo local permanece linear (unit â†’ int â†’ e2e â†’ cov) com collectCoverageFrom ampliado para mappers de auth/pacientes/usuarios.
+- Fluxo local permanece linear (unit -> int -> e2e -> cov) com collectCoverageFrom ampliado para mappers de auth/pacientes/usuarios.
 - Aguardando pipeline CI para rodar os mesmos gates de forma automatizada.
 
 ### Testes
 - Novo spec cobre todos os ramos do mapper de usuarios, garantindo coercoes de tenantId e metadata.
-- Contagem total de 136 testes em ~12s; branch coverage mantida em 100% global.
+- Contagem total de 155 testes em ~27s; branch coverage mantida em 100% global.
 - Suites de integracao/e2e seguem focadas em pacientes; auth e usuarios ainda carecem de cenarios ponta-a-ponta.
 
 ### Validacao e contratos
