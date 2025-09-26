@@ -1,3 +1,21 @@
+# Changelog
+
+Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
+
+O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o projeto adota [Versionamento Semantico](https://semver.org/lang/pt-BR/).
+
+## [Unreleased]
+
+### Added
+
+### Changed
+
+### Fixed
+
+### Security
+
+### Documentation
+
 ## [0.16.4] - 2025-09-25
 
 ### Added
