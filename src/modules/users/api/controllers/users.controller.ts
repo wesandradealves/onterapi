@@ -1,8 +1,9 @@
-import {
+﻿import {
   Body,
   Controller,
   Delete,
   Get,
+  NotFoundException,
   HttpCode,
   HttpStatus,
   Inject,
@@ -11,7 +12,6 @@ import {
   Post,
   Query,
   UseGuards,
-  UsePipes,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -41,13 +41,14 @@ import { IDeleteUserUseCase } from '../../../../domain/users/interfaces/use-case
 import { CreateUserInputDTO, CreateUserResponseDto } from '../dtos/create-user.dto';
 import { UpdateUserDto } from '../dtos/update-user.dto';
 import { UserResponseDto } from '../dtos/user-response.dto';
-import { ListUsersDto, ListUsersResponseDto } from '../dtos/list-users.dto';
+import { ListUsersResponseDto } from '../dtos/list-users.dto';
 import { UserPresenter } from '../presenters/user.presenter';
-import { createUserSchema } from '../schemas/create-user.schema';
-import { updateUserSchema } from '../schemas/update-user.schema';
+import { unwrapResult } from '../../../../shared/types/result.type';
+import { createUserSchema, CreateUserSchemaType } from '../schemas/create-user.schema';
+import { updateUserSchema, UpdateUserSchemaType } from '../schemas/update-user.schema';
+import { listUsersSchema, ListUsersSchema } from '../schemas/list-users.schema';
+import { toCreateUserCommand, toUpdateUserInput, toUserFilters } from '../mappers/user-request.mapper';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
-import { AuthErrorFactory } from '../../../../shared/factories/auth-error.factory';
-import { UserEntity } from '../../../../infrastructure/auth/entities/user.entity';
 
 @ApiTags('Users')
 @Controller('users')
@@ -130,13 +131,12 @@ export class UsersController {
     status: 409,
     description: 'Email ou CPF já cadastrado',
   })
-  @UsePipes(new ZodValidationPipe(createUserSchema))
-  async create(@Body() dto: CreateUserInputDTO): Promise<CreateUserResponseDto> {
-    const result = await this.createUserUseCase.execute(dto);
-    if (result.error) {
-      throw result.error;
-    }
-    return UserPresenter.toCreateResponse(result.data);
+  async create(
+    @Body(new ZodValidationPipe(createUserSchema)) dto: CreateUserSchemaType,
+  ): Promise<CreateUserResponseDto> {
+    const command = toCreateUserCommand(dto);
+    const user = unwrapResult(await this.createUserUseCase.execute(command));
+    return UserPresenter.toCreateResponse(user);
   }
 
   @Get()
@@ -168,7 +168,7 @@ export class UsersController {
     required: false,
     enum: RolesEnum,
     description: 'Filtrar por role/perfil',
-    example: 'PATIENT',
+    example: RolesEnum.PATIENT,
   })
   @ApiQuery({
     name: 'tenantId',
@@ -189,14 +189,15 @@ export class UsersController {
     description: 'Lista de usuários retornada com sucesso',
     type: ListUsersResponseDto,
   })
-  async findAll(@Query() filters: ListUsersDto): Promise<ListUsersResponseDto> {
-    const result = await this.findAllUsersUseCase.execute(filters);
-    if (result.error) {
-      throw result.error;
-    }
+  async findAll(
+    @Query(new ZodValidationPipe(listUsersSchema)) filters: ListUsersSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+  ): Promise<ListUsersResponseDto> {
+    const normalizedFilters = toUserFilters(filters, { currentUser });
+    const payload = unwrapResult(await this.findAllUsersUseCase.execute(normalizedFilters));
     return {
-      data: result.data.data.map((user) => UserPresenter.toResponse(user)),
-      pagination: result.data.pagination,
+      data: payload.data.map((user) => UserPresenter.toResponse(user)),
+      pagination: payload.pagination,
     };
   }
 
@@ -224,14 +225,13 @@ export class UsersController {
     description: 'Usuario nao encontrado',
   })
   async findOne(@Param('slug') slug: string): Promise<UserResponseDto> {
-    const result = await this.findUserBySlugUseCase.execute(slug);
-    if (result.error) {
-      throw result.error;
+    const user = unwrapResult(await this.findUserBySlugUseCase.execute(slug));
+
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado');
     }
-    if (!result.data) {
-      throw AuthErrorFactory.userNotFound();
-    }
-    return UserPresenter.toResponse(result.data);
+
+    return UserPresenter.toResponse(user);
   }
 
   @Patch(':slug')
@@ -288,14 +288,12 @@ export class UsersController {
   })
   async update(
     @Param('slug') slug: string,
-    @Body() dto: UpdateUserDto,
+    @Body(new ZodValidationPipe(updateUserSchema)) dto: UpdateUserSchemaType,
     @CurrentUser() currentUser: ICurrentUser,
   ): Promise<UserResponseDto> {
-    const result = await this.updateUserUseCase.execute(slug, dto, currentUser.id);
-    if (result.error) {
-      throw result.error;
-    }
-    return UserPresenter.toResponse(result.data);
+    const updateInput = toUpdateUserInput(dto);
+    const updated = unwrapResult(await this.updateUserUseCase.execute(slug, updateInput, currentUser.id));
+    return UserPresenter.toResponse(updated);
   }
 
   @Delete(':slug')
@@ -318,9 +316,7 @@ export class UsersController {
     description: 'Usuario deletado com sucesso',
   })
   async remove(@Param('slug') slug: string, @CurrentUser() currentUser: ICurrentUser): Promise<void> {
-    const result = await this.deleteUserUseCase.execute(slug, currentUser.id);
-    if (result.error) {
-      throw result.error;
-    }
+    unwrapResult(await this.deleteUserUseCase.execute(slug, currentUser.id));
   }
 }
+

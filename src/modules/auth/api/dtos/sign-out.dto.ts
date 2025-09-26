@@ -1,5 +1,4 @@
 ﻿import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 export class SignOutDto {
   @ApiProperty({
@@ -7,8 +6,6 @@ export class SignOutDto {
     example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
     required: false,
   })
-  @IsOptional()
-  @IsString()
   refreshToken?: string;
 
   @ApiProperty({
@@ -17,8 +14,6 @@ export class SignOutDto {
     default: false,
     required: false,
   })
-  @IsOptional()
-  @IsBoolean()
   allDevices?: boolean;
 }
 
@@ -30,7 +25,7 @@ export class SignOutResponseDto {
   message!: string;
 
   @ApiProperty({
-    description: 'NÃºmero de sessÃµes revogadas',
+    description: 'Número de sessões revogadas',
     example: 1,
   })
   revokedSessions!: number;
@@ -38,38 +33,38 @@ export class SignOutResponseDto {
 
 export class MeResponseDto {
   @ApiProperty({
-    description: 'ID do usuÃ¡rio',
+    description: 'ID do usuário',
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
   id!: string;
 
   @ApiProperty({
-    description: 'Email do usuÃ¡rio',
+    description: 'Email do usuário',
     example: 'usuario@example.com',
   })
   email!: string;
 
   @ApiProperty({
-    description: 'Nome completo do usuÃ¡rio',
-    example: 'JoÃ£o Silva',
+    description: 'Nome completo do usuário',
+    example: 'João Silva',
   })
   name!: string;
 
   @ApiProperty({
-    description: 'Role do usuÃ¡rio',
+    description: 'Role do usuário',
     example: 'PROFESSIONAL',
   })
   role!: string;
 
   @ApiProperty({
-    description: 'ID do tenant (clÃ­nica)',
+    description: 'ID do tenant (clínica)',
     example: 'clinic-123',
     required: false,
   })
   tenantId?: string;
 
   @ApiProperty({
-    description: 'Data de criaÃ§Ã£o da conta',
+    description: 'Data de criação da conta',
     example: '2024-01-01T00:00:00Z',
   })
   createdAt!: string;
@@ -86,4 +81,3 @@ export class MeResponseDto {
   })
   twoFactorEnabled!: boolean;
 }
-

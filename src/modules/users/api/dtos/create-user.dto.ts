@@ -1,51 +1,37 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
-import { mapRoleToDomain } from '../../../../shared/utils/role.utils';
-import { Transform } from 'class-transformer';
-import { IsEmail, IsEnum, IsOptional, IsString, IsUUID, Matches, MinLength } from 'class-validator';
 
 export class CreateUserInputDTO {
   @ApiProperty({ description: 'Email do usuario', example: 'usuario@email.com' })
-  @IsEmail()
   email!: string;
 
-  @ApiProperty({ description: 'Senha forte (minimo 8 caracteres, maiuscula, minuscula, numero e especial)', example: 'SenhaForte123!' })
-  @IsString()
-  @MinLength(8)
+  @ApiProperty({
+    description: 'Senha forte (minimo 8 caracteres, maiuscula, minuscula, numero e especial)',
+    example: 'SenhaForte123!'
+  })
   password!: string;
 
   @ApiProperty({ description: 'Nome completo do usuario', example: 'Joao Silva' })
-  @IsString()
   name!: string;
 
   @ApiProperty({ description: 'CPF sem formatacao (apenas numeros)', example: '12345678901' })
-  @Matches(/^\d{11}$/,{ message: 'cpf must contain 11 digits' })
   cpf!: string;
 
   @ApiProperty({ description: 'Telefone com DDD (apenas numeros)', example: '11999999999', required: false })
-  @IsOptional()
-  @IsString()
   phone?: string;
 
-  @ApiProperty({ description: 'Role/Perfil do usuario no sistema', enum: RolesEnum, example: RolesEnum.PATIENT })
-  @Transform(({ value }) => {
-    if (value === undefined || value === null) {
-      return value;
-    }
-
-    const mapped = mapRoleToDomain(String(value));
-    if (mapped) {
-      return mapped;
-    }
-
-    return String(value).toUpperCase();
+  @ApiProperty({
+    description: 'Role/Perfil do usuario no sistema',
+    enum: RolesEnum,
+    example: RolesEnum.PATIENT
   })
-  @IsEnum(RolesEnum)
   role!: RolesEnum;
 
-  @ApiProperty({ description: 'ID do tenant (clinica) ao qual o usuario pertence', example: '550e8400-e29b-41d4-a716-446655440000', required: false })
-  @IsOptional()
-  @IsUUID('4')
+  @ApiProperty({
+    description: 'ID do tenant (clinica) ao qual o usuario pertence',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    required: false
+  })
   tenantId?: string;
 }
 
@@ -71,7 +57,11 @@ export class CreateUserResponseDto {
   @ApiProperty({ description: 'Role/Perfil do usuario', enum: RolesEnum, example: RolesEnum.PATIENT })
   role!: RolesEnum;
 
-  @ApiProperty({ description: 'ID do tenant (clinica)', example: '550e8400-e29b-41d4-a716-446655440000', required: false })
+  @ApiProperty({
+    description: 'ID do tenant (clinica)',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    required: false
+  })
   tenantId?: string;
 
   @ApiProperty({ description: 'Indica se o usuario esta ativo', example: true })

@@ -1,5 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsBoolean, IsIn, IsOptional, IsString } from 'class-validator';
+﻿import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 const EXPORT_FORMATS = ['pdf', 'csv', 'excel', 'vcard'] as const;
 
@@ -9,29 +8,17 @@ export class ExportPatientsDto {
     enum: EXPORT_FORMATS,
     example: 'csv',
   })
-  @IsIn(EXPORT_FORMATS)
   format!: 'pdf' | 'csv' | 'excel' | 'vcard';
 
   @ApiPropertyOptional({ description: 'IDs de profissionais', isArray: true, type: String })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
   professionalIds?: string[];
 
   @ApiPropertyOptional({ description: 'Status', isArray: true, type: String })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
   status?: string[];
 
-  @ApiPropertyOptional({ description: 'Filtro rápido', example: 'inactive_30_days' })
-  @IsOptional()
-  @IsString()
+  @ApiPropertyOptional({ description: 'Filtro rapido', example: 'inactive_30_days' })
   quickFilter?: string;
 
-  @ApiPropertyOptional({ description: 'Incluir dados clínicos', example: false })
-  @IsOptional()
-  @IsBoolean()
+  @ApiPropertyOptional({ description: 'Incluir dados clinicos', example: false })
   includeMedicalData?: boolean;
 }
-

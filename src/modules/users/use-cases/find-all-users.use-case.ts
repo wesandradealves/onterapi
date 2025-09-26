@@ -1,8 +1,8 @@
-﻿import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { IFindAllUsersUseCase } from '../../../domain/users/interfaces/use-cases/find-all-users.use-case.interface';
 import { IUserRepository } from '../../../domain/users/interfaces/repositories/user.repository.interface';
 import { UserEntity } from '../../../infrastructure/auth/entities/user.entity';
-import { ListUsersDto } from '../api/dtos/list-users.dto';
+import { IUserFilters } from '../../../domain/users/types/user.types';
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import { MESSAGES } from '../../../shared/constants/messages.constants';
 import { Result } from '../../../shared/types/result.type';
@@ -19,7 +19,7 @@ type FindAllUsersOutput = {
 
 @Injectable()
 export class FindAllUsersUseCase
-  extends BaseUseCase<ListUsersDto, FindAllUsersOutput>
+  extends BaseUseCase<IUserFilters, FindAllUsersOutput>
   implements IFindAllUsersUseCase
 {
   protected readonly logger = new Logger(FindAllUsersUseCase.name);
@@ -31,11 +31,11 @@ export class FindAllUsersUseCase
     super();
   }
 
-  async execute(filters: ListUsersDto): Promise<Result<FindAllUsersOutput>> {
+  async execute(filters: IUserFilters): Promise<Result<FindAllUsersOutput>> {
     return super.execute(filters);
   }
 
-  protected async handle(filters: ListUsersDto): Promise<FindAllUsersOutput> {
+  protected async handle(filters: IUserFilters): Promise<FindAllUsersOutput> {
     const page = filters.page || 1;
     const limit = filters.limit || 20;
 

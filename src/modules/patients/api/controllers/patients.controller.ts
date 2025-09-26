@@ -11,7 +11,6 @@
   Post,
   Query,
   UseGuards,
-  UsePipes,
 } from '@nestjs/common';
 import { Logger } from '@nestjs/common';
 import {
@@ -40,31 +39,29 @@ import { IArchivePatientUseCase } from '../../../../domain/patients/interfaces/u
 import { IExportPatientsUseCase } from '../../../../domain/patients/interfaces/use-cases/export-patients.use-case.interface';
 import { CreatePatientDto } from '../dtos/create-patient.dto';
 import { UpdatePatientDto } from '../dtos/update-patient.dto';
-import { ListPatientsQueryDto } from '../dtos/list-patients.dto';
 import { TransferPatientDto } from '../dtos/transfer-patient.dto';
 import { ArchivePatientDto } from '../dtos/archive-patient.dto';
 import { ExportPatientsDto } from '../dtos/export-patients.dto';
 import { PatientResponseDto, PatientsListResponseDto } from '../dtos/patient-response.dto';
 import { PatientPresenter } from '../presenters/patient.presenter';
+import { unwrapResult } from '../../../../shared/types/result.type';
 import { PatientDetailDto } from '../dtos/patient-detail.dto';
-import { createPatientSchema } from '../schemas/create-patient.schema';
-import { updatePatientSchema } from '../schemas/update-patient.schema';
-import { listPatientsSchema } from '../schemas/list-patients.schema';
-import { transferPatientSchema } from '../schemas/transfer-patient.schema';
-import { archivePatientSchema } from '../schemas/archive-patient.schema';
-import { exportPatientsSchema } from '../schemas/export-patients.schema';
+import { createPatientSchema, CreatePatientSchema } from '../schemas/create-patient.schema';
+import { updatePatientSchema, UpdatePatientSchema } from '../schemas/update-patient.schema';
+import { listPatientsSchema, ListPatientsSchema } from '../schemas/list-patients.schema';
+import { transferPatientSchema, TransferPatientSchema } from '../schemas/transfer-patient.schema';
+import { archivePatientSchema, ArchivePatientSchema } from '../schemas/archive-patient.schema';
+import { exportPatientsSchema, ExportPatientsSchema } from '../schemas/export-patients.schema';
 import {
-  ArchivePatientInput,
-  CreatePatientInput,
-  PatientExportRequest,
-  PatientListFilters,
-  PatientListItem,
-  PatientRiskLevel,
-  PatientStatus,
-  PatientTimelineEntry,
-  TransferPatientInput,
-  UpdatePatientInput,
-} from '../../../../domain/patients/types/patient.types';
+  PatientRequestContext,
+  toArchivePatientInput,
+  toCreatePatientInput,
+  toExportPatientRequest,
+  toPatientListFilters,
+  toTransferPatientInput,
+  toUpdatePatientInput,
+} from '../mappers/patient-request.mapper';
+import { PatientListItem, PatientTimelineEntry } from '../../../../domain/patients/types/patient.types';
 import { PatientErrorFactory } from '../../../../shared/factories/patient-error.factory';
 
 @ApiTags('Patients')
@@ -109,42 +106,31 @@ export class PatientsController {
   @ApiQuery({ name: 'sortBy', required: false, type: String })
   @ApiQuery({ name: 'sortOrder', required: false, enum: ['asc', 'desc'] })
   @ApiQuery({ name: 'query', required: false, type: String })
-  @UsePipes(new ZodValidationPipe(listPatientsSchema))
   @ApiResponse({ status: 200, type: PatientsListResponseDto })
   async list(
-    @Query() query: ListPatientsQueryDto,
+    @Query(new ZodValidationPipe(listPatientsSchema)) query: ListPatientsSchema,
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<PatientsListResponseDto> {
-    const tenantId = this.getTenant(currentUser, tenantHeader ?? query.tenantId);
+    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const filters = toPatientListFilters(query);
 
-    const filters: PatientListFilters = {
-      query: query.query,
-      status: query.status?.map((value) => value as PatientStatus),
-      riskLevel: query.riskLevel?.map((value) => value as PatientRiskLevel),
-      assignedProfessionalIds: query.professionalIds,
-      tags: query.tags,
-      quickFilter: query.quickFilter,
-    };
-
-    const result = await this.listPatientsUseCase.execute({
-      tenantId,
-      requesterId: currentUser.id,
-      requesterRole: currentUser.role,
-      filters,
-      page: query.page,
-      limit: query.limit,
-      sortBy: query.sortBy,
-      sortOrder: query.sortOrder,
-    });
-
-    if (result.error) {
-      throw result.error;
-    }
+    const payload = unwrapResult(
+      await this.listPatientsUseCase.execute({
+        tenantId: context.tenantId,
+        requesterId: context.userId,
+        requesterRole: context.role,
+        filters,
+        page: query.page,
+        limit: query.limit,
+        sortBy: query.sortBy,
+        sortOrder: query.sortOrder,
+      }),
+    );
 
     return {
-      data: result.data.data.map((patient: PatientListItem) => PatientPresenter.listItem(patient)),
-      total: result.data.total,
+      data: payload.data.map((patient: PatientListItem) => PatientPresenter.listItem(patient)),
+      total: payload.total,
     };
   }
 
@@ -161,59 +147,16 @@ export class PatientsController {
   @ApiBody({ type: CreatePatientDto })
   
   async create(
-    @Body(new ZodValidationPipe(createPatientSchema)) body: CreatePatientDto,
+    @Body(new ZodValidationPipe(createPatientSchema)) body: CreatePatientSchema,
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<PatientResponseDto> {
-    const tenantId = this.getTenant(currentUser, tenantHeader ?? body?.tenantId);
+    const context = this.resolveContext(currentUser, tenantHeader ?? body?.tenantId);
+    const input = toCreatePatientInput(body, context);
 
-    const input: CreatePatientInput = {
-      tenantId,
-      createdBy: currentUser.id,
-      requesterRole: currentUser.role,
-      professionalId: body.professionalId,
-      fullName: body.fullName,
-      cpf: body.cpf,
-      birthDate: body.birthDate ? new Date(body.birthDate) : undefined,
-      gender: body.gender,
-      maritalStatus: body.maritalStatus,
-      contact: {
-        email: body.email,
-        phone: body.phone,
-        whatsapp: body.whatsapp,
-      },
-      address: body.zipCode
-        ? {
-            zipCode: body.zipCode,
-            street: body.street ?? '',
-            number: body.number,
-            complement: body.complement,
-            district: body.district,
-            city: body.city ?? '',
-            state: body.state ?? '',
-            country: body.country,
-          }
-        : undefined,
-      medical:
-        body.allergies || body.chronicConditions || body.medications || body.observations
-          ? {
-              allergies: body.allergies,
-              chronicConditions: body.chronicConditions,
-              medications: body.medications,
-              observations: body.observations,
-            }
-          : undefined,
-      tags: body.tags,
-      status: body.status as any,
-    };
+    const patient = unwrapResult(await this.createPatientUseCase.execute(input));
 
-    const result = await this.createPatientUseCase.execute(input);
-
-    if (result.error) {
-      throw result.error;
-    }
-
-    return PatientPresenter.summary(result.data);
+    return PatientPresenter.summary(patient);
   }
 
   @Get(':slug')
@@ -241,20 +184,16 @@ export class PatientsController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<PatientDetailDto> {
-    const tenantId = this.getTenant(currentUser, tenantHeader);
+    const context = this.resolveContext(currentUser, tenantHeader);
 
-    const result = await this.getPatientUseCase.execute({
-      tenantId,
-      requesterId: currentUser.id,
-      requesterRole: currentUser.role,
-      patientSlug,
-    });
-
-    if (result.error) {
-      throw result.error;
-    }
-
-    const { patient, summary, timeline, insights, quickActions } = result.data;
+    const { patient, summary, timeline, insights, quickActions } = unwrapResult(
+      await this.getPatientUseCase.execute({
+        tenantId: context.tenantId,
+        requesterId: context.userId,
+        requesterRole: context.role,
+        patientSlug,
+      }),
+    );
 
     return {
       patient: PatientPresenter.detail(patient),
@@ -299,61 +238,19 @@ export class PatientsController {
   })
   @ApiParam({ name: 'slug', description: 'Identificador do paciente' })
   @ApiResponse({ status: 200, type: PatientResponseDto })
-  
+  @ApiBody({ type: UpdatePatientDto })
   async update(
     @Param('slug') patientSlug: string,
-    @Body() body: UpdatePatientDto,
+    @Body(new ZodValidationPipe(updatePatientSchema)) body: UpdatePatientSchema,
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<PatientResponseDto> {
-    const tenantId = this.getTenant(currentUser, tenantHeader);
-    const parsed = updatePatientSchema.parse(body);
+    const context = this.resolveContext(currentUser, tenantHeader);
+    const input = toUpdatePatientInput(patientSlug, body, context);
 
-    const input: UpdatePatientInput = {
-      patientSlug,
-      tenantId,
-      updatedBy: currentUser.id,
-      requesterRole: currentUser.role,
-      fullName: parsed.fullName,
-      shortName: parsed.shortName,
-      status: parsed.status as any,
-      contact: {
-        phone: parsed.phone,
-        whatsapp: parsed.whatsapp,
-        email: parsed.email,
-      },
-      address: parsed.zipCode
-        ? {
-            zipCode: parsed.zipCode,
-            street: parsed.street ?? '',
-            number: parsed.number,
-            complement: parsed.complement,
-            district: parsed.district,
-            city: parsed.city ?? '',
-            state: parsed.state ?? '',
-            country: parsed.country,
-          }
-        : undefined,
-      medical:
-        parsed.allergies || parsed.chronicConditions || parsed.medications || parsed.observations
-          ? {
-              allergies: parsed.allergies,
-              chronicConditions: parsed.chronicConditions,
-              medications: parsed.medications,
-              observations: parsed.observations,
-            }
-          : undefined,
-      tags: parsed.tags,
-      riskLevel: parsed.riskLevel as any,
-      professionalId: parsed.professionalId ?? undefined,
-    };
+    const updated = unwrapResult(await this.updatePatientUseCase.execute(input));
 
-    const result = await this.updatePatientUseCase.execute(input);
-    if (result.error) {
-      throw result.error;
-    }
-
-    return PatientPresenter.summary(result.data);
+    return PatientPresenter.summary(updated);
   }
 
   @Post(':slug/transfer')
@@ -367,33 +264,19 @@ export class PatientsController {
   })
   @ApiParam({ name: 'slug', description: 'Identificador do paciente' })
   @ApiResponse({ status: 200, type: PatientResponseDto })
-  
+  @ApiBody({ type: TransferPatientDto })
   async transfer(
     @Param('slug') patientSlug: string,
-    @Body() body: TransferPatientDto,
+    @Body(new ZodValidationPipe(transferPatientSchema)) body: TransferPatientSchema,
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<PatientResponseDto> {
-    const tenantId = this.getTenant(currentUser, tenantHeader);
-    const parsed = transferPatientSchema.parse(body);
+    const context = this.resolveContext(currentUser, tenantHeader);
+    const input = toTransferPatientInput(patientSlug, body, context);
 
-    const input: TransferPatientInput = {
-      patientSlug,
-      tenantId,
-      requestedBy: currentUser.id,
-      requesterRole: currentUser.role,
-      fromProfessionalId: undefined,
-      toProfessionalId: parsed.toProfessionalId,
-      reason: parsed.reason,
-      effectiveAt: parsed.effectiveAt ? new Date(parsed.effectiveAt) : undefined,
-    };
+    const transferred = unwrapResult(await this.transferPatientUseCase.execute(input));
 
-    const result = await this.transferPatientUseCase.execute(input);
-    if (result.error) {
-      throw result.error;
-    }
-
-    return PatientPresenter.summary(result.data);
+    return PatientPresenter.summary(transferred);
   }
 
   @Post(':slug/archive')
@@ -407,28 +290,16 @@ export class PatientsController {
   })
   @ApiParam({ name: 'slug', description: 'Identificador do paciente' })
   @ApiResponse({ status: 200, description: 'Paciente arquivado' })
-  
+  @ApiBody({ type: ArchivePatientDto })
   async archive(
     @Param('slug') patientSlug: string,
-    @Body() body: ArchivePatientDto,
+    @Body(new ZodValidationPipe(archivePatientSchema)) body: ArchivePatientSchema,
     @CurrentUser() currentUser: ICurrentUser,
   ): Promise<void> {
-    const tenantId = this.getTenant(currentUser);
-    const parsed = archivePatientSchema.parse(body);
+    const context = this.resolveContext(currentUser);
+    const input = toArchivePatientInput(patientSlug, body, context);
 
-    const input: ArchivePatientInput = {
-      patientSlug,
-      tenantId,
-      requestedBy: currentUser.id,
-      requesterRole: currentUser.role,
-      reason: parsed.reason,
-      archiveRelatedData: parsed.archiveRelatedData,
-    };
-
-    const result = await this.archivePatientUseCase.execute(input);
-    if (result.error) {
-      throw result.error;
-    }
+    unwrapResult(await this.archivePatientUseCase.execute(input));
   }
 
   @Post('export')
@@ -450,33 +321,23 @@ export class PatientsController {
     description: 'Exportacao enfileirada',
     schema: { example: { fileUrl: '' } },
   })
-  
+  @ApiBody({ type: ExportPatientsDto })
   async export(
-    @Body() body: ExportPatientsDto,
+    @Body(new ZodValidationPipe(exportPatientsSchema)) body: ExportPatientsSchema,
     @CurrentUser() currentUser: ICurrentUser,
   ): Promise<{ fileUrl: string }> {
-    const tenantId = this.getTenant(currentUser);
-    const parsed = exportPatientsSchema.parse(body);
+    const context = this.resolveContext(currentUser, body?.tenantId);
+    const request = toExportPatientRequest(body, context);
 
-    const request: PatientExportRequest = {
-      tenantId,
-      requestedBy: currentUser.id,
-      requesterRole: currentUser.role,
-      format: parsed.format,
-      filters: {
-        assignedProfessionalIds: parsed.professionalIds,
-        status: parsed.status?.map((value) => value as PatientStatus),
-        quickFilter: parsed.quickFilter as any,
-      },
-      includeMedicalData: parsed.includeMedicalData,
+    return unwrapResult(await this.exportPatientsUseCase.execute(request));
+  }
+
+  private resolveContext(currentUser: ICurrentUser, tenantOverride?: string | null): PatientRequestContext {
+    return {
+      tenantId: this.getTenant(currentUser, tenantOverride),
+      userId: currentUser.id,
+      role: currentUser.role,
     };
-
-    const result = await this.exportPatientsUseCase.execute(request);
-    if (result.error) {
-      throw result.error;
-    }
-
-    return result.data;
   }
 
   private getTenant(currentUser: ICurrentUser, tenantOverride?: string | null): string {
@@ -536,4 +397,14 @@ export class PatientsController {
     return tenantId;
   }
 }
+
+
+
+
+
+
+
+
+
+
 

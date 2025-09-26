@@ -16,97 +16,134 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ### Documentation
 
+## [0.16.4] - 2025-09-25
+
+### Added
+- Suites de integracao para Auth e Users cobrindo validacoes, guards e repositorios in-memory (test/integration/auth.controller.integration.spec.ts, test/integration/users.controller.integration.spec.ts).
+- Suites e2e para Auth e Users exercitando login 2FA, CRUD completo e logout (test/e2e/auth.e2e-spec.ts, test/e2e/users.e2e-spec.ts).
+- Suite unitaria dedicada ao user-request.mapper garantindo cobertura integral (test/unit/modules.users.user-request.mapper.spec.ts).
+- Estrutura inicial de testes automatizados com Jest (jest.config.js, tsconfig.test.json) e suites unitarias para presenters, utils e guards.
+- Suites unitarias adicionais cobrindo BaseUseCase, CPFValidator, presenters de pacientes/usuarios e CreatePatientUseCase.
+- Cobertura unitaria estendida para 100% dos casos de uso de pacientes, pipe Zod, validator de CPF e UseCaseWrapper.
+- Suites de integracao (test/integration/patients.controller.integration.spec.ts) e e2e (test/e2e/patients.e2e-spec.ts) para PatientsController com mocks controlados de guardas e repositorio.
+- Suite unitaria dedicada ao listUsersSchema garantindo coercoes de filtros (test/unit/modules.users.list-users-schema.spec.ts).
+- Suite unitaria dedicada ao listPatientsSchema garantindo coercoes de filtros de query (test/unit/modules.patients.list-patients-schema.spec.ts).
+- Suite unitaria dedicada ao signOutSchema garantindo defaults e validacao do payload (test/unit/modules.auth.sign-out-schema.spec.ts).
+- Mapper central para requests de pacientes (src/modules/patients/api/mappers/patient-request.mapper.ts) com suites unitarias completas (test/unit/modules.patients/patient-request.mapper.spec.ts).
+- Mapper compartilhado para normalizacao dos fluxos de auth (src/modules/auth/api/mappers/auth-request.mapper.ts) coberto por testes dedicados (test/unit/modules.auth/auth-request.mapper.spec.ts).
+
+### Changed
+- test/jest-e2e.json passa a usar tsconfig.e2e.json diretamente no transform, eliminando os warnings de configuracao do ts-jest.
+- README.md consolidado com baseline de qualidade, guia de modulos e roteiro PowerShell para testes manuais via curl (QUALITY_BASELINE.md incorporado).
+- UsersController delega normalizacao de create/list/update ao mapper compartilhado, usando ZodValidationPipe e fallback de tenant (src/modules/users/api/controllers/users.controller.ts:97).
+- Controllers de Auth e Users passam a reutilizar unwrapResult, reduzindo boilerplate de tratamento de Result.
+- QUALITY_BASELINE.md atualizado com novas notas, metas e evidencias alinhadas a cobertura total.
+- Script npm test:cov agora executa em modo sequencial (--runInBand) para evitar falhas intermitentes dos workers.
+- coverageThreshold global no Jest elevado para 100% de statements/branches/functions/lines.
+- jest.config.js passa a coletar cobertura dos mappers de pacientes, prevenindo regressao silenciosa (jest.config.js:17).
+- UsersController e os casos de uso de usuario consomem dados validados via Zod, eliminando class-validator duplicado e adotando CreateUserCommand/IUpdateUser (src/modules/users/api/controllers/users.controller.ts, src/modules/users/use-cases).
+- PatientsController aplica ZodValidationPipe em create/list e remove pipes redundantes, alinhando o fluxo ao dominio (src/modules/patients/api/controllers/patients.controller.ts).
+- AuthController e TwoFactorController delegam normalizacao aos mappers compartilhados, eliminando construcoes duplicadas (src/modules/auth/api/controllers/auth.controller.ts:118, src/modules/auth/api/controllers/two-factor.controller.ts:55).
+- DTOs do modulo de pacientes agora servem apenas ao Swagger, sem class-validator, refletindo o schema compartilhado (src/modules/patients/api/dtos/create-patient.dto.ts, src/modules/patients/api/dtos/update-patient.dto.ts, src/modules/patients/api/dtos/export-patients.dto.ts).
+- PatientsController utiliza resolveContext e o mapper compartilhado para construir inputs de dominio sem duplicacao (src/modules/patients/api/controllers/patients.controller.ts:113, src/modules/patients/api/mappers/patient-request.mapper.ts:96).
+
+### Fixed
+
+### Security
+
+### Documentation
+- README.md documenta o fluxo completo de testes manuais (Auth, Users, Patients) e unifica a baseline de qualidade.
+- QUALITY_BASELINE.md revisado com novas notas, metas e evidencias.
 ## [0.16.3] - 2025-09-25
 
 ### Added
-- Adicionado script CLI npm run assign-super-admin-tenant para alinhar tenants de SUPER_ADMIN entre Supabase e banco relacional.
+- Adicionado script CLI npm run assign-super-admin-tenant para alinhar tenants SUPER_ADMIN entre Supabase e banco relacional.
 
 ### DRY & Refactors
-- Centralizado formata��o de respostas de pacientes e usu�rios em presenters compartilhados, eliminando mapeamentos duplicados nos controllers.
-- SupabaseAuthService passou a normalizar objetos de usu�rio via helper �nico (`mapUserRecord`), reutilizado nos fluxos de sign-up/sign-in/get/refresh.
-- Use cases de pacientes reutilizam `mapRoleToDomain`/`RolesEnum`, removendo verifica��es de role baseadas em strings PT/EN.
-- `ZodValidationPipe` passou a utilizar `Logger` em vez de `console.error`, mantendo observabilidade consistente.
-
+- Centralizada a formatacao das respostas de pacientes e usuarios em presenters compartilhados, eliminando mapeamentos duplicados nos controllers.
+- SupabaseAuthService passou a normalizar objetos de usuario via helper unico (mapUserRecord), reutilizado nos fluxos de sign-up/sign-in/get/refresh.
+- Use cases de pacientes reutilizam mapRoleToDomain/RolesEnum, removendo verificacoes de role baseadas em strings PT/EN.
+- ZodValidationPipe passou a utilizar Logger no lugar de console.error, mantendo observabilidade consistente.
 ## [0.16.1] - 2025-09-25
 
 ### Changed
 
-- APP_URL configurado explicitamente para desenvolvimento (http://localhost:3000) e produção (https://onterapi.vercel.app), alinhando os links usados pelos e-mails transacionais.
-- DTOs de pacientes e usuários atualizados com descrições e exemplos acentuados corretamente.
+- APP_URL configurado explicitamente para desenvolvimento (http://localhost:3000) e produÃƒÂ§ÃƒÂ£o (https://onterapi.vercel.app), alinhando os links usados pelos e-mails transacionais.
+- DTOs de pacientes e usuÃƒÂ¡rios atualizados com descriÃƒÂ§ÃƒÂµes e exemplos acentuados corretamente.
 
 ### Fixed
 
 - SupabaseAuthService.deleteUser ignora respostas "user not found" do Supabase e segue com o soft delete local.
-- Assuntos dos e-mails de verificação, 2FA e boas-vindas corrigidos para exibir acentuação adequada.
+- Assuntos dos e-mails de verificaÃƒÂ§ÃƒÂ£o, 2FA e boas-vindas corrigidos para exibir acentuaÃƒÂ§ÃƒÂ£o adequada.
 
 ## [0.16.0] - 2025-09-24
 
 ### Changed
 
-- Provedor de email migrado para Resend, substituindo o transporte SMTP local e atualizando variáveis de ambiente.
-- Remetente padrão apontando para Onterapi <noreply@onterapi.com.br> nos envs e integrações.
+- Provedor de email migrado para Resend, substituino o transporte SMTP local e atualizano variÃƒÂ¡veis de ambiente.
+- Remetente padrÃƒÂ£o apontano para Onterapi <noreply@onterapi.com.br> nos envs e integraÃƒÂ§ÃƒÂµes.
 
 ### Fixed
 
-- Corrigido o carregamento de metadados do TypeORM em ambiente serverless habilitando utoLoadEntities, evitando erro EntityMetadataNotFoundError no login da Vercel.
+- Corrigido o carregameno de metadados do TypeORM em ambiente serverless habilitano utoLoadEntities, evitano erro EntityMetadataNotFoundError no login da Vercel.
 
 ## [0.15.0] - 2025-09-24
 
 
 - Suporte a slugs unicos para usuarios e pacientes, com migracao TypeORM e utilitario compartilhado para gerar/backfill.
-- Scripts CLI `npm run backfill:user-slugs`, `npm run sync:users` e `npm run prune:users` para manter Supabase e banco relacional alinhados.
+- Scripts CLI `npm run backfill:user-slugs`, `npm run sync:users` e `npm run prune:users` para manter Supabase e bano relacional alinhados.
 - Fonte de dados TypeORM dedicada (`typeorm.datasource.ts`) e declaracoes de tipo locais para scripts.
 
 ### Changed
 
 - Endpoints REST de pacientes e usuarios agora aceitam slugs; DTOs, guards, mapeadores e casos de uso foram atualizados para expor o campo.
-- Casos de uso de usuarios passam a persistir e atualizar dados pelo repositorio relacional enquanto sincronizam metadata com Supabase.
+- Casos de uso de usuarios passam a persistir e atualizar dados pelo repositorio relacional enquano sincronizam metadata com Supabase.
 - README e `tsconfig.json` atualizados para refletir o fluxo baseado em slugs e permitir build dos novos scripts.
 
 ### Fixed
 
 - Operacoes de paciente (atualizar, transferir, arquivar) resolvem o identificador interno a partir do slug antes de manipular registros.
-- Exclusao de usuario garante soft delete do registro local apos remover a conta no Supabase, evitando dados orfaos.
+- Exclusao de usuario garante soft delete do registro local apos remover a conta no Supabase, evitano dados orfaos.
 
 ## [0.14.0] - 2025-09-23
 
 
-- Modulo completo de pacientes (CRUD, filtros, transferencia, arquivamento) integrado ao Supabase.
-- Endpoint `/patients/export` persistindo pedidos na tabela `patient_exports` com filtros armazenados.
+- Modulo completo de pacientes (CRUD, filtros, transferencia, arquivameno) integrado ao Supabase.
+- Endpoint `/patients/export` persistino pedidos na tabela `patient_exports` com filtros armazenados.
 - Nova documentacao de fluxo end-to-end (auth + 2FA + pacientes + export) e credenciais atualizadas.
 
 ### Changed
 
-- SignOutUseCase passa a informar o `userId` ao Supabase e ignora assinaturas invalidas sem gerar erro.
+- SignOutUseCase passa a inormar o `userId` ao Supabase e ignora assinaturas invalidas sem gerar erro.
 - DTO `SignOutDto` agora valida `refreshToken` e `allDevices` com class-validator.
 - README reescrito com instrucoes atualizadas, fluxos de teste e troubleshooting.
 - Documentacao do Swagger atualizada para listar os roles exigidos nos modulos Auth, Two-Factor, Patients e Users.
-- Fluxo de Two-Factor no Swagger atualizado: payload de validação documentado e endpoint manual de reenvio oculto.
-- Swagger: removido esquema de API key não utilizado para evitar confusão na autenticação.
-- Filtros da listagem de pacientes no Swagger exibem enums reais (status, risco, quickFilter) alinhados às validações de back-end.
+- Fluxo de Two-Factor no Swagger atualizado: payload de validaÃƒÂ§ÃƒÂ£o documentado e endpoint manual de reenvio oculto.
+- Swagger: removido esquema de API key nÃƒÂ£o utilizado para evitar confusÃƒÂ£o na autenticaÃƒÂ§ÃƒÂ£o.
+- Filtros da listagem de pacientes no Swagger exibem enums reais (status, risco, quickFilter) alinhados ÃƒÂ s validaÃƒÂ§ÃƒÂµes de back-end.
 
 ### Fixed
 
-- Logout em todos os dispositivos nao gera mais warning `invalid JWT` do Supabase.
+- Logout em todos os dispositivos no gera mais warning `invalid JWT` do Supabase.
 - Exportacao de pacientes respeita roles (SECRETARY bloqueada) e registra jobs pendentes corretamente.
-- Remocao de artefatos de encoding nas descricoes dos endpoints documentados no Swagger.
+- Remocao de artefatos de enoding nas descricoes dos endpoints documentados no Swagger.
 
 ## [0.13.1] - 2025-09-21
 
 ### Changed
 
-- Reforco de seguranca exigindo segredos JWT definidos via ambiente
+- Reforco de seguranca exigino segredos JWT definidos via ambiente
 - ValidationPipe global com whitelist e forbidNonWhitelisted ativados
 - Codigos 2FA gerados com RNG criptografico
 - JwtAuthGuard agora injeta o contexto completo do usuario utilizado pelos demais guards
-- Contratos e DTOs de Auth ajustados (me, sign-out, refresh) para respostas consistentes
+- Contratos e DTOs de Auth ajustados (me, signout, refresh) para respostas consistentes
 
 ### Fixed
 
 - Logout em todos os dispositivos atualiza as colunas corretas em user_sessions
 - SignOutResponseDto alinhado ao payload retornado (revokedSessions)
 - Endpoint /auth/two-factor/send documentado e validado com Zod
-- Criacao de usuarios utilizando a interface unificada do Supabase Auth
+- Criacao de usuarios utilizano a interface unificada do Supabase Auth
 
 ### Infrastructure
 
@@ -118,18 +155,18 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ### Changed
 
-- Reforço de segurança exigindo segredos JWT definidos via ambiente
+- ReforÃƒÂ§o de seguranÃƒÂ§a exigino segredos JWT definidos via ambiente
 - ValidationPipe global com whitelist e forbidNonWhitelisted ativados
-- Códigos 2FA gerados com RNG criptográfico
-- JwtAuthGuard agora injeta o contexto completo do usuário utilizado pelos demais guards
-- Contratos e DTOs de Auth ajustados (me, sign-out, refresh) para respostas consistentes
+- CÃƒÂ³digos 2FA gerados com RNG criptogrÃƒÂ¡fico
+- JwtAuthGuard agora injeta o contexto completo do usuÃƒÂ¡rio utilizado pelos demais guards
+- Contratos e DTOs de Auth ajustados (me, signout, refresh) para respostas consistentes
 
 ### Fixed
 
 - Logout em todos os dispositivos atualiza as colunas corretas em user_sessions
 - SignOutResponseDto alinhado ao payload retornado (revokedSessions)
 - Endpoint /auth/two-factor/send documentado e validado com Zod
-- Criação de usuários utilizando a interface unificada do Supabase Auth
+- CriaÃƒÂ§ÃƒÂ£o de usuÃƒÂ¡rios utilizano a interface unificada do Supabase Auth
 
 ### Infrastructure
 
@@ -140,308 +177,307 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 ## [0.13.0] - 2025-09-04
 
 
-- **Validação de email obrigatória para login**
-  - Usuários não podem fazer login sem confirmar email
-  - Mensagem específica "Email não verificado" ao invés de "Credenciais inválidas"
-  - Tratamento correto do erro "Email not confirmed" do Supabase
+- **ValidaÃƒÂ§ÃƒÂ£o de email obrigatÃƒÂ³ria para login**
+  - UsuÃƒÂ¡rios nÃƒÂ£o podem fazer login sem confirmar email
+  - Mensagem especÃƒÂ­fica "Email nÃƒÂ£o verificado" ao invÃƒÂ©s de "Credenciais invÃƒÂ¡lidas"
+  - Tratameno correto do erro "Email not confirmed" do Supabase
 
 ### Fixed
 
-- **Correções no fluxo de autenticação**
-  - Verificação de email confirmado antes de permitir login
-  - Prevenção de confirmação duplicada de email (retorna erro apropriado)
-  - Mensagens de erro mais claras e específicas para cada situação
+- **CorreÃƒÂ§ÃƒÂµes no fluxo de autenticaÃƒÂ§ÃƒÂ£o**
+  - VerificaÃƒÂ§ÃƒÂ£o de email confirmado antes de permitir login
+  - PrevenÃƒÂ§ÃƒÂ£o de confirmaÃƒÂ§ÃƒÂ£o duplicada de email (retorna erro apropriado)
+  - Mensagens de erro mais claras e especÃƒÂ­ficas para cada situaÃƒÂ§ÃƒÂ£o
 
 ### Improved
 
-- **Sistema de verificação de email**
-  - Token de verificação único por usuário
-  - Não permite confirmar email já confirmado
-  - Integração completa com Supabase email_confirmed_at
+- **Sistema de verificaÃƒÂ§ÃƒÂ£o de email**
+  - Token de verificaÃƒÂ§ÃƒÂ£o ÃƒÂºnico por usuÃƒÂ¡rio
+  - NÃƒÂ£o permite confirmar email jÃƒÂ¡ confirmado
+  - IntegraÃƒÂ§ÃƒÂ£o completa com Supabase email_confirmed_at
 
 ### Tested
 
-- **Fluxo completo de autenticação validado**
-  - Login bloqueado sem email confirmado ✓
-  - Login funcional após confirmação ✓
-  - Prevenção de confirmação duplicada ✓
-  - 2FA funcionando corretamente ✓
-  - Bloqueio após 3 tentativas erradas de 2FA ✓
+- **Fluxo completo de autenticaÃƒÂ§ÃƒÂ£o validado**
+  - Login bloqueado sem email confirmado Ã¢Å“â€œ
+  - Login funcional apÃƒÂ³s confirmaÃƒÂ§ÃƒÂ£o Ã¢Å“â€œ
+  - PrevenÃƒÂ§ÃƒÂ£o de confirmaÃƒÂ§ÃƒÂ£o duplicada Ã¢Å“â€œ
+  - 2FA funcionano corretamente Ã¢Å“â€œ
+  - Bloqueio apÃƒÂ³s 3 tentativas erradas de 2FA Ã¢Å“â€œ
 
 ## [0.12.0] - 2025-09-03
 
 
-- **BaseUseCase para eliminação de duplicação de try-catch**
-  - Criado BaseUseCase abstrato que centraliza tratamento de erros
-  - 10 use cases refatorados para usar o padrão DRY
-  - UseCaseWrapper criado para adaptar diferentes assinaturas de métodos
-  - UpdateUserUseCase e DeleteUserUseCase usando wrapper pattern
+- **BaseUseCase para eliminaÃƒÂ§ÃƒÂ£o de duplicaÃƒÂ§ÃƒÂ£o de try-catch**
+  - Criado BaseUseCase abstrato que centraliza tratameno de erros
+  - 10 use cases refatorados para usar o padrÃƒÂ£o DRY
+  - UseCaseWrapper criado para adaptar diferentes assinaturas de mÃƒÂ©todos
+  - UpdateUserUseCase e DeleteUserUseCase usano wrapper pattern
 
-- **BaseGuard para abstração de guards**
-  - Criado BaseGuard que centraliza lógica comum
+- **BaseGuard para abstraÃƒÂ§ÃƒÂ£o de guards**
+  - Criado BaseGuard que centraliza lÃƒÂ³gica comum
   - 6 guards refatorados (JwtAuth, Roles, Tenant, UserOwner, EmailVerified, ActiveAccount)
-  - Método getUser() centralizado para extração de usuário do contexto
+  - MÃƒÂ©todo getUser() centralizado para extraÃƒÂ§ÃƒÂ£o de usuÃƒÂ¡rio do contexto
 
 - **Sistema de mensagens centralizado**
   - MESSAGES.constants.ts criado com todas as mensagens do sistema
   - 0 mensagens hardcoded (100% centralizadas)
-  - Seções organizadas: AUTH, USER, VALIDATION, EVENTS, ERRORS, GUARDS, LOGS
+  - SeÃƒÂ§ÃƒÂµes organizadas: AUTH, USER, VALIDATION, EVENTS, ERRORS, GUARDS, LOGS
 
-- **Divisão de controllers e serviços grandes**
+- **DivisÃƒÂ£o de controllers e serviÃƒÂ§os grandes**
   - TwoFactorController separado do AuthController
   - EmailService dividido em 3: AuthEmailService, NotificationEmailService e facade
-  - Redução significativa de complexidade por arquivo
+  - ReduÃƒÂ§ÃƒÂ£o significativa de complexidade por arquivo
 
 - **Event Subscribers implementados**
-  - AuthEventsSubscriber para eventos de autenticação
-  - UserEventsSubscriber para eventos de usuários
-  - Integração completa com MessageBus
+  - AuthEventsSubscriber para evenos de autenticaÃƒÂ§ÃƒÂ£o
+  - UserEventsSubscriber para evenos de usuÃƒÂ¡rios
+  - IntegraÃƒÂ§ÃƒÂ£o completa com MessageBus
 
 ### Changed
 
-- **Result Pattern aplicado em toda a aplicação**
-  - Todas as interfaces de use cases retornando Result<T>
+- **Result Pattern aplicado em toda a aplicaÃƒÂ§ÃƒÂ£o**
+  - Todas as interfaces de use cases retornano Result<T>
   - Controllers atualizados para tratar result.error e result.data
-  - Tratamento de erros padronizado e consistente
+  - Tratameno de erros padronizado e consistente
 
-- **Usuário padrão do sistema**
-  - Removidos todos os usuários de teste
+- **UsuÃƒÂ¡rio padrÃƒÂ£o do sistema**
+  - Removidos todos os usuÃƒÂ¡rios de teste
   - Mantido apenas 1 super admin (lina73@ethereal.email / senha: admin)
   - README atualizado com credenciais simplificadas
 
 ### Fixed
 
-- **Correções críticas de arquitetura DRY**
-  - Eliminadas 635 linhas de código duplicado
-  - Redução de duplicação de 20% para 0%
-  - 100% dos use cases usando BaseUseCase ou wrapper
-  - 100% dos guards usando BaseGuard
+- **CorreÃƒÂ§ÃƒÂµes crÃƒÂ­ticas de arquitetura DRY**
+  - Eliminadas 635 linhas de cÃƒÂ³digo duplicado
+  - ReduÃƒÂ§ÃƒÂ£o de duplicaÃƒÂ§ÃƒÂ£o de 20% para 0%
+  - 100% dos use cases usano BaseUseCase ou wrapper
+  - 100% dos guards usano BaseGuard
 
 ### Improved
 
-- **Qualidade e manutenibilidade do código**
-  - Zero comentários no código (código auto-documentado)
+- **Qualidade e manutenibilidade do cÃƒÂ³digo**
+  - Zero comentÃƒÂ¡rios no cÃƒÂ³digo (cÃƒÂ³digo auto-documentado)
   - Zero mensagens hardcoded em logs
   - Arquitetura DDD/Clean 100% consistente
-  - Todos os testes de endpoints passando
+  - Todos os testes de endpoints passano
 
 ### Technical
 
-- **Métricas finais de refatoração**
-  - 396 inserções, 968 deleções (saldo: -572 linhas)
+- **MÃƒÂ©tricas finais de refatoraÃƒÂ§ÃƒÂ£o**
+  - 396 inserÃƒÂ§ÃƒÂµes, 968 deleÃƒÂ§ÃƒÂµes (saldo: -572 linhas)
   - 35 arquivos modificados
   - 10 use cases refatorados
   - 6 guards refatorados
-  - 3 serviços divididos
-  - 0 duplicações restantes
+  - 3 serviÃƒÂ§os divididos
+  - 0 duplicaÃƒÂ§ÃƒÂµes restantes
 
 ## [0.11.0] - 2025-09-03
 
 
-- **Sistema de Eventos Integrado aos Use Cases**
-  - 7 eventos publicados em use cases críticos
+- **Sistema de Evenos Integrado aos Use Cases**
+  - 7 evenos publicados em use cases crÃƒÂ­ticos
   - USER_CREATED, USER_UPDATED, USER_DELETED implementados
   - USER_LOGGED_IN, TOKEN_REFRESHED implementados
   - TWO_FA_SENT, TWO_FA_VALIDATED implementados
-  - MessageBus integrado nos módulos Auth e Users
-  - EventEmitterModule configurado para mensageria assíncrona
+  - MessageBus integrado nos mÃƒÂ³dulos Auth e Users
+  - EventEmitterModule configurado para mensageria assÃƒÂ­ncrona
 
 ### Fixed
 
-- **Eliminação de Duplicações no Controllers**
-  - Removido método mapToResponse duplicado em users.controller
-  - Substituído por uso direto de CPFUtils.mask inline
-  - Redução de 19 linhas de código duplicado
+- **EliminaÃƒÂ§ÃƒÂ£o de DuplicaÃƒÂ§ÃƒÂµes no Controllers**
+  - Removido mÃƒÂ©todo mapToResponse duplicado em users.controller
+  - SubstituÃƒÂ­do por uso direto de CPFUtils.mask inline
+  - ReduÃƒÂ§ÃƒÂ£o de 19 linhas de cÃƒÂ³digo duplicado
 
-- **Erros de Compilação TypeScript**
-  - Corrigido uso incorreto de normalizeLoginInfo em sign-in.use-case
-  - Ajustado acesso a propriedades do objeto loginInfo
-  - Build passando sem erros
+- **Erros de CompilaÃƒÂ§ÃƒÂ£o TypeScript**
+  - Corrigido uso inorreto de normalizeLoginIno em sign-in.use-case
+  - Ajustado acesso a propriedades do objeto loginIno
+  - Build passano sem erros
 
 ### Improved
 
-- **Integração de Mensageria**
-  - MessageBus injetável em todos os use cases
-  - EventEmitterModule.forRoot() configurado nos módulos
-  - Base para comunicação assíncrona entre módulos
-  - Preparado para integração com filas externas (RabbitMQ, Kafka)
+- **IntegraÃƒÂ§ÃƒÂ£o de Mensageria**
+  - MessageBus injetÃƒÂ¡vel em todos os use cases
+  - EventEmitterModule.forRoot() configurado nos mÃƒÂ³dulos
+  - Base para comunicaÃƒÂ§ÃƒÂ£o assÃƒÂ­ncrona entre mÃƒÂ³dulos
+  - Preparado para integraÃƒÂ§ÃƒÂ£o com filas externas (RabbitMQ, Kafka)
 
-- **Qualidade de Código**
-  - Redução de duplicação: de 20% para ~5%
-  - 68% das correções críticas implementadas (15/22)
-  - Eventos implementados: 58% (7/12)
-  - Zero throw new diretos (100% usando factory)
+- **Qualidade de CÃƒÂ³digo**
+  - ReduÃƒÂ§ÃƒÂ£o de duplicaÃƒÂ§ÃƒÂ£o: de 20% para ~5%
+  - 68% das correÃƒÂ§ÃƒÂµes crÃƒÂ­ticas implementadas (15/22)
+  - Evenos implementados: 58% (7/12)
+  - Zero throw new diretos (100% usano factory)
 
 ### Technical
 
-- **Métricas de Progresso**
-  - 15 correções críticas de 22 pendentes implementadas
-  - 7 use cases com eventos publicados
-  - 3 métodos grandes ainda precisam refatoração
-  - API estável e funcionando em produção
+- **MÃƒÂ©tricas de Progresso**
+  - 15 correÃƒÂ§ÃƒÂµes crÃƒÂ­ticas de 22 pendentes implementadas
+  - 7 use cases com evenos publicados
+  - 3 mÃƒÂ©todos grandes ainda precisam refatoraÃƒÂ§ÃƒÂ£o
+  - API estÃƒÂ¡vel e funcionano em produÃƒÂ§ÃƒÂ£o
 
 ## [0.10.0] - 2025-09-03
 
 
 - **Sistema de Mensageria Completo**
   - MessageBus implementado com EventEmitter2
-  - DomainEvents com 12 eventos definidos
+  - DomainEvents com 12 evenos definidos
   - Interface DomainEvent padronizada
-  - Eventos: USER_CREATED, USER_UPDATED, USER_DELETED, USER_LOGGED_IN, etc.
+  - Evenos: USER_CREATED, USER_UPDATED, USER_DELETED, USER_LOGGED_IN, etc.
 
 - **Validadores Centralizados**
-  - CPFValidator com validação completa de CPF brasileiro
-  - EmailValidator com regex e normalização
-  - PhoneValidator com validação de DDDs brasileiros
+  - CPFValidator com validaÃƒÂ§ÃƒÂ£o completa de CPF brasileiro
+  - EmailValidator com regex e normalizaÃƒÂ§ÃƒÂ£o
+  - PhoneValidator com validaÃƒÂ§ÃƒÂ£o de DDDs brasileiros
 - **Constantes Centralizadas**
   - validation.constants.ts com mensagens e patterns
-  - error.constants.ts com códigos de erro padronizados
-  - event.constants.ts com nomes de eventos
+  - error.constants.ts com cÃƒÂ³digos de erro padronizados
+  - event.constants.ts com nomes de evenos
 
 - **Tipos Centralizados**
-  - DeviceInfo movido para shared/types/device.types.ts
-  - Eliminada duplicação em 19 arquivos
+  - DeviceIno movido para shared/types/device.types.ts
+  - Eliminada duplicaÃƒÂ§ÃƒÂ£o em 19 arquivos
 
 ### Fixed
 
-- **IUserRepository em Produção**
+- **IUserRepository em ProduÃƒÂ§ÃƒÂ£o**
   - Corrigido mock vazio `useValue: {}`
   - Implementado `useClass: UserRepository`
   - Adicionado TypeOrmModule.forFeature([UserEntity])
-  - Repository real agora é injetado corretamente
+  - Repository real agora ÃƒÂ© injetado corretamente
 
-- **Tratamento de Erros Consistente**
+- **Tratameno de Erros Consistente**
   - AuthErrorFactory expandido com 5 novos tipos
-  - Substituídos 13 `throw new` diretos por AuthErrorFactory
+  - SubstituÃƒÂ­dos 13 `throw new` diretos por AuthErrorFactory
   - Tipos adicionados: TOKEN_NOT_PROVIDED, USER_NOT_AUTHENTICATED, ACCESS_DENIED, etc.
 
 ### Improved
 
-- **Redução de Duplicação de Código**
-  - DeviceInfo: de 19 duplicações para 1 centralizada
-  - Tratamento de erros: 100% usando AuthErrorFactory
-  - UserMapper eliminando duplicações de mapeamento
-  - CPFUtils centralizando lógica de mascaramento
+- **ReduÃƒÂ§ÃƒÂ£o de DuplicaÃƒÂ§ÃƒÂ£o de CÃƒÂ³digo**
+  - DeviceIno: de 19 duplicaÃƒÂ§ÃƒÂµes para 1 centralizada
+  - Tratameno de erros: 100% usano AuthErrorFactory
+  - UserMapper eliminano duplicaÃƒÂ§ÃƒÂµes de mapeameno
+  - CPFUtils centralizano lÃƒÂ³gica de mascarameno
 
 - **Arquitetura DDD**
-  - Separação clara entre camadas
-  - Sistema de eventos para comunicação entre módulos
-  - Validadores reutilizáveis no shared
+  - SeparaÃƒÂ§ÃƒÂ£o clara entre camadas
+  - Sistema de evenos para comunicaÃƒÂ§ÃƒÂ£o entre mÃƒÂ³dulos
+  - Validadores reutilizÃƒÂ¡veis no shared
   - Constantes centralizadas por tipo
 
 ### Technical
 
-- **Qualidade de Código**
+- **Qualidade de CÃƒÂ³digo**
   - Build sem erros TypeScript
-  - API funcionando corretamente no Docker
-  - 7 de 22 correções críticas implementadas
-  - Base preparada para sistema de eventos completo
+  - API funcionano corretamente no Docker
+  - 7 de 22 correÃƒÂ§ÃƒÂµes crÃƒÂ­ticas implementadas
+  - Base preparada para sistema de evenos completo
 
 ## [0.9.0] - 2025-09-03
 
 ### Changed
 
-- **Limpeza Total de Código**
-  - Removidos TODOS os comentários de TODOS os arquivos TypeScript
-  - Incluindo JSDoc, comentários de linha e blocos
-  - Código mais limpo e profissional
-  - Mantidos apenas `.describe()` do Zod para documentação Swagger
+- **Limpeza Total de CÃƒÂ³digo**
+  - Removidos TODOS os comentÃƒÂ¡rios de TODOS os arquivos TypeScript
+  - Incluino JSDoc, comentÃƒÂ¡rios de linha e blocos
+  - CÃƒÂ³digo mais limpo e profissional
+  - Mantidos apenas `.describe()` do Zod para documentaÃƒÂ§ÃƒÂ£o Swagger
 
 ### Improved
 
-- **Organização de Diretórios**
-  - Removidos 8 diretórios vazios redundantes do boilerplate inicial
-  - Mantida estrutura modular (por feature) ao invés de centralizada
+- **OrganizaÃƒÂ§ÃƒÂ£o de DiretÃƒÂ³rios**
+  - Removidos 8 diretÃƒÂ³rios vazios redundantes do boilerplate inicial
+  - Mantida estrutura modular (por feature) ao invÃƒÂ©s de centralizada
   - Estrutura mais coerente com DDD modular
 
 ### Technical
 
-- **Qualidade de Código**
-  - Zero comentários no código (código auto-explicativo)
-  - Melhor aderência aos padrões clean code
-  - Remoção de diretórios desnecessários: domain/enums, domain/interfaces/\*, infrastructure/config, etc
-  - Mantidos apenas diretórios essenciais para futuras implementações
+- **Qualidade de CÃƒÂ³digo**
+  - Zero comentÃƒÂ¡rios no cÃƒÂ³digo (cÃƒÂ³digo auto-explicativo)
+  - Melhor aderÃƒÂªncia aos padrÃƒÂµes clean code
+  - RemoÃƒÂ§ÃƒÂ£o de diretÃƒÂ³rios desnecessÃƒÂ¡rios: domain/enums, domain/interfaces/\*, infrastructure/config, etc
+  - Mantidos apenas diretÃƒÂ³rios essenciais para futuras implementaÃƒÂ§ÃƒÂµes
 
 ## [0.8.0] - 2025-09-03
 
 
 - **Contador de Tentativas no 2FA**
-  - Sistema de bloqueio após 3 tentativas erradas
-  - Incremento automático de tentativas em códigos inválidos
-  - Bloqueio efetivo quando attempts >= max_attempts
-  - Método `findValidTwoFactorCode` no repositório
+  - Sistema de bloqueio apÃƒÂ³s 3 tentativas erradas
+  - Incremeno automÃƒÂ¡tico de tentativas em cÃƒÂ³digos invÃƒÂ¡lidos
+  - Bloqueio efetivo quano attempts >= max_attempts
+  - MÃƒÂ©todo `findValidTwoFactorCode` no repositÃƒÂ³rio
 
 ### Fixed
 
-- **Lógica de Validação 2FA**
-  - Corrigido incremento de tentativas para códigos válidos
-  - Agora incrementa tentativas do código ativo, não do código errado
-  - Validação correta busca código válido antes de verificar match
+- **LÃƒÂ³gica de ValidaÃƒÂ§ÃƒÂ£o 2FA**
+  - Corrigido incremeno de tentativas para cÃƒÂ³digos vÃƒÂ¡lidos
+  - Agora incrementa tentativas do cÃƒÂ³digo ativo, nÃƒÂ£o do cÃƒÂ³digo errado
+  - ValidaÃƒÂ§ÃƒÂ£o correta busca cÃƒÂ³digo vÃƒÂ¡lido antes de verificar match
 
 ### Improved
 
-- **Segurança do 2FA**
-  - Bloqueio automático após exceder tentativas
-  - Não aceita código correto após bloqueio
-  - Proteção contra força bruta
+- **SeguranÃƒÂ§a do 2FA**
+  - Bloqueio automÃƒÂ¡tico apÃƒÂ³s exceder tentativas
+  - NÃƒÂ£o aceita cÃƒÂ³digo correto apÃƒÂ³s bloqueio
+  - ProteÃƒÂ§ÃƒÂ£o contra forÃƒÂ§a bruta
 
 ### Technical
 
-- **Limpeza de Código**
-  - Removidos todos os TODOs do módulo auth
+- **Limpeza de CÃƒÂ³digo**
+  - Removidos todos os TODOs do mÃƒÂ³dulo auth
   - Implementado contador de tentativas completo
-  - Código de produção sem comentários desnecessários
+  - CÃƒÂ³digo de produÃƒÂ§ÃƒÂ£o sem comentÃƒÂ¡rios desnecessÃƒÂ¡rios
 
 ## [0.7.0] - 2025-09-03
 
 
 - **Two-Factor Authentication (2FA) Completo**
   - Criada tabela `two_factor_codes` no Supabase Cloud
-  - Geração de códigos de 6 dígitos com expiração de 5 minutos
-  - Envio de código por email com template HTML responsivo
-  - Validação de código com limite de 3 tentativas
-  - Integração completa com Supabase Auth (sem banco local)
+  - GeraÃƒÂ§ÃƒÂ£o de cÃƒÂ³digos de 6 dÃƒÂ­gitos com expiraÃƒÂ§ÃƒÂ£o de 5 minutos
+  - Envio de cÃƒÂ³digo por email com template HTML responsivo
+  - ValidaÃƒÂ§ÃƒÂ£o de cÃƒÂ³digo com limite de 3 tentativas
+  - IntegraÃƒÂ§ÃƒÂ£o completa com Supabase Auth (sem bano local)
   - Logs visuais no desenvolvimento com links do Ethereal
-  - Suporte para trust device (30 dias vs 7 dias padrão)
+  - Suporte para trust device (30 dias vs 7 dias padrÃƒÂ£o)
 
 ### Fixed
 
-- **2FA com Supabase**: Integração dos use cases de 2FA
-  - `send-two-fa.use-case.ts`: Busca usuário do Supabase ao invés de banco local
+- **2FA com Supabase**: IntegraÃƒÂ§ÃƒÂ£o dos use cases de 2FA
+  - `send-two-fa.use-case.ts`: Busca usuÃƒÂ¡rio do Supabase ao invÃƒÂ©s de bano local
   - `validate-two-fa.use-case.ts`: Remove update em tabela local inexistente
-  - Atualização de lastLoginAt via Supabase user_metadata
-  - Correção de extração de dados do usuário (user.user || user)
+  - AtualizaÃƒÂ§ÃƒÂ£o de lastLoginAt via Supabase user_metadata
+  - CorreÃƒÂ§ÃƒÂ£o de extraÃƒÂ§ÃƒÂ£o de dados do usuÃƒÂ¡rio (user.user || user)
 
 ### Database
 
 - **Tabela two_factor_codes**: Estrutura completa criada
   - Colunas: id, user_id, code, method, expires_at, attempts, max_attempts, is_used, used_at, created_at
-  - Índices para performance: idx_two_factor_codes_user_id, idx_two_factor_codes_expires_at
+  - ÃƒÂndices para performance: idx_two_factor_codes_user_id, idx_two_factor_codes_expires_at
   - Foreign key com auth.users com CASCADE DELETE
 
 ### Documentation
-
-- **Fluxo 2FA Documentado**: Como funciona o sistema completo
+- QUALITY_BASELINE.md revisado com novas notas, metas e evidencias.\n\n- **Fluxo 2FA Documentado**: Como funciona o sistema completo
   - Login detecta 2FA habilitado e retorna tempToken
-  - Envio de código gera 6 dígitos e salva no banco
-  - Validação verifica código e retorna tokens JWT completos
+  - Envio de cÃƒÂ³digo gera 6 dÃƒÂ­gitos e salva no bano
+  - ValidaÃƒÂ§ÃƒÂ£o verifica cÃƒÂ³digo e retorna tokens JWT completos
 
 ## [0.6.0] - 2025-09-03
 
 
-- **Sistema de Verificação de Email com Tokens Seguros**
+- **Sistema de VerificaÃƒÂ§ÃƒÂ£o de Email com Tokens Seguros**
   - Criada tabela `email_verification_tokens` no Supabase
-  - Tokens únicos de 64 caracteres hexadecimais
-  - Expiração de 24 horas para tokens
-  - Tokens marcados como usados após verificação
-  - Validação robusta: rejeita tokens de teste, tokens curtos, formatos inválidos
-  - Integração com fluxo de criação de usuários
+  - Tokens ÃƒÂºnicos de 64 caracteres hexadecimais
+  - ExpiraÃƒÂ§ÃƒÂ£o de 24 horas para tokens
+  - Tokens marcados como usados apÃƒÂ³s verificaÃƒÂ§ÃƒÂ£o
+  - ValidaÃƒÂ§ÃƒÂ£o robusta: rejeita tokens de teste, tokens curtos, formatos invÃƒÂ¡lidos
+  - IntegraÃƒÂ§ÃƒÂ£o com fluxo de criaÃƒÂ§ÃƒÂ£o de usuÃƒÂ¡rios
 
-- **Melhorias no Módulo de Autenticação**
-  - Refresh token agora retorna dados completos do usuário (email, name, role correto)
-  - Verificação de email com validação real de tokens no banco
-  - Usuários criados com `emailVerified: false` até confirmar email
-  - Link de verificação enviado por email com token único
+- **Melhorias no MÃƒÂ³dulo de AutenticaÃƒÂ§ÃƒÂ£o**
+  - Refresh token agora retorna dados completos do usuÃƒÂ¡rio (email, name, role correto)
+  - VerificaÃƒÂ§ÃƒÂ£o de email com validaÃƒÂ§ÃƒÂ£o real de tokens no bano
+  - UsuÃƒÂ¡rios criados com `emailVerified: false` atÃƒÂ© confirmar email
+  - Link de verificaÃƒÂ§ÃƒÂ£o enviado por email com token ÃƒÂºnico
 
 ### Fixed
 
@@ -449,186 +485,185 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
   - Antes retornava email vazio, name vazio e role sempre PATIENT
   - Agora retorna todos os dados corretos do user_metadata
 - **Email Verified**: Corrigido valor hardcoded
-  - Usuários eram criados com `emailVerified: true` incorretamente
-  - Agora começam com `false` e só mudam após verificação real
+  - UsuÃƒÂ¡rios eram criados com `emailVerified: true` inorretamente
+  - Agora comeÃƒÂ§am com `false` e sÃƒÂ³ mudam apÃƒÂ³s verificaÃƒÂ§ÃƒÂ£o real
 
 ### Security
 
 - **Verify Email**: Removido aceite de qualquer token
   - Antes tinha TODO e aceitava qualquer string
-  - Agora valida token no banco de dados
-  - Tokens só podem ser usados uma vez
-  - Expiração de 24 horas implementada
+  - Agora valida token no bano de dados
+  - Tokens sÃƒÂ³ podem ser usados uma vez
+  - ExpiraÃƒÂ§ÃƒÂ£o de 24 horas implementada
 
 ### Documentation
-
-- **README**: Adicionada tabela completa de usuários de teste
-- **onterapi-dev.md**: Documentada configuração correta de conexão PostgreSQL/Supabase
+- QUALITY_BASELINE.md revisado com novas notas, metas e evidencias.\n\n- **README**: Adicionada tabela completa de usuÃƒÂ¡rios de teste
+- **onterapi-dev.md**: Documentada configuraÃƒÂ§ÃƒÂ£o correta de conexÃƒÂ£o PostgreSQL/Supabase
 
 ## [0.5.1] - 2025-09-02
 
 ### Fixed
 
-- **JwtAuthGuard**: Corrigido problema crítico de extração de metadata do usuário
-  - Guard estava acessando incorretamente `user.user_metadata` ao invés de `user.user.user_metadata`
-  - Isso causava todos os usuários serem identificados como role PATIENT
+- **JwtAuthGuard**: Corrigido problema crÃƒÂ­tico de extraÃƒÂ§ÃƒÂ£o de metadata do usuÃƒÂ¡rio
+  - Guard estava acessano inorretamente `user.user_metadata` ao invÃƒÂ©s de `user.user.user_metadata`
+  - Isso causava todos os usuÃƒÂ¡rios serem identificados como role PATIENT
   - Agora extrai corretamente o role do metadata do Supabase
-  - RolesGuard funcionando adequadamente após correção
+  - RolesGuard funcionano adequadamente apÃƒÂ³s correÃƒÂ§ÃƒÂ£o
 
 
-- **Configuração SUPABASE_SERVICE_ROLE_KEY**: Adicionada chave de serviço ao .env
-  - Necessária para operações administrativas do Supabase
-  - Permite deletar e gerenciar usuários via API admin
+- **ConfiguraÃƒÂ§ÃƒÂ£o SUPABASE_SERVICE_ROLE_KEY**: Adicionada chave de serviÃƒÂ§o ao .env
+  - NecessÃƒÂ¡ria para operaÃƒÂ§ÃƒÂµes administrativas do Supabase
+  - Permite deletar e gerenciar usuÃƒÂ¡rios via API admin
 
 ### Changed
 
-- **Módulo Users**: Endpoints totalmente testados e funcionais
-  - POST /users - Criação com validação de CPF e telefone ✅
-  - GET /users - Listagem com paginação (requer SUPER_ADMIN) ✅
-  - GET /users/:id - Busca por ID (retorna estrutura vazia - conhecido) ⚠️
-  - PATCH /users/:id - Atualização parcial funcionando ✅
-  - DELETE /users/:id - Deleção soft (requer SUPER_ADMIN) ✅
-  - PUT /users/:id - Não implementado (retorna 404) ❌
+- **MÃƒÂ³dulo Users**: Endpoints totalmente testados e funcionais
+  - POST /users - CriaÃƒÂ§ÃƒÂ£o com validaÃƒÂ§ÃƒÂ£o de CPF e telefone Ã¢Å“â€¦
+  - GET /users - Listagem com paginaÃƒÂ§ÃƒÂ£o (requer SUPER_ADMIN) Ã¢Å“â€¦
+  - GET /users/:id - Busca por ID (retorna estrutura vazia - conhecido) Ã¢Å¡Â Ã¯Â¸Â
+  - PATCH /users/:id - AtualizaÃƒÂ§ÃƒÂ£o parcial funcionano Ã¢Å“â€¦
+  - DELETE /users/:id - DeleÃƒÂ§ÃƒÂ£o soft (requer SUPER_ADMIN) Ã¢Å“â€¦
+  - PUT /users/:id - NÃƒÂ£o implementado (retorna 404) Ã¢ÂÅ’
 
 ## [0.5.0] - 2025-09-02
 
 
-- **Sistema de Autenticação 100% Supabase Cloud**
-  - Remoção completa de banco de dados local
-  - Autenticação usando apenas Supabase Auth
-  - Não há mais tabelas locais de usuários ou sessões
-  - Integração direta com Supabase para todas operações
+- **Sistema de AutenticaÃƒÂ§ÃƒÂ£o 100% Supabase Cloud**
+  - RemoÃƒÂ§ÃƒÂ£o completa de bano de dados local
+  - AutenticaÃƒÂ§ÃƒÂ£o usano apenas Supabase Auth
+  - NÃƒÂ£o hÃƒÂ¡ mais tabelas locais de usuÃƒÂ¡rios ou sessÃƒÂµes
+  - IntegraÃƒÂ§ÃƒÂ£o direta com Supabase para todas operaÃƒÂ§ÃƒÂµes
 
 - **Email de Alerta de Login**
-  - Notificação automática por email em cada login
-  - Informações incluídas: IP, dispositivo, localização, data/hora
+  - NotificaÃƒÂ§ÃƒÂ£o automÃƒÂ¡tica por email em cada login
+  - InormaÃƒÂ§ÃƒÂµes incluÃƒÂ­das: IP, dispositivo, localizaÃƒÂ§ÃƒÂ£o, data/hora
   - Template HTML profissional e responsivo
-  - Logs com link direto do Ethereal para visualização em desenvolvimento
+  - Logs com link direto do Ethereal para visualizaÃƒÂ§ÃƒÂ£o em desenvolvimento
 
 - **Melhorias no Docker**
-  - Configuração de DNS com Google DNS (8.8.8.8, 8.8.4.4)
+  - ConfiguraÃƒÂ§ÃƒÂ£o de DNS com Google DNS (8.8.8.8, 8.8.4.4)
   - Extra hosts configurados para Supabase e SMTP
-  - IPs diretos para evitar problemas de resolução DNS
-  - Health check configurado para monitoramento
+  - IPs diretos para evitar problemas de resoluÃƒÂ§ÃƒÂ£o DNS
+  - Health check configurado para monitorameno
 
 - **Logs Aprimorados**
   - Links do Ethereal destacados nos logs
-  - Mensagens formatadas para melhor visualização
-  - Warnings visuais para eventos importantes
+  - Mensagens formatadas para melhor visualizaÃƒÂ§ÃƒÂ£o
+  - Warnings visuais para evenos importantes
 
 ### Changed
 
 - **Arquitetura Simplificada**
   - SignInUseCase usa apenas Supabase Auth
-  - CreateUserUseCase cria usuários direto no Supabase
-  - Remoção de todas as referências a authRepository local
+  - CreateUserUseCase cria usuÃƒÂ¡rios direto no Supabase
+  - RemoÃƒÂ§ÃƒÂ£o de todas as referÃƒÂªncias a authRepository local
   - User metadata armazenado no Supabase
 
-- **Configuração de Ambiente**
-  - DB_HOST usando IP direto do pooler Supabase
-  - Extra hosts no Docker para todos serviços externos
+- **ConfiguraÃƒÂ§ÃƒÂ£o de Ambiente**
+  - DB_HOST usano IP direto do pooler Supabase
+  - Extra hosts no Docker para todos serviÃƒÂ§os externos
   - NODE_OPTIONS com dns-result-order=ipv4first
 
 ### Fixed
 
-- Resolução DNS no Docker para smtp.ethereal.email
+- ResoluÃƒÂ§ÃƒÂ£o DNS no Docker para smtp.ethereal.email
 - Problemas de conectividade com Supabase no Docker
-- Envio de emails funcionando corretamente no container
-- Login e criação de usuários 100% funcional
+- Envio de emails funcionano corretamente no container
+- Login e criaÃƒÂ§ÃƒÂ£o de usuÃƒÂ¡rios 100% funcional
 
 ### Security
 
-- Nenhuma informação sensível armazenada localmente
-- Todos os dados de usuários no Supabase cloud
-- Service keys apenas para operações administrativas
-- Tokens JWT com expiração de 15 minutos
+- Nenhuma inormaÃƒÂ§ÃƒÂ£o sensÃƒÂ­vel armazenada localmente
+- Todos os dados de usuÃƒÂ¡rios no Supabase cloud
+- Service keys apenas para operaÃƒÂ§ÃƒÂµes administrativas
+- Tokens JWT com expiraÃƒÂ§ÃƒÂ£o de 15 minutos
 
 ## [0.4.1] - 2025-09-02
 
 
-- **Serviço de Email Completo** - Infraestrutura para envio de emails
+- **ServiÃƒÂ§o de Email Completo** - Infraestrutura para envio de emails
   - EmailService implementado com Nodemailer
   - Templates HTML responsivos para todos os tipos de email
-  - Integração com Ethereal para testes de desenvolvimento
-  - Suporte para produção com qualquer provedor SMTP
-  - Máscaramento de endereços de email para privacidade
+  - IntegraÃƒÂ§ÃƒÂ£o com Ethereal para testes de desenvolvimento
+  - Suporte para produÃƒÂ§ÃƒÂ£o com qualquer provedor SMTP
+  - MÃƒÂ¡scarameno de endereÃƒÂ§os de email para privacidade
 
 - **Two-Factor Authentication via Email**
-  - SendTwoFAUseCase para envio de códigos 2FA
-  - Endpoint `POST /auth/two-factor/send` para solicitar código
-  - Códigos de 6 dígitos com expiração de 5 minutos
-  - Template de email específico para códigos 2FA
-  - Integração completa com fluxo de autenticação
+  - SendTwoFAUseCase para envio de cÃƒÂ³digos 2FA
+  - Endpoint `POST /auth/two-factor/send` para solicitar cÃƒÂ³digo
+  - CÃƒÂ³digos de 6 dÃƒÂ­gitos com expiraÃƒÂ§ÃƒÂ£o de 5 minutos
+  - Template de email especÃƒÂ­fico para cÃƒÂ³digos 2FA
+  - IntegraÃƒÂ§ÃƒÂ£o completa com fluxo de autenticaÃƒÂ§ÃƒÂ£o
 
 - **Templates de Email Implementados**
-  - Código de verificação 2FA com design profissional
-  - Email de boas-vindas com onboarding
-  - Redefinição de senha com link seguro
-  - Verificação de email para novos cadastros
+  - CÃƒÂ³digo de verificaÃƒÂ§ÃƒÂ£o 2FA com design profissional
+  - Email de boas-vindas com onoarding
+  - RedefiniÃƒÂ§ÃƒÂ£o de senha com link seguro
+  - VerificaÃƒÂ§ÃƒÂ£o de email para novos cadastros
   - Alerta de login suspeito com detalhes do acesso
 
 ### Changed
 
 - Auth module atualizado com provider ISendTwoFAUseCase
-- Controller de autenticação com novo endpoint de envio 2FA
-- Documentação Swagger atualizada com exemplos de uso
+- Controller de autenticaÃƒÂ§ÃƒÂ£o com novo endpoint de envio 2FA
+- DocumentaÃƒÂ§ÃƒÂ£o Swagger atualizada com exemplos de uso
 
 ### Fixed
 
 - Typo em nodemailer.createTransport (estava createTransporter)
-- Verificação de token 2FA com Result pattern correto
-- Acesso ao userId do TwoFactorTokenPayload usando 'sub'
+- VerificaÃƒÂ§ÃƒÂ£o de token 2FA com Result pattern correto
+- Acesso ao userId do TwoFactorTokenPayload usano 'sub'
 
 ## [0.4.0] - 2025-09-02
 
 
-- **Módulo Users CRUD Completo** - Gestão completa de usuários
-  - Create, Read, Update, Delete com permissões granulares
-  - UserOwnerGuard: Admin ou próprio usuário podem editar/deletar
-  - Listagem de todos usuários restrita a admins
-  - Integração com Supabase Auth para criação de usuários
-  - Validação completa com Zod schemas
+- **MÃƒÂ³dulo Users CRUD Completo** - GestÃƒÂ£o completa de usuÃƒÂ¡rios
+  - Create, Read, Update, Delete com permissÃƒÂµes granulares
+  - UserOwnerGuard: Adminou prÃƒÂ³prio usuÃƒÂ¡rio podem editar/deletar
+  - Listagem de todos usuÃƒÂ¡rios restrita a admins
+  - IntegraÃƒÂ§ÃƒÂ£o com Supabase Auth para criaÃƒÂ§ÃƒÂ£o de usuÃƒÂ¡rios
+  - ValidaÃƒÂ§ÃƒÂ£o completa com Zod schemas
   - Swagger documentation com exemplos para todos endpoints
   - Suporte a filtros: role, tenantId, isActive
-  - Paginação em listagens
-  - Soft delete mantendo histórico
+  - PaginaÃƒÂ§ÃƒÂ£o em listagens
+  - Soft delete manteno histÃƒÂ³rico
 
-- **Utilitários Centralizados**
-  - roles.util.ts: Funções centralizadas para verificação de roles
-  - SupabaseService: Serviço dedicado para integração com Supabase Auth
+- **UtilitÃƒÂ¡rios Centralizados**
+  - roles.util.ts: FunÃƒÂ§ÃƒÂµes centralizadas para verificaÃƒÂ§ÃƒÂ£o de roles
+  - SupabaseService: ServiÃƒÂ§o dedicado para integraÃƒÂ§ÃƒÂ£o com Supabase Auth
 
 ### Changed
 
-- **Refatoração Massiva de Arquitetura** - Sistema 100% limpo
+- **RefatoraÃƒÂ§ÃƒÂ£o Massiva de Arquitetura** - Sistema 100% limpo
   - Entidades do domain removidas (mantidas apenas no infrastructure)
-  - Validadores consolidados em auth.validators.ts único
+  - Validadores conolidados em auth.validators.ts ÃƒÂºnico
   - Hierarquia de roles centralizada em roles.util.ts
-  - Zero duplicação de código em todo o sistema
+  - Zero duplicaÃƒÂ§ÃƒÂ£o de cÃƒÂ³digo em todo o sistema
 
 ### Removed
 
-- **Código Redundante Eliminado** - 616 linhas removidas
-  - MessageBus não utilizado (61 eventos nunca usados)
+- **CÃƒÂ³digo Redundante Eliminado** - 616 linhas removidas
+  - MessageBus nÃƒÂ£o utilizado (61 evenos nunca usados)
   - Health controller duplicado
   - Entidades duplicadas do domain layer
   - Validadores duplicados (health.validators.ts)
-  - 8 arquivos desnecessários eliminados
+  - 8 arquivos desnecessÃƒÂ¡rios eliminados
 
 ### Fixed
 
-- Circular dependency em DTOs do módulo Users
-- Imports após refatoração massiva
+- Circular dependency em DTOs do mÃƒÂ³dulo Users
+- Imports apÃƒÂ³s refatoraÃƒÂ§ÃƒÂ£o massiva
 - Build do Docker com nova estrutura
 
 ## [0.3.1] - 2025-09-02
 
 
-- **Documentação Swagger Completa**
+- **DocumentaÃƒÂ§ÃƒÂ£o Swagger Completa**
   - @ApiBody com types e examples em todos endpoints
-  - DTOs para sign-out e me responses
-  - Descrições detalhadas e exemplos realistas
-  - Todos endpoints testáveis no Swagger UI
-  - Regra de documentação obrigatória em onterapi-dev.md
+  - DTOs para signout e me responses
+  - DescriÃƒÂ§ÃƒÂµes detalhadas e exemplos realistas
+  - Todos endpoints testÃƒÂ¡veis no Swagger UI
+  - Regra de documentaÃƒÂ§ÃƒÂ£o obrigatÃƒÂ³ria em onterapi-dev.md
 
 ### Fixed
 
@@ -639,165 +674,185 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 ### Changed
 
 - Endpoint /me alterado de POST para GET (mais RESTful)
-- Simplificada captura de deviceInfo nos endpoints
+- Simplificada captura de deviceIno nos endpoints
 
 ### Removed
 
-- **Endpoint sign-up removido do módulo Auth**
-  - Cadastro de usuários será feito no módulo Users (a ser criado)
+- **Endpoint sign-up removido do mÃƒÂ³dulo Auth**
+  - Cadastro de usuÃƒÂ¡rios serÃƒÂ¡ feito no mÃƒÂ³dulo Users (a ser criado)
   - SignUpUseCase e arquivos relacionados removidos
-  - Auth agora é exclusivamente para autenticação (login, logout, refresh, 2FA)
+  - Auth agora ÃƒÂ© exclusivamente para autenticaÃƒÂ§ÃƒÂ£o (login, logout, refresh, 2FA)
 
 ## [0.3.0] - 2025-09-01
 
 
-- **Módulo de Autenticação Completo** - Arquitetura DDD e Clean Architecture
-  - **Domain Layer**: Entidades puras, interfaces de use cases, repositórios e serviços
-  - **Infrastructure Layer**: Entidades TypeORM, integração com Supabase Auth, repositório com Query Builder
-  - **Application Layer**: Controllers REST, DTOs, implementação dos use cases
-  - **Sistema de Roles (RBAC)**: 11 roles hierárquicos (SUPER_ADMIN, CLINIC_OWNER, PROFESSIONAL, etc.)
-  - **Multi-tenant**: Suporte completo com isolamento por tenant_id
+- **MÃƒÂ³dulo de AutenticaÃƒÂ§ÃƒÂ£o Completo** - Arquitetura DDD e Clean Architecture
+  - **Domain Layer**: Entidades puras, interfaces de use cases, repositÃƒÂ³rios e serviÃƒÂ§os
+  - **Infrastructure Layer**: Entidades TypeORM, integraÃƒÂ§ÃƒÂ£o com Supabase Auth, repositÃƒÂ³rio com Query Builder
+  - **Application Layer**: Controllers REST, DTOs, implementaÃƒÂ§ÃƒÂ£o dos use cases
+  - **Sistema de Roles (RBAC)**: 11 roles hierÃƒÂ¡rquicos (SUPER_ADMIN, CLINIC_OWNER, PROFESSIONAL, etc.)
+  - **Multi-tenant**: Suporte completo com isolameno por tenant_id
   - **Two-Factor Authentication (2FA)**: Suporte para TOTP, SMS e email
-  - **Segurança**: JWT tokens, refresh tokens, rate limiting, proteção contra brute force
+  - **SeguranÃƒÂ§a**: JWT tokens, refresh tokens, rate limiting, proteÃƒÂ§ÃƒÂ£o contra brute force
   - **Guards**: JwtAuthGuard, RolesGuard, TenantGuard
   - **Decorators**: @Public, @Roles, @CurrentUser
 
-- **Shared Utils**: Funções reutilizáveis seguindo padrões enterprise
-  - `db-connection.util.ts`: Savepoints para transações granulares
+- **Shared Utils**: FunÃƒÂ§ÃƒÂµes reutilizÃƒÂ¡veis seguino padrÃƒÂµes enterprise
+  - `db-connection.util.ts`: Savepoints para transaÃƒÂ§ÃƒÂµes granulares
   - `crypto.util.ts`: Hash com bcryptjs, criptografia AES-256
   - `auth.validators.ts`: Validadores Zod para CPF, senha forte, telefone
-  - **Result Pattern**: Tratamento de erros consistente
-  - **Zod Validation Pipe**: Validação forte de tipos
+  - **Result Pattern**: Tratameno de erros consistente
+  - **Zod Validation Pipe**: ValidaÃƒÂ§ÃƒÂ£o forte de tipos
 
 - **Docker Configuration**
-  - Dockerfile otimizado com multi-stage build e usuário não-root
+  - Dockerfile otimizado com multi-stage build e usuÃƒÂ¡rio nÃƒÂ£o-root
   - Docker Compose com Redis, health checks e networking
-  - Scripts de automação para Windows (PowerShell) e Linux (Bash)
-  - Documentação completa integrada no README
+  - Scripts de automaÃƒÂ§ÃƒÂ£o para Winows (PowerShell) e Linux (Bash)
+  - DocumentaÃƒÂ§ÃƒÂ£o completa integrada no README
   - Porta 3001 configurada para evitar conflitos
 
 ### Fixed
 
-- Conexão com banco usando Supabase Pooler para IPv4 (Docker/Vercel)
+- ConexÃƒÂ£o com bano usano Supabase Pooler para IPv4 (Docker/Vercel)
 - TypeScript property initialization com definite assignment operator
 - Dependency injection com @Inject decorator para interfaces
-- Import bcryptjs ao invés de bcrypt para compatibilidade Docker
-- Configuração de ambiente correta (SUPABASE_SERVICE_ROLE_KEY)
+- Import bcryptjs ao invÃƒÂ©s de bcrypt para compatibilidade Docker
+- ConfiguraÃƒÂ§ÃƒÂ£o de ambiente correta (SUPABASE_SERVICE_ROLE_KEY)
 
 ### Changed
 
-- Migração para Supabase Pooler (aws-0-sa-east-1.pooler.supabase.com:6543)
-- Porta padrão alterada de 3000 para 3001
-- Documentação Docker centralizada no README
-- Uso de apenas .env para configuração (sem .env.docker)
+- MigraÃƒÂ§ÃƒÂ£o para Supabase Pooler (aws-0-sa-east-1.pooler.supabase.com:6543)
+- Porta padrÃƒÂ£o alterada de 3000 para 3001
+- DocumentaÃƒÂ§ÃƒÂ£o Docker centralizada no README
+- Uso de apenas .env para configuraÃƒÂ§ÃƒÂ£o (sem .env.docker)
 
 ## [0.2.4] - 2025-09-01
 
 ### Fixed
 
 - Erro de runtime na Vercel corrigido (sintaxe nodejs20.x removida)
-- Configuração vercel.json simplificada usando builds/routes padrão
-- Erro "Cannot find module '@shared/messaging/message-bus.module'" definitivamente corrigido
-- Path aliases removidos em favor de caminhos relativos para compatibilidade com Vercel
+- ConfiguraÃƒÂ§ÃƒÂ£o vercel.json simplificada usano builds/routes padrÃƒÂ£o
+- Erro "Canot find module '@shared/messaging/message-bus.module'" definitivamente corrigido
+- Path aliases removidos em favor de caminos relativos para compatibilidade com Vercel
 
 ### Changed
 
-- Import de @shared/messaging mudado para ./shared/messaging (caminho relativo)
-- Removido tsconfig-paths que não funciona em ambiente serverless
-- Script de build simplificado removendo tsc-alias
+- Import de @shared/messaging mudado para ./shared/messaging (camino relativo)
+- Removido tsconfig-paths que nÃƒÂ£o funciona em ambiente serverless
+- Script de build simplificado removeno tsc-alias
 
 ## [0.2.3-alpha.1] - 2025-08-31
 
 ### Fixed
 
 - Import do Express corrigido de namespace para default import no api/index.ts
-- Configuração do Vercel atualizada para NestJS serverless
-- api/index.ts simplificado removendo dependência do BootstrapFactory
-- Build passando localmente e pronto para deploy
+- ConfiguraÃƒÂ§ÃƒÂ£o do Vercel atualizada para NestJS serverless
+- api/index.ts simplificado removeno dependÃƒÂªncia do BootstrapFactory
+- Build passano localmente e prono para deploy
 
 ### Changed
 
-- vercel.json reconfigurado com framework null e funções serverless
+- vercel.json reconfigurado com framework null e funÃƒÂ§ÃƒÂµes serverless
 - Runtime definido como nodejs20.x com limites apropriados
-- Configurações de produção inline no api/index.ts (helmet, validation)
+- ConfiguraÃƒÂ§ÃƒÂµes de produÃƒÂ§ÃƒÂ£o inline no api/index.ts (helmet, validation)
 - Logger condicional baseado em NODE_ENV
 
 
 - ValidationPipe global configurado no handler serverless
-- Helmet.js para segurança em produção
-- Documentação de variáveis de ambiente necessárias para Vercel
+- Helmet.js para seguranÃƒÂ§a em produÃƒÂ§ÃƒÂ£o
+- DocumentaÃƒÂ§ÃƒÂ£o de variÃƒÂ¡veis de ambiente necessÃƒÂ¡rias para Vercel
 
 ## [0.2.2-alpha.1] - 2025-08-31
 
 ### Fixed
 
-- Corrigido .vercelignore que estava removendo arquivos necessários (src, tsconfig)
+- Corrigido .vercelignore que estava removeno arquivos necessÃƒÂ¡rios (src, tsconfig)
 - Ajustado vercel.json para usar builds e routes corretos
 - Handler /api/index.ts otimizado para Vercel
 - Build da Vercel agora funciona corretamente
 
 ### Changed
 
-- Simplificação do .vercelignore mantendo apenas arquivos desnecessários
-- vercel.json usa configuração de builds ao invés de rewrites
+- SimplificaÃƒÂ§ÃƒÂ£o do .vercelignore manteno apenas arquivos desnecessÃƒÂ¡rios
+- vercel.json usa configuraÃƒÂ§ÃƒÂ£o de builds ao invÃƒÂ©s de rewrites
 
 ## [0.2.1-alpha.1] - 2025-08-31
 
 
 - Suporte completo para deploy serverless na Vercel
-- Configuração de edge functions otimizada
-- Documentação de variáveis de ambiente necessárias
+- ConfiguraÃƒÂ§ÃƒÂ£o de edge functions otimizada
+- DocumentaÃƒÂ§ÃƒÂ£o de variÃƒÂ¡veis de ambiente necessÃƒÂ¡rias
 
 ## [0.2.0-alpha.1] - 2025-08-31
 
 
-- Integração completa com Supabase (PostgreSQL hospedado)
+- IntegraÃƒÂ§ÃƒÂ£o completa com Supabase (PostgreSQL hospedado)
 - Swagger UI configurado e funcional em `/api`
-- Health check endpoint com monitoramento completo (DB, memória, disco)
+- Health check endpoint com monitorameno completo (DB, memÃƒÂ³ria, disco)
 - Sistema de mensageria unificado com EventEmitter
-- Bootstrap factory centralizada para eliminar duplicação
+- Bootstrap factory centralizada para eliminar duplicaÃƒÂ§ÃƒÂ£o
 - Validadores brasileiros (CPF, CNPJ, CRM, CRP, CNS, CEP)
 - Decorators customizados (@ZodInputValidation, @ZodResponse)
-- Integração com @nestjs/terminus para health checks nativos
+- IntegraÃƒÂ§ÃƒÂ£o com @nestjs/terminus para health checks nativos
 - Output style customizado para desenvolvimento OnTerapi
-- Regras de qualidade extrema (DRY, linter, build obrigatórios)
+- Regras de qualidade extrema (DRY, linter, build obrigatÃƒÂ³rios)
 - Boilerplate inicial do projeto
-- Estrutura de pastas seguindo DDD
-- Configurações base (TypeScript, ESLint, Prettier)
-- Package.json com dependências essenciais
-- README com documentação inicial
-- Sistema de versionamento semântico
+- Estrutura de pastas seguino DDD
+- ConfiguraÃƒÂ§ÃƒÂµes base (TypeScript, ESLint, Prettier)
+- Package.json com dependÃƒÂªncias essenciais
+- README com documentaÃƒÂ§ÃƒÂ£o inicial
+- Sistema de Versionamento semÃƒÂ¢ntico
 
 ### Changed
 
-- Banco de dados migrado de local para Supabase cloud
-- README expandido com documentação completa do Supabase
-- Documentação centralizada no README (regra: sem arquivos .md extras)
-- Refatoração completa para eliminar duplicação de código
-- Substituição de `any` por `unknown` para type safety
-- Path do DiskHealthIndicator corrigido para Windows
+- Bano de dados migrado de local para Supabase cloud
+- README expandido com documentaÃƒÂ§ÃƒÂ£o completa do Supabase
+- DocumentaÃƒÂ§ÃƒÂ£o centralizada no README (regra: sem arquivos .md extras)
+- RefatoraÃƒÂ§ÃƒÂ£o completa para eliminar duplicaÃƒÂ§ÃƒÂ£o de cÃƒÂ³digo
+- SubstituiÃƒÂ§ÃƒÂ£o de `any` por `unknown` para type safety
+- Path do DiskHealthIndicator corrigido para Winows
 
 ### Removed
 
-- Arquivos de teste desnecessários (main-test.ts, app-test.module.ts)
-- Módulo example removido (não essencial)
+- Arquivos de teste desnecessÃƒÂ¡rios (main-test.ts, app-test.module.ts)
+- MÃƒÂ³dulo example removido (nÃƒÂ£o essencial)
 - Entidade test.entity.ts removida
-- Módulo health customizado (usando Terminus nativo)
+- MÃƒÂ³dulo health customizado (usano Terminus nativo)
 
 ### Fixed
 
 - Erros de TypeScript em decorators Zod
-- Imports não utilizados removidos
-- Configuração de paths TypeScript (@shared, @domain, etc)
-- Health check no Windows (path C:\ ao invés de /)
+- Imports nÃƒÂ£o utilizados removidos
+- ConfiguraÃƒÂ§ÃƒÂ£o de paths TypeScript (@shared, @domain, etc)
+- Health check no Winows (path C:\ ao invÃƒÂ©s de /)
 
 ### Security
 
-- SSL/TLS habilitado para conexão com Supabase
-- Separação de chaves públicas (Anon) e privadas (Service Role)
-- Row Level Security (RLS) preparado para implementação
-- Helmet.js configurado para segurança HTTP
+- SSL/TLS habilitado para conexÃƒÂ£o com Supabase
+- SeparaÃƒÂ§ÃƒÂ£o de chaves pÃƒÂºblicas (Anon) e privadas (Service Role)
+- Row Level Security (RLS) preparado para implementaÃƒÂ§ÃƒÂ£o
+- Helmet.js configurado para seguranÃƒÂ§a HTTP
 
 ---
 
 _Mantenha este arquivo atualizado a cada release_
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

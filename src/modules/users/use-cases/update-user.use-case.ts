@@ -1,10 +1,9 @@
-﻿import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { IUpdateUserUseCase } from '../../../domain/users/interfaces/use-cases/update-user.use-case.interface';
 import { ISupabaseAuthService } from '../../../domain/auth/interfaces/services/supabase-auth.service.interface';
 import { IUserRepository } from '../../../domain/users/interfaces/repositories/user.repository.interface';
 import { UserEntity } from '../../../infrastructure/auth/entities/user.entity';
-import { UpdateUserDto } from '../api/dtos/update-user.dto';
-import { updateUserSchema } from '../api/schemas/update-user.schema';
+import { IUpdateUser } from '../../../domain/users/types/user.types';
 import { UseCaseWrapper } from '../../../shared/use-cases/use-case-wrapper';
 import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
 import { MessageBus } from '../../../shared/messaging/message-bus';
@@ -12,7 +11,7 @@ import { DomainEvents } from '../../../shared/events/domain-events';
 import { Result } from '../../../shared/types/result.type';
 import { MESSAGES } from '../../../shared/constants/messages.constants';
 
-type UpdateUserInput = { slug: string; dto: UpdateUserDto; currentUserId: string };
+type UpdateUserInput = { slug: string; dto: IUpdateUser; currentUserId: string };
 
 type SupabaseUser = {
   id: string;
@@ -43,7 +42,7 @@ export class UpdateUserUseCase implements IUpdateUserUseCase {
 
   async execute(
     slug: string,
-    dto: UpdateUserDto,
+    dto: IUpdateUser,
     currentUserId: string,
   ): Promise<Result<UserEntity>> {
     return this.wrapper.execute({ slug, dto, currentUserId });
@@ -51,7 +50,6 @@ export class UpdateUserUseCase implements IUpdateUserUseCase {
 
   private async handleUpdate(input: UpdateUserInput): Promise<UserEntity> {
     const { slug, dto, currentUserId } = input;
-    const validatedData = updateUserSchema.parse(dto);
 
     const user = await this.userRepository.findBySlug(slug);
     if (!user) {
@@ -68,7 +66,7 @@ export class UpdateUserUseCase implements IUpdateUserUseCase {
 
     const updatedMetadata = {
       ...currentMetadata,
-      ...validatedData,
+      ...dto,
       slug: user.slug,
       updatedBy: currentUserId,
       updatedAt: new Date().toISOString(),
@@ -83,9 +81,9 @@ export class UpdateUserUseCase implements IUpdateUserUseCase {
     }
 
     await this.userRepository.update(user.id, {
-      name: typeof validatedData.name === 'string' ? validatedData.name : user.name,
-      phone: typeof validatedData.phone === 'string' ? validatedData.phone : user.phone,
-      isActive: typeof validatedData.isActive === 'boolean' ? validatedData.isActive : user.isActive,
+      name: typeof dto.name === 'string' ? dto.name : user.name,
+      phone: typeof dto.phone === 'string' ? dto.phone : user.phone,
+      isActive: typeof dto.isActive === 'boolean' ? dto.isActive : user.isActive,
       metadata: updatedMetadata,
       emailVerified: (updateResult.data as SupabaseUser).emailVerified ?? user.emailVerified,
       updatedAt: new Date(),
@@ -98,7 +96,7 @@ export class UpdateUserUseCase implements IUpdateUserUseCase {
 
     this.logger.log(`${MESSAGES.LOGS.USER_UPDATED}: ${refreshed.email} por ${currentUserId}`);
 
-    const event = DomainEvents.userUpdated(refreshed.id, validatedData, { userId: currentUserId });
+    const event = DomainEvents.userUpdated(refreshed.id, dto, { userId: currentUserId });
 
     await this.messageBus.publish(event);
     this.logger.log(`${MESSAGES.EVENTS.USER_UPDATED} para ${refreshed.id}`);
