@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 
@@ -17,6 +17,15 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 ### Documentation
 
 ## [0.16.5] - 2025-09-26
+
+### Added
+- Estrutura base de dominio para Anamnese (`src/domain/anamnesis/types/anamnesis.types.ts`) com status, steps, planos terapeuticos e anexos.
+- Entidades TypeORM para `anamneses`, `anamnesis_steps`, `anamnesis_therapeutic_plans`, `anamnesis_attachments` e migracao `1738100000000-CreateAnamnesisTables`.
+- Mapper `AnamnesisMapper` convertendo entidades para tipos de dominio e normalizando payloads JSON.
+- Repositorio `AnamnesisRepository` com fluxos de criacao, salvamento de etapas, submissao, historico, anexos e feedback de planos.
+
+### Infra
+- Ajuste de template literal na `NotificationEmailService` para conformidade ESLint.
 
 ### Added
 - Endpoints publicos de reenvio de verificacao e reset de senha (`/auth/verification/resend`, `/auth/password/reset/request`, `/auth/password/reset/confirm`), com use cases dedicados, DTOs Zod e cobertura unitaria/integrada.

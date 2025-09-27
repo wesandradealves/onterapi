@@ -88,9 +88,7 @@ export class NotificationEmailService {
       dateStyle: 'short',
       timeStyle: 'short',
     });
-    const deviceInfo = data.device
-      ? `<li><strong>Dispositivo:</strong> ${data.device}</li>`
-      : '';
+    const deviceInfo = data.device ? `<li><strong>Dispositivo:</strong> ${data.device}</li>` : '';
     const ipInfo = data.ip ? `<li><strong>IP:</strong> ${data.ip}</li>` : '';
 
     return `
