@@ -16,6 +16,19 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ### Documentation
 
+## [0.16.6] - 2025-09-26
+
+### Added
+- Modulo completo de Anamnese com DTOs/presenters, casos de uso, controller e repositorio TypeORM, incluindo entidades e migracao de suporte.
+- Testes unitarios, de integracao e E2E cobrindo os fluxos principais de anamnese (`test/unit/modules.anamnesis/**`, `test/integration/anamnesis.controller.integration.spec.ts`, `test/e2e/anamnesis.e2e-spec.ts`).
+
+### Changed
+- Tipos de dominio, contratos de repositorio e fabrica de erros de anamnese atualizados para refletir os novos fluxos (`src/domain/anamnesis/**`, `src/shared/factories/anamnesis-error.factory.ts`).
+- `AppModule` passou a registrar o `AnamnesisModule` e os eventos associados (`src/app.module.ts`, `src/shared/events/domain-events.ts`).
+
+### Known Issues
+- Suites Jest (`npm run test:*`) continuam bloqueadas no ambiente local por incompatibilidade do runner `jest-circus` com Node 22; ajustes pendentes para retomar a execucao completa dos testes automatizados.
+
 ## [0.16.5] - 2025-09-26
 
 ### Added
@@ -840,26 +853,4 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 ---
 
 _Mantenha este arquivo atualizado a cada release_
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

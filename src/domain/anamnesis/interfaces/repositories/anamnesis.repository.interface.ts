@@ -1,9 +1,9 @@
-﻿import {
+import {
   Anamnesis,
   AnamnesisAttachment,
   AnamnesisListFilters,
   AnamnesisListItem,
-  AnamnesisRepositorySaveOptions,
+  AnamnesisRepositoryFindOptions,
   AnamnesisStep,
   CreateAnamnesisAttachmentInput,
   CreateAnamnesisInput,
@@ -20,12 +20,12 @@ export interface IAnamnesisRepository {
   findById(
     tenantId: string,
     anamnesisId: string,
-    options?: AnamnesisRepositorySaveOptions,
+    options?: AnamnesisRepositoryFindOptions,
   ): Promise<Anamnesis | null>;
   findByConsultation(
     tenantId: string,
     consultationId: string,
-    options?: AnamnesisRepositorySaveOptions,
+    options?: AnamnesisRepositoryFindOptions,
   ): Promise<Anamnesis | null>;
   saveStep(data: SaveAnamnesisStepInput): Promise<AnamnesisStep>;
   listByPatient(

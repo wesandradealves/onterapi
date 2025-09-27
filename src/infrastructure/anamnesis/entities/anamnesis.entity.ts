@@ -1,4 +1,4 @@
-﻿import {
+import {
   Column,
   CreateDateColumn,
   Entity,
@@ -14,7 +14,7 @@ import { AnamnesisTherapeuticPlanEntity } from './anamnesis-therapeutic-plan.ent
 import { AnamnesisAttachmentEntity } from './anamnesis-attachment.entity';
 
 @Entity('anamneses')
-@Index(['consultationId'], { unique: true })
+@Index(['tenantId', 'consultationId'], { unique: true })
 @Index(['tenantId', 'patientId'])
 @Index(['tenantId', 'professionalId'])
 @Index(['tenantId', 'status'])

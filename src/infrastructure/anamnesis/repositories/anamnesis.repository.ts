@@ -1,4 +1,4 @@
-﻿import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
@@ -8,7 +8,7 @@ import {
   AnamnesisAttachment,
   AnamnesisListFilters,
   AnamnesisListItem,
-  AnamnesisRepositorySaveOptions,
+  AnamnesisRepositoryFindOptions,
   AnamnesisStep,
   AnamnesisStepKey,
   CreateAnamnesisAttachmentInput,
@@ -125,7 +125,7 @@ export class AnamnesisRepository implements IAnamnesisRepository {
   async findById(
     tenantId: string,
     anamnesisId: string,
-    options?: AnamnesisRepositorySaveOptions,
+    options?: AnamnesisRepositoryFindOptions,
   ): Promise<Anamnesis | null> {
     const query = this.anamnesisRepository
       .createQueryBuilder('anamnesis')
@@ -159,7 +159,7 @@ export class AnamnesisRepository implements IAnamnesisRepository {
   async findByConsultation(
     tenantId: string,
     consultationId: string,
-    options?: AnamnesisRepositorySaveOptions,
+    options?: AnamnesisRepositoryFindOptions,
   ): Promise<Anamnesis | null> {
     const query = this.anamnesisRepository
       .createQueryBuilder('anamnesis')

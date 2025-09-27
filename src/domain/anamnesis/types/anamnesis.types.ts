@@ -1,4 +1,4 @@
-﻿export type AnamnesisStatus = 'draft' | 'submitted' | 'completed' | 'cancelled';
+export type AnamnesisStatus = 'draft' | 'submitted' | 'completed' | 'cancelled';
 
 export type AnamnesisStepKey =
   | 'identification'
@@ -474,8 +474,8 @@ export interface AnamnesisListItem {
   updatedAt: Date;
 }
 
-export interface AnamnesisRepositorySaveOptions {
-  preloadSteps?: boolean;
-  preloadPlan?: boolean;
-  preloadAttachments?: boolean;
+export interface AnamnesisRepositoryFindOptions {
+  steps?: boolean;
+  latestPlan?: boolean;
+  attachments?: boolean;
 }
