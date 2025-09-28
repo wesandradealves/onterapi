@@ -1,8 +1,9 @@
-import { TenantGuard } from '@modules/auth/guards/tenant.guard';
+﻿import { TenantGuard } from '@modules/auth/guards/tenant.guard';
 import { RolesEnum } from '@domain/auth/enums/roles.enum';
 
 describe('TenantGuard', () => {
   let guard: TenantGuard;
+  let reflector: { getAllAndOverride: jest.Mock };
 
   const buildContext = (user: any, requestOverride: any = {}) =>
     ({
@@ -14,11 +15,21 @@ describe('TenantGuard', () => {
     }) as any;
 
   beforeEach(() => {
-    guard = new TenantGuard({} as any);
+    reflector = { getAllAndOverride: jest.fn(() => false) };
+    guard = new TenantGuard(reflector as any);
   });
 
-  it('permite quando usu�rio interno', () => {
+  it('permite rota publica sem validar tenant', () => {
+    reflector.getAllAndOverride.mockReturnValueOnce(true);
+    const context = buildContext(undefined, {});
+
+    expect(guard.canActivate(context)).toBe(true);
+    expect(reflector.getAllAndOverride).toHaveBeenCalled();
+  });
+
+  it('permite quando usuario interno', () => {
     const context = buildContext({ role: RolesEnum.SUPER_ADMIN });
+
     expect(guard.canActivate(context)).toBe(true);
   });
 
@@ -27,14 +38,16 @@ describe('TenantGuard', () => {
       { role: RolesEnum.PROFESSIONAL, tenantId: 'tenant-1' },
       { headers: { 'x-tenant-id': 'tenant-1' } },
     );
+
     expect(guard.canActivate(context)).toBe(true);
   });
 
-  it('lan�a quando tenant diferente', () => {
+  it('lanca quando tenant diferente', () => {
     const context = buildContext(
-      { role: RolesEnum.PROFESSIONAL, tenantId: 'tenant-1', email: 'u@example.com' },
+      { role: RolesEnum.PROFESSIONAL, tenantId: 'tenant-1', email: 'user@example.com' },
       { headers: { 'x-tenant-id': 'tenant-2' } },
     );
+
     expect(() => guard.canActivate(context)).toThrow(/tenant/);
   });
 });

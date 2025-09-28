@@ -20,6 +20,7 @@ import { AnamnesisErrorFactory } from '../../../shared/factories/anamnesis-error
 import { MessageBus } from '../../../shared/messaging/message-bus';
 import { DomainEvents } from '../../../shared/events/domain-events';
 import { buildAnamnesisAIRequestPayload } from '../utils/anamnesis-ai.util';
+import { validateAnamnesisStepPayload } from '../utils/anamnesis-step-validation.util';
 
 interface SubmitAnamnesisCommand {
   tenantId: string;
@@ -68,6 +69,10 @@ export class SubmitAnamnesisUseCase
       throw AnamnesisErrorFactory.invalidState('A anamnese ja foi submetida anteriormente');
     }
 
+    for (const step of record.steps ?? []) {
+      validateAnamnesisStepPayload(step.key, step.payload, 'strict');
+    }
+
     const completionRate = this.calculateCompletionRate(record);
     const submissionDate = new Date();
 
@@ -83,6 +88,19 @@ export class SubmitAnamnesisUseCase
       this.patientRepository.findById(params.tenantId, record.patientId),
       this.authRepository.findById(record.professionalId),
     ]);
+
+    const patientAge = patient?.birthDate
+      ? this.calculatePatientAge(new Date(patient.birthDate))
+      : undefined;
+
+    if (submitted.steps) {
+      submitted.steps = submitted.steps.map((step) => ({
+        ...step,
+        payload: validateAnamnesisStepPayload(step.key, step.payload, 'strict', {
+          patientAge,
+        }),
+      }));
+    }
 
     const professionalSnapshot = professionalEntity
       ? {
@@ -145,5 +163,20 @@ export class SubmitAnamnesisUseCase
     const totalSteps = Math.max(record.totalSteps, 1);
     const completedSteps = (record.steps ?? []).filter((step) => step.completed).length;
     return Math.min(100, Math.round((completedSteps / totalSteps) * 100));
+  }
+
+  private calculatePatientAge(birthDate?: Date): number | undefined {
+    if (!birthDate) {
+      return undefined;
+    }
+
+    const now = new Date();
+    let age = now.getFullYear() - birthDate.getFullYear();
+    const monthDelta = now.getMonth() - birthDate.getMonth();
+    if (monthDelta < 0 || (monthDelta === 0 && now.getDate() < birthDate.getDate())) {
+      age -= 1;
+    }
+
+    return age >= 0 ? age : undefined;
   }
 }

@@ -309,13 +309,3 @@ describe('AnamnesisPresenter', () => {
     expect(dto[0].updatedAt).toMatch(/T/);
   });
 });
-
-
-
-
-
-
-
-
-
-

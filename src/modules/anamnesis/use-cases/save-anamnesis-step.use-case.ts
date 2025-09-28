@@ -9,6 +9,7 @@ import {
 import { Anamnesis, AnamnesisStepKey } from '../../../domain/anamnesis/types/anamnesis.types';
 import { ensureCanModifyAnamnesis } from '../utils/anamnesis-permissions.util';
 import { AnamnesisErrorFactory } from '../../../shared/factories/anamnesis-error.factory';
+import { validateAnamnesisStepPayload } from '../utils/anamnesis-step-validation.util';
 import { MessageBus } from '../../../shared/messaging/message-bus';
 import { DomainEvents } from '../../../shared/events/domain-events';
 
@@ -60,6 +61,13 @@ export class SaveAnamnesisStepUseCase
       throw AnamnesisErrorFactory.invalidState('Apenas anamneses em rascunho podem ser editadas');
     }
 
+    const validationMode = params.completed ? 'strict' : 'relaxed';
+    const normalizedPayload = validateAnamnesisStepPayload(
+      params.key,
+      params.payload,
+      validationMode,
+    );
+
     const { completionRate, currentStep, stepCompleted } = this.computeProgressMetrics(
       record,
       params,
@@ -70,7 +78,7 @@ export class SaveAnamnesisStepUseCase
       tenantId: params.tenantId,
       stepNumber: params.stepNumber,
       key: params.key,
-      payload: params.payload,
+      payload: normalizedPayload,
       completed: params.completed,
       hasErrors: params.hasErrors,
       validationScore: params.validationScore,

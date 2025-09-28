@@ -1,4 +1,4 @@
-import {
+﻿import {
   BadRequestException,
   Body,
   Controller,
@@ -29,6 +29,7 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../auth/guards/roles.guard';
+import { TenantGuard } from '../../../auth/guards/tenant.guard';
 import { Roles } from '../../../auth/decorators/roles.decorator';
 import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import { Public } from '../../../auth/decorators/public.decorator';
@@ -113,7 +114,7 @@ const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024;
 @ApiTags('Anamnesis')
 @ApiBearerAuth()
 @Controller('anamneses')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TenantGuard)
 export class AnamnesisController {
   private readonly logger = new Logger(AnamnesisController.name);
   constructor(

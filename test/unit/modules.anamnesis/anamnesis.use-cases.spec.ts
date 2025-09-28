@@ -282,7 +282,20 @@ describe('Anamnesis use cases', () => {
   describe('GetAnamnesisUseCase', () => {
     it('should resolve anamnesis with included relations', async () => {
       const anamnesis = createAnamnesis({
-        steps: [createStep({ stepNumber: 1, completed: true })],
+        steps: [
+          createStep({
+            stepNumber: 1,
+            key: 'identification',
+            completed: true,
+            payload: {
+              personalInfo: {
+                fullName: 'Paciente Teste Completo',
+                birthDate: '1990-01-10',
+                gender: 'female',
+              },
+            },
+          }),
+        ],
       });
       repository.findById.mockResolvedValue(anamnesis);
       const useCase = new GetAnamnesisUseCase(repository);
@@ -587,7 +600,20 @@ describe('Anamnesis use cases', () => {
   describe('SubmitAnamnesisUseCase', () => {
     it('should submit anamnesis and emitir eventos de submissao e requisicao de IA', async () => {
       const draft = createAnamnesis({
-        steps: [createStep({ stepNumber: 1, completed: true })],
+        steps: [
+          createStep({
+            stepNumber: 1,
+            key: 'identification',
+            completed: true,
+            payload: {
+              personalInfo: {
+                fullName: 'Paciente Teste Completo',
+                birthDate: '1990-01-10',
+                gender: 'female',
+              },
+            },
+          }),
+        ],
       });
       const submitted = createAnamnesis({
         ...draft,

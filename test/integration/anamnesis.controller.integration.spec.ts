@@ -1,4 +1,4 @@
-import { ExecutionContext, INestApplication } from '@nestjs/common';
+﻿import { ExecutionContext, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { ConfigService } from '@nestjs/config';
@@ -9,6 +9,7 @@ import { RolesEnum } from '@domain/auth/enums/roles.enum';
 import { ICurrentUser } from '@domain/auth/interfaces/current-user.interface';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@modules/auth/guards/roles.guard';
+import { TenantGuard } from '@modules/auth/guards/tenant.guard';
 import { IStartAnamnesisUseCase } from '@domain/anamnesis/interfaces/use-cases/start-anamnesis.use-case.interface';
 import { IGetAnamnesisUseCase } from '@domain/anamnesis/interfaces/use-cases/get-anamnesis.use-case.interface';
 import { ISaveAnamnesisStepUseCase } from '@domain/anamnesis/interfaces/use-cases/save-anamnesis-step.use-case.interface';
@@ -193,6 +194,8 @@ describe('AnamnesisController (integration)', () => {
       .useClass(guards.JwtAuthGuard as any)
       .overrideGuard(RolesGuard)
       .useClass(guards.RolesGuard as any)
+      .overrideGuard(TenantGuard)
+      .useClass(guards.TenantGuard as any)
       .compile();
 
     app = moduleRef.createNestApplication();
@@ -491,13 +494,3 @@ describe('AnamnesisController (integration)', () => {
     );
   });
 });
-
-
-
-
-
-
-
-
-
-

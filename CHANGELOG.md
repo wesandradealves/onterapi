@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 
@@ -13,6 +13,9 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 ### Changed
 - Repositorio, presenters e DTOs de anamnese atualizados para preservar anexos no historico, normalizar payloads JSON e expor auditoria (tenant/usuario) de forma consistente.
 - Fluxos de auto-save, listagem e historico reforcados com idempotencia, RBAC e emissao de eventos; suites unitarias, de integracao e E2E atualizadas para cobrir anexos e pipeline completo de IA.
+- Rotas REST de anamnese agora aplicam TenantGuard junto ao Jwt/Roles guard garantindo isolamento multi-tenant consistente para paciente e profissional.
+- TenantGuard passa a respeitar rotas publicas anotadas com @Public, permitindo webhooks externos sem quebra de autenticacao; testes unitarios/integrados/e2e foram ajustados para mockar o novo guard.
+
 
 ### Fixed
 - Corrigido auto-save concorrente que sobrescrevia rascunhos mais recentes quando um snapshot atrasado era enviado.
@@ -859,6 +862,10 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 ---
 
 _Mantenha este arquivo atualizado a cada release_
+
+
+
+
 
 
 

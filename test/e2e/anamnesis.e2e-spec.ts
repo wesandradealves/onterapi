@@ -1,4 +1,4 @@
-import { ExecutionContext, INestApplication } from '@nestjs/common';
+﻿import { ExecutionContext, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
@@ -7,6 +7,7 @@ import { RolesEnum } from '@domain/auth/enums/roles.enum';
 import { ICurrentUser } from '@domain/auth/interfaces/current-user.interface';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@modules/auth/guards/roles.guard';
+import { TenantGuard } from '@modules/auth/guards/tenant.guard';
 import { ConfigService } from '@nestjs/config';
 import {
   IAnamnesisRepositoryToken as ANAMNESIS_REPOSITORY_TOKEN,
@@ -614,6 +615,17 @@ const PROFESSIONAL_ID = '33333333-3333-3333-3333-333333333333';
 const CONSULTATION_ID = '11111111-1111-1111-1111-111111111111';
 const SECOND_CONSULTATION_ID = '44444444-4444-4444-4444-444444444444';
 
+const buildIdentificationPayload = (fullName: string) => ({
+  personalInfo: {
+    fullName,
+    birthDate: '1990-01-10',
+    gender: 'female',
+  },
+  contactInfo: {
+    phone: '11999999999',
+  },
+});
+
 describe('AnamnesisModule (e2e)', () => {
   let app: INestApplication;
   let anamnesisId: string;
@@ -704,7 +716,10 @@ describe('AnamnesisModule (e2e)', () => {
         { provide: ICreateAnamnesisAttachmentUseCase, useClass: CreateAnamnesisAttachmentUseCase },
         { provide: IRemoveAnamnesisAttachmentUseCase, useClass: RemoveAnamnesisAttachmentUseCase },
         { provide: IReceiveAnamnesisAIResultUseCase, useClass: ReceiveAnamnesisAIResultUseCase },
-        { provide: IListAnamnesisStepTemplatesUseCase, useClass: ListAnamnesisStepTemplatesUseCase },
+        {
+          provide: IListAnamnesisStepTemplatesUseCase,
+          useClass: ListAnamnesisStepTemplatesUseCase,
+        },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -717,6 +732,16 @@ describe('AnamnesisModule (e2e)', () => {
       })
       .overrideGuard(RolesGuard)
       .useValue({ canActivate: () => true })
+      .overrideGuard(TenantGuard)
+      .useValue({
+        canActivate: (context: ExecutionContext) => {
+          const request = context.switchToHttp().getRequest();
+          if (!request.user) {
+            request.user = currentUser;
+          }
+          return true;
+        },
+      })
       .compile();
 
     app = moduleRef.createNestApplication();
@@ -774,7 +799,7 @@ describe('AnamnesisModule (e2e)', () => {
       .set('x-tenant-id', TENANT_ID)
       .send({
         key: 'identification',
-        payload: { fullName: 'Paciente Teste' },
+        payload: buildIdentificationPayload('Paciente Teste Completo'),
         completed: true,
       })
       .expect(200);
@@ -792,7 +817,7 @@ describe('AnamnesisModule (e2e)', () => {
       .send({
         stepNumber: 1,
         key: 'identification',
-        payload: { fullName: 'Paciente Teste Auto' },
+        payload: buildIdentificationPayload('Paciente Teste Auto Completo'),
         hasErrors: true,
         validationScore: 50,
         autoSavedAt: autoSavedAt.toISOString(),
@@ -933,7 +958,7 @@ describe('AnamnesisModule (e2e)', () => {
       .send({
         stepNumber: 1,
         key: 'identification',
-        payload: { fullName: 'Paciente Draft' },
+        payload: buildIdentificationPayload('Paciente Draft Completo'),
       })
       .expect(200);
 
@@ -955,5 +980,3 @@ describe('AnamnesisModule (e2e)', () => {
     expect(withDrafts.body.prefill.sourceAnamnesisId).toBe(anamnesisId);
   });
 });
-
-

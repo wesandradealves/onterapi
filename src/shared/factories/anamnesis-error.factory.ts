@@ -1,4 +1,9 @@
-﻿import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+﻿import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 
 export class AnamnesisErrorFactory {
   static notFound(message = 'Anamnese nao encontrada'): NotFoundException {
@@ -11,5 +16,15 @@ export class AnamnesisErrorFactory {
 
   static invalidState(message = 'Estado da anamnese nao permite esta operacao'): ConflictException {
     return new ConflictException(message);
+  }
+
+  static invalidPayload(
+    message = 'Dados da etapa sao invalidos',
+    details?: unknown,
+  ): BadRequestException {
+    return new BadRequestException({
+      message,
+      details,
+    });
   }
 }

@@ -9,6 +9,7 @@ import {
 import { Anamnesis, AnamnesisStepKey } from '../../../domain/anamnesis/types/anamnesis.types';
 import { ensureCanModifyAnamnesis } from '../utils/anamnesis-permissions.util';
 import { AnamnesisErrorFactory } from '../../../shared/factories/anamnesis-error.factory';
+import { validateAnamnesisStepPayload } from '../utils/anamnesis-step-validation.util';
 import { MessageBus } from '../../../shared/messaging/message-bus';
 import { DomainEvents } from '../../../shared/events/domain-events';
 
@@ -60,6 +61,8 @@ export class AutoSaveAnamnesisUseCase
       throw AnamnesisErrorFactory.invalidState('Apenas anamneses em rascunho podem ser editadas');
     }
 
+    const normalizedPayload = validateAnamnesisStepPayload(params.key, params.payload, 'relaxed');
+
     const autoSavedAt = params.autoSavedAt ?? new Date();
 
     const savedStep = await this.anamnesisRepository.autoSaveStep({
@@ -67,7 +70,7 @@ export class AutoSaveAnamnesisUseCase
       tenantId: params.tenantId,
       stepNumber: params.stepNumber,
       key: params.key,
-      payload: params.payload,
+      payload: normalizedPayload,
       hasErrors: params.hasErrors,
       validationScore: params.validationScore,
       autoSavedAt,
