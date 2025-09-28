@@ -280,19 +280,19 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 
 ## Linha de Base de Qualidade
 
-- Data: 2025-09-27
+- Data: 2025-09-28
 - Commit analisado: feature/anamnesis (worktree)
-- Ambiente: desenvolvimento local (Node 22.18.0)
+- Ambiente: desenvolvimento local (Node 22.18.0 - suite completa validada)
 
 ## Pontuacao Atual
 
 | Criterio | Nota atual (0-10) | Meta | Evidencias chave |
 | --- | --- | --- | --- |
 | DRY / Reuso de codigo | 9.6 | >= 9.0 | Controllers de Auth, Patients, Users e Anamnesis continuam delegando normalizacao a mappers/presenters dedicados (ex.: src/modules/anamnesis/api/presenters/anamnesis.presenter.ts, src/shared/mappers/anamnesis.mapper.ts), eliminando duplicacao de clones e formatacao manual de datas. |
-| Automacao de qualidade | 8.7 | >= 8.5 | Sequencia manual revisada em 27/09: npm run lint -> npx tsc --noEmit -> npm run test:unit -> npm run test:int -> npm run test:e2e -> npm run test:cov -> npm run build (todos executados nesta sessao). |
-| Testes automatizados | 10.0 | >= 9.5 | 202 testes (unit, integration, e2e e cobertura) executados em ~14 s; presenter de anamnese ganhou suite dedicada mantendo cobertura 100% (test/unit/modules.anamnesis/anamnesis.presenter.spec.ts). |
+| Automacao de qualidade | 8.7 | >= 8.5 | Sequencia manual revisada em 28/09: npm run lint -> npx tsc --noEmit -> npm run test:unit -> npm run test:int -> npm run test:e2e -> npm run test:cov -> npm run build (todos executados nesta sessao em Node 22.18.0). |
+| Testes automatizados | 10.0 | >= 9.5 | 230 testes (unit, integration, e2e e cobertura) executados em ~15 s; presenter e templates de anamnese cobrem 100% dos ramos (test/unit/modules.anamnesis/anamnesis.presenter.spec.ts). |
 | Validacoes e contratos | 9.3 | >= 9.0 | Controllers de Anamnesis aplicam Zod com casting para enums (`AnamnesisStatus`, `AnamnesisStepKey`) antes dos use cases, garantindo filtros tipados e mensagens consistentes (src/modules/anamnesis/api/controllers/anamnesis.controller.ts:215, 254). |
-| Governanca de dominio / RBAC | 8.4 | >= 9.0 | Casos de uso de Anamnesis continuam consultando ensureCanModifyAnamnesis; interfaces agora exigem requesterRole para anexos, feedback e submissao, fortalecendo auditoria de tenant/role. |
+| Governanca de dominio / RBAC | 8.4 | >= 9.0 | Casos de uso de Anamnesis continuam consultando ensureCanModifyAnamnesis; fluxo de templates (`ListAnamnesisStepTemplatesUseCase`) valida PROFESSIONAL/PATIENT/SUPER_ADMIN antes de expor seeds multi-tenant. |
 
 ## Observacoes Detalhadas
 
@@ -307,7 +307,7 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 
 ### Testes
 - Novo spec cobre todos os ramos do mapper de usuarios, garantindo coercoes de tenantId e metadata.
-- Contagem total de 173 testes em ~13s; branch coverage mantida em 100% global.
+- Contagem total de 230 testes em ~15s; branch coverage global mantida em 100% (incluindo presenter/templates de anamnese).
 - Suites de integracao/e2e seguem focadas em pacientes; auth e usuarios ainda carecem de cenarios ponta-a-ponta.
 
 ### Validacao e contratos
@@ -319,10 +319,13 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 - Necessario expandir cobertura para agenda/financeiro antes de elevar a meta.
 
 ## Testes Executados
+- npm run lint
+- npx tsc --noEmit
 - npm run test:unit
 - npm run test:int
 - npm run test:e2e
 - npm run test:cov
+- npm run build
 
 Este documento serve como baseline; reavalie os criterios depois de cada entrega significativa.
 ## Fluxograma do Projeto
@@ -349,6 +352,13 @@ flowchart LR
 
 ## Changelog
 Mudancas recentes estao em [CHANGELOG.md](./CHANGELOG.md). Ultima versao: v0.16.2 (25/09/2025).
+
+
+
+
+
+
+
 
 
 

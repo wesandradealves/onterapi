@@ -40,6 +40,7 @@ import { unwrapResult } from '../../../../shared/types/result.type';
 import {
   type AnamnesisStatus,
   AnamnesisStepKey,
+  GetStepTemplatesFilters,
 } from '../../../../domain/anamnesis/types/anamnesis.types';
 import { IStartAnamnesisUseCase } from '../../../../domain/anamnesis/interfaces/use-cases/start-anamnesis.use-case.interface';
 import { IGetAnamnesisUseCase } from '../../../../domain/anamnesis/interfaces/use-cases/get-anamnesis.use-case.interface';
@@ -53,11 +54,13 @@ import { ISavePlanFeedbackUseCase } from '../../../../domain/anamnesis/interface
 import { ICreateAnamnesisAttachmentUseCase } from '../../../../domain/anamnesis/interfaces/use-cases/create-anamnesis-attachment.use-case.interface';
 import { IRemoveAnamnesisAttachmentUseCase } from '../../../../domain/anamnesis/interfaces/use-cases/remove-anamnesis-attachment.use-case.interface';
 import { IReceiveAnamnesisAIResultUseCase } from '../../../../domain/anamnesis/interfaces/use-cases/receive-anamnesis-ai-result.use-case.interface';
+import { IListAnamnesisStepTemplatesUseCase } from '../../../../domain/anamnesis/interfaces/use-cases/list-anamnesis-step-templates.use-case.interface';
 import {
   AnamnesisAttachmentDto,
   AnamnesisDetailResponseDto,
   AnamnesisHistoryResponseDto,
   AnamnesisListItemDto,
+  AnamnesisStepTemplateDto,
   TherapeuticPlanDto,
 } from '../dtos/anamnesis-response.dto';
 import {
@@ -70,26 +73,28 @@ import {
   StartAnamnesisRequestDto,
 } from '../dtos/anamnesis-request.dto';
 import {
-  AnamnesisHistoryQuerySchema,
   anamnesisHistoryQuerySchema,
-  AutoSaveAnamnesisStepSchema,
+  AnamnesisHistoryQuerySchema,
   autoSaveAnamnesisStepSchema,
-  CreateAttachmentSchema,
+  AutoSaveAnamnesisStepSchema,
   createAttachmentSchema,
-  GetAnamnesisQuerySchema,
+  CreateAttachmentSchema,
   getAnamnesisQuerySchema,
-  ListAnamnesesQuerySchema,
+  GetAnamnesisQuerySchema,
   listAnamnesesQuerySchema,
-  ReceiveAIResultSchema,
+  ListAnamnesesQuerySchema,
+  listStepTemplatesQuerySchema,
+  ListStepTemplatesQuerySchema,
   receiveAIResultSchema,
-  SaveAnamnesisStepSchema,
+  ReceiveAIResultSchema,
   saveAnamnesisStepSchema,
-  SavePlanFeedbackSchema,
+  SaveAnamnesisStepSchema,
   savePlanFeedbackSchema,
-  SaveTherapeuticPlanSchema,
+  SavePlanFeedbackSchema,
   saveTherapeuticPlanSchema,
-  StartAnamnesisSchema,
+  SaveTherapeuticPlanSchema,
   startAnamnesisSchema,
+  StartAnamnesisSchema,
 } from '../schemas/anamnesis.schema';
 import { AnamnesisPresenter } from '../presenters/anamnesis.presenter';
 import { memoryStorage } from 'multer';
@@ -134,7 +139,47 @@ export class AnamnesisController {
     private readonly removeAttachmentUseCase: IRemoveAnamnesisAttachmentUseCase,
     @Inject(IReceiveAnamnesisAIResultUseCase)
     private readonly receiveAIResultUseCase: IReceiveAnamnesisAIResultUseCase,
+    @Inject(IListAnamnesisStepTemplatesUseCase)
+    private readonly listStepTemplatesUseCase: IListAnamnesisStepTemplatesUseCase,
   ) {}
+  @Get('templates')
+  @Roles(
+    RolesEnum.PROFESSIONAL,
+    RolesEnum.CLINIC_OWNER,
+    RolesEnum.MANAGER,
+    RolesEnum.SUPER_ADMIN,
+    RolesEnum.PATIENT,
+  )
+  @ApiOperation({
+    summary: 'Listar templates de steps',
+    description: 'Retorna os templates de steps disponiveis para o tenant atual.',
+  })
+  @ApiQuery({ name: 'specialty', required: false, type: String })
+  @ApiQuery({ name: 'includeInactive', required: false, type: Boolean })
+  @ApiResponse({ status: 200, type: AnamnesisStepTemplateDto, isArray: true })
+  async listTemplates(
+    @Query(new ZodValidationPipe(listStepTemplatesQuerySchema)) query: ListStepTemplatesQuerySchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<AnamnesisStepTemplateDto[]> {
+    const context = this.resolveContext(currentUser, tenantHeader);
+
+    const filters: GetStepTemplatesFilters = {
+      specialty: query.specialty,
+      includeInactive: query.includeInactive ?? false,
+    };
+
+    const result = await this.listStepTemplatesUseCase.execute({
+      tenantId: context.tenantId,
+      requesterId: context.userId,
+      requesterRole: context.role,
+      filters,
+    });
+
+    const templates = unwrapResult(result);
+
+    return AnamnesisPresenter.templates(templates);
+  }
   @Post('start')
   @HttpCode(HttpStatus.CREATED)
   @Roles(

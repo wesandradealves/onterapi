@@ -6,6 +6,7 @@ import {
   AnamnesisHistoryStep,
   AnamnesisListItem,
   AnamnesisStep,
+  AnamnesisStepTemplate,
   TherapeuticPlanData,
 } from '../../../../domain/anamnesis/types/anamnesis.types';
 import {
@@ -17,6 +18,7 @@ import {
   AnamnesisHistoryStepDto,
   AnamnesisListItemDto,
   AnamnesisStepDto,
+  AnamnesisStepTemplateDto,
   TherapeuticPlanDto,
   TherapeuticPlanRecommendationDto,
   TherapeuticPlanRiskFactorDto,
@@ -57,6 +59,20 @@ const mapAttachment = (attachment: AnamnesisAttachment): AnamnesisAttachmentDto 
   storagePath: attachment.storagePath,
   uploadedBy: attachment.uploadedBy,
   uploadedAt: toIsoString(attachment.uploadedAt) ?? new Date().toISOString(),
+});
+
+const mapTemplate = (template: AnamnesisStepTemplate): AnamnesisStepTemplateDto => ({
+  id: template.id,
+  key: template.key,
+  title: template.title,
+  description: template.description,
+  version: template.version,
+  schema: cloneRecord(template.schema),
+  specialty: template.specialty ?? undefined,
+  isActive: template.isActive,
+  tenantId: template.tenantId ?? undefined,
+  createdAt: toIsoString(template.createdAt) ?? new Date().toISOString(),
+  updatedAt: toIsoString(template.updatedAt) ?? new Date().toISOString(),
 });
 
 const mapRecommendations = (
@@ -192,6 +208,10 @@ export class AnamnesisPresenter {
       entries: history.entries.map(mapHistoryEntry),
       prefill: mapHistoryPrefill(history.prefill),
     };
+  }
+
+  static templates(templates: AnamnesisStepTemplate[]): AnamnesisStepTemplateDto[] {
+    return templates.map(mapTemplate);
   }
 
   static plan(plan: TherapeuticPlanData): TherapeuticPlanDto {

@@ -67,6 +67,44 @@ export class AnamnesisAttachmentDto {
   uploadedAt!: string;
 }
 
+export class AnamnesisStepTemplateDto {
+  @ApiProperty({ description: 'Identificador do template', example: 'template-identification' })
+  id!: string;
+
+  @ApiProperty({ description: 'Chave unica do template', example: 'identification' })
+  key!: string;
+
+  @ApiProperty({ description: 'Titulo do template', example: 'Identificacao' })
+  title!: string;
+
+  @ApiPropertyOptional({ description: 'Descricao resumida do template' })
+  description?: string;
+
+  @ApiProperty({ description: 'Versao do template', example: 1 })
+  version!: number;
+
+  @ApiProperty({ description: 'Estrutura do template em JSON' })
+  schema!: Record<string, unknown>;
+
+  @ApiPropertyOptional({ description: 'Especialidade associada', example: 'default' })
+  specialty?: string;
+
+  @ApiProperty({ description: 'Indica se o template esta ativo', example: true })
+  isActive!: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Tenant proprietario do template',
+    example: '11111111-1111-1111-1111-111111111111',
+  })
+  tenantId?: string | null;
+
+  @ApiProperty({ description: 'Data de criacao (ISO)', example: '2025-09-26T00:00:00Z' })
+  createdAt!: string;
+
+  @ApiProperty({ description: 'Ultima atualizacao (ISO)', example: '2025-09-26T02:00:00Z' })
+  updatedAt!: string;
+}
+
 export class TherapeuticPlanRecommendationDto {
   @ApiProperty({ description: 'Identificador da recomendacao', example: 'rec-1' })
   id!: string;

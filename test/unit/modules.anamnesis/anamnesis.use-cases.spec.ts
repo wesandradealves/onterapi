@@ -10,6 +10,7 @@ import { SavePlanFeedbackUseCase } from '@modules/anamnesis/use-cases/save-plan-
 import { CreateAnamnesisAttachmentUseCase } from '@modules/anamnesis/use-cases/create-anamnesis-attachment.use-case';
 import { RemoveAnamnesisAttachmentUseCase } from '@modules/anamnesis/use-cases/remove-anamnesis-attachment.use-case';
 import { ReceiveAnamnesisAIResultUseCase } from '@modules/anamnesis/use-cases/receive-anamnesis-ai-result.use-case';
+import { ListAnamnesisStepTemplatesUseCase } from '@modules/anamnesis/use-cases/list-anamnesis-step-templates.use-case';
 import { IAnamnesisRepository } from '@domain/anamnesis/interfaces/repositories/anamnesis.repository.interface';
 import { IAnamnesisAttachmentStorageService } from '@domain/anamnesis/interfaces/services/anamnesis-attachment-storage.service.interface';
 import { IPatientRepository } from '@domain/patients/interfaces/repositories/patient.repository.interface';
@@ -21,6 +22,7 @@ import {
   AnamnesisHistoryEntry,
   AnamnesisListItem,
   AnamnesisStep,
+  AnamnesisStepTemplate,
   TherapeuticPlanData,
 } from '@domain/anamnesis/types/anamnesis.types';
 import { Patient } from '@domain/patients/types/patient.types';
@@ -1152,6 +1154,77 @@ describe('Anamnesis use cases', () => {
 
       expect(attachmentStorage.delete).not.toHaveBeenCalled();
       expect(repository.removeAttachment).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('ListAnamnesisStepTemplatesUseCase', () => {
+    it('retorna templates ativos para roles permitidos', async () => {
+      const templates: AnamnesisStepTemplate[] = [
+        {
+          id: 'template-1',
+          key: 'identification',
+          title: 'Identificacao',
+          description: 'Dados basicos',
+          version: 1,
+          schema: { sections: [] },
+          specialty: 'default',
+          tenantId: null,
+          isActive: true,
+          createdAt: new Date('2025-09-26T00:00:00Z'),
+          updatedAt: new Date('2025-09-26T00:00:00Z'),
+        },
+      ];
+
+      repository.getStepTemplates.mockResolvedValue(templates);
+
+      const useCase = new ListAnamnesisStepTemplatesUseCase(repository);
+      const result = unwrapResult(
+        await useCase.execute({
+          tenantId: 'tenant-1',
+          requesterId: 'professional-1',
+          requesterRole: RolesEnum.PROFESSIONAL,
+          filters: { includeInactive: true },
+        }),
+      );
+
+      expect(repository.getStepTemplates).toHaveBeenCalledWith({
+        tenantId: 'tenant-1',
+        specialty: undefined,
+        includeInactive: false,
+      });
+      expect(result).toEqual(templates);
+    });
+
+    it('permite incluir inativos apenas para super admin', async () => {
+      repository.getStepTemplates.mockResolvedValue([]);
+      const useCase = new ListAnamnesisStepTemplatesUseCase(repository);
+
+      await useCase.execute({
+        tenantId: 'tenant-1',
+        requesterId: 'admin',
+        requesterRole: RolesEnum.SUPER_ADMIN,
+        filters: { includeInactive: true, specialty: 'default' },
+      });
+
+      expect(repository.getStepTemplates).toHaveBeenCalledWith({
+        tenantId: 'tenant-1',
+        specialty: 'default',
+        includeInactive: true,
+      });
+    });
+
+    it('bloqueia roles nao autorizadas', async () => {
+      const useCase = new ListAnamnesisStepTemplatesUseCase(repository);
+
+      await expect(
+        useCase
+          .execute({
+            tenantId: 'tenant-1',
+            requesterId: 'user',
+            requesterRole: 'SECRETARY' as RolesEnum,
+          })
+          .then(unwrapResult),
+      ).rejects.toThrow('Operacao nao autorizada para esta anamnese');
     });
   });
 });

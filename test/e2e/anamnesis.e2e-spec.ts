@@ -49,6 +49,7 @@ import { ISavePlanFeedbackUseCase } from '@domain/anamnesis/interfaces/use-cases
 import { ICreateAnamnesisAttachmentUseCase } from '@domain/anamnesis/interfaces/use-cases/create-anamnesis-attachment.use-case.interface';
 import { IRemoveAnamnesisAttachmentUseCase } from '@domain/anamnesis/interfaces/use-cases/remove-anamnesis-attachment.use-case.interface';
 import { IReceiveAnamnesisAIResultUseCase } from '@domain/anamnesis/interfaces/use-cases/receive-anamnesis-ai-result.use-case.interface';
+import { IListAnamnesisStepTemplatesUseCase } from '@domain/anamnesis/interfaces/use-cases/list-anamnesis-step-templates.use-case.interface';
 import {
   IPatientRepository,
   IPatientRepositoryToken,
@@ -73,6 +74,7 @@ import { SavePlanFeedbackUseCase } from '@modules/anamnesis/use-cases/save-plan-
 import { CreateAnamnesisAttachmentUseCase } from '@modules/anamnesis/use-cases/create-anamnesis-attachment.use-case';
 import { RemoveAnamnesisAttachmentUseCase } from '@modules/anamnesis/use-cases/remove-anamnesis-attachment.use-case';
 import { ReceiveAnamnesisAIResultUseCase } from '@modules/anamnesis/use-cases/receive-anamnesis-ai-result.use-case';
+import { ListAnamnesisStepTemplatesUseCase } from '@modules/anamnesis/use-cases/list-anamnesis-step-templates.use-case';
 import { MessageBus } from '@shared/messaging/message-bus';
 import { DomainEvent } from '@shared/events/domain-event.interface';
 import { DomainEvents } from '@shared/events/domain-events';
@@ -702,6 +704,7 @@ describe('AnamnesisModule (e2e)', () => {
         { provide: ICreateAnamnesisAttachmentUseCase, useClass: CreateAnamnesisAttachmentUseCase },
         { provide: IRemoveAnamnesisAttachmentUseCase, useClass: RemoveAnamnesisAttachmentUseCase },
         { provide: IReceiveAnamnesisAIResultUseCase, useClass: ReceiveAnamnesisAIResultUseCase },
+        { provide: IListAnamnesisStepTemplatesUseCase, useClass: ListAnamnesisStepTemplatesUseCase },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -952,3 +955,5 @@ describe('AnamnesisModule (e2e)', () => {
     expect(withDrafts.body.prefill.sourceAnamnesisId).toBe(anamnesisId);
   });
 });
+
+

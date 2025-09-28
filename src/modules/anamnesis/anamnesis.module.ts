@@ -23,6 +23,7 @@ import { IListAnamnesesByPatientUseCase } from '../../domain/anamnesis/interface
 import { IGetAnamnesisHistoryUseCase } from '../../domain/anamnesis/interfaces/use-cases/get-anamnesis-history.use-case.interface';
 import { ISaveTherapeuticPlanUseCase } from '../../domain/anamnesis/interfaces/use-cases/save-therapeutic-plan.use-case.interface';
 import { ISavePlanFeedbackUseCase } from '../../domain/anamnesis/interfaces/use-cases/save-plan-feedback.use-case.interface';
+import { IListAnamnesisStepTemplatesUseCase } from '../../domain/anamnesis/interfaces/use-cases/list-anamnesis-step-templates.use-case.interface';
 import { ICreateAnamnesisAttachmentUseCase } from '../../domain/anamnesis/interfaces/use-cases/create-anamnesis-attachment.use-case.interface';
 import { IRemoveAnamnesisAttachmentUseCase } from '../../domain/anamnesis/interfaces/use-cases/remove-anamnesis-attachment.use-case.interface';
 import { IReceiveAnamnesisAIResultUseCase } from '../../domain/anamnesis/interfaces/use-cases/receive-anamnesis-ai-result.use-case.interface';
@@ -36,6 +37,7 @@ import { ListAnamnesesByPatientUseCase } from './use-cases/list-anamneses-by-pat
 import { GetAnamnesisHistoryUseCase } from './use-cases/get-anamnesis-history.use-case';
 import { SaveTherapeuticPlanUseCase } from './use-cases/save-therapeutic-plan.use-case';
 import { SavePlanFeedbackUseCase } from './use-cases/save-plan-feedback.use-case';
+import { ListAnamnesisStepTemplatesUseCase } from './use-cases/list-anamnesis-step-templates.use-case';
 import { CreateAnamnesisAttachmentUseCase } from './use-cases/create-anamnesis-attachment.use-case';
 import { RemoveAnamnesisAttachmentUseCase } from './use-cases/remove-anamnesis-attachment.use-case';
 import { ReceiveAnamnesisAIResultUseCase } from './use-cases/receive-anamnesis-ai-result.use-case';
@@ -99,6 +101,10 @@ const useCaseProviders: Provider[] = [
     provide: IReceiveAnamnesisAIResultUseCase,
     useClass: ReceiveAnamnesisAIResultUseCase,
   },
+  {
+    provide: IListAnamnesisStepTemplatesUseCase,
+    useClass: ListAnamnesisStepTemplatesUseCase,
+  },
 ];
 
 const storageProviders: Provider[] = [
@@ -144,6 +150,7 @@ const storageProviders: Provider[] = [
     ICreateAnamnesisAttachmentUseCase,
     IRemoveAnamnesisAttachmentUseCase,
     IReceiveAnamnesisAIResultUseCase,
+    IListAnamnesisStepTemplatesUseCase,
     IAnamnesisRepositoryToken,
     IAnamnesisAttachmentStorageServiceToken,
   ],

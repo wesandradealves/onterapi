@@ -3,14 +3,14 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 const DEFAULT_STEP_TEMPLATES = [
   {
     key: 'identification',
-    title: 'Identificação',
+    title: 'Identificacao',
     description: 'Dados pessoais e de contato do paciente.',
     specialty: 'default',
     schema: {
       sections: [
         {
           id: 'personalInfo',
-          title: 'Informações Pessoais',
+          title: 'Informacoes Pessoais',
           fields: [
             {
               name: 'fullName',
@@ -23,7 +23,7 @@ const DEFAULT_STEP_TEMPLATES = [
             {
               name: 'gender',
               type: 'select',
-              label: 'Gênero',
+              label: 'Genero',
               required: true,
               options: ['male', 'female', 'other', 'prefer_not_to_say'],
             },
@@ -34,7 +34,7 @@ const DEFAULT_STEP_TEMPLATES = [
           title: 'Contato',
           fields: [
             { name: 'phone', type: 'tel', label: 'Telefone', pattern: '^[0-9()+\\s-]{8,15}$' },
-            { name: 'convenio', type: 'text', label: 'Convênio', required: false },
+            { name: 'convenio', type: 'text', label: 'Convenio', required: false },
           ],
         },
       ],
@@ -43,7 +43,7 @@ const DEFAULT_STEP_TEMPLATES = [
   {
     key: 'chiefComplaint',
     title: 'Queixa Principal',
-    description: 'Motivo da consulta e histórico recente.',
+    description: 'Motivo da consulta e historico recente.',
     specialty: 'default',
     schema: {
       sections: [
@@ -54,12 +54,12 @@ const DEFAULT_STEP_TEMPLATES = [
             {
               name: 'history',
               type: 'textarea',
-              label: 'Histórico da queixa',
+              label: 'Historico da queixa',
               required: true,
               minLength: 10,
             },
-            { name: 'startDate', type: 'date', label: 'Início dos sintomas' },
-            { name: 'duration', type: 'text', label: 'Duração' },
+            { name: 'startDate', type: 'date', label: 'Inicio dos sintomas' },
+            { name: 'duration', type: 'text', label: 'Duracao' },
           ],
         },
       ],
@@ -67,19 +67,19 @@ const DEFAULT_STEP_TEMPLATES = [
   },
   {
     key: 'currentDisease',
-    title: 'História da Doença Atual',
-    description: 'Tratamentos prévios e evolução da doença atual.',
+    title: 'Historia da Doenca Atual',
+    description: 'Tratamentos previos e evolucao da doenca atual.',
     specialty: 'default',
     schema: {
       sections: [
         {
           id: 'evolution',
-          title: 'Evolução',
+          title: 'Evolucao',
           fields: [
             {
               name: 'description',
               type: 'textarea',
-              label: 'Descrição',
+              label: 'Descricao',
               required: true,
               minLength: 10,
             },
@@ -92,7 +92,7 @@ const DEFAULT_STEP_TEMPLATES = [
             {
               name: 'frequency',
               type: 'select',
-              label: 'Frequência',
+              label: 'Frequencia',
               options: ['constant', 'intermittent', 'occasional'],
             },
           ],
@@ -102,16 +102,16 @@ const DEFAULT_STEP_TEMPLATES = [
   },
   {
     key: 'pathologicalHistory',
-    title: 'Histórico Patológico',
-    description: 'Doenças prévias, cirurgias e alergias.',
+    title: 'Historico Patologico',
+    description: 'Doencas previas, cirurgias e alergias.',
     specialty: 'default',
     schema: {
       sections: [
         {
           id: 'previousDiseases',
-          title: 'Doenças Prévias',
+          title: 'Doencas Previas',
           fields: [
-            { name: 'previousDiseases', type: 'array', label: 'Doenças', itemType: 'text' },
+            { name: 'previousDiseases', type: 'array', label: 'Doencas', itemType: 'text' },
             { name: 'allergies', type: 'array', label: 'Alergias', itemType: 'text' },
           ],
         },
@@ -120,25 +120,25 @@ const DEFAULT_STEP_TEMPLATES = [
   },
   {
     key: 'familyHistory',
-    title: 'Histórico Familiar',
-    description: 'Doenças hereditárias e fatores familiares relevantes.',
+    title: 'Historico Familiar',
+    description: 'Doencas hereditarias e fatores familiares relevantes.',
     specialty: 'default',
     schema: {
       sections: [
         {
           id: 'familyHistory',
-          title: 'Histórico Familiar',
+          title: 'Historico Familiar',
           fields: [
             {
               name: 'familyDiseases',
               type: 'array',
-              label: 'Doenças na família',
+              label: 'Doencas na familia',
               itemType: 'text',
             },
             {
               name: 'hereditaryDiseases',
               type: 'array',
-              label: 'Doenças hereditárias',
+              label: 'Doencas hereditarias',
               itemType: 'text',
             },
           ],
@@ -148,8 +148,8 @@ const DEFAULT_STEP_TEMPLATES = [
   },
   {
     key: 'systemsReview',
-    title: 'Revisão de Sistemas',
-    description: 'Avaliação de sistemas e sintomas associados.',
+    title: 'Revisao de Sistemas',
+    description: 'Avaliacao de sistemas e sintomas associados.',
     specialty: 'default',
     schema: {
       sections: [
@@ -167,16 +167,16 @@ const DEFAULT_STEP_TEMPLATES = [
   {
     key: 'lifestyle',
     title: 'Estilo de Vida',
-    description: 'Hábitos diários, alimentação, sono e atividade física.',
+    description: 'Habitos diarios, alimentacao, sono e atividade fisica.',
     specialty: 'default',
     schema: {
       sections: [
         {
           id: 'habits',
-          title: 'Hábitos',
+          title: 'Habitos',
           fields: [
             { name: 'smoker', type: 'boolean', label: 'Fumante?' },
-            { name: 'exercicesPerWeek', type: 'number', label: 'Exercícios por semana' },
+            { name: 'exercicesPerWeek', type: 'number', label: 'Exercicios por semana' },
             {
               name: 'sleepQuality',
               type: 'select',
@@ -202,7 +202,7 @@ const DEFAULT_STEP_TEMPLATES = [
             {
               name: 'stressLevel',
               type: 'select',
-              label: 'Nível de estresse',
+              label: 'Nivel de estresse',
               options: ['low', 'medium', 'high'],
             },
             { name: 'supportNetwork', type: 'textarea', label: 'Rede de apoio' },
@@ -213,16 +213,16 @@ const DEFAULT_STEP_TEMPLATES = [
   },
   {
     key: 'medication',
-    title: 'Medicações em Uso',
+    title: 'Medicacoes em Uso',
     description: 'Lista de medicamentos atuais e posologia.',
     specialty: 'default',
     schema: {
       sections: [
         {
           id: 'medications',
-          title: 'Medicações',
+          title: 'Medicacoes',
           fields: [
-            { name: 'currentMedications', type: 'array', label: 'Medicações', itemType: 'text' },
+            { name: 'currentMedications', type: 'array', label: 'Medicacoes', itemType: 'text' },
           ],
         },
       ],
@@ -230,8 +230,8 @@ const DEFAULT_STEP_TEMPLATES = [
   },
   {
     key: 'physicalExam',
-    title: 'Exame Físico',
-    description: 'Dados do exame físico e sinais vitais.',
+    title: 'Exame Fisico',
+    description: 'Dados do exame fisico e sinais vitais.',
     specialty: 'default',
     schema: {
       sections: [
@@ -241,7 +241,7 @@ const DEFAULT_STEP_TEMPLATES = [
           fields: [
             { name: 'heightCm', type: 'number', label: 'Altura (cm)' },
             { name: 'weightKg', type: 'number', label: 'Peso (kg)' },
-            { name: 'bloodPressure', type: 'text', label: 'Pressão arterial' },
+            { name: 'bloodPressure', type: 'text', label: 'Pressao arterial' },
           ],
         },
       ],

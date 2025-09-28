@@ -1,4 +1,4 @@
-﻿import { z } from 'zod';
+import { z } from 'zod';
 
 const recordSchema = z.record(z.any());
 
@@ -68,6 +68,17 @@ export const savePlanFeedbackSchema = z.object({
 export type SavePlanFeedbackSchema = z.infer<typeof savePlanFeedbackSchema>;
 
 const optionalFileName = z
+  .union([z.string(), z.undefined(), z.null()])
+  .transform((value) => {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  })
+  .optional();
+
+const optionalTrimmedString = z
   .union([z.string(), z.undefined(), z.null()])
   .transform((value) => {
     if (typeof value !== 'string') {
@@ -166,6 +177,13 @@ export const anamnesisHistoryQuerySchema = z.object({
 });
 
 export type AnamnesisHistoryQuerySchema = z.infer<typeof anamnesisHistoryQuerySchema>;
+
+export const listStepTemplatesQuerySchema = z.object({
+  specialty: optionalTrimmedString,
+  includeInactive: toBoolean,
+});
+
+export type ListStepTemplatesQuerySchema = z.infer<typeof listStepTemplatesQuerySchema>;
 
 export const listAnamnesesQuerySchema = z.object({
   status: toArray,

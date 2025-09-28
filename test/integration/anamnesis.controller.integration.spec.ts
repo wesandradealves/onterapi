@@ -21,11 +21,14 @@ import { ISavePlanFeedbackUseCase } from '@domain/anamnesis/interfaces/use-cases
 import { ICreateAnamnesisAttachmentUseCase } from '@domain/anamnesis/interfaces/use-cases/create-anamnesis-attachment.use-case.interface';
 import { IRemoveAnamnesisAttachmentUseCase } from '@domain/anamnesis/interfaces/use-cases/remove-anamnesis-attachment.use-case.interface';
 import { IReceiveAnamnesisAIResultUseCase } from '@domain/anamnesis/interfaces/use-cases/receive-anamnesis-ai-result.use-case.interface';
+import { IListAnamnesisStepTemplatesUseCase } from '@domain/anamnesis/interfaces/use-cases/list-anamnesis-step-templates.use-case.interface';
 import {
   Anamnesis,
   AnamnesisAIAnalysis,
   AnamnesisAttachment,
+  AnamnesisHistoryData,
   AnamnesisListItem,
+  AnamnesisStepTemplate,
   TherapeuticPlanData,
 } from '@domain/anamnesis/types/anamnesis.types';
 import { Result } from '@shared/types/result.type';
@@ -160,6 +163,7 @@ describe('AnamnesisController (integration)', () => {
     createAttachment: createUseCaseMock<any, AnamnesisAttachment>(),
     removeAttachment: createUseCaseMock<any, void>(),
     receiveAiResult: createUseCaseMock<any, AnamnesisAIAnalysis>(),
+    listTemplates: createUseCaseMock<any, AnamnesisStepTemplate[]>(),
   } as const;
 
   beforeEach(async () => {
@@ -178,6 +182,7 @@ describe('AnamnesisController (integration)', () => {
         { provide: ICreateAnamnesisAttachmentUseCase, useValue: useCases.createAttachment },
         { provide: IRemoveAnamnesisAttachmentUseCase, useValue: useCases.removeAttachment },
         { provide: IReceiveAnamnesisAIResultUseCase, useValue: useCases.receiveAiResult },
+        { provide: IListAnamnesisStepTemplatesUseCase, useValue: useCases.listTemplates },
         { provide: ConfigService, useValue: { get: jest.fn(() => 'test-secret') } },
         { provide: AnamnesisAIWebhookGuard, useValue: { canActivate: () => true } },
       ],
@@ -194,6 +199,7 @@ describe('AnamnesisController (integration)', () => {
     await app.init();
 
     jest.clearAllMocks();
+    useCases.listTemplates.execute.mockResolvedValue({ data: [] });
   });
 
   afterEach(async () => {
@@ -485,3 +491,13 @@ describe('AnamnesisController (integration)', () => {
     );
   });
 });
+
+
+
+
+
+
+
+
+
+

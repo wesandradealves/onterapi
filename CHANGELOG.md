@@ -33,7 +33,7 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 - `AppModule` passou a registrar o `AnamnesisModule` e os eventos associados (`src/app.module.ts`, `src/shared/events/domain-events.ts`).
 
 ### Known Issues
-- Suites Jest (`npm run test:*`) continuam bloqueadas no ambiente local por incompatibilidade do runner `jest-circus` com Node 22; ajustes pendentes para retomar a execucao completa dos testes automatizados.
+- Suites Jest (`npm run test:*`) estavam bloqueadas no ambiente local por incompatibilidade do runner `jest-circus` com Node 22; resolvido em [Unreleased].
 
 ## [0.16.5] - 2025-09-26
 
@@ -859,6 +859,11 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 ---
 
 _Mantenha este arquivo atualizado a cada release_
+
+
+
+
+
 
 
 

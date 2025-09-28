@@ -257,4 +257,65 @@ describe('AnamnesisPresenter', () => {
     expect(dto.prefill.attachments).toHaveLength(1);
     expect(dto.prefill.updatedAt).toBe(baseDate.toISOString());
   });
+
+  it('mapeia templates de step', () => {
+    const templates = [
+      {
+        id: 'template-1',
+        key: 'identification',
+        title: 'Identificacao',
+        description: 'Dados basicos',
+        version: 1,
+        schema: { sections: [] },
+        specialty: 'default',
+        tenantId: 'tenant-1',
+        isActive: true,
+        createdAt: baseDate,
+        updatedAt: baseDate,
+      },
+    ];
+
+    const dto = AnamnesisPresenter.templates(templates as unknown as any);
+
+    expect(dto).toHaveLength(1);
+    expect(dto[0].key).toBe('identification');
+    expect(dto[0].schema).toEqual({ sections: [] });
+  });
+  it('retorna schema vazio quando JSON serialization falha', () => {
+    const circular: Record<string, unknown> = {};
+    (circular as any).self = circular;
+
+    const templates = [
+      {
+        id: 'template-2',
+        key: 'chiefComplaint',
+        title: 'Queixa',
+        version: 1,
+        schema: circular,
+        specialty: null,
+        isActive: true,
+        tenantId: null,
+        createdAt: null as unknown as Date,
+        updatedAt: null as unknown as Date,
+      },
+    ];
+
+    const dto = AnamnesisPresenter.templates(templates as unknown as any);
+
+    expect(dto).toHaveLength(1);
+    expect(dto[0].schema).toEqual({});
+    expect(dto[0].specialty).toBeUndefined();
+    expect(dto[0].createdAt).toMatch(/T/);
+    expect(dto[0].updatedAt).toMatch(/T/);
+  });
 });
+
+
+
+
+
+
+
+
+
+
