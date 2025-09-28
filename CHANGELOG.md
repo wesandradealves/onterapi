@@ -28,7 +28,7 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 ### Security
 
 ### Documentation
-- README atualizado (28/09) com secao "Modulo de Anamnese", baseline revisada (245 testes em 13:47) e checklist de RBAC/metricas; docs/app/anamnese.md documenta seeds por especialidade, storage Supabase, webhook e bateria completa.
+- README atualizado (28/09) com secao "Modulo de Anamnese" expandida (dominio, endpoints, validacoes, IA, eventos, metricas, scripts) e baseline revisada (245 testes em 13:47); docs/app/anamnese.md registra seeds por especialidade, storage Supabase, webhook e bateria completa.
 
 ## [0.16.6] - 2025-09-26
 
