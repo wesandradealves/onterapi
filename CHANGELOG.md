@@ -8,12 +8,13 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ### Added
 - Servico de armazenamento de anexos para anamnese (`IAnamnesisAttachmentStorageService`, `SupabaseAnamnesisAttachmentStorageService`) integrado aos casos de uso e ao modulo.
+- Seeds adicionais por especialidade (nutrition, physiotherapy, psychology) na migracao `1738200000000-AddAnamnesisTemplatesAndAIResponses`, com indice `uniq_step_template_scope` garantindo versao por tenant/especialidade.
 - Guard e caso de uso para ingestao de resultados de IA via webhook, com novo endpoint REST e contratos de DTO/Schema.
 - Entidade `AnamnesisAITrainingFeedbackEntity`, migration `1738300000000-AddAnamnesisFeedbackScoreboard` e método `recordAITrainingFeedback`, persistindo feedbacks (tenant, plano, analysisId, status, like/dislike, comentário).
 - Serviço `AnamnesisMetricsService` + `AnamnesisEventsSubscriber` para agregar métricas (steps salvos, autosaves, confiança da IA, aprovação) a partir dos eventos `DomainEvents.ANAMNESIS_*`.
 
 ### Changed
-- Repositorio, presenters e DTOs de anamnese atualizados para preservar anexos no historico, normalizar payloads JSON e expor auditoria (tenant/usuario) de forma consistente.
+- Repositorio, presenters e DTOs de anamnese atualizados para preservar anexos no historico, normalizar payloads JSON e expor auditoria (tenant/usuario); `getStepTemplates`/`getStepTemplateByKey` agora priorizam tenant -> especialidade -> default com helpers `TemplateSelectionContext`, `getTemplatePriority`, `shouldReplaceTemplate`.
 - Planos terapêuticos passam a carregar `analysisId` ao salvar resultados da IA; presenters, DTOs e mapper expõem o vínculo e normalizam o payload.
 - `ReceiveAnamnesisAIResultUseCase` e `savePlanFeedback` conectam análises ao scoreboard, disparando eventos e registrando feedback supervisionado multi-tenant.
 - Fluxos de auto-save, listagem e historico reforcados com idempotencia, RBAC e emissao de eventos; suites unitarias, de integracao e E2E atualizadas para cobrir anexos e pipeline completo de IA.
@@ -27,7 +28,7 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 ### Security
 
 ### Documentation
-- README atualizado (28/09) com linha de base revisada, 242 testes executados e sequência oficial da bateria; docs/app/anamnese.md reencodado em UTF-8 e detalha fluxo de feedback e métricas da IA.
+- README atualizado (28/09) com secao "Modulo de Anamnese", baseline revisada (245 testes em 13:47) e checklist de RBAC/metricas; docs/app/anamnese.md documenta seeds por especialidade, storage Supabase, webhook e bateria completa.
 
 ## [0.16.6] - 2025-09-26
 

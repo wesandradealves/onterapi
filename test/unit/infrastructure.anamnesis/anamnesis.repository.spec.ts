@@ -23,6 +23,23 @@ const createStepEntity = (overrides: Partial<AnamnesisStepEntity> = {}): Anamnes
     updatedAt: overrides.updatedAt ?? new Date('2025-09-26T10:00:00.000Z'),
   }) as unknown as AnamnesisStepEntity;
 
+const createTemplateEntity = (
+  overrides: Partial<AnamnesisStepTemplateEntity> = {},
+): AnamnesisStepTemplateEntity =>
+  ({
+    id: overrides.id ?? 'template-id',
+    key: overrides.key ?? 'lifestyle',
+    title: overrides.title ?? 'Template',
+    description: overrides.description,
+    schema: overrides.schema ?? {},
+    version: overrides.version ?? 1,
+    specialty: overrides.specialty,
+    tenantId: overrides.tenantId ?? null,
+    isActive: overrides.isActive ?? true,
+    createdAt: overrides.createdAt ?? new Date('2025-09-26T00:00:00.000Z'),
+    updatedAt: overrides.updatedAt ?? new Date('2025-09-26T00:00:00.000Z'),
+  }) as unknown as AnamnesisStepTemplateEntity;
+
 describe('AnamnesisRepository.autoSaveStep', () => {
   const tenantId = 'tenant-auto-save';
   const anamnesisId = 'anamnesis-auto-save';
@@ -364,5 +381,103 @@ describe('AnamnesisRepository.getHistoryByPatient', () => {
 
     const [limitValue] = queryBuilderMock.take.mock.calls[0];
     expect(limitValue).toBe(10);
+  });
+});
+describe('AnamnesisRepository.getStepTemplates', () => {
+  const buildRepository = () => {
+    const stepTemplateRepoMock = {
+      createQueryBuilder: jest.fn(),
+    };
+
+    const dataSource = {
+      getRepository: jest.fn((entity: unknown) => {
+        if (entity === AnamnesisStepTemplateEntity) {
+          return stepTemplateRepoMock;
+        }
+        if (entity === AnamnesisAITrainingFeedbackEntity) {
+          return {
+            create: jest.fn(),
+            save: jest.fn(),
+          };
+        }
+        return {
+          createQueryBuilder: jest.fn(),
+          findOne: jest.fn(),
+          save: jest.fn(),
+          create: jest.fn(),
+          update: jest.fn(),
+        };
+      }),
+    } as unknown as DataSource;
+
+    const repository = new AnamnesisRepository(dataSource);
+
+    return { repository, stepTemplateRepoMock };
+  };
+
+  const buildQueryBuilder = (templates: AnamnesisStepTemplateEntity[]) => ({
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    addOrderBy: jest.fn().mockReturnThis(),
+    getMany: jest.fn().mockResolvedValue(templates),
+  });
+
+  it('prioriza template da especialidade quando disponivel', async () => {
+    const { repository, stepTemplateRepoMock } = buildRepository();
+    const defaultTemplate = createTemplateEntity({ id: 'tpl-default', specialty: 'default' });
+    const nutritionTemplate = createTemplateEntity({
+      id: 'tpl-nutrition',
+      specialty: 'nutrition',
+    });
+
+    const listQueryBuilder = buildQueryBuilder([defaultTemplate, nutritionTemplate]);
+    stepTemplateRepoMock.createQueryBuilder.mockReturnValueOnce(listQueryBuilder);
+
+    const result = await repository.getStepTemplates({
+      tenantId: 'tenant-templates',
+      specialty: 'nutrition',
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('tpl-nutrition');
+  });
+
+  it('mantem template default quando especialidade nao informada', async () => {
+    const { repository, stepTemplateRepoMock } = buildRepository();
+    const defaultTemplate = createTemplateEntity({ id: 'tpl-default', specialty: 'default' });
+    const nutritionTemplate = createTemplateEntity({
+      id: 'tpl-nutrition',
+      specialty: 'nutrition',
+    });
+
+    const listQueryBuilder = buildQueryBuilder([defaultTemplate, nutritionTemplate]);
+    stepTemplateRepoMock.createQueryBuilder.mockReturnValueOnce(listQueryBuilder);
+
+    const result = await repository.getStepTemplates({
+      tenantId: 'tenant-templates',
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('tpl-default');
+  });
+
+  it('getStepTemplateByKey retorna variante da especialidade quando disponivel', async () => {
+    const { repository, stepTemplateRepoMock } = buildRepository();
+    const defaultTemplate = createTemplateEntity({ id: 'tpl-default', specialty: 'default' });
+    const physioTemplate = createTemplateEntity({
+      id: 'tpl-physio',
+      specialty: 'physiotherapy',
+    });
+
+    const keyQueryBuilder = buildQueryBuilder([defaultTemplate, physioTemplate]);
+    stepTemplateRepoMock.createQueryBuilder.mockReturnValueOnce(keyQueryBuilder);
+
+    const result = await repository.getStepTemplateByKey('physicalExam', {
+      tenantId: 'tenant-templates',
+      specialty: 'physiotherapy',
+    });
+
+    expect(result?.id).toBe('tpl-physio');
   });
 });

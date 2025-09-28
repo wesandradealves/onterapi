@@ -249,6 +249,116 @@ const DEFAULT_STEP_TEMPLATES = [
   },
 ];
 
+const SPECIALTY_STEP_TEMPLATES = [
+  {
+    key: 'lifestyle',
+    title: 'Habitos Alimentares',
+    description: 'Campos adicionais para avaliacao nutricional.',
+    specialty: 'nutrition',
+    version: 1,
+    schema: {
+      sections: [
+        {
+          id: 'nutritionProfile',
+          title: 'Perfil nutricional',
+          fields: [
+            {
+              name: 'dietType',
+              type: 'select',
+              label: 'Tipo de dieta',
+              options: ['balanced', 'low_carb', 'vegetarian', 'vegan', 'ketogenic', 'other'],
+            },
+            {
+              name: 'foodRestrictions',
+              type: 'array',
+              label: 'Restricoes ou intolerancias',
+              itemType: 'text',
+            },
+            {
+              name: 'hydrationHabits',
+              type: 'text',
+              label: 'Habitos de hidratacao',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    key: 'physicalExam',
+    title: 'Exame Fisico - Fisioterapia',
+    description: 'Itens funcionais para fisioterapia.',
+    specialty: 'physiotherapy',
+    version: 1,
+    schema: {
+      sections: [
+        {
+          id: 'functionalAssessment',
+          title: 'Avaliacao funcional',
+          fields: [
+            {
+              name: 'rangeOfMotion',
+              type: 'textarea',
+              label: 'Amplitude de movimento',
+            },
+            {
+              name: 'painScale',
+              type: 'select',
+              label: 'Escala de dor',
+              options: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            },
+            {
+              name: 'mobilityNotes',
+              type: 'textarea',
+              label: 'Observacoes de mobilidade',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    key: 'psychosocial',
+    title: 'Aspectos Psicossociais',
+    description: 'Campos especificos para acompanhamento psicologico.',
+    specialty: 'psychology',
+    version: 1,
+    schema: {
+      sections: [
+        {
+          id: 'mentalHealth',
+          title: 'Saude mental',
+          fields: [
+            {
+              name: 'mood',
+              type: 'select',
+              label: 'Humor atual',
+              options: ['estavel', 'ansioso', 'deprimido', 'irritado', 'outro'],
+            },
+            {
+              name: 'stressLevel',
+              type: 'select',
+              label: 'Nivel de estresse',
+              options: ['baixo', 'moderado', 'alto'],
+            },
+            {
+              name: 'sleepQuality',
+              type: 'select',
+              label: 'Qualidade do sono',
+              options: ['boa', 'regular', 'ruim'],
+            },
+            {
+              name: 'supportNetwork',
+              type: 'textarea',
+              label: 'Rede de apoio',
+            },
+          ],
+        },
+      ],
+    },
+  },
+];
+
 export class AddAnamnesisTemplatesAndAIResponses1738200000000 implements MigrationInterface {
   name = 'AddAnamnesisTemplatesAndAIResponses1738200000000';
 
@@ -270,8 +380,13 @@ export class AddAnamnesisTemplatesAndAIResponses1738200000000 implements Migrati
     `);
 
     await queryRunner.query(`
-      CREATE UNIQUE INDEX "uniq_step_template_key_version_tenant"
-        ON "anamnesis_step_templates" (COALESCE("tenant_id", '00000000-0000-0000-0000-000000000000'::uuid), "key", "version")
+      CREATE UNIQUE INDEX "uniq_step_template_scope"
+        ON "anamnesis_step_templates" (
+          COALESCE("tenant_id", '00000000-0000-0000-0000-000000000000'::uuid),
+          COALESCE("specialty", 'default'),
+          "key",
+          "version"
+        )
     `);
 
     await queryRunner.query(`
@@ -294,6 +409,21 @@ export class AddAnamnesisTemplatesAndAIResponses1738200000000 implements Migrati
           template.description,
           JSON.stringify(template.schema),
           1,
+          template.specialty,
+        ],
+      );
+    }
+
+    for (const template of SPECIALTY_STEP_TEMPLATES) {
+      await queryRunner.query(
+        `INSERT INTO "anamnesis_step_templates" ("key", "title", "description", "schema", "version", "specialty", "is_active")
+         VALUES ($1, $2, $3, $4::jsonb, $5, $6, true)`,
+        [
+          template.key,
+          template.title,
+          template.description,
+          JSON.stringify(template.schema),
+          template.version ?? 1,
           template.specialty,
         ],
       );
@@ -338,7 +468,7 @@ export class AddAnamnesisTemplatesAndAIResponses1738200000000 implements Migrati
 
     await queryRunner.query('DROP INDEX IF EXISTS "idx_step_template_specialty"');
     await queryRunner.query('DROP INDEX IF EXISTS "idx_step_template_key"');
-    await queryRunner.query('DROP INDEX IF EXISTS "uniq_step_template_key_version_tenant"');
+    await queryRunner.query('DROP INDEX IF EXISTS "uniq_step_template_scope"');
     await queryRunner.query('DROP TABLE IF EXISTS "anamnesis_step_templates"');
   }
 }

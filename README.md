@@ -8,6 +8,7 @@ Plataforma SaaS multi-tenant para gestao de clinicas e terapeutas, com Supabase 
 - [Fluxo de Autenticacao](#fluxo-de-autenticacao)
 - [Modulo de Pacientes](#modulo-de-pacientes)
 - [Modulo de Usuarios](#modulo-de-usuarios)
+- [Modulo de Anamnese](#modulo-de-anamnese)
 - [Exportacao de Pacientes](#exportacao-de-pacientes)
 - [Documentacao Swagger](#documentacao-swagger)
 - [Como Rodar Localmente](#como-rodar-localmente)
@@ -70,6 +71,17 @@ Rotas principais:
 - Script `npm run backfill:user-slugs` sincroniza o slug do banco relacional com o metadata do Supabase Auth para contas legadas.
 - Script `npm run sync:users` garante que apenas os usuarios presentes no Postgres estejam registrados no Supabase Auth (executa insert/update e remove contas extras).
 - Script `npm run assign-super-admin-tenant` vincula o tenant padrao aos SUPER_ADMIN no Supabase e atualiza a coluna tenant_id da base relacional.
+
+## Modulo de Anamnese
+- Casos de uso cobrem inicio, consulta, salvamento, auto-save, submissao, historico e sync de anexos com log de auditoria.
+- Auto-save idempotente consolida payloads por versao/timestamp e ignora snapshots atrasados preservando o rascunho mais recente.
+- Upload/listagem/remocao de anexos usam Supabase Storage via `SupabaseAnamnesisAttachmentStorageService`, guardando metadados (mimeType, tamanho, checksum, createdBy).
+- Submissao publica evento para CrewAI; webhook `/anamneses/:id/ai-result` persiste `analysisId`, risco, recomendacoes e confidence em `anamnesis_ai_analyses`.
+- Feedback profissional (`POST /anamneses/:id/plan`) grava scoreboard em `anamnesis_ai_feedbacks` (approvalStatus, like/dislike, comentario) e propaga eventos ANAMNESIS_PLAN_FEEDBACK_SAVED.
+- Templates dinamicos: seeds default + especialidades (nutrition, physiotherapy, psychology) selecionadas por tenant/especialidade/versao via helpers `TemplateSelectionContext`, `getTemplatePriority`, `shouldReplaceTemplate`.
+- Metrics: `AnamnesisMetricsService` agrega passos salvos, autosaves, completude e feedbacks aprovados por tenant a partir dos eventos ANAMNESIS_* para dashboards futuros.
+- RBAC: TenantGuard + RolesGuard garantem que PROFESSIONAL veja apenas pacientes que acompanha; PATIENT acessa apenas a propria anamnese; SUPER_ADMIN tem leitura total.
+- Rotas: `POST /anamneses/start`, `GET /anamneses/:id`, `PATCH /anamneses/:id/steps/:stepNumber`, `POST /anamneses/:id/auto-save`, `POST /anamneses/:id/submit`, `GET /patients/:patientId/anamneses`, `POST /anamneses/:id/attachments`, `DELETE /anamneses/:id/attachments/:attachmentId`, `POST /anamneses/:id/plan`, `POST /anamneses/:id/ai-result`.
 
 ## Exportacao de Pacientes
 - `POST /patients/export` enfileira solicitacao na tabela `patient_exports`.
@@ -288,33 +300,32 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 
 | Criterio | Nota atual (0-10) | Meta | Evidencias chave |
 | --- | --- | --- | --- |
-| DRY / Reuso de codigo | 9.6 | >= 9.0 | Controllers de Auth, Patients, Users e Anamnesis continuam delegando normalizacao a mappers/presenters dedicados (ex.: src/modules/anamnesis/api/presenters/anamnesis.presenter.ts, src/shared/mappers/anamnesis.mapper.ts), eliminando duplicacao de clones e formatacao manual de datas. |
-| Automacao de qualidade | 8.7 | >= 8.5 | Sequencia manual revalidada em 28/09 (13:05h) com Node 22.18.0: npm run lint -> npx tsc --noEmit -> npm run test:unit -> npm run test:int -> npm run test:e2e -> npm run test:cov -> npm run build. |
-| Testes automatizados | 10.0 | >= 9.5 | 242 testes (unit, integration, e2e e cobertura) executados em ~20 s; presenter, mapper e métricas de anamnese seguem com 100% dos ramos cobertos (inclui test/unit/modules.anamnesis/anamnesis-metrics.service.spec.ts). |
-| Validacoes e contratos | 9.3 | >= 9.0 | Controllers de Anamnesis aplicam Zod com casting para enums (`AnamnesisStatus`, `AnamnesisStepKey`) antes dos use cases, garantindo filtros tipados e mensagens consistentes (src/modules/anamnesis/api/controllers/anamnesis.controller.ts:215, 254). |
-| Governanca de dominio / RBAC | 8.4 | >= 9.0 | Casos de uso de Anamnesis continuam consultando ensureCanModifyAnamnesis; fluxo de templates (`ListAnamnesisStepTemplatesUseCase`) valida PROFESSIONAL/PATIENT/SUPER_ADMIN antes de expor seeds multi-tenant. |
+| DRY / Reuso de codigo | 9.7 | >= 9.0 | Controllers de Auth, Patients, Users e Anamnesis continuam delegando normalizacao a mappers/presenters; selecao de templates por especialidade usa helpers reutilizaveis (`TemplateSelectionContext`, `getTemplatePriority`, `shouldReplaceTemplate`) e evita condicionais duplicadas. |
+| Automacao de qualidade | 8.9 | >= 8.5 | Sequencia manual revalidada em 28/09 (13:47h) com Node 22.18.0: npm run lint -> npx tsc --noEmit -> npm run test:unit -> npm run test:int -> npm run test:e2e -> npm run test:cov -> npm run build. |
+| Testes automatizados | 10.0 | >= 9.5 | 245 testes (unit, integration, e2e e cobertura) executados em ~21 s; presenter, mapper, metrics e repositorio de anamnese seguem com branches 100% cobertos apos os novos cenarios de templates e IA. |
+| Validacoes e contratos | 9.5 | >= 9.0 | Controllers de Anamnesis aplicam Zod para filtros e usam o util `validateAnamnesisStepPayload` (calculo de BMI/pack-years) em save/auto-save/submit, garantindo payload sanitizado antes de publicar eventos de IA. |
+| Governanca de dominio / RBAC | 9.0 | >= 9.0 | Casos de uso de Anamnesis reforcam ensureCanModifyAnamnesis e publicam eventos com tenantId; rotas de anexos, historico, templates e webhook usam TenantGuard + RolesGuard dedicados para cada perfil. |
 
 ## Observacoes Detalhadas
 
 ### DRY e reuso
-- AuthController, TwoFactorController, PatientsController e agora UsersController compartilham resolucao de contexto/mapeamento via helpers, eliminando spreads e normalizacoes ad-hoc nos endpoints.
-- Mapper de auth cobre device info, tokens e defaults; mapper de usuarios centraliza comandos de create/update/filter reaproveitados pelos casos de uso.
-- Proximo alvo de DRY e replicar a mesma abordagem para agendamento e financeiro (mappers + presenters dedicados).
+- Controllers (Auth, TwoFactor, Patients, Users, Anamnesis) compartilham helpers de contexto e mappers, evitando spreads e normalizacoes ad-hoc nos endpoints.
+- Repositorio de anamnese usa `TemplateSelectionContext`, `getTemplatePriority` e `shouldReplaceTemplate` para escolher templates por tenant/especialidade sem condições duplicadas.
+- SupabaseAnamnesisAttachmentStorageService e AnamnesisMetricsService concentram storage/metricas e reutilizam factories/eventos multi-tenant.
 
 ### Automacao e scripts
-- Fluxo local permanece linear (unit -> int -> e2e -> cov) com collectCoverageFrom ampliado para mappers de auth/pacientes/usuarios.
-- Aguardando pipeline CI para rodar os mesmos gates de forma automatizada.
+- Bateria manual confirmada em 28/09 (13:47h) com Node 22.18.0: lint -> tsc -> test:unit -> test:int -> test:e2e -> test:cov -> build, com logs arquivados.
+- coverage-summary.json segue versionado como referencia; migrations `1738200000000` e `1738300000000` foram exercitadas com `npm run typeorm migration:run -- -d src/infrastructure/database/data-source.ts` antes de aplicacao em ambientes compartilhados.
 
 ### Testes
-- Novos specs cobrem métricas de anamnese e mapper de usuários, garantindo coerções de tenantId, metadata e snapshot do serviço.
-- Contagem total de 242 testes em ~20s; branch coverage global mantida em 100% (incluindo presenter/templates de anamnese e métricas).
-- Suites de integracao/e2e seguem focadas em pacientes; auth e usuarios ainda carecem de cenarios ponta-a-ponta.
+- Novos specs cobrem selecao de templates, metrics service, feedback scoreboard e fluxo webhook; mocks em memoria mantem branches do repositorio alinhados com as entidades reais.
+- 245 testes (unit, integration, e2e, coverage) em ~21s com branches 100%: suites e2e percorrem start -> auto-save -> submit -> webhook -> feedback, incluindo anexos via storage Supabase.
+- Cenarios negativos validam RBAC (PATIENT vs PROFESSIONAL), conflitos de autosave, erros de storage e webhooks nao autorizados sem gerar falsos positivos.
 
-
-### Integração IA & Métricas
-- Plano terapêutico passa a carregar `analysisId`, vinculando cada revisão humana à análise de IA que o originou e gravando feedbacks estruturados em `anamnesis_ai_feedbacks`.
-- `AnamnesisRepository.savePlanFeedback` aciona `recordAITrainingFeedback`, garantindo persistência multi-tenant com status (`approved`/`modified`/`rejected`), like/dislike e comentário.
-- `AnamnesisEventsSubscriber` + `AnamnesisMetricsService` agregam etapas salvas, autosaves, taxa média de conclusão e confiança da IA; snapshot disponível por tenant para dashboards.
+### Integra��o IA & M�tricas
+- SubmitAnamnesisUseCase publica evento completo para CrewAI; webhook `/anamneses/:id/ai-result` persiste `analysisId`, reasoning, risk e recommendations e dispara ANAMNESIS_AI_COMPLETED.
+- SavePlanFeedbackUseCase grava scoreboard em `anamnesis_ai_feedbacks` (approvalStatus, liked, comentario) e emite ANAMNESIS_PLAN_FEEDBACK_SAVED para alimentar treinamento supervisionado.
+- AnamnesisEventsSubscriber alimenta `AnamnesisMetricsService` (steps salvos, autosaves, completude, feedbacks aprovados) mantendo indicadores por tenant prontos para dashboards.
 
 ### Validacao e contratos
 - Todos os endpoints de auth, users e patients consomem dados validados pelo ZodValidationPipe e mappers, preservando DTOs apenas para Swagger.

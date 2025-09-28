@@ -100,6 +100,63 @@ const mergeRecords = (
   return result;
 };
 
+interface TemplateSelectionContext {
+  specialty?: string;
+}
+
+const toTimestamp = (value: Date | string | number): number => new Date(value).getTime();
+
+const getTemplatePriority = (
+  template: AnamnesisStepTemplateEntity,
+  context: TemplateSelectionContext,
+) => {
+  const tenantPriority = template.tenantId ? 1 : 0;
+  const requestedSpecialty = context.specialty;
+
+  let specialtyPriority = 0;
+  if (requestedSpecialty) {
+    if (template.specialty === requestedSpecialty) {
+      specialtyPriority = 2;
+    } else if (!template.specialty || template.specialty === 'default') {
+      specialtyPriority = 1;
+    } else {
+      specialtyPriority = 0;
+    }
+  } else {
+    specialtyPriority = !template.specialty || template.specialty === 'default' ? 1 : 0;
+  }
+
+  return {
+    tenantPriority,
+    specialtyPriority,
+    versionPriority: template.version ?? 0,
+    updatedAt: toTimestamp(template.updatedAt),
+  };
+};
+
+const shouldReplaceTemplate = (
+  current: AnamnesisStepTemplateEntity,
+  candidate: AnamnesisStepTemplateEntity,
+  context: TemplateSelectionContext,
+): boolean => {
+  const currentPriority = getTemplatePriority(current, context);
+  const candidatePriority = getTemplatePriority(candidate, context);
+
+  if (candidatePriority.tenantPriority !== currentPriority.tenantPriority) {
+    return candidatePriority.tenantPriority > currentPriority.tenantPriority;
+  }
+
+  if (candidatePriority.specialtyPriority !== currentPriority.specialtyPriority) {
+    return candidatePriority.specialtyPriority > currentPriority.specialtyPriority;
+  }
+
+  if (candidatePriority.versionPriority !== currentPriority.versionPriority) {
+    return candidatePriority.versionPriority > currentPriority.versionPriority;
+  }
+
+  return candidatePriority.updatedAt > currentPriority.updatedAt;
+};
+
 @Injectable()
 export class AnamnesisRepository implements IAnamnesisRepository {
   private readonly logger = new Logger(AnamnesisRepository.name);
@@ -634,18 +691,16 @@ export class AnamnesisRepository implements IAnamnesisRepository {
   async recordAITrainingFeedback(
     data: RecordAITrainingFeedbackInput,
   ): Promise<AnamnesisAITrainingFeedback> {
-    const entity = this.aiFeedbackRepository.create(
-      {
-        tenantId: data.tenantId,
-        anamnesisId: data.anamnesisId,
-        planId: data.planId,
-        analysisId: data.analysisId ?? null,
-        approvalStatus: data.approvalStatus,
-        liked: typeof data.liked === 'boolean' ? data.liked : null,
-        feedbackComment: data.feedbackComment ?? null,
-        feedbackGivenBy: data.feedbackGivenBy,
-      } as DeepPartial<AnamnesisAITrainingFeedbackEntity>,
-    ) as AnamnesisAITrainingFeedbackEntity;
+    const entity = this.aiFeedbackRepository.create({
+      tenantId: data.tenantId,
+      anamnesisId: data.anamnesisId,
+      planId: data.planId,
+      analysisId: data.analysisId ?? null,
+      approvalStatus: data.approvalStatus,
+      liked: typeof data.liked === 'boolean' ? data.liked : null,
+      feedbackComment: data.feedbackComment ?? null,
+      feedbackGivenBy: data.feedbackGivenBy,
+    } as DeepPartial<AnamnesisAITrainingFeedbackEntity>) as AnamnesisAITrainingFeedbackEntity;
 
     const saved = await this.aiFeedbackRepository.save(entity);
 
@@ -728,34 +783,27 @@ export class AnamnesisRepository implements IAnamnesisRepository {
       .addOrderBy('template.version', 'DESC')
       .getMany();
 
-    const latestPerKey = new Map<string, (typeof entities)[number]>();
+    const selectionContext: TemplateSelectionContext = {
+      specialty: filters?.specialty,
+    };
+
+    const latestPerKey = new Map<string, AnamnesisStepTemplateEntity>();
 
     for (const entity of entities) {
       const existing = latestPerKey.get(entity.key);
-      if (!existing) {
-        latestPerKey.set(entity.key, entity);
-        continue;
-      }
-
-      const isExistingTenant = existing.tenantId !== null && existing.tenantId !== undefined;
-      const isCurrentTenant = entity.tenantId !== null && entity.tenantId !== undefined;
-
-      if (!isExistingTenant && isCurrentTenant) {
-        latestPerKey.set(entity.key, entity);
-        continue;
-      }
-
-      if (existing.version < entity.version) {
+      if (!existing || shouldReplaceTemplate(existing, entity, selectionContext)) {
         latestPerKey.set(entity.key, entity);
       }
     }
 
-    const templates = Array.from(latestPerKey.values()).map(mapStepTemplateEntityToDomain);
+    const templates = Array.from(latestPerKey.values())
+      .map(mapStepTemplateEntityToDomain)
+      .sort(
+        (a, b) =>
+          stepKeyToNumber(a.key as AnamnesisStepKey) - stepKeyToNumber(b.key as AnamnesisStepKey),
+      );
 
-    return templates.sort(
-      (a, b) =>
-        stepKeyToNumber(a.key as AnamnesisStepKey) - stepKeyToNumber(b.key as AnamnesisStepKey),
-    );
+    return templates;
   }
 
   async getStepTemplateByKey(
@@ -792,12 +840,28 @@ export class AnamnesisRepository implements IAnamnesisRepository {
       });
     }
 
-    const entity = await query
+    const entities = await query
       .orderBy('template.tenantId', 'DESC')
       .addOrderBy('template.version', 'DESC')
-      .getOne();
+      .getMany();
 
-    return entity ? mapStepTemplateEntityToDomain(entity) : null;
+    if (!entities.length) {
+      return null;
+    }
+
+    const selectionContext: TemplateSelectionContext = {
+      specialty: filters?.specialty,
+    };
+
+    let best = entities[0];
+    for (let index = 1; index < entities.length; index += 1) {
+      const candidate = entities[index];
+      if (shouldReplaceTemplate(best, candidate, selectionContext)) {
+        best = candidate;
+      }
+    }
+
+    return mapStepTemplateEntityToDomain(best);
   }
 
   async createAIAnalysis(data: CreateAnamnesisAIAnalysisInput): Promise<AnamnesisAIAnalysis> {
