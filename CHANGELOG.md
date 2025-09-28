@@ -28,7 +28,8 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 ### Security
 
 ### Documentation
-- README atualizado (28/09) com secao "Modulo de Anamnese" expandida (dominio, endpoints, validacoes, IA, eventos, metricas, scripts) e baseline revisada (245 testes em 13:47); docs/app/anamnese.md registra seeds por especialidade, storage Supabase, webhook e bateria completa.
+- README reorganizado para cobrir o modulo de anamnese (fluxo completo, exemplos de payloads, parametros padronizados, cabecalhos obrigatorios e integracao IA).
+- Swagger inclui o AnamnesisModule e descreve filtros de historico/listagem com enums e exemplos alinhados aos modulos de Auth/Users.
 
 ## [0.16.6] - 2025-09-26
 

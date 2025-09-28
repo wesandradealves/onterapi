@@ -73,90 +73,196 @@ Rotas principais:
 - Script `npm run assign-super-admin-tenant` vincula o tenant padrao aos SUPER_ADMIN no Supabase e atualiza a coluna tenant_id da base relacional.
 
 ## Modulo de Anamnese
-### Visao rapida
-- Fluxo multi-etapas (10 steps) usado antes da consulta para reunir dados clinicos, gerar plano assistido por IA e manter historico auditavel.
-- Casos de uso cobrem inicio, salvamento incremental, auto-save idempotente, submissao, historico, anexos, feedback de plano e ingestao de resultados da IA.
-- Regras de RBAC: paciente acessa apenas a propria anamnese; profissional manipula os pacientes sob sua responsabilidade; super admin le tudo; secretary/finance sem acesso.
 
-### Modelagem e persistencia
-- Tabelas criadas pelas migracoes `1738100000000-CreateAnamnesisTables` e `1738200000000-AddAnamnesisTemplatesAndAIResponses` (indices obrigatorios para `tenant_id`, `consultation_id`, `anamnesis_id`).
-- Estruturas principais: `anamneses`, `anamnesis_steps`, `anamnesis_therapeutic_plans`, `anamnesis_attachments`, `anamnesis_ai_analyses`, `anamnesis_ai_feedbacks`, `anamnesis_step_templates`.
-- Colunas padrao de auditoria (`tenant_id`, `created_by`, `updated_by`, timestamps) em todas as tabelas; anexos guardam `checksum`, `mime_type`, `size`, `storage_path`.
-- Templates de steps possuem indice `uniq_step_template_scope` (tenant + specialty + key + version) e seeds default + especialidades (nutrition, physiotherapy, psychology).
+### Visao Geral
+- Formulario clinico multi-etapas (10 steps) utilizado antes da consulta para consolidar dados do paciente, alimentar a IA e registrar historico auditavel.
+- Suporta rascunhos idempotentes, anexos versionados, geracao de plano terapeutico, feedback supervisionado e metricas de conclusao.
+- Todo fluxo utiliza os guards `JwtAuthGuard`, `TenantGuard` e `RolesGuard`, devolvendo as respostas formatadas pelo `AnamnesisPresenter`.
 
-### Casos de uso principais
-- `StartAnamnesisUseCase`, `GetAnamnesisUseCase`, `SaveAnamnesisStepUseCase`, `AutoSaveAnamnesisUseCase`, `SubmitAnamnesisUseCase`.
-- Historico e listagens: `GetAnamnesisHistoryUseCase`, `ListAnamnesesByPatientUseCase`, `ListAnamnesisStepTemplatesUseCase`.
-- Anexos: `CreateAnamnesisAttachmentUseCase`, `RemoveAnamnesisAttachmentUseCase`.
-- IA e plano terapeutico: `SaveTherapeuticPlanUseCase`, `ReceiveAnamnesisAIResultUseCase`, `SavePlanFeedbackUseCase`.
-- Todos os use cases seguem `BaseUseCase` com logger dedicado e wrappers para traducao de erros de negocio.
+### Autenticacao e Cabecalhos
+- `Authorization: Bearer <accessToken>` obrigatorio para todas as rotas autenticadas; o webhook de IA e marcado com `@Public`, mas ainda passa pelo `AnamnesisAIWebhookGuard`.
+- `x-tenant-id: <uuid>` obrigatorio. Para rotas autenticadas o guard usa `currentUser.tenantId` como fallback, enquanto o webhook exige o header explicitamente.
+- Roles permitidas:
+  - `PATIENT` acessa apenas a propria anamnese.
+  - `PROFESSIONAL`, `CLINIC_OWNER` e `MANAGER` executam todas as operacoes do modulo.
+  - `SUPER_ADMIN` possui acesso total.
+  - `SECRETARY` e `FINANCE` nao sao autorizados.
 
-### Endpoints REST
-| Metodo | Rota | Guardas | Descricao resumida |
+### Enumeracoes Principais
+- `AnamnesisStatus`: `draft`, `submitted`, `completed`, `cancelled`.
+- `AnamnesisStepKey`: `identification`, `chiefComplaint`, `currentDisease`, `pathologicalHistory`, `familyHistory`, `systemsReview`, `lifestyle`, `psychosocial`, `medication`, `physicalExam`.
+- `approvalStatus` (feedback): `approved`, `modified`, `rejected`.
+
+### Fluxo Sugerido no Swagger
+1. `POST /anamneses/start` cria ou recupera o rascunho vinculado a consulta.
+2. `PUT /anamneses/{anamnesisId}/steps/{stepNumber}` e `POST /anamneses/{anamnesisId}/auto-save` alimentam cada etapa.
+3. `POST /anamneses/{anamnesisId}/attachments` (opcional) envia exames e documentos.
+4. `POST /anamneses/{anamnesisId}/submit` valida o preenchimento e dispara a fila da IA.
+5. `POST /anamneses/{anamnesisId}/plan` registra o plano recebido; `POST /anamneses/{anamnesisId}/plan/feedback` guarda o parecer humano.
+6. Consultas subsequentes usam `GET /anamneses/{anamnesisId}` e `GET /anamneses/patient/{patientId}`.
+
+> Schemas Zod e DTOs: `src/modules/anamnesis/api/schemas/anamnesis.schema.ts` e `src/modules/anamnesis/api/dtos/`.
+
+### Endpoints Detalhados
+
+#### GET /anamneses/templates
+- Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN, PATIENT.
+- Query (`ListStepTemplatesQuerySchema`):
+| Query | Tipo | Obrigatorio | Descricao |
 | --- | --- | --- | --- |
-| POST | `/anamneses/start` | Jwt + TenantGuard + RolesGuard (PROFESSIONAL) | Cria rascunho ou recupera ultimo para o par consulta/paciente. |
-| GET | `/anamneses/:id` | Jwt + TenantGuard + RolesGuard (PROFESSIONAL/SUPER_ADMIN/PATIENT-proprio) | Retorna estrutura completa (steps, anexos, plano, IA). |
-| PATCH | `/anamneses/:id/steps/:stepNumber` | Jwt + TenantGuard + RolesGuard (PROFESSIONAL/PATIENT) | Persiste um step (validacao online) e recalcula progresso. |
-| POST | `/anamneses/:id/auto-save` | Jwt + TenantGuard + RolesGuard (PROFESSIONAL/PATIENT) | Auto-save idempotente com merge via timestamp/versao. |
-| POST | `/anamneses/:id/submit` | Jwt + TenantGuard + RolesGuard (PROFESSIONAL/PATIENT) | Valida todos os steps (modo estrito) e dispara evento para IA. |
-| GET | `/patients/:patientId/anamneses` | Jwt + TenantGuard + RolesGuard (PROFESSIONAL/SUPER_ADMIN/PATIENT-proprio) | Historico com filtros, anexos, plano mais recente e dados de prefill. |
-| POST | `/anamneses/:id/attachments` | Jwt + TenantGuard + RolesGuard (PROFESSIONAL/PATIENT) | Upload via Supabase Storage com metadados auditaveis. |
-| DELETE | `/anamneses/:id/attachments/:attachmentId` | Jwt + TenantGuard + RolesGuard (PROFESSIONAL/PATIENT) | Remove anexo (verifica ownership + storage). |
-| POST | `/anamneses/:id/plan` | Jwt + TenantGuard + RolesGuard (PROFESSIONAL) | Registra feedback do plano (like/dislike, comentario, approvalStatus). |
-| POST | `/anamneses/:id/ai-result` | ApiKey + TenantGuard opcional (rota Public) | Webhook CrewAI que persiste `anamnesis_ai_analyses` e atualiza o plano. |
-| GET | `/anamneses/templates/steps` | Jwt + TenantGuard + RolesGuard (PROFESSIONAL/SUPER_ADMIN) | Lista templates priorizando tenant -> especialidade -> default. |
+| `specialty` | string | nao | Prioriza templates cadastrados para a especialidade. |
+| `includeInactive` | boolean | nao | Quando `true`, retorna templates inativos para auditoria. |
+- Resposta: array de `AnamnesisStepTemplateDto` com `id`, `key`, `title`, `schema`, `version`, `specialty`, `isActive`, `createdAt`, `updatedAt`.
+```json
+[
+  {
+    "id": "template-identification",
+    "key": "identification",
+    "title": "Identificacao",
+    "schema": { "fields": [] },
+    "version": 1,
+    "specialty": "default",
+    "isActive": true,
+    "createdAt": "2025-09-26T00:00:00.000Z"
+  }
+]
+```
 
-### Validacoes e calculos
-- `validateAnamnesisStepPayload` (src/modules/anamnesis/utils/anamnesis-step-validation.util.ts) aplica Zod por step, calcula BMI, pack-years, normaliza datas e garante ranges (idade 0-120, nome >= 3 palavras, telefone BR).
-- `SaveAnamnesisStepUseCase`, `AutoSaveAnamnesisUseCase` e `SubmitAnamnesisUseCase` sempre sanitizam payload antes de salvar ou publicar eventos.
-- Regras condicionais (campos obrigatorios apenas quando certas respostas estao marcadas) estao cobertas nos testes unitarios do util.
+#### POST /anamneses/start
+- Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN, PATIENT.
+- Body (`StartAnamnesisRequestDto`):
+| Campo | Tipo | Obrigatorio | Descricao |
+| --- | --- | --- | --- |
+| `consultationId` | uuid | sim | Consulta relacionada. |
+| `patientId` | uuid | sim | Paciente que respondera a anamnese. |
+| `professionalId` | uuid | sim | Profissional responsavel pela consulta. |
+| `totalSteps` | inteiro (1-50) | nao | Quantidade total de etapas disponiveis. |
+| `initialStep` | inteiro | nao | Etapa inicial a ser exibida. |
+| `formData` | objeto | nao | Dados iniciais para pre-preenchimento. |
+- Resposta (`AnamnesisDetailResponseDto`):
+```json
+{
+  "id": "5c4a...",
+  "consultationId": "c1d2...",
+  "patientId": "p1d2...",
+  "professionalId": "8799...",
+  "tenantId": "1111...",
+  "status": "draft",
+  "totalSteps": 10,
+  "currentStep": 1,
+  "completionRate": 0,
+  "isDraft": true,
+  "steps": [],
+  "latestPlan": null,
+  "attachments": []
+}
+```
 
-### Auto-save, rascunho e historico
-- Auto-save idempotente: compara `updatedAt` e versao do rascunho; snapshots atrasados sao ignorados com log.
-- Historico (`GetAnamnesisHistoryUseCase`) aceita filtros de status, limit, includeDrafts, professionalId; devolve `prefill` com ultimo payload valido + anexos.
-- Eventos `DomainEvents.ANAMNESIS_STEP_SAVED` e `DomainEvents.ANAMNESIS_SUBMITTED` sao publicados a cada alteracao relevante.
+#### GET /anamneses/{anamnesisId}
+- Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN, PATIENT (somente a propria).
+- Query (`GetAnamnesisQuerySchema`):
+| Query | Tipo | Obrigatorio | Descricao |
+| --- | --- | --- | --- |
+| `includeSteps` | boolean | nao | Inclui a lista de steps preenchidos. |
+| `includeLatestPlan` | boolean | nao | Retorna o plano terapeutico mais recente. |
+| `includeAttachments` | boolean | nao | Retorna anexos vinculados. |
+- Resposta: `AnamnesisDetailResponseDto` com `steps`, `latestPlan` e `attachments` quando solicitados.
 
-### Anexos
-- Upload via `SupabaseAnamnesisAttachmentStorageService` (src/modules/anamnesis/services) reutiliza bucket configurado e grava metadados (nome, mime, size, checksum, uploadedBy).
-- Remocao verifica ownership (`anamnesisId`, `tenantId`) antes de apagar do storage.
-- Listagem integra anexos no historico e no endpoint principal com timestamps e usuarios.
+#### PUT /anamneses/{anamnesisId}/steps/{stepNumber}
+- Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN, PATIENT (proprio).
+- Path: `stepNumber` (inteiro 1-50).
+- Body (`SaveAnamnesisStepRequestDto`):
+| Campo | Tipo | Obrigatorio | Descricao |
+| --- | --- | --- | --- |
+| `key` | string (`AnamnesisStepKey`) | sim | Identifica a etapa. |
+| `payload` | objeto | sim | Dados preenchidos no passo. |
+| `completed` | boolean | nao | Marca o passo como finalizado. |
+| `hasErrors` | boolean | nao | Indica erros de validacao. |
+| `validationScore` | numero (0-100) | nao | Score calculado pelo front/IA. |
+- Resposta: `AnamnesisDetailResponseDto` com progresso atualizado.
 
-### Integracao IA
-- `SubmitAnamnesisUseCase` publica `DomainEvents.ANAMNESIS_AI_REQUESTED` contendo dados da consulta, paciente, preferencias do profissional e payload consolidado.
-- Webhook `/anamneses/:id/ai-result` usa `ReceiveAnamnesisAIResultUseCase` para completar `anamnesis_ai_analyses`, atualizar plano terapeutico e disparar `DomainEvents.ANAMNESIS_AI_COMPLETED`.
-- Profissional registra feedback em `/anamneses/:id/plan`; `SavePlanFeedbackUseCase` grava `anamnesis_ai_feedbacks` e publica `DomainEvents.ANAMNESIS_PLAN_FEEDBACK_SAVED` para treinamento supervisionado.
+#### POST /anamneses/{anamnesisId}/auto-save
+- Mesmas roles e DTO baseando-se em `AutoSaveAnamnesisStepRequestDto` (inclui `stepNumber` e `autoSavedAt` ISO).
+- Resposta: `AnamnesisDetailResponseDto` mantendo o status `draft`.
 
-### Templates de steps
-- Seeds iniciais (10 steps core) + variacoes por especialidade (nutrition, physiotherapy, psychology) aplicadas em `1738200000000`.
-- Repositorio (`AnamnesisRepository.getStepTemplates` e `.getStepTemplateByKey`) usa helpers `TemplateSelectionContext`, `getTemplatePriority`, `shouldReplaceTemplate` para escolher o melhor template com base em tenant, especialidade, versao e `updatedAt`.
-- Endpoint `/anamneses/templates/steps` permite profissional carregar templates ativos para montar o formulario dinamico.
+#### POST /anamneses/{anamnesisId}/submit
+- Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN.
+- Sem body. Retorna `AnamnesisDetailResponseDto` com `status` = `submitted` e `submittedAt` preenchido.
 
-### RBAC e seguranca
-- Guardas: `JwtAuthGuard` + `TenantGuard` + `RolesGuard` em todas as rotas, excecao do webhook (marcado com `@Public` + validacao de assinatura).
-- `ensureCanModifyAnamnesis` valida se PROFESSIONAL ou PATIENT tem permissao sobre a anamnese; SECRETARY e FINANCE sao bloqueados.
-- `AnamnesisGuardsModule` centraliza resolucao de tenant/usuario para evitar divergencias.
+#### POST /anamneses/{anamnesisId}/plan
+- Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN.
+- Body (`SaveTherapeuticPlanRequestDto`):
+| Campo | Tipo | Obrigatorio | Descricao |
+| --- | --- | --- | --- |
+| `clinicalReasoning` | string | nao | Raciocinio clinico gerado. |
+| `summary` | string | nao | Resumo apresentado ao paciente. |
+| `therapeuticPlan` | objeto | nao | Representacao estruturada do plano. |
+| `riskFactors` | array | nao | Lista de fatores de risco (`id`, `description`, `severity`). |
+| `recommendations` | array | nao | Lista de recomendacoes (`id`, `description`, `priority`). |
+| `confidence` | numero (0-1) | nao | Confianca da IA. |
+| `reviewRequired` | boolean | nao | Indica necessidade de revisao humana. |
+| `generatedAt` | string ISO | sim | Momento em que a IA concluiu a analise. |
+- Resposta: `TherapeuticPlanDto` com ids, feedback, timestamps e metadados.
 
-### Eventos e metricas
-- Eventos de dominio registrados: `ANAMNESIS_CREATED`, `ANAMNESIS_STEP_SAVED`, `ANAMNESIS_SUBMITTED`, `ANAMNESIS_AI_REQUESTED`, `ANAMNESIS_AI_COMPLETED`, `ANAMNESIS_PLAN_FEEDBACK_SAVED`, `ANAMNESIS_ATTACHMENT_CREATED`, `ANAMNESIS_ATTACHMENT_REMOVED`.
-- `AnamnesisEventsSubscriber` consome esses eventos e alimenta `AnamnesisMetricsService`, que agrega: passos salvos, autosaves, submissao de IA, feedbacks aprovados, taxa de completude.
-- Futuras integracoes (dashboards) podem consumir as metricas via servico e message bus.
+#### POST /anamneses/{anamnesisId}/plan/feedback
+- Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN.
+- Body (`SavePlanFeedbackRequestDto`): campos `approvalStatus`, `liked`, `feedbackComment`.
+- Resposta: `TherapeuticPlanDto` atualizado com feedback humano (`approvalStatus`, `liked`, `feedbackGivenBy`, `feedbackGivenAt`).
 
-### Scripts e migracoes
-- Rodar migracoes: `npm run migration:run -- -d src/infrastructure/database/typeorm.datasource.ts` (usa credenciais Supabase).
-- Seeds de templates estao na migracao `1738200000000`; feedback IA e coluna `analysis_id` vieram de `1738300000000-AddAnamnesisFeedbackScoreboard`.
-- Para reverter em staging: `npm run migration:revert -- -d src/infrastructure/database/typeorm.datasource.ts`.
+#### GET /anamneses/patient/{patientId}
+- Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN, PATIENT (proprio).
+- Query (`ListAnamnesesQuerySchema`):
+| Query | Tipo | Obrigatorio | Descricao |
+| --- | --- | --- | --- |
+| `status` | string ou array | nao | Lista de status validos (`draft`, `submitted`, `completed`, `cancelled`). |
+| `professionalId` | uuid | nao | Filtra pelo responsavel. |
+| `from` | string ISO | nao | Data/hora inicial (UTC). |
+| `to` | string ISO | nao | Data/hora final (UTC). |
+- Resposta: array de `AnamnesisListItemDto` (id, consultationId, patientId, professionalId, status, completionRate, submittedAt, updatedAt).
 
-### Testes e qualidade
-- Suites unitarias (`test/unit/modules.anamnesis/**`) cobrem use cases, validacoes, repositorio, presenter.
-- Suites de integracao (`test/integration/anamnesis.controller.integration.spec.ts`) exercitam guards/pipes reais.
-- Suite e2e (`test/e2e/anamnesis.e2e-spec.ts`) percorre start -> auto-save -> submit -> webhook -> feedback.
-- Bateria obrigatoria: `npm run lint`, `npx tsc --noEmit`, `npm run test:unit`, `npm run test:int`, `npm run test:e2e`, `npm run test:cov`, `npm run build` (ultimo registro em 28/09/2025 13:47 com 245 testes e cobertura 100%).
+#### GET /anamneses/patient/{patientId}/history
+- Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN, PATIENT.
+- Query (`AnamnesisHistoryQuerySchema`):
+| Query | Tipo | Obrigatorio | Descricao |
+| --- | --- | --- | --- |
+| `limit` | inteiro (1-50) | nao | Limita quantidade de registros. |
+| `status` | string ou array | nao | Filtra por status validos. |
+| `includeDrafts` | boolean | nao | Inclui anamneses em rascunho. |
+- Resposta: `AnamnesisHistoryResponseDto` com `entries` (steps, anexos, plano) e `prefill` reutilizavel.
 
-### Referencias rapidas
-- Codigo do modulo: `src/modules/anamnesis/**`.
-- Repositorio e entidades TypeORM: `src/infrastructure/anamnesis/**`.
-- Validacoes: `src/modules/anamnesis/utils/anamnesis-step-validation.util.ts`.
-- Documentacao detalhada do frontend: `docs/app/anamnese.md`.
+#### POST /anamneses/{anamnesisId}/attachments
+- Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN, PATIENT.
+- Consome `multipart/form-data` (`CreateAnamnesisAttachmentRequestDto`): campo `file` (binario, max 10 MB), `stepNumber` opcional, `fileName` opcional.
+- Resposta: `AnamnesisAttachmentDto` (`id`, `fileName`, `mimeType`, `size`, `storagePath`, `uploadedBy`, `uploadedAt`).
+
+#### DELETE /anamneses/{anamnesisId}/attachments/{attachmentId}
+- Mesmas roles. Retorna HTTP 204 e emite `DomainEvents.ANAMNESIS_ATTACHMENT_REMOVED`.
+
+#### POST /anamneses/{anamnesisId}/ai-result
+- `@Public` + `AnamnesisAIWebhookGuard` (valida assinatura e exige `x-tenant-id`).
+- Body (`ReceiveAIResultRequestDto`):
+| Campo | Tipo | Obrigatorio | Descricao |
+| --- | --- | --- | --- |
+| `analysisId` | uuid | sim | Analise original solicitada. |
+| `status` | enum (`completed`, `failed`) | sim | Resultado da IA. |
+| `respondedAt` | string ISO | sim | Momento da resposta. |
+| `clinicalReasoning` | string | nao | Raciocinio clinico. |
+| `summary` | string | nao | Resumo para exibicao. |
+| `therapeuticPlan` | objeto | nao | Plano estruturado. |
+| `riskFactors` | array | nao | Fatores de risco (mesma estrutura do plano). |
+| `recommendations` | array | nao | Recomendacoes (mesma estrutura do plano). |
+| `confidence` | numero (0-1) | nao | Confianca atribuida pela IA. |
+| `payload` | objeto | nao | Payload bruto para auditoria. |
+| `errorMessage` | string | nao | Populado quando `status=failed`. |
+- Resposta: HTTP 202 sem body; dispara `DomainEvents.ANAMNESIS_AI_COMPLETED` e `DomainEvents.ANAMNESIS_PLAN_FEEDBACK_SAVED` quando aplicavel.
+
+### Persistencia e Storage
+- Migrations: `1738100000000-CreateAnamnesisTables`, `1738200000000-AddAnamnesisTemplatesAndAIResponses`, `1738300000000-AddAnamnesisFeedbackScoreboard`.
+- Storage: `SupabaseAnamnesisAttachmentStorageService` salva anexos com checksum, `mimeType`, `size` e `storagePath` versionado.
+
+### Testes
+- Suites unitarias/integracao/E2E: `test/unit/modules.anamnesis/**`, `test/integration/anamnesis.controller.integration.spec.ts`, `test/e2e/anamnesis.e2e-spec.ts`.
+- Pipeline recomendado: `npm run lint` -> `npx tsc --noEmit` -> `npm run test:unit` -> `npm run test:int` -> `npm run test:e2e` -> `npm run test:cov` -> `npm run build`.
 
 
 ## Exportacao de Pacientes

@@ -155,8 +155,18 @@ export class AnamnesisController {
     summary: 'Listar templates de steps',
     description: 'Retorna os templates de steps disponiveis para o tenant atual.',
   })
-  @ApiQuery({ name: 'specialty', required: false, type: String })
-  @ApiQuery({ name: 'includeInactive', required: false, type: Boolean })
+  @ApiQuery({
+    name: 'specialty',
+    required: false,
+    type: String,
+    description: 'Prioriza templates cadastrados para a especialidade.',
+  })
+  @ApiQuery({
+    name: 'includeInactive',
+    required: false,
+    type: Boolean,
+    description: 'Quando true, retorna templates inativos para auditoria.',
+  })
   @ApiResponse({ status: 200, type: AnamnesisStepTemplateDto, isArray: true })
   async listTemplates(
     @Query(new ZodValidationPipe(listStepTemplatesQuerySchema)) query: ListStepTemplatesQuerySchema,
@@ -271,10 +281,21 @@ export class AnamnesisController {
     name: 'limit',
     required: false,
     type: Number,
-    description: 'Quantidade maxima de registros (1-50)',
+    description: 'Quantidade maxima de registros (1-50).',
   })
-  @ApiQuery({ name: 'status', required: false, type: String, isArray: true })
-  @ApiQuery({ name: 'includeDrafts', required: false, type: Boolean })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ANAMNESIS_STATUS_VALUES,
+    isArray: true,
+    description: 'Filtra pelos status desejados.',
+  })
+  @ApiQuery({
+    name: 'includeDrafts',
+    required: false,
+    type: Boolean,
+    description: 'Quando true, inclui rascunhos no historico.',
+  })
   @ApiResponse({ status: 200, type: AnamnesisHistoryResponseDto })
   async getHistory(
     @Param('patientId') patientId: string,
@@ -321,11 +342,32 @@ export class AnamnesisController {
     description: 'Identificador do paciente',
     example: 'p1d2e3f4-5678-90ab-cdef-1234567890ab',
   })
-  @ApiQuery({ name: 'status', required: false, type: [String] })
-  @ApiQuery({ name: 'professionalId', required: false, type: String })
-  @ApiQuery({ name: 'from', required: false, type: String })
-  @ApiQuery({ name: 'to', required: false, type: String })
-  @ApiResponse({ status: 200, type: [AnamnesisListItemDto] })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ANAMNESIS_STATUS_VALUES,
+    isArray: true,
+    description: 'Filtra por status (draft, submitted, completed, cancelled).',
+  })
+  @ApiQuery({
+    name: 'professionalId',
+    required: false,
+    type: String,
+    description: 'Filtra pelo profissional responsavel.',
+  })
+  @ApiQuery({
+    name: 'from',
+    required: false,
+    type: String,
+    description: 'Data/hora inicial (ISO 8601).',
+  })
+  @ApiQuery({
+    name: 'to',
+    required: false,
+    type: String,
+    description: 'Data/hora final (ISO 8601).',
+  })
+  @ApiResponse({ status: 200, type: AnamnesisListItemDto, isArray: true })
   async listByPatient(
     @Param('patientId') patientId: string,
     @Query(new ZodValidationPipe(listAnamnesesQuerySchema)) query: ListAnamnesesQuerySchema,
