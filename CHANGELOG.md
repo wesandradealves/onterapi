@@ -4,48 +4,39 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o projeto adota [Versionamento Semantico](https://semver.org/lang/pt-BR/).
 
-## [Unreleased]
+﻿## [Unreleased]
 
-### Added
-- Servico de armazenamento de anexos para anamnese (`IAnamnesisAttachmentStorageService`, `SupabaseAnamnesisAttachmentStorageService`) integrado aos casos de uso e ao modulo.
-- Seeds adicionais por especialidade (nutrition, physiotherapy, psychology) na migracao `1738200000000-AddAnamnesisTemplatesAndAIResponses`, com indice `uniq_step_template_scope` garantindo versao por tenant/especialidade.
-- Guard e caso de uso para ingestao de resultados de IA via webhook, com novo endpoint REST e contratos de DTO/Schema.
-- Entidade `AnamnesisAITrainingFeedbackEntity`, migration `1738300000000-AddAnamnesisFeedbackScoreboard` e método `recordAITrainingFeedback`, persistindo feedbacks (tenant, plano, analysisId, status, like/dislike, comentário).
-- Serviço `AnamnesisMetricsService` + `AnamnesisEventsSubscriber` para agregar métricas (steps salvos, autosaves, confiança da IA, aprovação) a partir dos eventos `DomainEvents.ANAMNESIS_*`.
-
-### Changed
-- Repositorio, presenters e DTOs de anamnese atualizados para preservar anexos no historico, normalizar payloads JSON e expor auditoria (tenant/usuario); `getStepTemplates`/`getStepTemplateByKey` agora priorizam tenant -> especialidade -> default com helpers `TemplateSelectionContext`, `getTemplatePriority`, `shouldReplaceTemplate`.
-- Planos terapêuticos passam a carregar `analysisId` ao salvar resultados da IA; presenters, DTOs e mapper expõem o vínculo e normalizam o payload.
-- `ReceiveAnamnesisAIResultUseCase` e `savePlanFeedback` conectam análises ao scoreboard, disparando eventos e registrando feedback supervisionado multi-tenant.
-- Fluxos de auto-save, listagem e historico reforcados com idempotencia, RBAC e emissao de eventos; suites unitarias, de integracao e E2E atualizadas para cobrir anexos e pipeline completo de IA.
-- Rotas REST de anamnese agora aplicam TenantGuard junto ao Jwt/Roles guard garantindo isolamento multi-tenant consistente para paciente e profissional.
-- TenantGuard passa a respeitar rotas publicas anotadas com @Public, permitindo webhooks externos sem quebra de autenticacao; testes unitarios/integrados/e2e foram ajustados para mockar o novo guard.
-
-
-### Fixed
-- Corrigido auto-save concorrente que sobrescrevia rascunhos mais recentes quando um snapshot atrasado era enviado.
-
-### Security
-
-### Documentation
-- README reorganizado para cobrir o modulo de anamnese (fluxo completo, exemplos de payloads, parametros padronizados, cabecalhos obrigatorios e integracao IA).
-- Swagger inclui o AnamnesisModule e descreve filtros de historico/listagem com enums e exemplos alinhados aos modulos de Auth/Users.
-- README detalha a configuracao do bucket de anexos (Supabase Storage) e o fluxo manual via curl para anamnese, incluindo anexos, plano e historico.
+_(Sem entradas no momento)_
 
 ## [0.16.6] - 2025-09-26
 
 ### Added
-- Modulo completo de Anamnese com DTOs/presenters, casos de uso, controller e repositorio TypeORM, incluindo entidades e migracao de suporte.
-- Testes unitarios, de integracao e E2E cobrindo os fluxos principais de anamnese (`test/unit/modules.anamnesis/**`, `test/integration/anamnesis.controller.integration.spec.ts`, `test/e2e/anamnesis.e2e-spec.ts`).
+- Modulo completo de Anamnese com DTOs/presenters, casos de uso, controller e repositorio TypeORM, incluindo entidades, migracoes e suites de testes unitarios/integracao/E2E.
+- Servico de armazenamento de anexos (`SupabaseAnamnesisAttachmentStorageService`) integrado aos casos de uso do modulo.
+- Seeds adicionais por especialidade (nutrition, physiotherapy, psychology) para templates de passos com indice `uniq_step_template_scope`.
+- Guard e caso de uso para ingestao de resultados de IA via webhook, com endpoint REST, DTOs e validacoes dedicadas.
+- Entidade e fluxo de feedback supervisionado (`AnamnesisAITrainingFeedbackEntity`, `recordAITrainingFeedback`).
+- Servico `AnamnesisMetricsService` e subscriber de eventos agregando metricas de steps, autosaves, IA e feedback humano.
 
 ### Changed
-- Tipos de dominio, contratos de repositorio e fabrica de erros de anamnese atualizados para refletir os novos fluxos (`src/domain/anamnesis/**`, `src/shared/factories/anamnesis-error.factory.ts`).
-- `AppModule` passou a registrar o `AnamnesisModule` e os eventos associados (`src/app.module.ts`, `src/shared/events/domain-events.ts`).
+- Repositorio, presenters e DTOs atualizados para preservar anexos no historico, normalizar payloads JSON e expor auditoria (tenant/usuario).
+- Planos terapeuticos agora vinculam `analysisId` e normalizam payloads/feedback ao salvar resultados da IA.
+- `ReceiveAnamnesisAIResultUseCase` e `savePlanFeedback` conectados ao scoreboard de treinamentos, disparando eventos de dominio.
+- Fluxos de auto-save, listagem e historico reforcados com idempotencia, guardas RBAC e publicacao de eventos.
+- Rotas REST de anamnese aplicam `TenantGuard` junto aos guardas JWT/Roles para isolamento multi-tenant consistente.
+- `TenantGuard` revisado para respeitar rotas anotadas com `@Public` (webhooks externos).
+- Tipos de dominio, contratos de repositorio e fabrica de erros ajustados ao novo pipeline de IA.
+- `AppModule` registra o `AnamnesisModule` e os eventos/handlers associados.
 
-### Known Issues
-- Suites Jest (`npm run test:*`) estavam bloqueadas no ambiente local por incompatibilidade do runner `jest-circus` com Node 22; resolvido em [Unreleased].
+### Fixed
+- Corrigido auto-save concorrente que podia sobrescrever rascunhos mais recentes quando snapshots antigos eram reenviados.
 
-## [0.16.5] - 2025-09-26
+### Documentation
+- README reorganizado para cobrir o modulo de anamnese (fluxo completo, exemplos de payloads, cabecalhos e integracao IA).
+- Swagger descreve filtros de historico/listagem alinhados aos modulos de Auth/Users.
+- README detalha a configuracao do bucket de anexos (Supabase Storage) e o fluxo manual via curl (anamnese completa, anexos, plano e historico).
+
+[0.16.5] - 2025-09-26
 
 ### Added
 - Estrutura base de dominio para Anamnese (`src/domain/anamnesis/types/anamnesis.types.ts`) com status, steps, planos terapeuticos e anexos.
