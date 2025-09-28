@@ -367,6 +367,7 @@ Resultados recentes: 202 testes executados; cobertura global 100% (`npm run test
 > - Utilize `curl.exe` no PowerShell para evitar o alias `Invoke-WebRequest`.
 > - Centralize arquivos temporarios em `payloads/` e limpe-os ao final.
 > - Confirme que a API esta ativa (`http://localhost:3000/health`) e que `.env` contem `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` validos.
+> - Garanta que o bucket configurado em `ANAMNESIS_STORAGE_BUCKET` exista no Supabase Storage (ex.: `anamneses`) antes de testar uploads de anexos.
 
 1. **Preparacao**
    ```powershell
@@ -412,6 +413,7 @@ Resultados recentes: 202 testes executados; cobertura global 100% (`npm run test
      --data @payloads/auth-two-fa-validate.json | ConvertFrom-Json
    $accessToken = $tokens.accessToken
    $refreshToken = $tokens.refreshToken
+   $tenantId = $tokens.user.tenantId
    ```
 
 5. **Fluxo completo de USERS**
@@ -453,11 +455,111 @@ Resultados recentes: 202 testes executados; cobertura global 100% (`npm run test
    curl.exe -s -X POST "$BASE_URL/patients/$($createdPatient.slug)/archive" -H "Authorization: Bearer $accessToken" \
      -H "Content-Type: application/json" --data @payloads/patients-archive.json | Out-Null
 
-   curl.exe -s -X DELETE "$SUPABASE_URL/rest/v1/patients?id=eq.$($createdPatient.id)" \
-     -H "apikey: $SERVICE_ROLE_KEY" -H "Authorization: Bearer $SERVICE_ROLE_KEY" | Out-Null
+
    ```
 
-7. **Logout**
+7. **Fluxo completo de ANAMNESES (incluindo anexos)**
+   > Requer que o bucket configurado em `ANAMNESIS_STORAGE_BUCKET` exista no Supabase Storage.
+
+   Inicie o rascunho:
+   ```powershell
+   $patientId = $createdPatient.id
+   $professionalId = if ($createdPatient.professionalId) { $createdPatient.professionalId } else { $tokens.user.id }
+   $consultationId = [guid]::NewGuid().ToString()
+
+   @{
+     consultationId = $consultationId
+     patientId      = $patientId
+     professionalId = $professionalId
+     totalSteps     = 10
+     initialStep    = 1
+     formData       = @{ notes = 'Fluxo manual via curl' }
+   } | ConvertTo-Json -Depth 5 |
+     Set-Content -NoNewline -Path payloads/anamnesis-start.json
+
+   $anamnesis = curl.exe -s -X POST "$BASE_URL/anamneses/start" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" -H "Content-Type: application/json" --data @payloads/anamnesis-start.json | ConvertFrom-Json
+   $anamnesisId = $anamnesis.id
+   ```
+
+   Preencha as etapas (exemplo simplificado):
+   ```powershell
+   $steps = @(
+     @{ number = 1; key = 'identification'; payload = @{ personalInfo = @{ fullName = 'Paciente Fluxo API'; birthDate = '1990-01-10'; gender = 'female' }; contactInfo = @{ phone = '11999999999' } } }
+     @{ number = 2; key = 'chiefComplaint'; payload = @{ complaint = @{ history = 'Dor lombar ha 3 semanas'; duration = '3 semanas' } } }
+     @{ number = 3; key = 'currentDisease'; payload = @{ evolution = @{ description = 'Dor moderada que piora no fim do dia'; intensity = 3 } } }
+     @{ number = 4; key = 'pathologicalHistory'; payload = @{ previousDiseases = @('Hipertensao') } }
+     @{ number = 5; key = 'familyHistory'; payload = @{ familyDiseases = @(@{ id = 'fam-1'; relationship = 'mother'; disease = 'Hipertensao' }) } }
+     @{ number = 6; key = 'systemsReview'; payload = @{ musculoskeletal = @{ hasSymptoms = $true; symptoms = @('Dor lombar') } } }
+     @{ number = 7; key = 'lifestyle'; payload = @{ physicalActivity = @{ level = 'moderate'; frequency = 4 }; smoking = @{ status = 'former' } } }
+     @{ number = 8; key = 'psychosocial'; payload = @{ emotional = @{ currentMood = 'good'; stressLevel = 5 } } }
+     @{ number = 9; key = 'medication'; payload = @{ currentMedications = @(@{ id = 'med-1'; name = 'Ibuprofeno'; frequency = '2x ao dia' }) } }
+     @{ number = 10; key = 'physicalExam'; payload = @{ vitalSigns = @{ heartRate = 72; temperature = 36.5 }; anthropometry = @{ height = 168; weight = 68 } } }
+   )
+
+   foreach ($step in $steps) {
+     $body = [pscustomobject]@{
+       key             = $step.key
+       payload         = $step.payload
+       completed       = $true
+       hasErrors       = $false
+       validationScore = 100
+     } | ConvertTo-Json -Depth 10
+
+     $path = "payloads/anamnesis-step-$($step.number).json"
+     Set-Content -NoNewline -Path $path -Value $body
+
+     curl.exe -s -X PUT "$BASE_URL/anamneses/$anamnesisId/steps/$($step.number)" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" -H "Content-Type: application/json" --data @$path | Out-Null
+   }
+   ```
+
+   Gerar anexos de teste e enviar:
+   ```powershell
+   'Laudo gerado via curl em ' + (Get-Date -Format o) | Set-Content -NoNewline -Path payloads/anamnesis-attachment.txt
+
+   curl.exe -s -X POST "$BASE_URL/anamneses/$anamnesisId/attachments" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" -F "stepNumber=3" -F "fileName=laudo.txt" -F "file=@payloads/anamnesis-attachment.txt;type=text/plain" | Out-Null
+   ```
+
+   Submeter, registrar plano e feedback:
+   ```powershell
+   curl.exe -s -X POST "$BASE_URL/anamneses/$anamnesisId/submit" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" -H "Content-Type: application/json" --data '{}' | Out-Null
+
+   @{
+     clinicalReasoning = 'Quadro compatível com lombalgia mecânica.'
+     summary           = 'Plano com foco em dor, mobilidade e fortalecimento.'
+     therapeuticPlan   = @{ goals = @('Reduzir dor', 'Fortalecer core') }
+     confidence        = 0.9
+     reviewRequired    = $false
+     generatedAt       = (Get-Date).ToUniversalTime().ToString('o')
+   } | ConvertTo-Json -Depth 6 |
+     Set-Content -NoNewline -Path payloads/anamnesis-plan.json
+
+   $plan = curl.exe -s -X POST "$BASE_URL/anamneses/$anamnesisId/plan" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" -H "Content-Type: application/json" --data @payloads/anamnesis-plan.json | ConvertFrom-Json
+
+   @{
+     approvalStatus  = 'approved'
+     liked           = $true
+     feedbackComment = 'Plano revisado manualmente via curl em ' + (Get-Date -Format s) + 'Z'
+   } | ConvertTo-Json -Depth 4 |
+     Set-Content -NoNewline -Path payloads/anamnesis-feedback.json
+
+   curl.exe -s -X POST "$BASE_URL/anamneses/$anamnesisId/plan/feedback" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" -H "Content-Type: application/json" --data @payloads/anamnesis-feedback.json | Out-Null
+   ```
+
+   Consultar detalhes e histórico:
+   ```powershell
+   curl.exe -s "$BASE_URL/anamneses/$anamnesisId?includeSteps=true&includeLatestPlan=true&includeAttachments=true" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" > payloads/anamnesis-detail.json
+
+   curl.exe -s "$BASE_URL/anamneses/patient/$patientId/history" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" > payloads/anamnesis-history.json
+   ```
+
+   > Para anexar novos arquivos, repita o `POST /attachments` com outro nome; o storage não permite sobrescrita (upsert=false).
+
+8. **Remover o paciente de teste no Supabase (opcional)**
+   ```powershell
+   curl.exe -s -X DELETE "$SUPABASE_URL/rest/v1/patients?id=eq.$($createdPatient.id)" -H "apikey: $SERVICE_ROLE_KEY" -H "Authorization: Bearer $SERVICE_ROLE_KEY" | Out-Null
+   ```
+
+9. **Logout**
    ```powershell
    '{"allDevices":true,"refreshToken":"' + $refreshToken + '"}' |
      Set-Content -NoNewline -Path payloads/auth-sign-out.json
@@ -465,7 +567,7 @@ Resultados recentes: 202 testes executados; cobertura global 100% (`npm run test
      -H "Content-Type: application/json" --data @payloads/auth-sign-out.json | Out-Null
    ```
 
-8. **Limpeza**
+10. **Limpeza**
    ```powershell
    Remove-Item -Recurse -Force payloads
    ```

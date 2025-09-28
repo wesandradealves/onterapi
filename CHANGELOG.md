@@ -30,6 +30,7 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 ### Documentation
 - README reorganizado para cobrir o modulo de anamnese (fluxo completo, exemplos de payloads, parametros padronizados, cabecalhos obrigatorios e integracao IA).
 - Swagger inclui o AnamnesisModule e descreve filtros de historico/listagem com enums e exemplos alinhados aos modulos de Auth/Users.
+- README detalha a configuracao do bucket de anexos (Supabase Storage) e o fluxo manual via curl para anamnese, incluindo anexos, plano e historico.
 
 ## [0.16.6] - 2025-09-26
 
