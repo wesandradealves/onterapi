@@ -529,7 +529,7 @@ export class AnamnesisRepository implements IAnamnesisRepository {
     const limit = filters?.limit && filters.limit > 0 ? filters.limit : 10;
     query.take(limit);
 
-    query.orderBy('COALESCE(anamnesis.submittedAt, anamnesis.updatedAt)', 'DESC');
+    query.orderBy('anamnesis.submittedAt', 'DESC', 'NULLS LAST');
     query.addOrderBy('anamnesis.updatedAt', 'DESC');
     query.addOrderBy('steps.stepNumber', 'ASC');
     query.addOrderBy('steps.updatedAt', 'DESC');
@@ -929,3 +929,4 @@ export class AnamnesisRepository implements IAnamnesisRepository {
     return entity ? mapAIAnalysisEntityToDomain(entity) : null;
   }
 }
+

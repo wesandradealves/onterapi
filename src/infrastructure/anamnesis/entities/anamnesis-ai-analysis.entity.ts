@@ -3,6 +3,7 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -55,6 +56,7 @@ export class AnamnesisAIAnalysisEntity {
   @ManyToOne(() => AnamnesisEntity, (anamnesis) => anamnesis.aiAnalyses, {
     onDelete: 'CASCADE',
   })
+  @JoinColumn({ name: 'anamnesis_id' })
   anamnesis?: AnamnesisEntity;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
@@ -63,3 +65,4 @@ export class AnamnesisAIAnalysisEntity {
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamp with time zone' })
   updatedAt!: Date;
 }
+
