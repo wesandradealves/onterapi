@@ -1,4 +1,4 @@
-﻿import { ExecutionContext, INestApplication } from '@nestjs/common';
+import { ExecutionContext, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
@@ -16,6 +16,7 @@ import {
 import {
   Anamnesis,
   AnamnesisAIAnalysis,
+  AnamnesisAITrainingFeedback,
   AnamnesisAttachment,
   AnamnesisHistoryEntry,
   AnamnesisHistoryFilters,
@@ -31,6 +32,7 @@ import {
   CreateAnamnesisAttachmentInput,
   CreateAnamnesisInput,
   GetStepTemplatesFilters,
+  RecordAITrainingFeedbackInput,
   RemoveAnamnesisAttachmentInput,
   SaveAnamnesisStepInput,
   SavePlanFeedbackInput,
@@ -123,6 +125,7 @@ class InMemoryAnamnesisRepository implements IAnamnesisRepository {
   private readonly templates = new Map<AnamnesisStepKey, AnamnesisStepTemplate>();
   private readonly analyses = new Map<string, AnamnesisAIAnalysis>();
   private sequence = 1;
+  private readonly trainingFeedbacks: AnamnesisAITrainingFeedback[] = [];
 
   constructor() {
     this.templates.set('identification', {
@@ -336,6 +339,7 @@ class InMemoryAnamnesisRepository implements IAnamnesisRepository {
     const plan: RepositoryPlan = {
       id: this.generateId('plan'),
       anamnesisId: record.id,
+      analysisId: data.analysisId ?? null,
       clinicalReasoning: data.clinicalReasoning,
       summary: data.summary,
       therapeuticPlan: clonePayload(data.therapeuticPlan),
@@ -366,14 +370,48 @@ class InMemoryAnamnesisRepository implements IAnamnesisRepository {
       throw AnamnesisErrorFactory.notFound();
     }
 
+    const feedbackAt = data.feedbackGivenAt ?? new Date();
+
     record.latestPlan.approvalStatus = data.approvalStatus;
     record.latestPlan.liked = data.liked;
     record.latestPlan.feedbackComment = data.feedbackComment;
-    record.latestPlan.feedbackGivenAt = new Date();
-    record.latestPlan.feedbackGivenBy = data.requesterId;
-    record.latestPlan.updatedAt = new Date();
+    record.latestPlan.feedbackGivenAt = feedbackAt;
+    record.latestPlan.feedbackGivenBy = data.feedbackGivenBy;
+    record.latestPlan.updatedAt = feedbackAt;
+
+    await this.recordAITrainingFeedback({
+      tenantId: data.tenantId,
+      anamnesisId: data.anamnesisId,
+      planId: record.latestPlan.id,
+      analysisId: record.latestPlan.analysisId ?? null,
+      approvalStatus: record.latestPlan.approvalStatus,
+      liked: record.latestPlan.liked,
+      feedbackComment: record.latestPlan.feedbackComment,
+      feedbackGivenBy: record.latestPlan.feedbackGivenBy ?? data.feedbackGivenBy,
+    });
 
     return { ...record.latestPlan };
+  }
+
+  async recordAITrainingFeedback(
+    data: RecordAITrainingFeedbackInput,
+  ): Promise<AnamnesisAITrainingFeedback> {
+    const feedback: AnamnesisAITrainingFeedback = {
+      id: this.generateId('feedback'),
+      tenantId: data.tenantId,
+      anamnesisId: data.anamnesisId,
+      planId: data.planId,
+      analysisId: data.analysisId ?? null,
+      approvalStatus: data.approvalStatus,
+      liked: data.liked,
+      feedbackComment: data.feedbackComment,
+      feedbackGivenBy: data.feedbackGivenBy,
+      createdAt: new Date(),
+    };
+
+    this.trainingFeedbacks.push(feedback);
+
+    return { ...feedback };
   }
 
   async createAttachment(data: CreateAnamnesisAttachmentInput): Promise<AnamnesisAttachment> {

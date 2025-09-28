@@ -69,6 +69,7 @@ describe('AnamnesisPresenter', () => {
   const buildPlan = (overrides: Partial<TherapeuticPlanData> = {}): TherapeuticPlanData => ({
     id: 'plan-1',
     anamnesisId: 'anamnesis-1',
+    analysisId: 'analysis-1',
     clinicalReasoning: 'Raciocinio',
     summary: 'Resumo',
     therapeuticPlan: { goals: ['Dormir melhor'] },
@@ -98,6 +99,7 @@ describe('AnamnesisPresenter', () => {
   it('normaliza plano terapeutico com arrays e valores padrao', () => {
     const dto = AnamnesisPresenter.plan(buildPlan());
 
+    expect(dto.analysisId).toBe('analysis-1');
     expect(dto.riskFactors?.[0]).toEqual({
       id: 'risk-1',
       description: 'Hipertensao',

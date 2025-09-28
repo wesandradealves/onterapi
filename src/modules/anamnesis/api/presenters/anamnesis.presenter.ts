@@ -144,6 +144,7 @@ const mapHistoryPrefill = (
 const mapPlan = (plan: TherapeuticPlanData): TherapeuticPlanDto => ({
   id: plan.id,
   anamnesisId: plan.anamnesisId,
+  analysisId: plan.analysisId ?? undefined,
   clinicalReasoning: plan.clinicalReasoning,
   summary: plan.summary,
   therapeuticPlan: cloneRecord(plan.therapeuticPlan),

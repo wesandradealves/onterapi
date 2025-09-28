@@ -1,4 +1,4 @@
-﻿import {
+import {
   Column,
   CreateDateColumn,
   Entity,
@@ -10,6 +10,7 @@
 } from 'typeorm';
 
 import { AnamnesisEntity } from './anamnesis.entity';
+import { AnamnesisAIAnalysisEntity } from './anamnesis-ai-analysis.entity';
 
 @Entity('anamnesis_therapeutic_plans')
 @Index(['anamnesisId', 'createdAt'])
@@ -19,6 +20,13 @@ export class AnamnesisTherapeuticPlanEntity {
 
   @Column({ name: 'anamnesis_id', type: 'uuid' })
   anamnesisId!: string;
+
+  @Column({ name: 'analysis_id', type: 'uuid', nullable: true })
+  analysisId?: string | null;
+
+  @ManyToOne(() => AnamnesisAIAnalysisEntity, { onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'analysis_id' })
+  analysis?: AnamnesisAIAnalysisEntity | null;
 
   @Column({ name: 'clinical_reasoning', type: 'text', nullable: true })
   clinicalReasoning?: string;

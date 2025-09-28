@@ -11,6 +11,7 @@ import { AnamnesisTherapeuticPlanEntity } from '../../infrastructure/anamnesis/e
 import { AnamnesisAttachmentEntity } from '../../infrastructure/anamnesis/entities/anamnesis-attachment.entity';
 import { AnamnesisStepTemplateEntity } from '../../infrastructure/anamnesis/entities/anamnesis-step-template.entity';
 import { AnamnesisAIAnalysisEntity } from '../../infrastructure/anamnesis/entities/anamnesis-ai-analysis.entity';
+import { AnamnesisAITrainingFeedbackEntity } from '../../infrastructure/anamnesis/entities/anamnesis-ai-feedback.entity';
 import { AnamnesisRepository } from '../../infrastructure/anamnesis/repositories/anamnesis.repository';
 import { SupabaseService } from '../../infrastructure/auth/services/supabase.service';
 import { IAnamnesisRepositoryToken } from '../../domain/anamnesis/interfaces/repositories/anamnesis.repository.interface';
@@ -44,6 +45,8 @@ import { ReceiveAnamnesisAIResultUseCase } from './use-cases/receive-anamnesis-a
 import { MessageBus } from '../../shared/messaging/message-bus';
 import { AnamnesisAIWebhookGuard } from './guards/anamnesis-ai-webhook.guard';
 import { SupabaseAnamnesisAttachmentStorageService } from '../../infrastructure/anamnesis/services/supabase-anamnesis-attachment-storage.service';
+import { AnamnesisMetricsService } from './services/anamnesis-metrics.service';
+import { AnamnesisEventsSubscriber } from './subscribers/anamnesis-events.subscriber';
 
 const repositoryProviders: Provider[] = [
   {
@@ -125,6 +128,7 @@ const storageProviders: Provider[] = [
       AnamnesisAttachmentEntity,
       AnamnesisStepTemplateEntity,
       AnamnesisAIAnalysisEntity,
+      AnamnesisAITrainingFeedbackEntity,
     ]),
     forwardRef(() => AuthModule),
     forwardRef(() => PatientsModule),
@@ -136,6 +140,8 @@ const storageProviders: Provider[] = [
     ...storageProviders,
     MessageBus,
     AnamnesisAIWebhookGuard,
+    AnamnesisMetricsService,
+    AnamnesisEventsSubscriber,
   ],
   exports: [
     IStartAnamnesisUseCase,

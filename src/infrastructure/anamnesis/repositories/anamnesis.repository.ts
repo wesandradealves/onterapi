@@ -6,6 +6,7 @@ import { v4 as uuid } from 'uuid';
 import {
   Anamnesis,
   AnamnesisAIAnalysis,
+  AnamnesisAITrainingFeedback,
   AnamnesisAttachment,
   AnamnesisHistoryEntry,
   AnamnesisHistoryFilters,
@@ -22,6 +23,7 @@ import {
   CreateAnamnesisAttachmentInput,
   CreateAnamnesisInput,
   GetStepTemplatesFilters,
+  RecordAITrainingFeedbackInput,
   RemoveAnamnesisAttachmentInput,
   SaveAnamnesisStepInput,
   SavePlanFeedbackInput,
@@ -36,6 +38,7 @@ import { AnamnesisTherapeuticPlanEntity } from '../entities/anamnesis-therapeuti
 import { AnamnesisAttachmentEntity } from '../entities/anamnesis-attachment.entity';
 import { AnamnesisStepTemplateEntity } from '../entities/anamnesis-step-template.entity';
 import { AnamnesisAIAnalysisEntity } from '../entities/anamnesis-ai-analysis.entity';
+import { AnamnesisAITrainingFeedbackEntity } from '../entities/anamnesis-ai-feedback.entity';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import {
   mapAIAnalysisEntityToDomain,
@@ -106,6 +109,7 @@ export class AnamnesisRepository implements IAnamnesisRepository {
   private readonly attachmentRepository: Repository<AnamnesisAttachmentEntity>;
   private readonly stepTemplateRepository: Repository<AnamnesisStepTemplateEntity>;
   private readonly aiAnalysisRepository: Repository<AnamnesisAIAnalysisEntity>;
+  private readonly aiFeedbackRepository: Repository<AnamnesisAITrainingFeedbackEntity>;
 
   constructor(
     @InjectDataSource()
@@ -117,6 +121,7 @@ export class AnamnesisRepository implements IAnamnesisRepository {
     this.attachmentRepository = dataSource.getRepository(AnamnesisAttachmentEntity);
     this.stepTemplateRepository = dataSource.getRepository(AnamnesisStepTemplateEntity);
     this.aiAnalysisRepository = dataSource.getRepository(AnamnesisAIAnalysisEntity);
+    this.aiFeedbackRepository = dataSource.getRepository(AnamnesisAITrainingFeedbackEntity);
   }
 
   async create(data: CreateAnamnesisInput): Promise<Anamnesis> {
@@ -565,6 +570,7 @@ export class AnamnesisRepository implements IAnamnesisRepository {
   async saveTherapeuticPlan(data: SaveTherapeuticPlanInput): Promise<TherapeuticPlanData> {
     const planData: DeepPartial<AnamnesisTherapeuticPlanEntity> = {
       anamnesisId: data.anamnesisId,
+      analysisId: data.analysisId ?? undefined,
       clinicalReasoning: data.clinicalReasoning,
       summary: data.summary,
       therapeuticPlan: data.therapeuticPlan
@@ -604,7 +610,57 @@ export class AnamnesisRepository implements IAnamnesisRepository {
 
     const updated = await this.planRepository.save(plan);
 
+    try {
+      await this.recordAITrainingFeedback({
+        tenantId: data.tenantId,
+        anamnesisId: data.anamnesisId,
+        planId: updated.id,
+        analysisId: updated.analysisId ?? null,
+        approvalStatus: updated.approvalStatus as AnamnesisAITrainingFeedback['approvalStatus'],
+        liked: typeof updated.liked === 'boolean' ? updated.liked : undefined,
+        feedbackComment: updated.feedbackComment ?? undefined,
+        feedbackGivenBy: updated.feedbackGivenBy ?? data.feedbackGivenBy,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Nao foi possivel registrar feedback de IA para o plano ${updated.id}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
+
     return mapTherapeuticPlanEntityToDomain(updated);
+  }
+
+  async recordAITrainingFeedback(
+    data: RecordAITrainingFeedbackInput,
+  ): Promise<AnamnesisAITrainingFeedback> {
+    const entity = this.aiFeedbackRepository.create(
+      {
+        tenantId: data.tenantId,
+        anamnesisId: data.anamnesisId,
+        planId: data.planId,
+        analysisId: data.analysisId ?? null,
+        approvalStatus: data.approvalStatus,
+        liked: typeof data.liked === 'boolean' ? data.liked : null,
+        feedbackComment: data.feedbackComment ?? null,
+        feedbackGivenBy: data.feedbackGivenBy,
+      } as DeepPartial<AnamnesisAITrainingFeedbackEntity>,
+    ) as AnamnesisAITrainingFeedbackEntity;
+
+    const saved = await this.aiFeedbackRepository.save(entity);
+
+    return {
+      id: saved.id,
+      tenantId: saved.tenantId,
+      anamnesisId: saved.anamnesisId,
+      planId: saved.planId,
+      analysisId: saved.analysisId ?? undefined,
+      approvalStatus: saved.approvalStatus as AnamnesisAITrainingFeedback['approvalStatus'],
+      liked: typeof saved.liked === 'boolean' ? saved.liked : undefined,
+      feedbackComment: saved.feedbackComment ?? undefined,
+      feedbackGivenBy: saved.feedbackGivenBy,
+      createdAt: saved.createdAt ?? new Date(),
+    };
   }
 
   async createAttachment(data: CreateAnamnesisAttachmentInput): Promise<AnamnesisAttachment> {

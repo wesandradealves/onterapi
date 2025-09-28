@@ -95,6 +95,7 @@ export const mapTherapeuticPlanEntityToDomain = (
 ): TherapeuticPlanData => ({
   id: entity.id,
   anamnesisId: entity.anamnesisId,
+  analysisId: entity.analysisId ?? undefined,
   clinicalReasoning: entity.clinicalReasoning ?? undefined,
   summary: entity.summary ?? undefined,
   therapeuticPlan: normalisePayload(entity.therapeuticPlan),

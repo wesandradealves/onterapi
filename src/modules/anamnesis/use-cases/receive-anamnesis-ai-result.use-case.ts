@@ -1,4 +1,4 @@
-﻿import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import { IReceiveAnamnesisAIResultUseCase } from '../../../domain/anamnesis/interfaces/use-cases/receive-anamnesis-ai-result.use-case.interface';
@@ -64,6 +64,7 @@ export class ReceiveAnamnesisAIResultUseCase
       const plan = await this.anamnesisRepository.saveTherapeuticPlan({
         anamnesisId: params.anamnesisId,
         tenantId: params.tenantId,
+        analysisId: params.analysisId,
         clinicalReasoning: params.clinicalReasoning,
         summary: params.summary,
         therapeuticPlan: params.therapeuticPlan,

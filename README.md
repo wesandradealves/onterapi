@@ -289,8 +289,8 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 | Criterio | Nota atual (0-10) | Meta | Evidencias chave |
 | --- | --- | --- | --- |
 | DRY / Reuso de codigo | 9.6 | >= 9.0 | Controllers de Auth, Patients, Users e Anamnesis continuam delegando normalizacao a mappers/presenters dedicados (ex.: src/modules/anamnesis/api/presenters/anamnesis.presenter.ts, src/shared/mappers/anamnesis.mapper.ts), eliminando duplicacao de clones e formatacao manual de datas. |
-| Automacao de qualidade | 8.7 | >= 8.5 | Sequencia manual revisada em 28/09: npm run lint -> npx tsc --noEmit -> npm run test:unit -> npm run test:int -> npm run test:e2e -> npm run test:cov -> npm run build (todos executados nesta sessao em Node 22.18.0). |
-| Testes automatizados | 10.0 | >= 9.5 | 230 testes (unit, integration, e2e e cobertura) executados em ~15 s; presenter e templates de anamnese cobrem 100% dos ramos (test/unit/modules.anamnesis/anamnesis.presenter.spec.ts). |
+| Automacao de qualidade | 8.7 | >= 8.5 | Sequencia manual revalidada em 28/09 (13:05h) com Node 22.18.0: npm run lint -> npx tsc --noEmit -> npm run test:unit -> npm run test:int -> npm run test:e2e -> npm run test:cov -> npm run build. |
+| Testes automatizados | 10.0 | >= 9.5 | 242 testes (unit, integration, e2e e cobertura) executados em ~20 s; presenter, mapper e métricas de anamnese seguem com 100% dos ramos cobertos (inclui test/unit/modules.anamnesis/anamnesis-metrics.service.spec.ts). |
 | Validacoes e contratos | 9.3 | >= 9.0 | Controllers de Anamnesis aplicam Zod com casting para enums (`AnamnesisStatus`, `AnamnesisStepKey`) antes dos use cases, garantindo filtros tipados e mensagens consistentes (src/modules/anamnesis/api/controllers/anamnesis.controller.ts:215, 254). |
 | Governanca de dominio / RBAC | 8.4 | >= 9.0 | Casos de uso de Anamnesis continuam consultando ensureCanModifyAnamnesis; fluxo de templates (`ListAnamnesisStepTemplatesUseCase`) valida PROFESSIONAL/PATIENT/SUPER_ADMIN antes de expor seeds multi-tenant. |
 
@@ -306,9 +306,15 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 - Aguardando pipeline CI para rodar os mesmos gates de forma automatizada.
 
 ### Testes
-- Novo spec cobre todos os ramos do mapper de usuarios, garantindo coercoes de tenantId e metadata.
-- Contagem total de 230 testes em ~15s; branch coverage global mantida em 100% (incluindo presenter/templates de anamnese).
+- Novos specs cobrem métricas de anamnese e mapper de usuários, garantindo coerções de tenantId, metadata e snapshot do serviço.
+- Contagem total de 242 testes em ~20s; branch coverage global mantida em 100% (incluindo presenter/templates de anamnese e métricas).
 - Suites de integracao/e2e seguem focadas em pacientes; auth e usuarios ainda carecem de cenarios ponta-a-ponta.
+
+
+### Integração IA & Métricas
+- Plano terapêutico passa a carregar `analysisId`, vinculando cada revisão humana à análise de IA que o originou e gravando feedbacks estruturados em `anamnesis_ai_feedbacks`.
+- `AnamnesisRepository.savePlanFeedback` aciona `recordAITrainingFeedback`, garantindo persistência multi-tenant com status (`approved`/`modified`/`rejected`), like/dislike e comentário.
+- `AnamnesisEventsSubscriber` + `AnamnesisMetricsService` agregam etapas salvas, autosaves, taxa média de conclusão e confiança da IA; snapshot disponível por tenant para dashboards.
 
 ### Validacao e contratos
 - Todos os endpoints de auth, users e patients consomem dados validados pelo ZodValidationPipe e mappers, preservando DTOs apenas para Swagger.

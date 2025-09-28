@@ -143,6 +143,12 @@ export class TherapeuticPlanDto {
   })
   anamnesisId!: string;
 
+  @ApiPropertyOptional({
+    description: 'Identificador da analise IA vinculada',
+    example: 'analysis-123456',
+  })
+  analysisId?: string;
+
   @ApiPropertyOptional({ description: 'Raciocinio clinico da IA' })
   clinicalReasoning?: string;
 

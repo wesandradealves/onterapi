@@ -1,6 +1,7 @@
 import {
   Anamnesis,
   AnamnesisAIAnalysis,
+  AnamnesisAITrainingFeedback,
   AnamnesisAttachment,
   AnamnesisHistoryEntry,
   AnamnesisHistoryFilters,
@@ -16,6 +17,7 @@ import {
   CreateAnamnesisAttachmentInput,
   CreateAnamnesisInput,
   GetStepTemplatesFilters,
+  RecordAITrainingFeedbackInput,
   RemoveAnamnesisAttachmentInput,
   SaveAnamnesisStepInput,
   SavePlanFeedbackInput,
@@ -51,6 +53,9 @@ export interface IAnamnesisRepository {
   submit(data: SubmitAnamnesisInput): Promise<Anamnesis>;
   saveTherapeuticPlan(data: SaveTherapeuticPlanInput): Promise<TherapeuticPlanData>;
   savePlanFeedback(data: SavePlanFeedbackInput): Promise<TherapeuticPlanData>;
+  recordAITrainingFeedback(
+    data: RecordAITrainingFeedbackInput,
+  ): Promise<AnamnesisAITrainingFeedback>;
   createAttachment(data: CreateAnamnesisAttachmentInput): Promise<AnamnesisAttachment>;
   removeAttachment(data: RemoveAnamnesisAttachmentInput): Promise<void>;
   getStepTemplates(filters?: GetStepTemplatesFilters): Promise<AnamnesisStepTemplate[]>;

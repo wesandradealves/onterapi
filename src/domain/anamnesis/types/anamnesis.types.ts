@@ -340,6 +340,7 @@ export interface TherapeuticPlanRiskFactor {
 export interface TherapeuticPlanData {
   id: string;
   anamnesisId: string;
+  analysisId?: string | null;
   clinicalReasoning?: string;
   summary?: string;
   therapeuticPlan?: Record<string, unknown>;
@@ -523,6 +524,7 @@ export interface SubmitAnamnesisInput {
 export interface SaveTherapeuticPlanInput {
   anamnesisId: string;
   tenantId: string;
+  analysisId?: string | null;
   clinicalReasoning?: string;
   summary?: string;
   therapeuticPlan?: Record<string, unknown>;
@@ -531,6 +533,30 @@ export interface SaveTherapeuticPlanInput {
   confidence?: number;
   reviewRequired?: boolean;
   generatedAt: Date;
+}
+
+export interface RecordAITrainingFeedbackInput {
+  tenantId: string;
+  anamnesisId: string;
+  planId: string;
+  analysisId?: string | null;
+  approvalStatus: 'approved' | 'modified' | 'rejected';
+  liked?: boolean;
+  feedbackComment?: string;
+  feedbackGivenBy: string;
+}
+
+export interface AnamnesisAITrainingFeedback {
+  id: string;
+  tenantId: string;
+  anamnesisId: string;
+  planId: string;
+  analysisId?: string | null;
+  approvalStatus: 'approved' | 'modified' | 'rejected';
+  liked?: boolean;
+  feedbackComment?: string;
+  feedbackGivenBy: string;
+  createdAt: Date;
 }
 
 export interface SavePlanFeedbackInput {

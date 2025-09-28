@@ -7,6 +7,7 @@ import { AnamnesisTherapeuticPlanEntity } from '@infrastructure/anamnesis/entiti
 import { AnamnesisAttachmentEntity } from '@infrastructure/anamnesis/entities/anamnesis-attachment.entity';
 import { AnamnesisStepTemplateEntity } from '@infrastructure/anamnesis/entities/anamnesis-step-template.entity';
 import { AnamnesisAIAnalysisEntity } from '@infrastructure/anamnesis/entities/anamnesis-ai-analysis.entity';
+import { AnamnesisAITrainingFeedbackEntity } from '@infrastructure/anamnesis/entities/anamnesis-ai-feedback.entity';
 
 const createStepEntity = (overrides: Partial<AnamnesisStepEntity> = {}): AnamnesisStepEntity =>
   ({
@@ -49,6 +50,14 @@ describe('AnamnesisRepository.autoSaveStep', () => {
     const attachmentRepoMock = {};
     const stepTemplateRepoMock = {};
     const aiAnalysisRepoMock = {};
+    const aiFeedbackRepoMock = {
+      create: jest.fn((entity) => ({ ...entity })),
+      save: jest.fn(async (entity) => ({
+        ...entity,
+        id: entity.id ?? 'feedback-1',
+        createdAt: new Date('2025-09-26T12:00:00.000Z'),
+      })),
+    };
 
     const getRepository = jest.fn((entity: unknown) => {
       if (entity === AnamnesisEntity) {
@@ -69,6 +78,9 @@ describe('AnamnesisRepository.autoSaveStep', () => {
       if (entity === AnamnesisAIAnalysisEntity) {
         return aiAnalysisRepoMock;
       }
+      if (entity === AnamnesisAITrainingFeedbackEntity) {
+        return aiFeedbackRepoMock;
+      }
       return {};
     });
 
@@ -80,6 +92,7 @@ describe('AnamnesisRepository.autoSaveStep', () => {
       anamnesisRepoMock,
       stepRepoMock,
       queryBuilderMock,
+      aiFeedbackRepoMock,
     };
   };
 
@@ -271,6 +284,9 @@ describe('AnamnesisRepository.getHistoryByPatient', () => {
           return {};
         }
         if (entity === AnamnesisAIAnalysisEntity) {
+          return {};
+        }
+        if (entity === AnamnesisAITrainingFeedbackEntity) {
           return {};
         }
         return {};
