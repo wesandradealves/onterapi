@@ -1,4 +1,4 @@
-﻿# Changelog
+# Changelog
 
 Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 
@@ -7,14 +7,20 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 ## [Unreleased]
 
 ### Added
+- Servico de armazenamento de anexos para anamnese (`IAnamnesisAttachmentStorageService`, `SupabaseAnamnesisAttachmentStorageService`) integrado aos casos de uso e ao modulo.
+- Guard e caso de uso para ingestao de resultados de IA via webhook, com novo endpoint REST e contratos de DTO/Schema.
 
 ### Changed
+- Repositorio, presenters e DTOs de anamnese atualizados para preservar anexos no historico, normalizar payloads JSON e expor auditoria (tenant/usuario) de forma consistente.
+- Fluxos de auto-save, listagem e historico reforcados com idempotencia, RBAC e emissao de eventos; suites unitarias, de integracao e E2E atualizadas para cobrir anexos e pipeline completo de IA.
 
 ### Fixed
+- Corrigido auto-save concorrente que sobrescrevia rascunhos mais recentes quando um snapshot atrasado era enviado.
 
 ### Security
 
 ### Documentation
+- README revisado com nova linha de base de qualidade (27/09), total de testes executados e sequencia oficial da bateria CI.
 
 ## [0.16.6] - 2025-09-26
 
@@ -853,4 +859,6 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 ---
 
 _Mantenha este arquivo atualizado a cada release_
+
+
 

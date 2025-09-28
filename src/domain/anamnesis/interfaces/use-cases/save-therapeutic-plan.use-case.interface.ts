@@ -18,6 +18,7 @@ export interface ISaveTherapeuticPlanUseCase {
     reviewRequired?: boolean;
     generatedAt: Date;
     requesterId: string;
+    requesterRole: string;
   }): Promise<Result<TherapeuticPlanData>>;
 }
 

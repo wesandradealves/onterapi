@@ -1,4 +1,4 @@
-﻿import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import { IRemoveAnamnesisAttachmentUseCase } from '../../../domain/anamnesis/interfaces/use-cases/remove-anamnesis-attachment.use-case.interface';
@@ -10,6 +10,10 @@ import { ensureCanModifyAnamnesis } from '../utils/anamnesis-permissions.util';
 import { AnamnesisErrorFactory } from '../../../shared/factories/anamnesis-error.factory';
 import { MessageBus } from '../../../shared/messaging/message-bus';
 import { DomainEvents } from '../../../shared/events/domain-events';
+import {
+  IAnamnesisAttachmentStorageService,
+  IAnamnesisAttachmentStorageServiceToken,
+} from '../../../domain/anamnesis/interfaces/services/anamnesis-attachment-storage.service.interface';
 
 interface RemoveAttachmentCommand {
   tenantId: string;
@@ -29,6 +33,8 @@ export class RemoveAnamnesisAttachmentUseCase
   constructor(
     @Inject(IAnamnesisRepositoryToken)
     private readonly anamnesisRepository: IAnamnesisRepository,
+    @Inject(IAnamnesisAttachmentStorageServiceToken)
+    private readonly attachmentStorage: IAnamnesisAttachmentStorageService,
     private readonly messageBus: MessageBus,
   ) {
     super();
@@ -47,14 +53,22 @@ export class RemoveAnamnesisAttachmentUseCase
       requesterId: params.requesterId,
       requesterRole: params.requesterRole,
       professionalId: record.professionalId,
+      patientId: record.patientId,
     });
 
-    const hasAttachment = (record.attachments ?? []).some(
+    const targetAttachment = (record.attachments ?? []).find(
       (attachment) => attachment.id === params.attachmentId,
     );
 
-    if (!hasAttachment) {
+    if (!targetAttachment) {
       throw AnamnesisErrorFactory.invalidState('Anexo informado nao pertence a esta anamnese');
+    }
+
+    try {
+      await this.attachmentStorage.delete({ storagePath: targetAttachment.storagePath });
+    } catch (error) {
+      this.logger.error('Falha ao remover anexo do storage', error as Error);
+      throw AnamnesisErrorFactory.invalidState('Nao foi possivel remover o anexo do storage');
     }
 
     await this.anamnesisRepository.removeAttachment({

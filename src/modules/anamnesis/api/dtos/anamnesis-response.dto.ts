@@ -1,4 +1,4 @@
-﻿import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class AnamnesisStepDto {
   @ApiProperty({
@@ -276,4 +276,95 @@ export class AnamnesisListItemDto {
 
   @ApiProperty({ description: 'Data da ultima atualizacao (ISO)', example: '2025-09-26T05:10:00Z' })
   updatedAt!: string;
+}
+export class AnamnesisHistoryStepDto {
+  @ApiProperty({ description: 'Numero do step', example: 1 })
+  stepNumber!: number;
+
+  @ApiProperty({ description: 'Chave do step', example: 'identification' })
+  key!: string;
+
+  @ApiProperty({ description: 'Conteudo registrado no step' })
+  payload!: Record<string, unknown>;
+
+  @ApiProperty({ description: 'Indica se o step foi concluido', example: true })
+  completed!: boolean;
+
+  @ApiProperty({ description: 'Indica se foram detectados erros', example: false })
+  hasErrors!: boolean;
+
+  @ApiPropertyOptional({ description: 'Score de validacao', example: 80 })
+  validationScore?: number;
+
+  @ApiProperty({ description: 'Ultima atualizacao do step (ISO)', example: '2025-09-27T03:10:00Z' })
+  updatedAt!: string;
+}
+
+export class AnamnesisHistoryEntryDto {
+  @ApiProperty({ description: 'Identificador da anamnese', example: 'anamnesis-001' })
+  id!: string;
+
+  @ApiProperty({ description: 'Identificador da consulta', example: 'consultation-001' })
+  consultationId!: string;
+
+  @ApiProperty({
+    description: 'Identificador do profissional responsavel',
+    example: 'professional-001',
+  })
+  professionalId!: string;
+
+  @ApiProperty({ description: 'Status da anamnese', example: 'submitted' })
+  status!: string;
+
+  @ApiProperty({ description: 'Percentual de conclusao', example: 100 })
+  completionRate!: number;
+
+  @ApiPropertyOptional({ description: 'Data de submissao (ISO)', example: '2025-09-26T10:05:00Z' })
+  submittedAt?: string;
+
+  @ApiProperty({ description: 'Ultima atualizacao (ISO)', example: '2025-09-26T10:05:00Z' })
+  updatedAt!: string;
+
+  @ApiProperty({ description: 'Steps registrados', type: () => [AnamnesisHistoryStepDto] })
+  steps!: AnamnesisHistoryStepDto[];
+
+  @ApiProperty({ description: 'Anexos vinculados', type: () => [AnamnesisAttachmentDto] })
+  attachments!: AnamnesisAttachmentDto[];
+
+  @ApiPropertyOptional({
+    description: 'Plano terapeutico associado',
+    type: () => TherapeuticPlanDto,
+  })
+  latestPlan?: TherapeuticPlanDto | null;
+}
+
+export class AnamnesisHistoryPrefillDto {
+  @ApiProperty({ description: 'Dados mais recentes por step' })
+  steps!: Record<string, Record<string, unknown>>;
+
+  @ApiProperty({ description: 'Anexos reutilizaveis', type: () => [AnamnesisAttachmentDto] })
+  attachments!: AnamnesisAttachmentDto[];
+
+  @ApiPropertyOptional({ description: 'Anamnese que originou o prefill', example: 'anamnesis-001' })
+  sourceAnamnesisId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Momento da ultima atualizacao do prefill',
+    example: '2025-09-26T10:05:00Z',
+  })
+  updatedAt?: string;
+}
+
+export class AnamnesisHistoryResponseDto {
+  @ApiProperty({ description: 'Identificador do paciente', example: 'patient-001' })
+  patientId!: string;
+
+  @ApiProperty({ description: 'Historico de anamneses', type: () => [AnamnesisHistoryEntryDto] })
+  entries!: AnamnesisHistoryEntryDto[];
+
+  @ApiProperty({
+    description: 'Dados consolidados para pre-preenchimento',
+    type: () => AnamnesisHistoryPrefillDto,
+  })
+  prefill!: AnamnesisHistoryPrefillDto;
 }

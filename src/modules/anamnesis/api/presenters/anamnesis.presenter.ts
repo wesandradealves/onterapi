@@ -1,13 +1,20 @@
-﻿import {
+import {
   Anamnesis,
   AnamnesisAttachment,
+  AnamnesisHistoryData,
+  AnamnesisHistoryEntry,
+  AnamnesisHistoryStep,
   AnamnesisListItem,
   AnamnesisStep,
   TherapeuticPlanData,
-} from '../../../domain/anamnesis/types/anamnesis.types';
+} from '../../../../domain/anamnesis/types/anamnesis.types';
 import {
   AnamnesisAttachmentDto,
   AnamnesisDetailResponseDto,
+  AnamnesisHistoryEntryDto,
+  AnamnesisHistoryPrefillDto,
+  AnamnesisHistoryResponseDto,
+  AnamnesisHistoryStepDto,
   AnamnesisListItemDto,
   AnamnesisStepDto,
   TherapeuticPlanDto,
@@ -17,18 +24,23 @@ import {
 
 const toIsoString = (value?: Date): string | undefined => (value ? value.toISOString() : undefined);
 
-const cloneRecord = (value?: Record<string, unknown> | null): Record<string, unknown> => {
-  if (!value) {
+const cloneRecord = (value: unknown): Record<string, unknown> => {
+  if (!value || typeof value !== 'object') {
     return {};
   }
-  return JSON.parse(JSON.stringify(value));
+
+  try {
+    return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
 };
 
 const mapStep = (step: AnamnesisStep): AnamnesisStepDto => ({
   id: step.id,
   stepNumber: step.stepNumber,
   key: step.key,
-  payload: cloneRecord(step.payload as Record<string, unknown>),
+  payload: cloneRecord(step.payload),
   completed: step.completed,
   hasErrors: step.hasErrors,
   validationScore: step.validationScore,
@@ -50,39 +62,79 @@ const mapAttachment = (attachment: AnamnesisAttachment): AnamnesisAttachmentDto 
 const mapRecommendations = (
   recommendations?: TherapeuticPlanData['recommendations'],
 ): TherapeuticPlanRecommendationDto[] | undefined => {
-  if (!recommendations) {
+  if (!Array.isArray(recommendations)) {
     return undefined;
   }
-  return recommendations.map((item) => ({
-    id: item.id,
-    description: item.description,
-    priority: item.priority,
-  }));
+
+  return recommendations.map(
+    (item): TherapeuticPlanRecommendationDto => ({
+      id: item.id,
+      description: item.description,
+      priority: item.priority,
+    }),
+  );
 };
 
 const mapRiskFactors = (
   riskFactors?: TherapeuticPlanData['riskFactors'],
 ): TherapeuticPlanRiskFactorDto[] | undefined => {
-  if (!riskFactors) {
+  if (!Array.isArray(riskFactors)) {
     return undefined;
   }
-  return riskFactors.map((item) => ({
-    id: item.id,
-    description: item.description,
-    severity: item.severity,
-  }));
+
+  return riskFactors.map(
+    (item): TherapeuticPlanRiskFactorDto => ({
+      id: item.id,
+      description: item.description,
+      severity: item.severity,
+    }),
+  );
 };
+
+const mapHistoryStep = (step: AnamnesisHistoryStep): AnamnesisHistoryStepDto => ({
+  stepNumber: step.stepNumber,
+  key: step.key,
+  payload: cloneRecord(step.payload),
+  completed: step.completed,
+  hasErrors: step.hasErrors,
+  validationScore: step.validationScore,
+  updatedAt: toIsoString(step.updatedAt) ?? new Date().toISOString(),
+});
+
+const mapHistoryEntry = (entry: AnamnesisHistoryEntry): AnamnesisHistoryEntryDto => ({
+  id: entry.id,
+  consultationId: entry.consultationId,
+  professionalId: entry.professionalId,
+  status: entry.status,
+  completionRate: entry.completionRate,
+  submittedAt: toIsoString(entry.submittedAt),
+  updatedAt: toIsoString(entry.updatedAt) ?? new Date().toISOString(),
+  steps: entry.steps.map(mapHistoryStep),
+  attachments: entry.attachments.map(mapAttachment),
+  latestPlan: entry.latestPlan ? mapPlan(entry.latestPlan) : null,
+});
+
+const mapHistoryPrefill = (
+  prefill: AnamnesisHistoryData['prefill'],
+): AnamnesisHistoryPrefillDto => ({
+  steps: Object.fromEntries(
+    Object.entries(prefill.steps).map(([key, value]) => [key, cloneRecord(value)]),
+  ),
+  attachments: prefill.attachments.map(mapAttachment),
+  sourceAnamnesisId: prefill.sourceAnamnesisId,
+  updatedAt: toIsoString(prefill.updatedAt),
+});
 
 const mapPlan = (plan: TherapeuticPlanData): TherapeuticPlanDto => ({
   id: plan.id,
   anamnesisId: plan.anamnesisId,
   clinicalReasoning: plan.clinicalReasoning,
   summary: plan.summary,
-  therapeuticPlan: cloneRecord(plan.therapeuticPlan as Record<string, unknown>),
+  therapeuticPlan: cloneRecord(plan.therapeuticPlan),
   riskFactors: mapRiskFactors(plan.riskFactors),
   recommendations: mapRecommendations(plan.recommendations),
   confidence: plan.confidence,
-  reviewRequired: plan.reviewRequired,
+  reviewRequired: plan.reviewRequired ?? false,
   approvalStatus: plan.approvalStatus,
   liked: plan.liked,
   feedbackComment: plan.feedbackComment,
@@ -132,6 +184,14 @@ export class AnamnesisPresenter {
 
   static list(items: AnamnesisListItem[]): AnamnesisListItemDto[] {
     return items.map((item) => this.listItem(item));
+  }
+
+  static history(history: AnamnesisHistoryData): AnamnesisHistoryResponseDto {
+    return {
+      patientId: history.patientId,
+      entries: history.entries.map(mapHistoryEntry),
+      prefill: mapHistoryPrefill(history.prefill),
+    };
   }
 
   static plan(plan: TherapeuticPlanData): TherapeuticPlanDto {

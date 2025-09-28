@@ -1,4 +1,4 @@
-﻿import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import { IStartAnamnesisUseCase } from '../../../domain/anamnesis/interfaces/use-cases/start-anamnesis.use-case.interface';
@@ -45,6 +45,7 @@ export class StartAnamnesisUseCase
       requesterId: params.requesterId,
       requesterRole: params.requesterRole,
       professionalId: params.professionalId,
+      patientId: params.patientId,
     });
 
     const existing = await this.anamnesisRepository.findByConsultation(

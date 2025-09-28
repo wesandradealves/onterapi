@@ -1,4 +1,4 @@
-﻿import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import { ISubmitAnamnesisUseCase } from '../../../domain/anamnesis/interfaces/use-cases/submit-anamnesis.use-case.interface';
@@ -6,11 +6,20 @@ import {
   IAnamnesisRepository,
   IAnamnesisRepositoryToken,
 } from '../../../domain/anamnesis/interfaces/repositories/anamnesis.repository.interface';
+import {
+  IPatientRepository,
+  IPatientRepositoryToken,
+} from '../../../domain/patients/interfaces/repositories/patient.repository.interface';
+import {
+  IAuthRepository,
+  IAuthRepositoryToken,
+} from '../../../domain/auth/interfaces/repositories/auth.repository.interface';
 import { Anamnesis } from '../../../domain/anamnesis/types/anamnesis.types';
 import { ensureCanModifyAnamnesis } from '../utils/anamnesis-permissions.util';
 import { AnamnesisErrorFactory } from '../../../shared/factories/anamnesis-error.factory';
 import { MessageBus } from '../../../shared/messaging/message-bus';
 import { DomainEvents } from '../../../shared/events/domain-events';
+import { buildAnamnesisAIRequestPayload } from '../utils/anamnesis-ai.util';
 
 interface SubmitAnamnesisCommand {
   tenantId: string;
@@ -29,6 +38,10 @@ export class SubmitAnamnesisUseCase
   constructor(
     @Inject(IAnamnesisRepositoryToken)
     private readonly anamnesisRepository: IAnamnesisRepository,
+    @Inject(IPatientRepositoryToken)
+    private readonly patientRepository: IPatientRepository,
+    @Inject(IAuthRepositoryToken)
+    private readonly authRepository: IAuthRepository,
     private readonly messageBus: MessageBus,
   ) {
     super();
@@ -56,27 +69,74 @@ export class SubmitAnamnesisUseCase
     }
 
     const completionRate = this.calculateCompletionRate(record);
+    const submissionDate = new Date();
 
     const submitted = await this.anamnesisRepository.submit({
       anamnesisId: params.anamnesisId,
       tenantId: params.tenantId,
       submittedBy: params.requesterId,
-      submissionDate: new Date(),
+      submissionDate,
       completionRate,
     });
 
-    await this.messageBus.publish(
+    const [patient, professionalEntity] = await Promise.all([
+      this.patientRepository.findById(params.tenantId, record.patientId),
+      this.authRepository.findById(record.professionalId),
+    ]);
+
+    const professionalSnapshot = professionalEntity
+      ? {
+          id: professionalEntity.id,
+          name: professionalEntity.name,
+          email: professionalEntity.email,
+          role: professionalEntity.role,
+          metadata: professionalEntity.metadata ?? undefined,
+        }
+      : null;
+
+    const aiPayload = buildAnamnesisAIRequestPayload({
+      anamnesis: submitted,
+      patient: patient ?? undefined,
+      professional: professionalSnapshot ?? undefined,
+      metadata: {
+        requesterId: params.requesterId,
+        submittedAt: submitted.submittedAt ?? submissionDate,
+      },
+    });
+
+    const aiPayloadRecord = aiPayload as unknown as Record<string, unknown>;
+
+    const analysis = await this.anamnesisRepository.createAIAnalysis({
+      anamnesisId: submitted.id,
+      tenantId: params.tenantId,
+      payload: aiPayloadRecord,
+      status: 'pending',
+    });
+
+    await this.messageBus.publishMany([
       DomainEvents.anamnesisSubmitted(
         params.anamnesisId,
         {
           tenantId: params.tenantId,
           completionRate,
           submittedBy: params.requesterId,
-          submittedAt: submitted.submittedAt ?? new Date(),
+          submittedAt: submitted.submittedAt ?? submissionDate,
         },
         { userId: params.requesterId, tenantId: params.tenantId },
       ),
-    );
+      DomainEvents.anamnesisAIRequested(
+        submitted.id,
+        {
+          tenantId: params.tenantId,
+          analysisId: analysis.id,
+          consultationId: submitted.consultationId,
+          patientId: submitted.patientId,
+          professionalId: submitted.professionalId,
+          payload: aiPayloadRecord,
+        },
+        { userId: params.requesterId, tenantId: params.tenantId },
+      ),
+    ]);
 
     return submitted;
   }

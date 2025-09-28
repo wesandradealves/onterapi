@@ -35,6 +35,17 @@ export const saveAnamnesisStepSchema = z.object({
 
 export type SaveAnamnesisStepSchema = z.infer<typeof saveAnamnesisStepSchema>;
 
+export const autoSaveAnamnesisStepSchema = z.object({
+  stepNumber: z.number().int().positive('Numero do step invalido'),
+  key: z.string().min(1, 'Chave do step obrigatoria'),
+  payload: recordSchema,
+  hasErrors: z.boolean().optional(),
+  validationScore: z.number().min(0).max(100).optional(),
+  autoSavedAt: z.string().datetime({ message: 'Data de auto-save invalida' }).optional(),
+});
+
+export type AutoSaveAnamnesisStepSchema = z.infer<typeof autoSaveAnamnesisStepSchema>;
+
 export const saveTherapeuticPlanSchema = z.object({
   clinicalReasoning: z.string().optional(),
   summary: z.string().optional(),
@@ -56,15 +67,56 @@ export const savePlanFeedbackSchema = z.object({
 
 export type SavePlanFeedbackSchema = z.infer<typeof savePlanFeedbackSchema>;
 
+const optionalFileName = z
+  .union([z.string(), z.undefined(), z.null()])
+  .transform((value) => {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  })
+  .optional();
+
+const toPositiveInt = z
+  .union([z.string(), z.number()])
+  .transform((value) => {
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? Math.trunc(value) : undefined;
+    }
+    if (!value) {
+      return undefined;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? Math.trunc(parsed) : undefined;
+  })
+  .refine((value) => value === undefined || (value >= 1 && value <= 50), {
+    message: 'Limite invalido',
+  })
+  .optional();
+
 export const createAttachmentSchema = z.object({
-  stepNumber: z.number().int().positive().optional(),
-  fileName: z.string().min(1, 'Nome do arquivo obrigatorio'),
-  mimeType: z.string().min(1, 'Tipo MIME obrigatorio'),
-  size: z.number().int().nonnegative('Tamanho invalido'),
-  storagePath: z.string().min(1, 'Caminho do arquivo obrigatorio'),
+  stepNumber: toPositiveInt,
+  fileName: optionalFileName,
 });
 
 export type CreateAttachmentSchema = z.infer<typeof createAttachmentSchema>;
+
+export const receiveAIResultSchema = z.object({
+  analysisId: z.string().uuid('Analise invalida'),
+  status: z.enum(['completed', 'failed']),
+  respondedAt: z.string().datetime({ message: 'Data de resposta invalida' }),
+  clinicalReasoning: z.string().optional(),
+  summary: z.string().optional(),
+  therapeuticPlan: recordSchema.optional(),
+  riskFactors: z.array(riskFactorSchema).optional(),
+  recommendations: z.array(recommendationSchema).optional(),
+  confidence: z.number().min(0).max(1).optional(),
+  payload: recordSchema.optional(),
+  errorMessage: z.string().optional(),
+});
+
+export type ReceiveAIResultSchema = z.infer<typeof receiveAIResultSchema>;
 
 const toBoolean = z
   .union([z.string(), z.boolean()])
@@ -106,6 +158,14 @@ export const getAnamnesisQuerySchema = z.object({
 });
 
 export type GetAnamnesisQuerySchema = z.infer<typeof getAnamnesisQuerySchema>;
+
+export const anamnesisHistoryQuerySchema = z.object({
+  limit: toPositiveInt,
+  status: toArray,
+  includeDrafts: toBoolean,
+});
+
+export type AnamnesisHistoryQuerySchema = z.infer<typeof anamnesisHistoryQuerySchema>;
 
 export const listAnamnesesQuerySchema = z.object({
   status: toArray,

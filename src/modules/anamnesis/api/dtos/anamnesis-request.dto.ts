@@ -1,4 +1,4 @@
-﻿import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class StartAnamnesisRequestDto {
   @ApiProperty({
@@ -44,6 +44,26 @@ export class SaveAnamnesisStepRequestDto {
 
   @ApiPropertyOptional({ description: 'Score de validacao', example: 92 })
   validationScore?: number;
+}
+
+export class AutoSaveAnamnesisStepRequestDto {
+  @ApiProperty({ description: 'Numero do step', example: 2 })
+  stepNumber!: number;
+
+  @ApiProperty({ description: 'Chave do step', example: 'lifestyle' })
+  key!: string;
+
+  @ApiProperty({ description: 'Dados preenchidos para o step' })
+  payload!: Record<string, unknown>;
+
+  @ApiPropertyOptional({ description: 'Indica se ha erros de validacao', example: false })
+  hasErrors?: boolean;
+
+  @ApiPropertyOptional({ description: 'Score de validacao', example: 92 })
+  validationScore?: number;
+
+  @ApiPropertyOptional({ description: 'Data do auto-save (ISO)', example: '2025-09-27T10:00:00Z' })
+  autoSavedAt?: string;
 }
 
 export class TherapeuticPlanRiskFactorInputDto {
@@ -124,23 +144,14 @@ export class SavePlanFeedbackRequestDto {
 }
 
 export class CreateAnamnesisAttachmentRequestDto {
-  @ApiPropertyOptional({ description: 'Step relacionado ao anexo', example: 2 })
+  @ApiPropertyOptional({ description: 'Step relacionado ao anexo', example: 2, type: Number })
   stepNumber?: number;
 
-  @ApiProperty({ description: 'Nome do arquivo', example: 'exame-hemograma.pdf' })
-  fileName!: string;
+  @ApiPropertyOptional({ description: 'Nome opcional do arquivo', example: 'exame-hemograma.pdf' })
+  fileName?: string;
 
-  @ApiProperty({ description: 'Tipo MIME', example: 'application/pdf' })
-  mimeType!: string;
-
-  @ApiProperty({ description: 'Tamanho em bytes', example: 524288 })
-  size!: number;
-
-  @ApiProperty({
-    description: 'Endereco do arquivo no storage',
-    example: 'anamnesis/2025/09/exame-hemograma.pdf',
-  })
-  storagePath!: string;
+  @ApiProperty({ description: 'Arquivo do anexo', type: 'string', format: 'binary' })
+  file!: string;
 }
 
 export class GetAnamnesisQueryDto {
@@ -179,4 +190,55 @@ export class ListAnamnesesQueryDto {
     example: '2025-09-27T23:59:59Z',
   })
   to?: string;
+}
+
+export class ReceiveAIResultRequestDto {
+  @ApiProperty({
+    description: 'Identificador da analise gerada no backend',
+    example: '8f37a8f5-6b34-4d40-9cb0-6c0d4f8f3a7e',
+  })
+  analysisId!: string;
+
+  @ApiProperty({
+    description: 'Status da analise',
+    example: 'completed',
+    enum: ['completed', 'failed'],
+  })
+  status!: 'completed' | 'failed';
+
+  @ApiProperty({
+    description: 'Momento em que a IA respondeu (ISO)',
+    example: '2025-09-27T10:00:00Z',
+  })
+  respondedAt!: string;
+
+  @ApiPropertyOptional({ description: 'Raciocinio clinico gerado pela IA' })
+  clinicalReasoning?: string;
+
+  @ApiPropertyOptional({ description: 'Resumo textual do caso' })
+  summary?: string;
+
+  @ApiPropertyOptional({ description: 'Plano terapeutico estruturado' })
+  therapeuticPlan?: Record<string, unknown>;
+
+  @ApiPropertyOptional({
+    description: 'Fatores de risco apontados',
+    type: () => [TherapeuticPlanRiskFactorInputDto],
+  })
+  riskFactors?: TherapeuticPlanRiskFactorInputDto[];
+
+  @ApiPropertyOptional({
+    description: 'Recomendacoes sugeridas',
+    type: () => [TherapeuticPlanRecommendationInputDto],
+  })
+  recommendations?: TherapeuticPlanRecommendationInputDto[];
+
+  @ApiPropertyOptional({ description: 'Confianca do modelo (0-1)', example: 0.82 })
+  confidence?: number;
+
+  @ApiPropertyOptional({ description: 'Payload bruto retornado pela IA' })
+  payload?: Record<string, unknown>;
+
+  @ApiPropertyOptional({ description: 'Mensagem de erro em caso de falha' })
+  errorMessage?: string;
 }

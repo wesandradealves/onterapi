@@ -1,14 +1,18 @@
-﻿import {
+import {
   Anamnesis,
+  AnamnesisAIAnalysis,
   AnamnesisAttachment,
   AnamnesisStep,
   AnamnesisStepKey,
+  AnamnesisStepTemplate,
   TherapeuticPlanData,
 } from '../../domain/anamnesis/types/anamnesis.types';
 import { AnamnesisEntity } from '../../infrastructure/anamnesis/entities/anamnesis.entity';
 import { AnamnesisStepEntity } from '../../infrastructure/anamnesis/entities/anamnesis-step.entity';
 import { AnamnesisTherapeuticPlanEntity } from '../../infrastructure/anamnesis/entities/anamnesis-therapeutic-plan.entity';
 import { AnamnesisAttachmentEntity } from '../../infrastructure/anamnesis/entities/anamnesis-attachment.entity';
+import { AnamnesisStepTemplateEntity } from '../../infrastructure/anamnesis/entities/anamnesis-step-template.entity';
+import { AnamnesisAIAnalysisEntity } from '../../infrastructure/anamnesis/entities/anamnesis-ai-analysis.entity';
 
 const toDate = (value?: Date | string | null): Date | undefined => {
   if (!value) {
@@ -17,11 +21,16 @@ const toDate = (value?: Date | string | null): Date | undefined => {
   return value instanceof Date ? value : new Date(value);
 };
 
-const normalisePayload = (payload?: Record<string, unknown> | null): Record<string, unknown> => {
-  if (!payload) {
+const normalisePayload = (payload?: unknown): Record<string, unknown> => {
+  if (!payload || typeof payload !== 'object') {
     return {};
   }
-  return { ...payload };
+
+  try {
+    return JSON.parse(JSON.stringify(payload)) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
 };
 
 const castJsonArray = <T>(value: unknown): T | undefined => {
@@ -30,6 +39,42 @@ const castJsonArray = <T>(value: unknown): T | undefined => {
   }
   return undefined;
 };
+
+export const mapStepTemplateEntityToDomain = (
+  entity: AnamnesisStepTemplateEntity,
+): AnamnesisStepTemplate => ({
+  id: entity.id,
+  key: entity.key as AnamnesisStepKey,
+  title: entity.title,
+  description: entity.description ?? undefined,
+  version: entity.version,
+  schema: normalisePayload(entity.schema),
+  specialty: entity.specialty ?? undefined,
+  tenantId: entity.tenantId ?? null,
+  isActive: entity.isActive,
+  createdAt: toDate(entity.createdAt) ?? new Date(),
+  updatedAt: toDate(entity.updatedAt) ?? new Date(),
+});
+
+export const mapAIAnalysisEntityToDomain = (
+  entity: AnamnesisAIAnalysisEntity,
+): AnamnesisAIAnalysis => ({
+  id: entity.id,
+  anamnesisId: entity.anamnesisId,
+  tenantId: entity.tenantId,
+  status: entity.status as AnamnesisAIAnalysis['status'],
+  payload: entity.payload ? normalisePayload(entity.payload) : undefined,
+  clinicalReasoning: entity.clinicalReasoning ?? undefined,
+  summary: entity.summary ?? undefined,
+  riskFactors: castJsonArray<AnamnesisAIAnalysis['riskFactors']>(entity.riskFactors),
+  recommendations: castJsonArray<AnamnesisAIAnalysis['recommendations']>(entity.recommendations),
+  confidence: entity.confidence === null ? undefined : (entity.confidence ?? undefined),
+  generatedAt: toDate(entity.generatedAt),
+  respondedAt: toDate(entity.respondedAt),
+  errorMessage: entity.errorMessage ?? undefined,
+  createdAt: toDate(entity.createdAt) ?? new Date(),
+  updatedAt: toDate(entity.updatedAt) ?? new Date(),
+});
 
 export const mapAnamnesisStepEntityToDomain = (entity: AnamnesisStepEntity): AnamnesisStep => ({
   id: entity.id,
@@ -87,6 +132,7 @@ export const mapAnamnesisEntityToDomain = (
     steps?: boolean;
     latestPlan?: boolean;
     attachments?: boolean;
+    aiAnalyses?: boolean;
   },
 ): Anamnesis => {
   const completionRateNumber = Number(entity.completionRate ?? 0);
@@ -113,6 +159,17 @@ export const mapAnamnesisEntityToDomain = (
       ? entity.attachments.map(mapAttachmentEntityToDomain)
       : undefined;
 
+  const aiAnalyses =
+    options?.aiAnalyses && entity.aiAnalyses
+      ? entity.aiAnalyses
+          .slice()
+          .sort((a, b) => {
+            const aTime = toDate(a.respondedAt)?.getTime() ?? toDate(a.createdAt)?.getTime() ?? 0;
+            const bTime = toDate(b.respondedAt)?.getTime() ?? toDate(b.createdAt)?.getTime() ?? 0;
+            return bTime - aTime;
+          })
+          .map(mapAIAnalysisEntityToDomain)
+      : undefined;
   return {
     id: entity.id,
     consultationId: entity.consultationId,
@@ -132,5 +189,6 @@ export const mapAnamnesisEntityToDomain = (
     steps,
     latestPlan,
     attachments,
+    aiAnalyses,
   };
 };

@@ -6,6 +6,7 @@ export interface IListAnamnesesByPatientUseCase {
     tenantId: string;
     patientId: string;
     requesterId: string;
+    requesterRole: string;
     filters?: AnamnesisListFilters;
   }): Promise<Result<AnamnesisListItem[]>>;
 }

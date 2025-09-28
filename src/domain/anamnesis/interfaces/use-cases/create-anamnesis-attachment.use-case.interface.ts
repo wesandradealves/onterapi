@@ -9,8 +9,9 @@ export interface ICreateAnamnesisAttachmentUseCase {
     fileName: string;
     mimeType: string;
     size: number;
-    storagePath: string;
+    fileBuffer: Buffer;
     requesterId: string;
+    requesterRole: string;
   }): Promise<Result<AnamnesisAttachment>>;
 }
 

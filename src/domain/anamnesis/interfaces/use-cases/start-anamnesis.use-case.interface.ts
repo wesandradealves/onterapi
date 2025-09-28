@@ -11,6 +11,7 @@ export interface IStartAnamnesisUseCase {
     initialStep?: number;
     formData?: Partial<AnamnesisFormData>;
     requesterId: string;
+    requesterRole: string;
   }): Promise<Result<Anamnesis>>;
 }
 

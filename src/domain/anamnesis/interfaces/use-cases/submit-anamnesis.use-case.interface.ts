@@ -6,6 +6,7 @@ export interface ISubmitAnamnesisUseCase {
     tenantId: string;
     anamnesisId: string;
     requesterId: string;
+    requesterRole: string;
   }): Promise<Result<Anamnesis>>;
 }
 

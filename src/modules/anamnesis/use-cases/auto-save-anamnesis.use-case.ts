@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
-import { ISaveAnamnesisStepUseCase } from '../../../domain/anamnesis/interfaces/use-cases/save-anamnesis-step.use-case.interface';
+import { IAutoSaveAnamnesisUseCase } from '../../../domain/anamnesis/interfaces/use-cases/auto-save-anamnesis.use-case.interface';
 import {
   IAnamnesisRepository,
   IAnamnesisRepositoryToken,
@@ -12,25 +12,25 @@ import { AnamnesisErrorFactory } from '../../../shared/factories/anamnesis-error
 import { MessageBus } from '../../../shared/messaging/message-bus';
 import { DomainEvents } from '../../../shared/events/domain-events';
 
-interface SaveAnamnesisStepCommand {
+interface AutoSaveAnamnesisCommand {
   tenantId: string;
   anamnesisId: string;
   stepNumber: number;
   key: AnamnesisStepKey;
   payload: Record<string, unknown>;
-  completed?: boolean;
   hasErrors?: boolean;
   validationScore?: number;
+  autoSavedAt?: Date;
   requesterId: string;
   requesterRole: string;
 }
 
 @Injectable()
-export class SaveAnamnesisStepUseCase
-  extends BaseUseCase<SaveAnamnesisStepCommand, Anamnesis>
-  implements ISaveAnamnesisStepUseCase
+export class AutoSaveAnamnesisUseCase
+  extends BaseUseCase<AutoSaveAnamnesisCommand, Anamnesis>
+  implements IAutoSaveAnamnesisUseCase
 {
-  protected readonly logger = new Logger(SaveAnamnesisStepUseCase.name);
+  protected readonly logger = new Logger(AutoSaveAnamnesisUseCase.name);
 
   constructor(
     @Inject(IAnamnesisRepositoryToken)
@@ -40,7 +40,7 @@ export class SaveAnamnesisStepUseCase
     super();
   }
 
-  protected async handle(params: SaveAnamnesisStepCommand): Promise<Anamnesis> {
+  protected async handle(params: AutoSaveAnamnesisCommand): Promise<Anamnesis> {
     const record = await this.anamnesisRepository.findById(params.tenantId, params.anamnesisId, {
       steps: true,
     });
@@ -60,23 +60,17 @@ export class SaveAnamnesisStepUseCase
       throw AnamnesisErrorFactory.invalidState('Apenas anamneses em rascunho podem ser editadas');
     }
 
-    const { completionRate, currentStep, stepCompleted } = this.computeProgressMetrics(
-      record,
-      params,
-    );
+    const autoSavedAt = params.autoSavedAt ?? new Date();
 
-    await this.anamnesisRepository.saveStep({
+    const savedStep = await this.anamnesisRepository.autoSaveStep({
       anamnesisId: params.anamnesisId,
       tenantId: params.tenantId,
       stepNumber: params.stepNumber,
       key: params.key,
       payload: params.payload,
-      completed: params.completed,
       hasErrors: params.hasErrors,
       validationScore: params.validationScore,
-      updatedBy: params.requesterId,
-      currentStep,
-      completionRate,
+      autoSavedAt,
     });
 
     const updated = await this.anamnesisRepository.findById(params.tenantId, params.anamnesisId, {
@@ -96,69 +90,16 @@ export class SaveAnamnesisStepUseCase
           tenantId: params.tenantId,
           stepNumber: params.stepNumber,
           key: params.key,
-          completed: stepCompleted,
-          completionRate,
-          currentStep,
-          hasErrors: params.hasErrors ?? false,
-          validationScore: params.validationScore,
-          updatedBy: params.requesterId,
+          completed: savedStep.completed,
+          hasErrors: savedStep.hasErrors,
+          validationScore: savedStep.validationScore,
+          autoSave: true,
+          autoSavedAt: savedStep.updatedAt ?? autoSavedAt,
         },
         { userId: params.requesterId, tenantId: params.tenantId },
       ),
     );
 
     return updated;
-  }
-
-  private computeProgressMetrics(
-    record: Anamnesis,
-    params: SaveAnamnesisStepCommand,
-  ): {
-    completionRate: number;
-    currentStep: number;
-    stepCompleted: boolean;
-  } {
-    const totalSteps = Math.max(record.totalSteps, 1);
-    const stepsMap = new Map<number, boolean>();
-
-    (record.steps ?? []).forEach((step) => {
-      stepsMap.set(step.stepNumber, step.completed);
-    });
-
-    const previousCompleted = stepsMap.get(params.stepNumber) ?? false;
-    const stepCompleted = params.completed ?? previousCompleted;
-    stepsMap.set(params.stepNumber, stepCompleted);
-
-    const completedCount = Array.from(stepsMap.values()).filter(Boolean).length;
-    const completionRate = Math.min(100, Math.round((completedCount / totalSteps) * 100));
-
-    const currentStep = this.determineCurrentStep(
-      stepsMap,
-      totalSteps,
-      params.stepNumber,
-      stepCompleted,
-    );
-
-    return { completionRate, currentStep, stepCompleted };
-  }
-
-  private determineCurrentStep(
-    stepsMap: Map<number, boolean>,
-    totalSteps: number,
-    updatedStepNumber: number,
-    stepCompleted: boolean,
-  ): number {
-    if (!stepCompleted) {
-      return Math.max(updatedStepNumber, 1);
-    }
-
-    for (let index = 1; index <= totalSteps; index += 1) {
-      const completed = stepsMap.get(index);
-      if (!completed) {
-        return index;
-      }
-    }
-
-    return totalSteps;
   }
 }

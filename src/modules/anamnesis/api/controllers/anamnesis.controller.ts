@@ -1,4 +1,4 @@
-﻿import {
+import {
   BadRequestException,
   Body,
   Controller,
@@ -13,55 +13,75 @@
   Post,
   Put,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiBody,
+  ApiConsumes,
   ApiOperation,
   ApiParam,
   ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../auth/guards/roles.guard';
 import { Roles } from '../../../auth/decorators/roles.decorator';
 import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
+import { Public } from '../../../auth/decorators/public.decorator';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ICurrentUser } from '../../../../domain/auth/interfaces/current-user.interface';
 import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
 import { unwrapResult } from '../../../../shared/types/result.type';
+import {
+  type AnamnesisStatus,
+  AnamnesisStepKey,
+} from '../../../../domain/anamnesis/types/anamnesis.types';
 import { IStartAnamnesisUseCase } from '../../../../domain/anamnesis/interfaces/use-cases/start-anamnesis.use-case.interface';
 import { IGetAnamnesisUseCase } from '../../../../domain/anamnesis/interfaces/use-cases/get-anamnesis.use-case.interface';
 import { ISaveAnamnesisStepUseCase } from '../../../../domain/anamnesis/interfaces/use-cases/save-anamnesis-step.use-case.interface';
+import { IAutoSaveAnamnesisUseCase } from '../../../../domain/anamnesis/interfaces/use-cases/auto-save-anamnesis.use-case.interface';
 import { ISubmitAnamnesisUseCase } from '../../../../domain/anamnesis/interfaces/use-cases/submit-anamnesis.use-case.interface';
 import { IListAnamnesesByPatientUseCase } from '../../../../domain/anamnesis/interfaces/use-cases/list-anamneses-by-patient.use-case.interface';
+import { IGetAnamnesisHistoryUseCase } from '../../../../domain/anamnesis/interfaces/use-cases/get-anamnesis-history.use-case.interface';
 import { ISaveTherapeuticPlanUseCase } from '../../../../domain/anamnesis/interfaces/use-cases/save-therapeutic-plan.use-case.interface';
 import { ISavePlanFeedbackUseCase } from '../../../../domain/anamnesis/interfaces/use-cases/save-plan-feedback.use-case.interface';
 import { ICreateAnamnesisAttachmentUseCase } from '../../../../domain/anamnesis/interfaces/use-cases/create-anamnesis-attachment.use-case.interface';
 import { IRemoveAnamnesisAttachmentUseCase } from '../../../../domain/anamnesis/interfaces/use-cases/remove-anamnesis-attachment.use-case.interface';
+import { IReceiveAnamnesisAIResultUseCase } from '../../../../domain/anamnesis/interfaces/use-cases/receive-anamnesis-ai-result.use-case.interface';
 import {
   AnamnesisAttachmentDto,
   AnamnesisDetailResponseDto,
+  AnamnesisHistoryResponseDto,
   AnamnesisListItemDto,
   TherapeuticPlanDto,
 } from '../dtos/anamnesis-response.dto';
 import {
+  AutoSaveAnamnesisStepRequestDto,
   CreateAnamnesisAttachmentRequestDto,
+  ReceiveAIResultRequestDto,
   SaveAnamnesisStepRequestDto,
   SavePlanFeedbackRequestDto,
   SaveTherapeuticPlanRequestDto,
   StartAnamnesisRequestDto,
 } from '../dtos/anamnesis-request.dto';
 import {
+  AnamnesisHistoryQuerySchema,
+  anamnesisHistoryQuerySchema,
+  AutoSaveAnamnesisStepSchema,
+  autoSaveAnamnesisStepSchema,
   CreateAttachmentSchema,
   createAttachmentSchema,
   GetAnamnesisQuerySchema,
   getAnamnesisQuerySchema,
   ListAnamnesesQuerySchema,
   listAnamnesesQuerySchema,
+  ReceiveAIResultSchema,
+  receiveAIResultSchema,
   SaveAnamnesisStepSchema,
   saveAnamnesisStepSchema,
   SavePlanFeedbackSchema,
@@ -72,6 +92,18 @@ import {
   startAnamnesisSchema,
 } from '../schemas/anamnesis.schema';
 import { AnamnesisPresenter } from '../presenters/anamnesis.presenter';
+import { memoryStorage } from 'multer';
+import type { Express } from 'express';
+import { AnamnesisAIWebhookGuard } from '../../guards/anamnesis-ai-webhook.guard';
+
+const ANAMNESIS_STATUS_VALUES: readonly AnamnesisStatus[] = [
+  'draft',
+  'submitted',
+  'completed',
+  'cancelled',
+];
+
+const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024;
 
 @ApiTags('Anamnesis')
 @ApiBearerAuth()
@@ -79,18 +111,19 @@ import { AnamnesisPresenter } from '../presenters/anamnesis.presenter';
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AnamnesisController {
   private readonly logger = new Logger(AnamnesisController.name);
-
   constructor(
-    @Inject(IStartAnamnesisUseCase)
-    private readonly startAnamnesisUseCase: IStartAnamnesisUseCase,
-    @Inject(IGetAnamnesisUseCase)
-    private readonly getAnamnesisUseCase: IGetAnamnesisUseCase,
+    @Inject(IStartAnamnesisUseCase) private readonly startAnamnesisUseCase: IStartAnamnesisUseCase,
+    @Inject(IGetAnamnesisUseCase) private readonly getAnamnesisUseCase: IGetAnamnesisUseCase,
     @Inject(ISaveAnamnesisStepUseCase)
     private readonly saveAnamnesisStepUseCase: ISaveAnamnesisStepUseCase,
+    @Inject(IAutoSaveAnamnesisUseCase)
+    private readonly autoSaveAnamnesisUseCase: IAutoSaveAnamnesisUseCase,
     @Inject(ISubmitAnamnesisUseCase)
     private readonly submitAnamnesisUseCase: ISubmitAnamnesisUseCase,
     @Inject(IListAnamnesesByPatientUseCase)
     private readonly listByPatientUseCase: IListAnamnesesByPatientUseCase,
+    @Inject(IGetAnamnesisHistoryUseCase)
+    private readonly getAnamnesisHistoryUseCase: IGetAnamnesisHistoryUseCase,
     @Inject(ISaveTherapeuticPlanUseCase)
     private readonly savePlanUseCase: ISaveTherapeuticPlanUseCase,
     @Inject(ISavePlanFeedbackUseCase)
@@ -99,11 +132,18 @@ export class AnamnesisController {
     private readonly createAttachmentUseCase: ICreateAnamnesisAttachmentUseCase,
     @Inject(IRemoveAnamnesisAttachmentUseCase)
     private readonly removeAttachmentUseCase: IRemoveAnamnesisAttachmentUseCase,
+    @Inject(IReceiveAnamnesisAIResultUseCase)
+    private readonly receiveAIResultUseCase: IReceiveAnamnesisAIResultUseCase,
   ) {}
-
   @Post('start')
   @HttpCode(HttpStatus.CREATED)
-  @Roles(RolesEnum.PROFESSIONAL, RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @Roles(
+    RolesEnum.PROFESSIONAL,
+    RolesEnum.CLINIC_OWNER,
+    RolesEnum.MANAGER,
+    RolesEnum.SUPER_ADMIN,
+    RolesEnum.PATIENT,
+  )
   @ApiOperation({
     summary: 'Iniciar anamnese',
     description: 'Cria uma nova anamnese ou retorna a existente para a consulta informada.',
@@ -116,7 +156,6 @@ export class AnamnesisController {
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<AnamnesisDetailResponseDto> {
     const context = this.resolveContext(currentUser, tenantHeader);
-
     const result = await this.startAnamnesisUseCase.execute({
       tenantId: context.tenantId,
       consultationId: body.consultationId,
@@ -128,12 +167,9 @@ export class AnamnesisController {
       requesterId: context.userId,
       requesterRole: context.role,
     });
-
     const anamnesis = unwrapResult(result);
-
     return AnamnesisPresenter.detail(anamnesis);
   }
-
   @Get(':anamnesisId')
   @Roles(
     RolesEnum.PROFESSIONAL,
@@ -159,7 +195,6 @@ export class AnamnesisController {
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<AnamnesisDetailResponseDto> {
     const context = this.resolveContext(currentUser, tenantHeader);
-
     const result = await this.getAnamnesisUseCase.execute({
       tenantId: context.tenantId,
       anamnesisId,
@@ -169,12 +204,60 @@ export class AnamnesisController {
       requesterId: context.userId,
       requesterRole: context.role,
     });
-
     const anamnesis = unwrapResult(result);
-
     return AnamnesisPresenter.detail(anamnesis);
   }
 
+  @Get('patient/:patientId/history')
+  @Roles(
+    RolesEnum.PROFESSIONAL,
+    RolesEnum.CLINIC_OWNER,
+    RolesEnum.MANAGER,
+    RolesEnum.SUPER_ADMIN,
+    RolesEnum.PATIENT,
+  )
+  @ApiOperation({
+    summary: 'Historico de anamnese',
+    description: 'Retorna dados completos de anamneses anteriores para pre-preenchimento.',
+  })
+  @ApiParam({ name: 'patientId', description: 'Identificador do paciente' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Quantidade maxima de registros (1-50)',
+  })
+  @ApiQuery({ name: 'status', required: false, type: String, isArray: true })
+  @ApiQuery({ name: 'includeDrafts', required: false, type: Boolean })
+  @ApiResponse({ status: 200, type: AnamnesisHistoryResponseDto })
+  async getHistory(
+    @Param('patientId') patientId: string,
+    @Query(new ZodValidationPipe(anamnesisHistoryQuerySchema)) query: AnamnesisHistoryQuerySchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<AnamnesisHistoryResponseDto> {
+    const context = this.resolveContext(currentUser, tenantHeader);
+
+    const statuses = query.status?.filter((status): status is AnamnesisStatus =>
+      ANAMNESIS_STATUS_VALUES.includes(status as AnamnesisStatus),
+    );
+
+    const result = await this.getAnamnesisHistoryUseCase.execute({
+      tenantId: context.tenantId,
+      patientId,
+      requesterId: context.userId,
+      requesterRole: context.role,
+      filters: {
+        limit: query.limit,
+        statuses,
+        includeDrafts: query.includeDrafts,
+      },
+    });
+
+    const history = unwrapResult(result);
+
+    return AnamnesisPresenter.history(history);
+  }
   @Get('/patient/:patientId')
   @Roles(
     RolesEnum.PROFESSIONAL,
@@ -204,27 +287,29 @@ export class AnamnesisController {
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<AnamnesisListItemDto[]> {
     const context = this.resolveContext(currentUser, tenantHeader);
-
     const result = await this.listByPatientUseCase.execute({
       tenantId: context.tenantId,
       patientId,
       requesterId: context.userId,
       requesterRole: context.role,
       filters: {
-        status: query.status,
+        status: query.status?.map((status) => status as AnamnesisStatus),
         professionalId: query.professionalId,
         from: query.from ? new Date(query.from) : undefined,
         to: query.to ? new Date(query.to) : undefined,
       },
     });
-
     const items = unwrapResult(result);
-
     return AnamnesisPresenter.list(items);
   }
-
   @Put(':anamnesisId/steps/:stepNumber')
-  @Roles(RolesEnum.PROFESSIONAL, RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @Roles(
+    RolesEnum.PROFESSIONAL,
+    RolesEnum.CLINIC_OWNER,
+    RolesEnum.MANAGER,
+    RolesEnum.SUPER_ADMIN,
+    RolesEnum.PATIENT,
+  )
   @ApiOperation({
     summary: 'Salvar step da anamnese',
     description: 'Atualiza os dados de um step especifico da anamnese.',
@@ -242,7 +327,6 @@ export class AnamnesisController {
   ): Promise<AnamnesisDetailResponseDto> {
     const context = this.resolveContext(currentUser, tenantHeader);
     const stepIndex = Number(stepNumber);
-
     const result = await this.saveAnamnesisStepUseCase.execute({
       tenantId: context.tenantId,
       anamnesisId,
@@ -255,12 +339,47 @@ export class AnamnesisController {
       requesterId: context.userId,
       requesterRole: context.role,
     });
-
     const anamnesis = unwrapResult(result);
-
     return AnamnesisPresenter.detail(anamnesis);
   }
-
+  @Post(':anamnesisId/auto-save')
+  @HttpCode(HttpStatus.OK)
+  @Roles(
+    RolesEnum.PROFESSIONAL,
+    RolesEnum.CLINIC_OWNER,
+    RolesEnum.MANAGER,
+    RolesEnum.SUPER_ADMIN,
+    RolesEnum.PATIENT,
+  )
+  @ApiOperation({
+    summary: 'Auto salvar step da anamnese',
+    description: 'Persiste um rascunho parcial do step informado.',
+  })
+  @ApiParam({ name: 'anamnesisId', description: 'Identificador da anamnese' })
+  @ApiBody({ type: AutoSaveAnamnesisStepRequestDto })
+  @ApiResponse({ status: 200, type: AnamnesisDetailResponseDto })
+  async autoSaveStep(
+    @Param('anamnesisId') anamnesisId: string,
+    @Body(new ZodValidationPipe(autoSaveAnamnesisStepSchema)) body: AutoSaveAnamnesisStepSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<AnamnesisDetailResponseDto> {
+    const context = this.resolveContext(currentUser, tenantHeader);
+    const result = await this.autoSaveAnamnesisUseCase.execute({
+      tenantId: context.tenantId,
+      anamnesisId,
+      stepNumber: body.stepNumber,
+      key: body.key as AnamnesisStepKey,
+      payload: body.payload,
+      hasErrors: body.hasErrors,
+      validationScore: body.validationScore,
+      autoSavedAt: body.autoSavedAt ? new Date(body.autoSavedAt) : undefined,
+      requesterId: context.userId,
+      requesterRole: context.role,
+    });
+    const anamnesis = unwrapResult(result);
+    return AnamnesisPresenter.detail(anamnesis);
+  }
   @Post(':anamnesisId/submit')
   @HttpCode(HttpStatus.OK)
   @Roles(RolesEnum.PROFESSIONAL, RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
@@ -276,19 +395,15 @@ export class AnamnesisController {
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<AnamnesisDetailResponseDto> {
     const context = this.resolveContext(currentUser, tenantHeader);
-
     const result = await this.submitAnamnesisUseCase.execute({
       tenantId: context.tenantId,
       anamnesisId,
       requesterId: context.userId,
       requesterRole: context.role,
     });
-
     const anamnesis = unwrapResult(result);
-
     return AnamnesisPresenter.detail(anamnesis);
   }
-
   @Post(':anamnesisId/plan')
   @HttpCode(HttpStatus.CREATED)
   @Roles(RolesEnum.PROFESSIONAL, RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
@@ -306,19 +421,16 @@ export class AnamnesisController {
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<TherapeuticPlanDto> {
     const context = this.resolveContext(currentUser, tenantHeader);
-
     const riskFactors = body.riskFactors?.map((item) => ({
       id: item.id,
       description: item.description,
       severity: item.severity,
     }));
-
     const recommendations = body.recommendations?.map((item) => ({
       id: item.id,
       description: item.description,
       priority: item.priority,
     }));
-
     const result = await this.savePlanUseCase.execute({
       tenantId: context.tenantId,
       anamnesisId,
@@ -333,12 +445,9 @@ export class AnamnesisController {
       requesterId: context.userId,
       requesterRole: context.role,
     });
-
     const plan = unwrapResult(result);
-
     return AnamnesisPresenter.plan(plan);
   }
-
   @Post(':anamnesisId/plan/feedback')
   @HttpCode(HttpStatus.OK)
   @Roles(RolesEnum.PROFESSIONAL, RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
@@ -356,7 +465,6 @@ export class AnamnesisController {
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<TherapeuticPlanDto> {
     const context = this.resolveContext(currentUser, tenantHeader);
-
     const result = await this.savePlanFeedbackUseCase.execute({
       tenantId: context.tenantId,
       anamnesisId,
@@ -366,54 +474,114 @@ export class AnamnesisController {
       requesterId: context.userId,
       requesterRole: context.role,
     });
-
     const plan = unwrapResult(result);
-
     return AnamnesisPresenter.plan(plan);
+  }
+  @Public()
+  @Post(':anamnesisId/ai-result')
+  @UseGuards(AnamnesisAIWebhookGuard)
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({
+    summary: 'Receber resultado da IA',
+    description: 'Webhook de retorno das analises automatizadas.',
+  })
+  @ApiParam({ name: 'anamnesisId', description: 'Identificador da anamnese' })
+  @ApiBody({ type: ReceiveAIResultRequestDto })
+  @ApiResponse({ status: 202, description: 'Resultado recebido com sucesso' })
+  async receiveAIResult(
+    @Param('anamnesisId') anamnesisId: string,
+    @Body(new ZodValidationPipe(receiveAIResultSchema)) body: ReceiveAIResultSchema,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<void> {
+    const tenantId = this.resolveTenantId(tenantHeader);
+
+    await this.receiveAIResultUseCase.execute({
+      tenantId,
+      anamnesisId,
+      analysisId: body.analysisId,
+      status: body.status,
+      clinicalReasoning: body.clinicalReasoning,
+      summary: body.summary,
+      therapeuticPlan: body.therapeuticPlan,
+      riskFactors: body.riskFactors,
+      recommendations: body.recommendations,
+      confidence: body.confidence,
+      payload: body.payload,
+      respondedAt: new Date(body.respondedAt),
+      errorMessage: body.errorMessage,
+    });
   }
 
   @Post(':anamnesisId/attachments')
   @HttpCode(HttpStatus.CREATED)
-  @Roles(RolesEnum.PROFESSIONAL, RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({
-    summary: 'Cadastrar anexo',
-    description: 'Vincula um novo anexo a anamnese.',
-  })
+  @Roles(
+    RolesEnum.PROFESSIONAL,
+    RolesEnum.CLINIC_OWNER,
+    RolesEnum.MANAGER,
+    RolesEnum.SUPER_ADMIN,
+    RolesEnum.PATIENT,
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Cadastrar anexo', description: 'Vincula um novo anexo a anamnese.' })
   @ApiParam({ name: 'anamnesisId', description: 'Identificador da anamnese' })
   @ApiBody({ type: CreateAnamnesisAttachmentRequestDto })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: MAX_ATTACHMENT_SIZE_BYTES },
+    }),
+  )
   @ApiResponse({ status: 201, type: AnamnesisAttachmentDto })
   async createAttachment(
     @Param('anamnesisId') anamnesisId: string,
     @Body(new ZodValidationPipe(createAttachmentSchema)) body: CreateAttachmentSchema,
+    @UploadedFile() file: Express.Multer.File,
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<AnamnesisAttachmentDto> {
+    if (!file) {
+      throw new BadRequestException('Arquivo do anexo obrigatorio');
+    }
+
+    if (!file.buffer || file.size <= 0) {
+      throw new BadRequestException('Arquivo enviado esta vazio');
+    }
+
+    if (file.size > MAX_ATTACHMENT_SIZE_BYTES) {
+      throw new BadRequestException('Arquivo excede o limite permitido');
+    }
+
     const context = this.resolveContext(currentUser, tenantHeader);
+    const effectiveFileName =
+      body.fileName && body.fileName.length > 0
+        ? body.fileName
+        : (file.originalname ?? 'anexo').trim();
 
     const result = await this.createAttachmentUseCase.execute({
       tenantId: context.tenantId,
       anamnesisId,
       stepNumber: body.stepNumber,
-      fileName: body.fileName,
-      mimeType: body.mimeType,
-      size: body.size,
-      storagePath: body.storagePath,
+      fileName: effectiveFileName,
+      mimeType: file.mimetype,
+      size: file.size,
+      fileBuffer: file.buffer,
       requesterId: context.userId,
       requesterRole: context.role,
     });
-
     const attachment = unwrapResult(result);
-
     return AnamnesisPresenter.attachment(attachment);
   }
 
   @Delete(':anamnesisId/attachments/:attachmentId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Roles(RolesEnum.PROFESSIONAL, RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({
-    summary: 'Remover anexo',
-    description: 'Remove um anexo associado a anamnese.',
-  })
+  @Roles(
+    RolesEnum.PROFESSIONAL,
+    RolesEnum.CLINIC_OWNER,
+    RolesEnum.MANAGER,
+    RolesEnum.SUPER_ADMIN,
+    RolesEnum.PATIENT,
+  )
+  @ApiOperation({ summary: 'Remover anexo', description: 'Remove um anexo associado a anamnese.' })
   @ApiParam({ name: 'anamnesisId', description: 'Identificador da anamnese' })
   @ApiParam({ name: 'attachmentId', description: 'Identificador do anexo' })
   async removeAttachment(
@@ -423,7 +591,6 @@ export class AnamnesisController {
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<void> {
     const context = this.resolveContext(currentUser, tenantHeader);
-
     const result = await this.removeAttachmentUseCase.execute({
       tenantId: context.tenantId,
       anamnesisId,
@@ -431,21 +598,24 @@ export class AnamnesisController {
       requesterId: context.userId,
       requesterRole: context.role,
     });
-
     unwrapResult(result);
   }
 
   private resolveContext(currentUser: ICurrentUser, tenantHeader?: string) {
-    const tenantId = tenantHeader ?? currentUser.tenantId;
+    const tenantId = this.resolveTenantId(tenantHeader, currentUser.tenantId);
+    return { tenantId, userId: currentUser.id, role: currentUser.role };
+  }
+
+  private resolveTenantId(tenantHeader?: string, fallbackTenantId?: string | null): string {
+    const headerValue = tenantHeader?.trim();
+    const fallbackValue =
+      typeof fallbackTenantId === 'string' ? fallbackTenantId.trim() : undefined;
+    const tenantId = headerValue || fallbackValue;
 
     if (!tenantId) {
       throw new BadRequestException('Tenant nao informado');
     }
 
-    return {
-      tenantId,
-      userId: currentUser.id,
-      role: currentUser.role,
-    };
+    return tenantId;
   }
 }

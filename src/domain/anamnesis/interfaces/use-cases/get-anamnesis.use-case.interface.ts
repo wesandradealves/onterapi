@@ -9,6 +9,7 @@ export interface IGetAnamnesisUseCase {
     includeLatestPlan?: boolean;
     includeAttachments?: boolean;
     requesterId: string;
+    requesterRole: string;
   }): Promise<Result<Anamnesis>>;
 }
 

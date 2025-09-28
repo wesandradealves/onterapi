@@ -1,4 +1,4 @@
-﻿import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import { ICreateAnamnesisAttachmentUseCase } from '../../../domain/anamnesis/interfaces/use-cases/create-anamnesis-attachment.use-case.interface';
@@ -11,6 +11,10 @@ import { ensureCanModifyAnamnesis } from '../utils/anamnesis-permissions.util';
 import { AnamnesisErrorFactory } from '../../../shared/factories/anamnesis-error.factory';
 import { MessageBus } from '../../../shared/messaging/message-bus';
 import { DomainEvents } from '../../../shared/events/domain-events';
+import {
+  IAnamnesisAttachmentStorageService,
+  IAnamnesisAttachmentStorageServiceToken,
+} from '../../../domain/anamnesis/interfaces/services/anamnesis-attachment-storage.service.interface';
 
 interface CreateAttachmentCommand {
   tenantId: string;
@@ -19,7 +23,7 @@ interface CreateAttachmentCommand {
   fileName: string;
   mimeType: string;
   size: number;
-  storagePath: string;
+  fileBuffer: Buffer;
   requesterId: string;
   requesterRole: string;
 }
@@ -34,6 +38,8 @@ export class CreateAnamnesisAttachmentUseCase
   constructor(
     @Inject(IAnamnesisRepositoryToken)
     private readonly anamnesisRepository: IAnamnesisRepository,
+    @Inject(IAnamnesisAttachmentStorageServiceToken)
+    private readonly attachmentStorage: IAnamnesisAttachmentStorageService,
     private readonly messageBus: MessageBus,
   ) {
     super();
@@ -50,7 +56,29 @@ export class CreateAnamnesisAttachmentUseCase
       requesterId: params.requesterId,
       requesterRole: params.requesterRole,
       professionalId: record.professionalId,
+      patientId: record.patientId,
     });
+
+    if (params.size !== params.fileBuffer.byteLength) {
+      this.logger.warn(
+        `Tamanho informado (${params.size}) difere do buffer (${params.fileBuffer.byteLength}) para anamnese ${params.anamnesisId}`,
+      );
+    }
+
+    let uploadResult;
+
+    try {
+      uploadResult = await this.attachmentStorage.upload({
+        tenantId: params.tenantId,
+        anamnesisId: params.anamnesisId,
+        fileName: params.fileName,
+        mimeType: params.mimeType,
+        buffer: params.fileBuffer,
+      });
+    } catch (error) {
+      this.logger.error('Falha ao salvar anexo no storage', error as Error);
+      throw AnamnesisErrorFactory.invalidState('Nao foi possivel salvar o anexo no storage');
+    }
 
     const attachment = await this.anamnesisRepository.createAttachment({
       anamnesisId: params.anamnesisId,
@@ -58,8 +86,8 @@ export class CreateAnamnesisAttachmentUseCase
       stepNumber: params.stepNumber,
       fileName: params.fileName,
       mimeType: params.mimeType,
-      size: params.size,
-      storagePath: params.storagePath,
+      size: uploadResult.size,
+      storagePath: uploadResult.storagePath,
       uploadedBy: params.requesterId,
     });
 

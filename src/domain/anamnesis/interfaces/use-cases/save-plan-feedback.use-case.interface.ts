@@ -9,6 +9,7 @@ export interface ISavePlanFeedbackUseCase {
     liked?: boolean;
     feedbackComment?: string;
     requesterId: string;
+    requesterRole: string;
   }): Promise<Result<TherapeuticPlanData>>;
 }
 

@@ -6,6 +6,7 @@ export interface IRemoveAnamnesisAttachmentUseCase {
     anamnesisId: string;
     attachmentId: string;
     requesterId: string;
+    requesterRole: string;
   }): Promise<Result<void>>;
 }
 

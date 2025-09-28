@@ -1,8 +1,10 @@
-﻿import { ExecutionContext, INestApplication } from '@nestjs/common';
+import { ExecutionContext, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
+import { ConfigService } from '@nestjs/config';
 
 import { AnamnesisController } from '@modules/anamnesis/api/controllers/anamnesis.controller';
+import { AnamnesisAIWebhookGuard } from '@modules/anamnesis/guards/anamnesis-ai-webhook.guard';
 import { RolesEnum } from '@domain/auth/enums/roles.enum';
 import { ICurrentUser } from '@domain/auth/interfaces/current-user.interface';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
@@ -10,14 +12,18 @@ import { RolesGuard } from '@modules/auth/guards/roles.guard';
 import { IStartAnamnesisUseCase } from '@domain/anamnesis/interfaces/use-cases/start-anamnesis.use-case.interface';
 import { IGetAnamnesisUseCase } from '@domain/anamnesis/interfaces/use-cases/get-anamnesis.use-case.interface';
 import { ISaveAnamnesisStepUseCase } from '@domain/anamnesis/interfaces/use-cases/save-anamnesis-step.use-case.interface';
+import { IAutoSaveAnamnesisUseCase } from '@domain/anamnesis/interfaces/use-cases/auto-save-anamnesis.use-case.interface';
 import { ISubmitAnamnesisUseCase } from '@domain/anamnesis/interfaces/use-cases/submit-anamnesis.use-case.interface';
 import { IListAnamnesesByPatientUseCase } from '@domain/anamnesis/interfaces/use-cases/list-anamneses-by-patient.use-case.interface';
+import { IGetAnamnesisHistoryUseCase } from '@domain/anamnesis/interfaces/use-cases/get-anamnesis-history.use-case.interface';
 import { ISaveTherapeuticPlanUseCase } from '@domain/anamnesis/interfaces/use-cases/save-therapeutic-plan.use-case.interface';
 import { ISavePlanFeedbackUseCase } from '@domain/anamnesis/interfaces/use-cases/save-plan-feedback.use-case.interface';
 import { ICreateAnamnesisAttachmentUseCase } from '@domain/anamnesis/interfaces/use-cases/create-anamnesis-attachment.use-case.interface';
 import { IRemoveAnamnesisAttachmentUseCase } from '@domain/anamnesis/interfaces/use-cases/remove-anamnesis-attachment.use-case.interface';
+import { IReceiveAnamnesisAIResultUseCase } from '@domain/anamnesis/interfaces/use-cases/receive-anamnesis-ai-result.use-case.interface';
 import {
   Anamnesis,
+  AnamnesisAIAnalysis,
   AnamnesisAttachment,
   AnamnesisListItem,
   TherapeuticPlanData,
@@ -31,12 +37,22 @@ interface UseCaseMock<TInput, TOutput> {
 describe('AnamnesisController (integration)', () => {
   let app: INestApplication;
 
+  const FIXTURE_IDS = {
+    tenant: 'tenant-1',
+    consultation: '11111111-1111-1111-1111-111111111111',
+    patient: '22222222-2222-2222-2222-222222222222',
+    professional: '33333333-3333-3333-3333-333333333333',
+    anamnesis: '44444444-4444-4444-4444-444444444444',
+    plan: '55555555-5555-5555-5555-555555555555',
+    attachment: '66666666-6666-6666-6666-666666666666',
+  } as const;
+
   const currentUser: ICurrentUser = {
-    id: 'user-1',
+    id: FIXTURE_IDS.professional,
     email: 'pro@example.com',
     name: 'Profissional',
     role: RolesEnum.PROFESSIONAL,
-    tenantId: 'tenant-1',
+    tenantId: FIXTURE_IDS.tenant,
     sessionId: 'session-1',
     metadata: {},
   };
@@ -60,65 +76,90 @@ describe('AnamnesisController (integration)', () => {
     execute: jest.fn(),
   });
 
-  const createAnamnesis = (): Anamnesis => ({
-    id: 'anamnesis-1',
-    consultationId: 'consult-1',
-    patientId: 'patient-1',
-    professionalId: 'professional-1',
-    tenantId: 'tenant-1',
-    status: 'draft',
-    totalSteps: 3,
-    currentStep: 1,
-    completionRate: 0,
-    isDraft: true,
-    createdAt: new Date('2025-09-26T00:00:00Z'),
-    updatedAt: new Date('2025-09-26T00:00:00Z'),
-    steps: [],
-    latestPlan: null,
+  const createAnamnesis = (overrides: Partial<Anamnesis> = {}): Anamnesis => ({
+    id: overrides.id ?? FIXTURE_IDS.anamnesis,
+    consultationId: overrides.consultationId ?? FIXTURE_IDS.consultation,
+    patientId: overrides.patientId ?? FIXTURE_IDS.patient,
+    professionalId: overrides.professionalId ?? FIXTURE_IDS.professional,
+    tenantId: overrides.tenantId ?? FIXTURE_IDS.tenant,
+    status: overrides.status ?? 'draft',
+    totalSteps: overrides.totalSteps ?? 3,
+    currentStep: overrides.currentStep ?? 1,
+    completionRate: overrides.completionRate ?? 0,
+    isDraft: overrides.isDraft ?? true,
+    lastAutoSavedAt: overrides.lastAutoSavedAt,
+    submittedAt: overrides.submittedAt,
+    completedAt: overrides.completedAt,
+    createdAt: overrides.createdAt ?? new Date('2025-09-26T00:00:00Z'),
+    updatedAt: overrides.updatedAt ?? new Date('2025-09-26T00:00:00Z'),
+    steps: overrides.steps ?? [],
+    latestPlan: overrides.latestPlan ?? null,
+    attachments: overrides.attachments ?? [],
   });
 
-  const createPlan = (): TherapeuticPlanData => ({
-    id: 'plan-1',
-    anamnesisId: 'anamnesis-1',
-    clinicalReasoning: 'Raciocinio',
-    summary: 'Resumo',
-    therapeuticPlan: {},
-    riskFactors: [],
-    recommendations: [],
-    confidence: 0.9,
-    reviewRequired: false,
-    approvalStatus: 'pending',
-    liked: undefined,
-    feedbackComment: undefined,
-    feedbackGivenBy: undefined,
-    feedbackGivenAt: undefined,
-    generatedAt: new Date('2025-09-26T01:00:00Z'),
-    createdAt: new Date('2025-09-26T01:00:00Z'),
-    updatedAt: new Date('2025-09-26T01:00:00Z'),
+  const createPlan = (overrides: Partial<TherapeuticPlanData> = {}): TherapeuticPlanData => ({
+    id: overrides.id ?? FIXTURE_IDS.plan,
+    anamnesisId: overrides.anamnesisId ?? FIXTURE_IDS.anamnesis,
+    clinicalReasoning: overrides.clinicalReasoning ?? 'Raciocinio',
+    summary: overrides.summary ?? 'Resumo',
+    therapeuticPlan: overrides.therapeuticPlan ?? {},
+    riskFactors: overrides.riskFactors ?? [],
+    recommendations: overrides.recommendations ?? [],
+    confidence: overrides.confidence ?? 0.9,
+    reviewRequired: overrides.reviewRequired ?? false,
+    approvalStatus: overrides.approvalStatus ?? 'pending',
+    liked: overrides.liked,
+    feedbackComment: overrides.feedbackComment,
+    feedbackGivenBy: overrides.feedbackGivenBy,
+    feedbackGivenAt: overrides.feedbackGivenAt,
+    generatedAt: overrides.generatedAt ?? new Date('2025-09-26T01:00:00Z'),
+    createdAt: overrides.createdAt ?? new Date('2025-09-26T01:00:00Z'),
+    updatedAt: overrides.updatedAt ?? new Date('2025-09-26T01:00:00Z'),
   });
 
-  const createAttachment = (): AnamnesisAttachment => ({
-    id: 'attachment-1',
-    anamnesisId: 'anamnesis-1',
-    stepNumber: 2,
-    fileName: 'exame.pdf',
-    mimeType: 'application/pdf',
-    size: 2048,
-    storagePath: 'path/exame.pdf',
-    uploadedBy: 'professional-1',
-    uploadedAt: new Date('2025-09-26T02:00:00Z'),
+  const createAIAnalysis = (overrides: Partial<AnamnesisAIAnalysis> = {}): AnamnesisAIAnalysis => ({
+    id: overrides.id ?? 'analysis-1',
+    anamnesisId: overrides.anamnesisId ?? FIXTURE_IDS.anamnesis,
+    tenantId: overrides.tenantId ?? FIXTURE_IDS.tenant,
+    status: overrides.status ?? 'pending',
+    payload: overrides.payload ?? {},
+    clinicalReasoning: overrides.clinicalReasoning,
+    summary: overrides.summary,
+    riskFactors: overrides.riskFactors,
+    recommendations: overrides.recommendations,
+    confidence: overrides.confidence,
+    generatedAt: overrides.generatedAt ?? new Date('2025-09-26T02:00:00Z'),
+    respondedAt: overrides.respondedAt,
+    errorMessage: overrides.errorMessage,
+    createdAt: overrides.createdAt ?? new Date('2025-09-26T02:00:00Z'),
+    updatedAt: overrides.updatedAt ?? new Date('2025-09-26T02:00:00Z'),
+  });
+
+  const createAttachment = (overrides: Partial<AnamnesisAttachment> = {}): AnamnesisAttachment => ({
+    id: overrides.id ?? FIXTURE_IDS.attachment,
+    anamnesisId: overrides.anamnesisId ?? FIXTURE_IDS.anamnesis,
+    stepNumber: overrides.stepNumber ?? 2,
+    fileName: overrides.fileName ?? 'exame.pdf',
+    mimeType: overrides.mimeType ?? 'application/pdf',
+    size: overrides.size ?? 2048,
+    storagePath: overrides.storagePath ?? 'path/exame.pdf',
+    uploadedBy: overrides.uploadedBy ?? FIXTURE_IDS.professional,
+    uploadedAt: overrides.uploadedAt ?? new Date('2025-09-26T02:00:00Z'),
   });
 
   const useCases = {
     start: createUseCaseMock<any, Anamnesis>(),
     detail: createUseCaseMock<any, Anamnesis>(),
     saveStep: createUseCaseMock<any, Anamnesis>(),
+    autoSave: createUseCaseMock<any, Anamnesis>(),
     submit: createUseCaseMock<any, Anamnesis>(),
     list: createUseCaseMock<any, AnamnesisListItem[]>(),
+    history: createUseCaseMock<any, AnamnesisHistoryData>(),
     savePlan: createUseCaseMock<any, TherapeuticPlanData>(),
     feedback: createUseCaseMock<any, TherapeuticPlanData>(),
     createAttachment: createUseCaseMock<any, AnamnesisAttachment>(),
     removeAttachment: createUseCaseMock<any, void>(),
+    receiveAiResult: createUseCaseMock<any, AnamnesisAIAnalysis>(),
   } as const;
 
   beforeEach(async () => {
@@ -128,14 +169,21 @@ describe('AnamnesisController (integration)', () => {
         { provide: IStartAnamnesisUseCase, useValue: useCases.start },
         { provide: IGetAnamnesisUseCase, useValue: useCases.detail },
         { provide: ISaveAnamnesisStepUseCase, useValue: useCases.saveStep },
+        { provide: IAutoSaveAnamnesisUseCase, useValue: useCases.autoSave },
         { provide: ISubmitAnamnesisUseCase, useValue: useCases.submit },
         { provide: IListAnamnesesByPatientUseCase, useValue: useCases.list },
+        { provide: IGetAnamnesisHistoryUseCase, useValue: useCases.history },
         { provide: ISaveTherapeuticPlanUseCase, useValue: useCases.savePlan },
         { provide: ISavePlanFeedbackUseCase, useValue: useCases.feedback },
         { provide: ICreateAnamnesisAttachmentUseCase, useValue: useCases.createAttachment },
         { provide: IRemoveAnamnesisAttachmentUseCase, useValue: useCases.removeAttachment },
+        { provide: IReceiveAnamnesisAIResultUseCase, useValue: useCases.receiveAiResult },
+        { provide: ConfigService, useValue: { get: jest.fn(() => 'test-secret') } },
+        { provide: AnamnesisAIWebhookGuard, useValue: { canActivate: () => true } },
       ],
     })
+      .overrideGuard(AnamnesisAIWebhookGuard)
+      .useValue({ canActivate: () => true })
       .overrideGuard(JwtAuthGuard)
       .useClass(guards.JwtAuthGuard as any)
       .overrideGuard(RolesGuard)
@@ -158,19 +206,19 @@ describe('AnamnesisController (integration)', () => {
 
     const response = await request(app.getHttpServer())
       .post('/anamneses/start')
-      .set('x-tenant-id', 'tenant-1')
+      .set('x-tenant-id', FIXTURE_IDS.tenant)
       .send({
-        consultationId: 'consult-1',
-        patientId: 'patient-1',
-        professionalId: 'professional-1',
+        consultationId: FIXTURE_IDS.consultation,
+        patientId: FIXTURE_IDS.patient,
+        professionalId: FIXTURE_IDS.professional,
         totalSteps: 5,
       })
       .expect(201);
 
     expect(useCases.start.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ tenantId: 'tenant-1', totalSteps: 5 }),
+      expect.objectContaining({ tenantId: FIXTURE_IDS.tenant, totalSteps: 5 }),
     );
-    expect(response.body.id).toBe('anamnesis-1');
+    expect(response.body.id).toBe(FIXTURE_IDS.anamnesis);
   });
 
   it('GET /anamneses/:id should return detail', async () => {
@@ -178,23 +226,23 @@ describe('AnamnesisController (integration)', () => {
     useCases.detail.execute.mockResolvedValue({ data: anamnesis });
 
     const response = await request(app.getHttpServer())
-      .get('/anamneses/anamnesis-1?includeSteps=true')
-      .set('x-tenant-id', 'tenant-1')
+      .get(`/anamneses/${FIXTURE_IDS.anamnesis}?includeSteps=true`)
+      .set('x-tenant-id', FIXTURE_IDS.tenant)
       .expect(200);
 
     expect(useCases.detail.execute).toHaveBeenCalledWith(
       expect.objectContaining({ includeSteps: true }),
     );
-    expect(response.body.id).toBe('anamnesis-1');
+    expect(response.body.id).toBe(FIXTURE_IDS.anamnesis);
   });
 
   it('GET /anamneses/patient/:patientId should list anamneses', async () => {
     const items: AnamnesisListItem[] = [
       {
-        id: 'anamnesis-1',
-        consultationId: 'consult-1',
-        patientId: 'patient-1',
-        professionalId: 'professional-1',
+        id: FIXTURE_IDS.anamnesis,
+        consultationId: FIXTURE_IDS.consultation,
+        patientId: FIXTURE_IDS.patient,
+        professionalId: FIXTURE_IDS.professional,
         status: 'draft',
         completionRate: 0,
         updatedAt: new Date('2025-09-26T00:00:00Z'),
@@ -203,14 +251,73 @@ describe('AnamnesisController (integration)', () => {
     useCases.list.execute.mockResolvedValue({ data: items });
 
     const response = await request(app.getHttpServer())
-      .get('/anamneses/patient/patient-1?status=submitted')
-      .set('x-tenant-id', 'tenant-1')
+      .get(`/anamneses/patient/${FIXTURE_IDS.patient}?status=submitted`)
+      .set('x-tenant-id', FIXTURE_IDS.tenant)
       .expect(200);
 
     expect(useCases.list.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ patientId: 'patient-1' }),
+      expect.objectContaining({ patientId: FIXTURE_IDS.patient }),
     );
-    expect(response.body[0].id).toBe('anamnesis-1');
+    expect(response.body[0].id).toBe(FIXTURE_IDS.anamnesis);
+  });
+
+  it('GET /anamneses/patient/:patientId/history should return history', async () => {
+    const historyData: AnamnesisHistoryData = {
+      patientId: FIXTURE_IDS.patient,
+      entries: [
+        {
+          id: 'hist-1',
+          consultationId: FIXTURE_IDS.consultation,
+          professionalId: FIXTURE_IDS.professional,
+          status: 'submitted',
+          completionRate: 100,
+          submittedAt: new Date('2025-09-26T11:00:00Z'),
+          updatedAt: new Date('2025-09-26T11:00:00Z'),
+          steps: [
+            {
+              stepNumber: 1,
+              key: 'identification',
+              payload: { fullName: 'Paciente Historico' },
+              completed: true,
+              hasErrors: false,
+              validationScore: 100,
+              updatedAt: new Date('2025-09-26T11:00:00Z'),
+            },
+          ],
+          attachments: [],
+          latestPlan: null,
+        },
+      ],
+      prefill: {
+        steps: { identification: { fullName: 'Paciente Historico' } },
+        attachments: [],
+        sourceAnamnesisId: 'hist-1',
+        updatedAt: new Date('2025-09-26T11:00:00Z'),
+      },
+    };
+
+    useCases.history.execute.mockResolvedValue({ data: historyData });
+
+    const response = await request(app.getHttpServer())
+      .get(
+        `/anamneses/patient/${FIXTURE_IDS.patient}/history?limit=1&status=submitted&includeDrafts=true`,
+      )
+      .set('x-tenant-id', FIXTURE_IDS.tenant)
+      .expect(200);
+
+    expect(useCases.history.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: FIXTURE_IDS.tenant,
+        patientId: FIXTURE_IDS.patient,
+        filters: expect.objectContaining({
+          limit: 1,
+          statuses: ['submitted'],
+          includeDrafts: true,
+        }),
+      }),
+    );
+    expect(Array.isArray(response.body.entries)).toBe(true);
+    expect(response.body.prefill.steps.identification.fullName).toBe('Paciente Historico');
   });
 
   it('PUT /anamneses/:id/steps/:stepNumber should save step', async () => {
@@ -218,8 +325,8 @@ describe('AnamnesisController (integration)', () => {
     useCases.saveStep.execute.mockResolvedValue({ data: anamnesis });
 
     await request(app.getHttpServer())
-      .put('/anamneses/anamnesis-1/steps/2')
-      .set('x-tenant-id', 'tenant-1')
+      .put(`/anamneses/${FIXTURE_IDS.anamnesis}/steps/2`)
+      .set('x-tenant-id', FIXTURE_IDS.tenant)
       .send({ key: 'lifestyle', payload: { field: 'value' }, completed: true })
       .expect(200);
 
@@ -228,15 +335,70 @@ describe('AnamnesisController (integration)', () => {
     );
   });
 
+  it('POST /anamneses/:id/auto-save should auto save step', async () => {
+    const autoSavedAt = '2025-09-27T10:00:00.000Z';
+    const anamnesis = createAnamnesis({
+      lastAutoSavedAt: new Date(autoSavedAt),
+    });
+    useCases.autoSave.execute.mockResolvedValue({ data: anamnesis });
+
+    const response = await request(app.getHttpServer())
+      .post(`/anamneses/${FIXTURE_IDS.anamnesis}/auto-save`)
+      .set('x-tenant-id', FIXTURE_IDS.tenant)
+      .send({
+        stepNumber: 2,
+        key: 'lifestyle',
+        payload: { field: 'value' },
+        hasErrors: false,
+        validationScore: 80,
+        autoSavedAt,
+      })
+      .expect(200);
+
+    expect(useCases.autoSave.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        anamnesisId: FIXTURE_IDS.anamnesis,
+        stepNumber: 2,
+        autoSavedAt: new Date(autoSavedAt),
+      }),
+    );
+    expect(response.body.id).toBe(FIXTURE_IDS.anamnesis);
+  });
+
   it('POST /anamneses/:id/submit should submit anamnesis', async () => {
     useCases.submit.execute.mockResolvedValue({ data: createAnamnesis({ status: 'submitted' }) });
 
     await request(app.getHttpServer())
-      .post('/anamneses/anamnesis-1/submit')
-      .set('x-tenant-id', 'tenant-1')
+      .post(`/anamneses/${FIXTURE_IDS.anamnesis}/submit`)
+      .set('x-tenant-id', FIXTURE_IDS.tenant)
       .expect(200);
 
     expect(useCases.submit.execute).toHaveBeenCalled();
+  });
+
+  it('POST /anamneses/:id/ai-result should receber resultado da IA', async () => {
+    useCases.receiveAiResult.execute.mockResolvedValue({
+      data: createAIAnalysis({ status: 'completed' }),
+    });
+
+    await request(app.getHttpServer())
+      .post(`/anamneses/${FIXTURE_IDS.anamnesis}/ai-result`)
+      .set('x-tenant-id', FIXTURE_IDS.tenant)
+      .set('x-ai-secret', 'dummy')
+      .send({
+        analysisId: '11111111-2222-3333-4444-555555555555',
+        status: 'completed',
+        respondedAt: '2025-09-27T10:00:00.000Z',
+        clinicalReasoning: 'Raciocinio IA',
+      })
+      .expect(202);
+
+    expect(useCases.receiveAiResult.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        analysisId: '11111111-2222-3333-4444-555555555555',
+        respondedAt: new Date('2025-09-27T10:00:00.000Z'),
+      }),
+    );
   });
 
   it('POST /anamneses/:id/plan should save plan', async () => {
@@ -255,15 +417,15 @@ describe('AnamnesisController (integration)', () => {
     };
 
     const response = await request(app.getHttpServer())
-      .post('/anamneses/anamnesis-1/plan')
-      .set('x-tenant-id', 'tenant-1')
+      .post(`/anamneses/${FIXTURE_IDS.anamnesis}/plan`)
+      .set('x-tenant-id', FIXTURE_IDS.tenant)
       .send(payload)
       .expect(201);
 
     expect(useCases.savePlan.execute).toHaveBeenCalledWith(
       expect.objectContaining({ confidence: 0.8 }),
     );
-    expect(response.body.id).toBe('plan-1');
+    expect(response.body.id).toBe(FIXTURE_IDS.plan);
   });
 
   it('POST /anamneses/:id/plan/feedback should persist feedback', async () => {
@@ -271,8 +433,8 @@ describe('AnamnesisController (integration)', () => {
     useCases.feedback.execute.mockResolvedValue({ data: plan });
 
     const response = await request(app.getHttpServer())
-      .post('/anamneses/anamnesis-1/plan/feedback')
-      .set('x-tenant-id', 'tenant-1')
+      .post(`/anamneses/${FIXTURE_IDS.anamnesis}/plan/feedback`)
+      .set('x-tenant-id', FIXTURE_IDS.tenant)
       .send({ approvalStatus: 'approved', liked: true })
       .expect(200);
 
@@ -286,32 +448,40 @@ describe('AnamnesisController (integration)', () => {
     const attachment = createAttachment();
     useCases.createAttachment.execute.mockResolvedValue({ data: attachment });
 
+    const fileContent = Buffer.from('fake-pdf');
+
     const response = await request(app.getHttpServer())
-      .post('/anamneses/anamnesis-1/attachments')
-      .set('x-tenant-id', 'tenant-1')
-      .send({
+      .post(`/anamneses/${FIXTURE_IDS.anamnesis}/attachments`)
+      .set('x-tenant-id', FIXTURE_IDS.tenant)
+      .field('stepNumber', '2')
+      .field('fileName', 'exame.pdf')
+      .attach('file', fileContent, { filename: 'exame.pdf', contentType: 'application/pdf' })
+      .expect(201);
+
+    expect(useCases.createAttachment.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: FIXTURE_IDS.tenant,
+        anamnesisId: FIXTURE_IDS.anamnesis,
         stepNumber: 2,
         fileName: 'exame.pdf',
         mimeType: 'application/pdf',
-        size: 2048,
-        storagePath: 'path/exame.pdf',
-      })
-      .expect(201);
-
-    expect(useCases.createAttachment.execute).toHaveBeenCalled();
-    expect(response.body.id).toBe('attachment-1');
+        size: fileContent.length,
+        fileBuffer: expect.any(Buffer),
+      }),
+    );
+    expect(response.body.id).toBe(FIXTURE_IDS.attachment);
   });
 
   it('DELETE /anamneses/:id/attachments/:attachmentId should remove attachment', async () => {
     useCases.removeAttachment.execute.mockResolvedValue({ data: undefined });
 
     await request(app.getHttpServer())
-      .delete('/anamneses/anamnesis-1/attachments/attachment-1')
-      .set('x-tenant-id', 'tenant-1')
+      .delete(`/anamneses/${FIXTURE_IDS.anamnesis}/attachments/${FIXTURE_IDS.attachment}`)
+      .set('x-tenant-id', FIXTURE_IDS.tenant)
       .expect(204);
 
     expect(useCases.removeAttachment.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ attachmentId: 'attachment-1' }),
+      expect.objectContaining({ attachmentId: FIXTURE_IDS.attachment }),
     );
   });
 });

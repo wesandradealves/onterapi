@@ -11,6 +11,7 @@ import {
 import { AnamnesisStatus } from '../../../domain/anamnesis/types/anamnesis.types';
 import { AnamnesisStepEntity } from './anamnesis-step.entity';
 import { AnamnesisTherapeuticPlanEntity } from './anamnesis-therapeutic-plan.entity';
+import { AnamnesisAIAnalysisEntity } from './anamnesis-ai-analysis.entity';
 import { AnamnesisAttachmentEntity } from './anamnesis-attachment.entity';
 
 @Entity('anamneses')
@@ -78,4 +79,9 @@ export class AnamnesisEntity {
     cascade: ['insert', 'update'],
   })
   attachments?: AnamnesisAttachmentEntity[];
+
+  @OneToMany(() => AnamnesisAIAnalysisEntity, (analysis) => analysis.anamnesis, {
+    cascade: ['insert', 'update'],
+  })
+  aiAnalyses?: AnamnesisAIAnalysisEntity[];
 }

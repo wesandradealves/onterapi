@@ -27,6 +27,8 @@ export class DomainEvents {
   static ANAMNESIS_SUBMITTED = 'anamnesis.submitted';
   static ANAMNESIS_PLAN_GENERATED = 'anamnesis.plan.generated';
   static ANAMNESIS_PLAN_FEEDBACK_SAVED = 'anamnesis.plan.feedback_saved';
+  static ANAMNESIS_AI_REQUESTED = 'anamnesis.ai.requested';
+  static ANAMNESIS_AI_COMPLETED = 'anamnesis.ai.completed';
   static ANAMNESIS_ATTACHMENT_CREATED = 'anamnesis.attachment.created';
   static ANAMNESIS_ATTACHMENT_REMOVED = 'anamnesis.attachment.removed';
 
@@ -303,6 +305,49 @@ export class DomainEvents {
       this.ANAMNESIS_PLAN_FEEDBACK_SAVED,
       anamnesisId,
       { anamnesisId, ...feedbackData },
+      metadata,
+    );
+  }
+
+  static anamnesisAIRequested(
+    anamnesisId: string,
+    requestData: {
+      tenantId: string;
+      analysisId: string;
+      consultationId: string;
+      patientId: string;
+      professionalId: string;
+      payload: unknown;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.ANAMNESIS_AI_REQUESTED,
+      anamnesisId,
+      { anamnesisId, ...requestData },
+      metadata,
+    );
+  }
+
+  static anamnesisAICompleted(
+    anamnesisId: string,
+    resultData: {
+      tenantId: string;
+      analysisId: string;
+      status: string;
+      respondedAt: Date;
+      confidence?: number;
+      clinicalReasoning?: string;
+      summary?: string;
+      errorMessage?: string;
+      payload?: unknown;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.ANAMNESIS_AI_COMPLETED,
+      anamnesisId,
+      { anamnesisId, ...resultData },
       metadata,
     );
   }

@@ -1,4 +1,4 @@
-﻿# OnTerapi 
+# OnTerapi 
 
 Plataforma SaaS multi-tenant para gestao de clinicas e terapeutas, com Supabase Auth, 2FA, RBAC e modulo de pacientes conectado diretamente ao storage do Supabase.
 
@@ -166,7 +166,7 @@ CORS_ORIGIN=http://localhost:3000
 | E2E | `npm run test:e2e` | Fluxos HTTP completos via supertest | Requer Supabase configurado; usa fixtures em `test/e2e`. |
 | Cobertura | `npm run test:cov` | Agrega suites unit e integracao com cobertura 100% | Mantem thresholds globais em 100% para statements/branches/functions/lines. |
 
-Resultados recentes: 150 testes executados; cobertura global 100% (`npm run test:cov`).
+Resultados recentes: 202 testes executados; cobertura global 100% (`npm run test:cov`).
 
 ## Fluxo Completo de Teste via cURL
 > Observacoes:
@@ -280,19 +280,19 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 
 ## Linha de Base de Qualidade
 
-- Data: 2025-09-26
-- Commit analisado: feature/patients-new-fields (worktree)
+- Data: 2025-09-27
+- Commit analisado: feature/anamnesis (worktree)
 - Ambiente: desenvolvimento local (Node 22.18.0)
 
 ## Pontuacao Atual
 
 | Criterio | Nota atual (0-10) | Meta | Evidencias chave |
 | --- | --- | --- | --- |
-| DRY / Reuso de codigo | 9.7 | >= 9.0 | Controllers de Auth, Patients e Users delegam normalizacao de payloads aos mappers dedicados, evitando duplicacao de parsers (src/modules/auth/api/controllers/auth.controller.ts:118, src/modules/patients/api/controllers/patients.controller.ts:110, src/modules/users/api/controllers/users.controller.ts:97) enquanto user-request.mapper centraliza os contratos de usuarios (src/modules/users/api/mappers/user-request.mapper.ts:13). |
-| Automacao de qualidade | 8.5 | >= 8.5 | Sequencia padrao npm run lint -> test:unit -> test:int -> test:e2e -> test:cov confirmada em 26/09 com threshold 100% (jest.config.js:12-29, package.json:23-38). |
-| Testes automatizados | 10.0 | >= 9.5 | 173 testes cobrindo unidade/int/e2e executados em 26/09, com cobertura global 100% (test/unit/modules.auth.resend-verification-email.use-case.spec.ts:1, test/integration/auth.controller.integration.spec.ts:1, coverage/coverage-summary.json:1). |
-| Validacoes e contratos | 9.2 | >= 9.0 | Fluxos de auth, users e patients agora passam por schemas Zod e mappers antes dos use cases (src/modules/auth/api/mappers/auth-request.mapper.ts:117, src/modules/users/api/controllers/users.controller.ts:144, src/modules/patients/api/controllers/patients.controller.ts:110). |
-| Governanca de dominio / RBAC | 8.0 | >= 9.0 | Guardas e casos de uso continuam reforcando roles/tenant com auditoria (src/modules/patients/use-cases/get-patient.use-case.ts:89, test/e2e/patients.e2e-spec.ts:58). |
+| DRY / Reuso de codigo | 9.6 | >= 9.0 | Controllers de Auth, Patients, Users e Anamnesis continuam delegando normalizacao a mappers/presenters dedicados (ex.: src/modules/anamnesis/api/presenters/anamnesis.presenter.ts, src/shared/mappers/anamnesis.mapper.ts), eliminando duplicacao de clones e formatacao manual de datas. |
+| Automacao de qualidade | 8.7 | >= 8.5 | Sequencia manual revisada em 27/09: npm run lint -> npx tsc --noEmit -> npm run test:unit -> npm run test:int -> npm run test:e2e -> npm run test:cov -> npm run build (todos executados nesta sessao). |
+| Testes automatizados | 10.0 | >= 9.5 | 202 testes (unit, integration, e2e e cobertura) executados em ~14 s; presenter de anamnese ganhou suite dedicada mantendo cobertura 100% (test/unit/modules.anamnesis/anamnesis.presenter.spec.ts). |
+| Validacoes e contratos | 9.3 | >= 9.0 | Controllers de Anamnesis aplicam Zod com casting para enums (`AnamnesisStatus`, `AnamnesisStepKey`) antes dos use cases, garantindo filtros tipados e mensagens consistentes (src/modules/anamnesis/api/controllers/anamnesis.controller.ts:215, 254). |
+| Governanca de dominio / RBAC | 8.4 | >= 9.0 | Casos de uso de Anamnesis continuam consultando ensureCanModifyAnamnesis; interfaces agora exigem requesterRole para anexos, feedback e submissao, fortalecendo auditoria de tenant/role. |
 
 ## Observacoes Detalhadas
 

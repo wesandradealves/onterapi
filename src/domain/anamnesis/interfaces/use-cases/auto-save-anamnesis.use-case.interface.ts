@@ -1,19 +1,19 @@
 import { Result } from '../../../../shared/types/result.type';
 import { Anamnesis, AnamnesisStepKey } from '../../../anamnesis/types/anamnesis.types';
 
-export interface ISaveAnamnesisStepUseCase {
+export interface IAutoSaveAnamnesisUseCase {
   execute(params: {
     tenantId: string;
     anamnesisId: string;
     stepNumber: number;
     key: AnamnesisStepKey;
     payload: Record<string, unknown>;
-    completed?: boolean;
     hasErrors?: boolean;
     validationScore?: number;
+    autoSavedAt?: Date;
     requesterId: string;
     requesterRole: string;
   }): Promise<Result<Anamnesis>>;
 }
 
-export const ISaveAnamnesisStepUseCase = Symbol('ISaveAnamnesisStepUseCase');
+export const IAutoSaveAnamnesisUseCase = Symbol('IAutoSaveAnamnesisUseCase');

@@ -1,4 +1,4 @@
-﻿import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
+import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
 import { AnamnesisErrorFactory } from '../../../shared/factories/anamnesis-error.factory';
 import { mapRoleToDomain } from '../../../shared/utils/role.utils';
 
@@ -27,6 +27,10 @@ export const ensureCanModifyAnamnesis = (context: AnamnesisPermissionContext): v
   }
 
   if (role === RolesEnum.PROFESSIONAL && context.professionalId === context.requesterId) {
+    return;
+  }
+
+  if (role === RolesEnum.PATIENT && context.patientId === context.requesterId) {
     return;
   }
 

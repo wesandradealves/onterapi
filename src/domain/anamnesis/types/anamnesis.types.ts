@@ -1,3 +1,10 @@
+import {
+  PatientAddress,
+  PatientContact,
+  PatientMedicalInfo,
+  PatientRiskLevel,
+} from '../../patients/types/patient.types';
+
 export type AnamnesisStatus = 'draft' | 'submitted' | 'completed' | 'cancelled';
 
 export type AnamnesisStepKey =
@@ -362,6 +369,92 @@ export interface AnamnesisAttachment {
   uploadedAt: Date;
 }
 
+export type AnamnesisStepTemplateSpecialty =
+  | 'default'
+  | 'general'
+  | 'physiotherapy'
+  | 'nutrition'
+  | 'psychology'
+  | 'other';
+
+export interface AnamnesisAIRequestPatientProfile {
+  id: string;
+  fullName: string;
+  birthDate?: Date;
+  gender?: string;
+  age?: number;
+  contact?: PatientContact;
+  address?: PatientAddress;
+  medical?: PatientMedicalInfo;
+  riskLevel?: PatientRiskLevel;
+  bmi?: number;
+  packYears?: number;
+}
+
+export interface AnamnesisAIRequestProfessionalProfile {
+  id: string;
+  name: string;
+  email?: string;
+  role: string;
+  preferences?: Record<string, unknown>;
+}
+
+export interface AnamnesisAIRequestPayload {
+  tenantId: string;
+  anamnesisId: string;
+  consultationId: string;
+  professionalId: string;
+  patientId: string;
+  status: AnamnesisStatus;
+  submittedAt?: Date;
+  steps: Record<AnamnesisStepKey, Record<string, unknown>>;
+  attachments: Array<{
+    id: string;
+    fileName: string;
+    mimeType: string;
+    size: number;
+    storagePath: string;
+    uploadedAt: Date;
+    stepNumber?: number;
+  }>;
+  patientProfile?: AnamnesisAIRequestPatientProfile;
+  professionalProfile?: AnamnesisAIRequestProfessionalProfile;
+  metadata?: Record<string, unknown>;
+}
+
+export interface AnamnesisStepTemplate {
+  id: string;
+  key: AnamnesisStepKey;
+  title: string;
+  description?: string;
+  version: number;
+  schema: Record<string, unknown>;
+  specialty?: AnamnesisStepTemplateSpecialty | string;
+  tenantId?: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type AnamnesisAIAnalysisStatus = 'pending' | 'completed' | 'failed';
+
+export interface AnamnesisAIAnalysis {
+  id: string;
+  anamnesisId: string;
+  tenantId: string;
+  status: AnamnesisAIAnalysisStatus;
+  payload?: Record<string, unknown>;
+  clinicalReasoning?: string;
+  summary?: string;
+  riskFactors?: TherapeuticPlanRiskFactor[];
+  recommendations?: TherapeuticPlanRecommendation[];
+  confidence?: number;
+  generatedAt?: Date;
+  respondedAt?: Date;
+  errorMessage?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
 export interface Anamnesis {
   id: string;
   consultationId: string;
@@ -381,6 +474,7 @@ export interface Anamnesis {
   steps?: AnamnesisStep[];
   latestPlan?: TherapeuticPlanData | null;
   attachments?: AnamnesisAttachment[];
+  aiAnalyses?: AnamnesisAIAnalysis[];
 }
 
 export interface CreateAnamnesisInput {
@@ -405,6 +499,17 @@ export interface SaveAnamnesisStepInput {
   updatedBy: string;
   currentStep?: number;
   completionRate?: number;
+}
+
+export interface AutoSaveAnamnesisStepInput {
+  anamnesisId: string;
+  tenantId: string;
+  stepNumber: number;
+  key: AnamnesisStepKey;
+  payload: Record<string, unknown>;
+  hasErrors?: boolean;
+  validationScore?: number;
+  autoSavedAt?: Date;
 }
 
 export interface SubmitAnamnesisInput {
@@ -455,6 +560,49 @@ export interface RemoveAnamnesisAttachmentInput {
   attachmentId: string;
 }
 
+export interface GetStepTemplatesFilters {
+  tenantId?: string;
+  specialty?: AnamnesisStepTemplateSpecialty | string;
+  includeInactive?: boolean;
+}
+
+export interface CreateAnamnesisAIAnalysisInput {
+  anamnesisId: string;
+  tenantId: string;
+  payload?: Record<string, unknown>;
+  status?: AnamnesisAIAnalysisStatus;
+}
+
+export interface CompleteAnamnesisAIAnalysisInput {
+  analysisId: string;
+  tenantId: string;
+  clinicalReasoning?: string;
+  summary?: string;
+  riskFactors?: TherapeuticPlanRiskFactor[];
+  recommendations?: TherapeuticPlanRecommendation[];
+  confidence?: number;
+  payload?: Record<string, unknown>;
+  respondedAt: Date;
+  status?: Extract<AnamnesisAIAnalysisStatus, 'completed' | 'failed'>;
+  errorMessage?: string;
+}
+
+export interface ReceiveAnamnesisAIResultInput {
+  tenantId: string;
+  anamnesisId: string;
+  analysisId: string;
+  status: Extract<AnamnesisAIAnalysisStatus, 'completed' | 'failed'>;
+  clinicalReasoning?: string;
+  summary?: string;
+  riskFactors?: TherapeuticPlanRiskFactor[];
+  recommendations?: TherapeuticPlanRecommendation[];
+  confidence?: number;
+  therapeuticPlan?: Record<string, unknown>;
+  payload?: Record<string, unknown>;
+  respondedAt: Date;
+  errorMessage?: string;
+}
+
 export interface AnamnesisListFilters {
   status?: AnamnesisStatus[];
   patientId?: string;
@@ -478,4 +626,46 @@ export interface AnamnesisRepositoryFindOptions {
   steps?: boolean;
   latestPlan?: boolean;
   attachments?: boolean;
+  aiAnalyses?: boolean;
+}
+
+export interface AnamnesisHistoryStep {
+  stepNumber: number;
+  key: AnamnesisStepKey;
+  completed: boolean;
+  hasErrors: boolean;
+  validationScore?: number;
+  updatedAt: Date;
+  payload: Record<string, unknown>;
+}
+
+export interface AnamnesisHistoryEntry {
+  id: string;
+  consultationId: string;
+  professionalId: string;
+  status: AnamnesisStatus;
+  completionRate: number;
+  submittedAt?: Date;
+  updatedAt: Date;
+  steps: AnamnesisHistoryStep[];
+  attachments: AnamnesisAttachment[];
+  latestPlan?: TherapeuticPlanData | null;
+}
+
+export interface AnamnesisHistoryData {
+  patientId: string;
+  entries: AnamnesisHistoryEntry[];
+  prefill: {
+    steps: Partial<Record<AnamnesisStepKey, Record<string, unknown>>>;
+    attachments: AnamnesisAttachment[];
+    sourceAnamnesisId?: string;
+    updatedAt?: Date;
+  };
+}
+
+export interface AnamnesisHistoryFilters {
+  limit?: number;
+  statuses?: AnamnesisStatus[];
+  professionalId?: string;
+  includeDrafts?: boolean;
 }
