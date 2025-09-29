@@ -24,18 +24,14 @@ describe('FindUserBySlugUseCase', () => {
     expect(unwrapResult(result)).toBe(user);
   });
 
-  it('lança erro quando slug vazio', async () => {
-    const result = await useCase.execute('   ');
-
-    expect(result.error).toBeInstanceOf(Error);
+  it('lanï¿½a erro quando slug vazio', async () => {
+    await expect(useCase.execute('   ')).rejects.toBeInstanceOf(Error);
     expect(repository.findBySlug).not.toHaveBeenCalled();
   });
 
-  it('lança erro quando usuario não encontrado', async () => {
+  it('lanï¿½a erro quando usuario nï¿½o encontrado', async () => {
     repository.findBySlug.mockResolvedValue(null);
 
-    const result = await useCase.execute('john-doe');
-
-    expect(result.error).toBeInstanceOf(Error);
+    await expect(useCase.execute('john-doe')).rejects.toBeInstanceOf(Error);
   });
 });

@@ -11,6 +11,15 @@ export interface IGetAnamnesisUseCase {
     requesterId: string;
     requesterRole: string;
   }): Promise<Result<Anamnesis>>;
+  executeOrThrow(params: {
+    tenantId: string;
+    anamnesisId: string;
+    includeSteps?: boolean;
+    includeLatestPlan?: boolean;
+    includeAttachments?: boolean;
+    requesterId: string;
+    requesterRole: string;
+  }): Promise<Anamnesis>;
 }
 
 export const IGetAnamnesisUseCase = Symbol('IGetAnamnesisUseCase');

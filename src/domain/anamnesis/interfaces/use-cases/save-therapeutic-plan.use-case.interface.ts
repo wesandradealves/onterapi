@@ -20,6 +20,20 @@ export interface ISaveTherapeuticPlanUseCase {
     requesterId: string;
     requesterRole: string;
   }): Promise<Result<TherapeuticPlanData>>;
+  executeOrThrow(params: {
+    tenantId: string;
+    anamnesisId: string;
+    clinicalReasoning?: string;
+    summary?: string;
+    therapeuticPlan?: Record<string, unknown>;
+    riskFactors?: TherapeuticPlanRiskFactor[];
+    recommendations?: TherapeuticPlanRecommendation[];
+    confidence?: number;
+    reviewRequired?: boolean;
+    generatedAt: Date;
+    requesterId: string;
+    requesterRole: string;
+  }): Promise<TherapeuticPlanData>;
 }
 
 export const ISaveTherapeuticPlanUseCase = Symbol('ISaveTherapeuticPlanUseCase');

@@ -14,6 +14,18 @@ export interface ISaveAnamnesisStepUseCase {
     requesterId: string;
     requesterRole: string;
   }): Promise<Result<Anamnesis>>;
+  executeOrThrow(params: {
+    tenantId: string;
+    anamnesisId: string;
+    stepNumber: number;
+    key: AnamnesisStepKey;
+    payload: Record<string, unknown>;
+    completed?: boolean;
+    hasErrors?: boolean;
+    validationScore?: number;
+    requesterId: string;
+    requesterRole: string;
+  }): Promise<Anamnesis>;
 }
 
 export const ISaveAnamnesisStepUseCase = Symbol('ISaveAnamnesisStepUseCase');

@@ -1,4 +1,4 @@
-﻿import { ExecutionContext, INestApplication } from '@nestjs/common';
+import { ExecutionContext, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { ConfigService } from '@nestjs/config';
@@ -36,6 +36,7 @@ import { Result } from '@shared/types/result.type';
 
 interface UseCaseMock<TInput, TOutput> {
   execute: jest.Mock<Promise<Result<TOutput>>, [TInput]>;
+  executeOrThrow: jest.Mock<Promise<TOutput>, [TInput]>;
 }
 
 describe('AnamnesisController (integration)', () => {
@@ -76,9 +77,20 @@ describe('AnamnesisController (integration)', () => {
     },
   } as Record<string, unknown>;
 
-  const createUseCaseMock = <TInput, TOutput>(): UseCaseMock<TInput, TOutput> => ({
-    execute: jest.fn(),
-  });
+  const createUseCaseMock = <TInput, TOutput>(): UseCaseMock<TInput, TOutput> => {
+    const execute = jest.fn<Promise<Result<TOutput>>, [TInput]>();
+    const executeOrThrow = jest.fn<Promise<TOutput>, [TInput]>(async (input: TInput) => {
+      const result = await execute(input);
+
+      if (result?.error) {
+        throw result.error;
+      }
+
+      return result?.data as TOutput;
+    });
+
+    return { execute, executeOrThrow };
+  };
 
   const createAnamnesis = (overrides: Partial<Anamnesis> = {}): Anamnesis => ({
     id: overrides.id ?? FIXTURE_IDS.anamnesis,

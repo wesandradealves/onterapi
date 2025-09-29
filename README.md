@@ -29,9 +29,9 @@ Plataforma SaaS multi-tenant para gestao de clinicas e terapeutas, com Supabase 
 - DRY/Clean Architecture com BaseUseCase, BaseGuard e MessageBus unificados
 
 ## Credenciais de Teste
-NÃƒÂ£o mantemos mais credenciais padrÃƒÂ£o em repositÃƒÂ³rio. Gere usuÃƒÂ¡rios administrativos manualmente via `/users` e armazene os acessos em um cofre seguro.
+NÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o mantemos mais credenciais padrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o em repositÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³rio. Gere usuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡rios administrativos manualmente via `/users` e armazene os acessos em um cofre seguro.
 
-> Para fluxos locais, utilize os dados de ambiente em `./.env` e gere o 2FA pelo endpoint `/auth/two-factor/send` quando necessÃƒÂ¡rio.
+> Para fluxos locais, utilize os dados de ambiente em `./.env` e gere o 2FA pelo endpoint `/auth/two-factor/send` quando necessÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡rio.
 
 ## Fluxo de Autenticacao
 1. `POST /auth/sign-in` com email/senha. Super admin exige 2FA automaticamente.
@@ -524,7 +524,7 @@ Resultados recentes: 202 testes executados; cobertura global 100% (`npm run test
    curl.exe -s -X POST "$BASE_URL/anamneses/$anamnesisId/submit" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" -H "Content-Type: application/json" --data '{}' | Out-Null
 
    @{
-     clinicalReasoning = 'Quadro compat�vel com lombalgia mec�nica.'
+     clinicalReasoning = 'Quadro compatÃ­vel com lombalgia mecÃ¢nica.'
      summary           = 'Plano com foco em dor, mobilidade e fortalecimento.'
      therapeuticPlan   = @{ goals = @('Reduzir dor', 'Fortalecer core') }
      confidence        = 0.9
@@ -545,14 +545,14 @@ Resultados recentes: 202 testes executados; cobertura global 100% (`npm run test
    curl.exe -s -X POST "$BASE_URL/anamneses/$anamnesisId/plan/feedback" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" -H "Content-Type: application/json" --data @payloads/anamnesis-feedback.json | Out-Null
    ```
 
-   Consultar detalhes e hist�rico:
+   Consultar detalhes e histÃ³rico:
    ```powershell
    curl.exe -s "$BASE_URL/anamneses/$anamnesisId?includeSteps=true&includeLatestPlan=true&includeAttachments=true" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" > payloads/anamnesis-detail.json
 
    curl.exe -s "$BASE_URL/anamneses/patient/$patientId/history" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" > payloads/anamnesis-history.json
    ```
 
-   > Para anexar novos arquivos, repita o `POST /attachments` com outro nome; o storage n�o permite sobrescrita (upsert=false).
+   > Para anexar novos arquivos, repita o `POST /attachments` com outro nome; o storage nÃ£o permite sobrescrita (upsert=false).
 
 8. **Remover o paciente de teste no Supabase (opcional)**
    ```powershell
@@ -585,8 +585,8 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 | Criterio | Nota atual (0-10) | Meta | Evidencias chave |
 | --- | --- | --- | --- |
 | DRY / Reuso de codigo | 9.7 | >= 9.0 | Controllers de Auth, Patients, Users e Anamnesis continuam delegando normalizacao a mappers/presenters; selecao de templates por especialidade usa helpers reutilizaveis (`TemplateSelectionContext`, `getTemplatePriority`, `shouldReplaceTemplate`) e evita condicionais duplicadas. |
-| Automacao de qualidade | 8.9 | >= 8.5 | Sequencia manual revalidada em 28/09 (13:47h) com Node 22.18.0: npm run lint -> npx tsc --noEmit -> npm run test:unit -> npm run test:int -> npm run test:e2e -> npm run test:cov -> npm run build. |
-| Testes automatizados | 10.0 | >= 9.5 | 245 testes (unit, integration, e2e e cobertura) executados em ~21 s; presenter, mapper, metrics e repositorio de anamnese seguem com branches 100% cobertos apos os novos cenarios de templates e IA. |
+| Automacao de qualidade | 8.9 | >= 8.5 | Sequencia manual revalidada em 29/09 (06:36h) com Node 22.18.0: npm run lint -> npx tsc --noEmit -> npm run test:unit -> npm run test:int -> npm run test:e2e -> npm run test:cov -> npm run build. |
+| Testes automatizados | 10.0 | >= 9.5 | 248 testes (unit, integration, e2e e cobertura) executados em ~18 s; presenter, mapper, metrics e repositorio de anamnese seguem com branches 100% cobertos apos os novos cenarios de templates e IA. |
 | Validacoes e contratos | 9.5 | >= 9.0 | Controllers de Anamnesis aplicam Zod para filtros e usam o util `validateAnamnesisStepPayload` (calculo de BMI/pack-years) em save/auto-save/submit, garantindo payload sanitizado antes de publicar eventos de IA. |
 | Governanca de dominio / RBAC | 9.0 | >= 9.0 | Casos de uso de Anamnesis reforcam ensureCanModifyAnamnesis e publicam eventos com tenantId; rotas de anexos, historico, templates e webhook usam TenantGuard + RolesGuard dedicados para cada perfil. |
 
@@ -594,19 +594,19 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 
 ### DRY e reuso
 - Controllers (Auth, TwoFactor, Patients, Users, Anamnesis) compartilham helpers de contexto e mappers, evitando spreads e normalizacoes ad-hoc nos endpoints.
-- Repositorio de anamnese usa `TemplateSelectionContext`, `getTemplatePriority` e `shouldReplaceTemplate` para escolher templates por tenant/especialidade sem condições duplicadas.
+- Repositorio de anamnese usa `TemplateSelectionContext`, `getTemplatePriority` e `shouldReplaceTemplate` para escolher templates por tenant/especialidade sem condiÃƒÂ§ÃƒÂµes duplicadas.
 - SupabaseAnamnesisAttachmentStorageService e AnamnesisMetricsService concentram storage/metricas e reutilizam factories/eventos multi-tenant.
 
 ### Automacao e scripts
-- Bateria manual confirmada em 28/09 (13:47h) com Node 22.18.0: lint -> tsc -> test:unit -> test:int -> test:e2e -> test:cov -> build, com logs arquivados.
+- Bateria manual confirmada em 29/09 (06:36h) com Node 22.18.0: lint -> tsc -> test:unit -> test:int -> test:e2e -> test:cov -> build, com logs arquivados.
 - coverage-summary.json segue versionado como referencia; migrations `1738200000000` e `1738300000000` foram exercitadas com `npm run typeorm migration:run -- -d src/infrastructure/database/data-source.ts` antes de aplicacao em ambientes compartilhados.
 
 ### Testes
 - Novos specs cobrem selecao de templates, metrics service, feedback scoreboard e fluxo webhook; mocks em memoria mantem branches do repositorio alinhados com as entidades reais.
-- 245 testes (unit, integration, e2e, coverage) em ~21s com branches 100%: suites e2e percorrem start -> auto-save -> submit -> webhook -> feedback, incluindo anexos via storage Supabase.
+- 248 testes (unit, integration, e2e, coverage) em ~18s com branches 100%: suites e2e percorrem start -> auto-save -> submit -> webhook -> feedback, incluindo anexos via storage Supabase.
 - Cenarios negativos validam RBAC (PATIENT vs PROFESSIONAL), conflitos de autosave, erros de storage e webhooks nao autorizados sem gerar falsos positivos.
 
-### Integra��o IA & M�tricas
+### IntegraÃ¯Â¿Â½Ã¯Â¿Â½o IA & MÃ¯Â¿Â½tricas
 - SubmitAnamnesisUseCase publica evento completo para CrewAI; webhook `/anamneses/:id/ai-result` persiste `analysisId`, reasoning, risk e recommendations e dispara ANAMNESIS_AI_COMPLETED.
 - SavePlanFeedbackUseCase grava scoreboard em `anamnesis_ai_feedbacks` (approvalStatus, liked, comentario) e emite ANAMNESIS_PLAN_FEEDBACK_SAVED para alimentar treinamento supervisionado.
 - AnamnesisEventsSubscriber alimenta `AnamnesisMetricsService` (steps salvos, autosaves, completude, feedbacks aprovados) mantendo indicadores por tenant prontos para dashboards.
@@ -649,10 +649,10 @@ flowchart LR
 - **Supabase signOut error: invalid JWT**: agora tratado como `debug`, fluxo segue normalmente.
 - **Token nao fornecido**: verifique header `Authorization: Bearer <accessToken>`.
 - **Tenant invalido**: sempre enviar o tenant real ou deixar o guard resolver via metadata. Execute `npm run assign-super-admin-tenant` apos criar/atualizar tenants internos para garantir que os SUPER_ADMIN recebam o tenant padrao.
-- **Emails/Resend**: conferir painel do Resend ou a caixa do destinatÃƒÂ¡rio configurado para visualizar credenciais e cÃƒÂ³digos 2FA.
+- **Emails/Resend**: conferir painel do Resend ou a caixa do destinatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡rio configurado para visualizar credenciais e cÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³digos 2FA.
 
 ## Changelog
-Mudancas recentes estao em [CHANGELOG.md](./CHANGELOG.md). Ultima versao: v0.16.2 (25/09/2025).
+Mudancas recentes estao em [CHANGELOG.md](./CHANGELOG.md). Ultima versao: v0.16.7 (29/09/2025).
 
 
 

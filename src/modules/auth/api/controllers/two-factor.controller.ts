@@ -13,7 +13,6 @@ import { ApiBody, ApiExcludeEndpoint, ApiOperation, ApiResponse, ApiTags } from 
 import { Request } from 'express';
 
 import { ValidateTwoFADto, ValidateTwoFAResponseDto } from '../dtos/two-fa.dto';
-import { unwrapResult } from '../../../../shared/types/result.type';
 import { IValidateTwoFAUseCase } from '../../../../domain/auth/interfaces/use-cases/validate-two-fa.use-case.interface';
 import { ISendTwoFAUseCase } from '../../../../domain/auth/interfaces/use-cases/send-two-fa.use-case.interface';
 
@@ -84,7 +83,7 @@ export class TwoFactorController {
 
     const input = toValidateTwoFAInput(dto, fingerprint);
 
-    return unwrapResult(await this.validateTwoFAUseCase.execute(input)) as ValidateTwoFAResponseDto;
+    return (await this.validateTwoFAUseCase.executeOrThrow(input)) as ValidateTwoFAResponseDto;
   }
 
   @Post('send')
@@ -92,6 +91,6 @@ export class TwoFactorController {
   @Public()
   @HttpCode(HttpStatus.OK)
   async sendTwoFA(@Body(new ZodValidationPipe(sendTwoFAInputSchema)) dto: SendTwoFAInputDTO) {
-    return unwrapResult(await this.sendTwoFAUseCase.execute(toSendTwoFAInput(dto)));
+    return await this.sendTwoFAUseCase.executeOrThrow(toSendTwoFAInput(dto));
   }
 }

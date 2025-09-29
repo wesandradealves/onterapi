@@ -3,6 +3,7 @@ import { Result } from '../../../../shared/types/result.type';
 
 export interface IFindUserBySlugUseCase {
   execute(slug: string): Promise<Result<UserEntity | null>>;
+  executeOrThrow(slug: string): Promise<UserEntity | null>;
 }
 
 export const FindUserBySlugUseCaseToken = Symbol('IFindUserBySlugUseCase');

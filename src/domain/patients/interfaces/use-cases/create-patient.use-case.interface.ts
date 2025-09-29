@@ -3,6 +3,7 @@ import { CreatePatientInput, Patient } from '../../types/patient.types';
 
 export interface ICreatePatientUseCase {
   execute(input: CreatePatientInput): Promise<Result<Patient>>;
+  executeOrThrow(input: CreatePatientInput): Promise<Patient>;
 }
 
 export const ICreatePatientUseCase = Symbol('ICreatePatientUseCase');

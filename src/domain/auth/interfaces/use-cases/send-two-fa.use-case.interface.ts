@@ -2,6 +2,7 @@ import { Result } from '@shared/types/result.type';
 
 export interface ISendTwoFAUseCase {
   execute(input: SendTwoFAInput): Promise<Result<SendTwoFAOutput>>;
+  executeOrThrow(input: SendTwoFAInput): Promise<SendTwoFAOutput>;
 }
 
 export interface SendTwoFAInput {

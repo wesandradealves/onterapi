@@ -119,15 +119,11 @@ export class SignInUseCase
   private async handleTwoFactorAuth(user: ExtractedUser): Promise<SignInOutput> {
     const tempToken = this.jwtService.generateTwoFactorToken(user.id);
 
-    const sendResult = await this.sendTwoFAUseCase.execute({
+    await this.sendTwoFAUseCase.executeOrThrow({
       userId: user.id,
       tempToken,
       method: 'email',
     });
-
-    if (sendResult.error) {
-      throw sendResult.error;
-    }
 
     this.logger.log('Two-factor challenge dispatched', {
       userId: user.id,

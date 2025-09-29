@@ -12,6 +12,13 @@ export interface IGetAnamnesisHistoryUseCase {
     requesterRole: string;
     filters?: AnamnesisHistoryFilters;
   }): Promise<Result<AnamnesisHistoryData>>;
+  executeOrThrow(params: {
+    tenantId: string;
+    patientId: string;
+    requesterId: string;
+    requesterRole: string;
+    filters?: AnamnesisHistoryFilters;
+  }): Promise<AnamnesisHistoryData>;
 }
 
 export const IGetAnamnesisHistoryUseCase = Symbol('IGetAnamnesisHistoryUseCase');

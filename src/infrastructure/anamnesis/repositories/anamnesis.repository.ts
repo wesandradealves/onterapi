@@ -929,4 +929,3 @@ export class AnamnesisRepository implements IAnamnesisRepository {
     return entity ? mapAIAnalysisEntityToDomain(entity) : null;
   }
 }
-

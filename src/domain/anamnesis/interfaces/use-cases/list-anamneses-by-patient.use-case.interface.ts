@@ -9,6 +9,13 @@ export interface IListAnamnesesByPatientUseCase {
     requesterRole: string;
     filters?: AnamnesisListFilters;
   }): Promise<Result<AnamnesisListItem[]>>;
+  executeOrThrow(params: {
+    tenantId: string;
+    patientId: string;
+    requesterId: string;
+    requesterRole: string;
+    filters?: AnamnesisListFilters;
+  }): Promise<AnamnesisListItem[]>;
 }
 
 export const IListAnamnesesByPatientUseCase = Symbol('IListAnamnesesByPatientUseCase');

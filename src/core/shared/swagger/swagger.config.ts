@@ -44,6 +44,3 @@ export default class Swagger {
     this.logger.log(format('Swagger running on pathName %s', pathName));
   }
 }
-
-
-

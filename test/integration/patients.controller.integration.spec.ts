@@ -1,4 +1,4 @@
-﻿import { ExecutionContext, INestApplication } from '@nestjs/common';
+import { ExecutionContext, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
@@ -25,6 +25,7 @@ import { PatientPresenter } from '@modules/patients/api/presenters/patient.prese
 
 interface UseCaseMock<TInput, TOutput> {
   execute: jest.Mock<Promise<Result<TOutput>>, [TInput]>;
+  executeOrThrow: jest.Mock<Promise<TOutput>, [TInput]>;
 }
 
 describe('PatientsController (integration)', () => {
@@ -40,9 +41,20 @@ describe('PatientsController (integration)', () => {
     metadata: {},
   };
 
-  const createMock = <TInput, TOutput>(): UseCaseMock<TInput, TOutput> => ({
-    execute: jest.fn(),
-  });
+  const createMock = <TInput, TOutput>(): UseCaseMock<TInput, TOutput> => {
+    const execute = jest.fn<Promise<Result<TOutput>>, [TInput]>();
+    const executeOrThrow = jest.fn<Promise<TOutput>, [TInput]>(async (input: TInput) => {
+      const result = await execute(input);
+
+      if (result?.error) {
+        throw result.error;
+      }
+
+      return result?.data as TOutput;
+    });
+
+    return { execute, executeOrThrow };
+  };
 
   const useCases = {
     create: createMock<any, Patient>(),

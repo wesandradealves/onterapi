@@ -65,4 +65,3 @@ export class AnamnesisAIAnalysisEntity {
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamp with time zone' })
   updatedAt!: Date;
 }
-

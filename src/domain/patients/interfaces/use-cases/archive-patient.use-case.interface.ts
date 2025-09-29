@@ -3,6 +3,7 @@ import { ArchivePatientInput } from '../../types/patient.types';
 
 export interface IArchivePatientUseCase {
   execute(input: ArchivePatientInput): Promise<Result<void>>;
+  executeOrThrow(input: ArchivePatientInput): Promise<void>;
 }
 
 export const IArchivePatientUseCase = Symbol('IArchivePatientUseCase');

@@ -2,6 +2,7 @@ import { Result } from '@shared/types/result.type';
 
 export interface IRefreshTokenUseCase {
   execute(input: RefreshTokenInput): Promise<Result<RefreshTokenOutput>>;
+  executeOrThrow(input: RefreshTokenInput): Promise<RefreshTokenOutput>;
 }
 
 export interface RefreshTokenInput {

@@ -41,7 +41,7 @@ import {
   SupabaseSession,
   SupabaseUser,
 } from '@domain/auth/interfaces/services/supabase-auth.service.interface';
-import { failure, Result, success } from '@shared/types/result.type';
+import { failure, Result, success, unwrapResult } from '@shared/types/result.type';
 import { ICurrentUser } from '@modules/auth/decorators/current-user.decorator';
 
 class StubSignInUseCase implements ISignInUseCase {
@@ -61,6 +61,10 @@ class StubSignInUseCase implements ISignInUseCase {
       user: { id: 'user-1', email: input.email, name: 'Usuário', role: 'PATIENT' },
     });
   }
+
+  async executeOrThrow(input: SignInInput) {
+    return unwrapResult(await this.execute(input));
+  }
 }
 
 class StubRefreshTokenUseCase implements IRefreshTokenUseCase {
@@ -75,6 +79,10 @@ class StubRefreshTokenUseCase implements IRefreshTokenUseCase {
       user: { id: 'user-1', email: 'user@example.com', name: 'Usuário', role: 'PATIENT' },
     });
   }
+
+  async executeOrThrow(input: RefreshTokenInput) {
+    return unwrapResult(await this.execute(input));
+  }
 }
 
 class StubSignOutUseCase implements ISignOutUseCase {
@@ -86,6 +94,10 @@ class StubSignOutUseCase implements ISignOutUseCase {
       message: 'Sessões revogadas',
       revokedSessions: input.allDevices ? 2 : 1,
     });
+  }
+
+  async executeOrThrow(input: SignOutInput) {
+    return unwrapResult(await this.execute(input));
   }
 }
 
@@ -101,6 +113,10 @@ class StubResendVerificationEmailUseCase implements IResendVerificationEmailUseC
     this.lastInput = input;
     return success(this.response);
   }
+
+  async executeOrThrow(input: ResendVerificationEmailInput) {
+    return unwrapResult(await this.execute(input));
+  }
 }
 
 class StubRequestPasswordResetUseCase implements IRequestPasswordResetUseCase {
@@ -113,6 +129,10 @@ class StubRequestPasswordResetUseCase implements IRequestPasswordResetUseCase {
   async execute(input: RequestPasswordResetInput) {
     this.lastInput = input;
     return success(this.response);
+  }
+
+  async executeOrThrow(input: RequestPasswordResetInput) {
+    return unwrapResult(await this.execute(input));
   }
 }
 
@@ -129,6 +149,10 @@ class StubConfirmPasswordResetUseCase implements IConfirmPasswordResetUseCase {
     }
     this.lastInput = input;
     return success(this.response);
+  }
+
+  async executeOrThrow(input: ConfirmPasswordResetInput) {
+    return unwrapResult(await this.execute(input));
   }
 }
 

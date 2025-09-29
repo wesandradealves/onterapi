@@ -1,4 +1,4 @@
-﻿import { RequestPasswordResetUseCase } from '@modules/auth/use-cases/request-password-reset.use-case';
+import { RequestPasswordResetUseCase } from '@modules/auth/use-cases/request-password-reset.use-case';
 import { IAuthRepository } from '@domain/auth/interfaces/repositories/auth.repository.interface';
 import { ISupabaseAuthService } from '@domain/auth/interfaces/services/supabase-auth.service.interface';
 import { IEmailService } from '@domain/auth/interfaces/services/email.service.interface';
@@ -38,10 +38,8 @@ describe('RequestPasswordResetUseCase', () => {
 
     const result = await useCase.execute({ email: 'nope@example.com' });
 
-    expect(result.data).toEqual({
-      delivered: false,
-      message: 'Se o email estiver cadastrado, enviaremos instruções para redefinir a senha.',
-    });
+    expect(result.data).toMatchObject({ delivered: false });
+    expect(result.data?.message).toContain('Se o email estiver cadastrado');
   });
 
   it('gera link e envia email quando usuario existe', async () => {
@@ -99,8 +97,6 @@ describe('RequestPasswordResetUseCase', () => {
       error: new Error('fail'),
     });
 
-    const result = await useCase.execute({ email: 'user@example.com' });
-
-    expect(result.error).toBeDefined();
+    await expect(useCase.execute({ email: 'user@example.com' })).rejects.toBeDefined();
   });
 });

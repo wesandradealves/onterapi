@@ -8,6 +8,12 @@ export interface ISubmitAnamnesisUseCase {
     requesterId: string;
     requesterRole: string;
   }): Promise<Result<Anamnesis>>;
+  executeOrThrow(params: {
+    tenantId: string;
+    anamnesisId: string;
+    requesterId: string;
+    requesterRole: string;
+  }): Promise<Anamnesis>;
 }
 
 export const ISubmitAnamnesisUseCase = Symbol('ISubmitAnamnesisUseCase');

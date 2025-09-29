@@ -13,6 +13,7 @@ export interface RequestPasswordResetOutput {
 
 export interface IRequestPasswordResetUseCase {
   execute(input: RequestPasswordResetInput): Promise<Result<RequestPasswordResetOutput>>;
+  executeOrThrow(input: RequestPasswordResetInput): Promise<RequestPasswordResetOutput>;
 }
 
 export const IRequestPasswordResetUseCase = Symbol('IRequestPasswordResetUseCase');

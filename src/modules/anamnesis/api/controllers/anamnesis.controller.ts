@@ -37,7 +37,6 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ICurrentUser } from '../../../../domain/auth/interfaces/current-user.interface';
 import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
-import { unwrapResult } from '../../../../shared/types/result.type';
 import {
   type AnamnesisStatus,
   AnamnesisStepKey,
@@ -180,14 +179,12 @@ export class AnamnesisController {
       includeInactive: query.includeInactive ?? false,
     };
 
-    const result = await this.listStepTemplatesUseCase.execute({
+    const templates = await this.listStepTemplatesUseCase.executeOrThrow({
       tenantId: context.tenantId,
       requesterId: context.userId,
       requesterRole: context.role,
       filters,
     });
-
-    const templates = unwrapResult(result);
 
     return AnamnesisPresenter.templates(templates);
   }
@@ -212,7 +209,7 @@ export class AnamnesisController {
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<AnamnesisDetailResponseDto> {
     const context = this.resolveContext(currentUser, tenantHeader);
-    const result = await this.startAnamnesisUseCase.execute({
+    const anamnesis = await this.startAnamnesisUseCase.executeOrThrow({
       tenantId: context.tenantId,
       consultationId: body.consultationId,
       patientId: body.patientId,
@@ -223,7 +220,6 @@ export class AnamnesisController {
       requesterId: context.userId,
       requesterRole: context.role,
     });
-    const anamnesis = unwrapResult(result);
     return AnamnesisPresenter.detail(anamnesis);
   }
   @Get(':anamnesisId')
@@ -251,7 +247,7 @@ export class AnamnesisController {
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<AnamnesisDetailResponseDto> {
     const context = this.resolveContext(currentUser, tenantHeader);
-    const result = await this.getAnamnesisUseCase.execute({
+    const anamnesis = await this.getAnamnesisUseCase.executeOrThrow({
       tenantId: context.tenantId,
       anamnesisId,
       includeSteps: query.includeSteps,
@@ -260,7 +256,6 @@ export class AnamnesisController {
       requesterId: context.userId,
       requesterRole: context.role,
     });
-    const anamnesis = unwrapResult(result);
     return AnamnesisPresenter.detail(anamnesis);
   }
 
@@ -309,7 +304,7 @@ export class AnamnesisController {
       ANAMNESIS_STATUS_VALUES.includes(status as AnamnesisStatus),
     );
 
-    const result = await this.getAnamnesisHistoryUseCase.execute({
+    const history = await this.getAnamnesisHistoryUseCase.executeOrThrow({
       tenantId: context.tenantId,
       patientId,
       requesterId: context.userId,
@@ -320,8 +315,6 @@ export class AnamnesisController {
         includeDrafts: query.includeDrafts,
       },
     });
-
-    const history = unwrapResult(result);
 
     return AnamnesisPresenter.history(history);
   }
@@ -375,7 +368,7 @@ export class AnamnesisController {
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<AnamnesisListItemDto[]> {
     const context = this.resolveContext(currentUser, tenantHeader);
-    const result = await this.listByPatientUseCase.execute({
+    const items = await this.listByPatientUseCase.executeOrThrow({
       tenantId: context.tenantId,
       patientId,
       requesterId: context.userId,
@@ -387,7 +380,6 @@ export class AnamnesisController {
         to: query.to ? new Date(query.to) : undefined,
       },
     });
-    const items = unwrapResult(result);
     return AnamnesisPresenter.list(items);
   }
   @Put(':anamnesisId/steps/:stepNumber')
@@ -415,7 +407,7 @@ export class AnamnesisController {
   ): Promise<AnamnesisDetailResponseDto> {
     const context = this.resolveContext(currentUser, tenantHeader);
     const stepIndex = Number(stepNumber);
-    const result = await this.saveAnamnesisStepUseCase.execute({
+    const anamnesis = await this.saveAnamnesisStepUseCase.executeOrThrow({
       tenantId: context.tenantId,
       anamnesisId,
       stepNumber: stepIndex,
@@ -427,7 +419,6 @@ export class AnamnesisController {
       requesterId: context.userId,
       requesterRole: context.role,
     });
-    const anamnesis = unwrapResult(result);
     return AnamnesisPresenter.detail(anamnesis);
   }
   @Post(':anamnesisId/auto-save')
@@ -453,7 +444,7 @@ export class AnamnesisController {
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<AnamnesisDetailResponseDto> {
     const context = this.resolveContext(currentUser, tenantHeader);
-    const result = await this.autoSaveAnamnesisUseCase.execute({
+    const anamnesis = await this.autoSaveAnamnesisUseCase.executeOrThrow({
       tenantId: context.tenantId,
       anamnesisId,
       stepNumber: body.stepNumber,
@@ -465,7 +456,6 @@ export class AnamnesisController {
       requesterId: context.userId,
       requesterRole: context.role,
     });
-    const anamnesis = unwrapResult(result);
     return AnamnesisPresenter.detail(anamnesis);
   }
   @Post(':anamnesisId/submit')
@@ -483,13 +473,12 @@ export class AnamnesisController {
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<AnamnesisDetailResponseDto> {
     const context = this.resolveContext(currentUser, tenantHeader);
-    const result = await this.submitAnamnesisUseCase.execute({
+    const anamnesis = await this.submitAnamnesisUseCase.executeOrThrow({
       tenantId: context.tenantId,
       anamnesisId,
       requesterId: context.userId,
       requesterRole: context.role,
     });
-    const anamnesis = unwrapResult(result);
     return AnamnesisPresenter.detail(anamnesis);
   }
   @Post(':anamnesisId/plan')
@@ -519,7 +508,7 @@ export class AnamnesisController {
       description: item.description,
       priority: item.priority,
     }));
-    const result = await this.savePlanUseCase.execute({
+    const plan = await this.savePlanUseCase.executeOrThrow({
       tenantId: context.tenantId,
       anamnesisId,
       clinicalReasoning: body.clinicalReasoning,
@@ -533,7 +522,6 @@ export class AnamnesisController {
       requesterId: context.userId,
       requesterRole: context.role,
     });
-    const plan = unwrapResult(result);
     return AnamnesisPresenter.plan(plan);
   }
   @Post(':anamnesisId/plan/feedback')
@@ -553,7 +541,7 @@ export class AnamnesisController {
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<TherapeuticPlanDto> {
     const context = this.resolveContext(currentUser, tenantHeader);
-    const result = await this.savePlanFeedbackUseCase.execute({
+    const plan = await this.savePlanFeedbackUseCase.executeOrThrow({
       tenantId: context.tenantId,
       anamnesisId,
       approvalStatus: body.approvalStatus,
@@ -562,7 +550,6 @@ export class AnamnesisController {
       requesterId: context.userId,
       requesterRole: context.role,
     });
-    const plan = unwrapResult(result);
     return AnamnesisPresenter.plan(plan);
   }
   @Public()
@@ -583,7 +570,7 @@ export class AnamnesisController {
   ): Promise<void> {
     const tenantId = this.resolveTenantId(tenantHeader);
 
-    await this.receiveAIResultUseCase.execute({
+    await this.receiveAIResultUseCase.executeOrThrow({
       tenantId,
       anamnesisId,
       analysisId: body.analysisId,
@@ -645,7 +632,7 @@ export class AnamnesisController {
         ? body.fileName
         : (file.originalname ?? 'anexo').trim();
 
-    const result = await this.createAttachmentUseCase.execute({
+    const attachment = await this.createAttachmentUseCase.executeOrThrow({
       tenantId: context.tenantId,
       anamnesisId,
       stepNumber: body.stepNumber,
@@ -656,7 +643,6 @@ export class AnamnesisController {
       requesterId: context.userId,
       requesterRole: context.role,
     });
-    const attachment = unwrapResult(result);
     return AnamnesisPresenter.attachment(attachment);
   }
 
@@ -679,14 +665,13 @@ export class AnamnesisController {
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<void> {
     const context = this.resolveContext(currentUser, tenantHeader);
-    const result = await this.removeAttachmentUseCase.execute({
+    await this.removeAttachmentUseCase.executeOrThrow({
       tenantId: context.tenantId,
       anamnesisId,
       attachmentId,
       requesterId: context.userId,
       requesterRole: context.role,
     });
-    unwrapResult(result);
   }
 
   private resolveContext(currentUser: ICurrentUser, tenantHeader?: string) {

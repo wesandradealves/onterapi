@@ -2,6 +2,7 @@ import { Result } from '@shared/types/result.type';
 
 export interface IForgotPasswordUseCase {
   execute(input: ForgotPasswordInput): Promise<Result<ForgotPasswordOutput>>;
+  executeOrThrow(input: ForgotPasswordInput): Promise<ForgotPasswordOutput>;
 }
 
 export interface ForgotPasswordInput {

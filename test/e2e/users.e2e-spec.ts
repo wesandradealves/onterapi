@@ -98,7 +98,7 @@ class InMemoryUsersStore {
   public update(slug: string, data: IUpdateUser): UserEntity {
     const user = this.findBySlug(slug);
     if (!user) {
-      throw new NotFoundException('Usuário não encontrado');
+      throw new NotFoundException('Usuï¿½rio nï¿½o encontrado');
     }
 
     if (data.name) {
@@ -147,6 +147,14 @@ class InMemoryCreateUserUseCase implements ICreateUserUseCase {
   async execute(dto: CreateUserCommand): Promise<Result<UserEntity>> {
     return success(this.store.create(dto));
   }
+
+  async executeOrThrow(dto: CreateUserCommand): Promise<UserEntity> {
+    const result = await this.execute(dto);
+    if (result.error) {
+      throw result.error;
+    }
+    return result.data as UserEntity;
+  }
 }
 
 @Injectable()
@@ -164,6 +172,14 @@ class InMemoryFindAllUsersUseCase implements IFindAllUsersUseCase {
       pagination: { page, limit, total, totalPages },
     });
   }
+
+  async executeOrThrow(filters: IUserFilters): Promise<{ data: UserEntity[]; pagination: any }> {
+    const result = await this.execute(filters);
+    if (result.error) {
+      throw result.error;
+    }
+    return result.data as { data: UserEntity[]; pagination: any };
+  }
 }
 
 @Injectable()
@@ -173,9 +189,17 @@ class InMemoryFindUserBySlugUseCase implements IFindUserBySlugUseCase {
   async execute(slug: string): Promise<Result<UserEntity>> {
     const user = this.store.findBySlug(slug);
     if (!user) {
-      return failure(new NotFoundException('Usuário não encontrado'));
+      return failure(new NotFoundException('Usuï¿½rio nï¿½o encontrado'));
     }
     return success(user);
+  }
+
+  async executeOrThrow(slug: string): Promise<UserEntity | null> {
+    const result = await this.execute(slug);
+    if (result.error) {
+      throw result.error;
+    }
+    return (result.data as UserEntity) ?? null;
   }
 }
 
@@ -186,6 +210,14 @@ class InMemoryUpdateUserUseCase implements IUpdateUserUseCase {
   async execute(slug: string, dto: IUpdateUser): Promise<Result<UserEntity>> {
     return success(this.store.update(slug, dto));
   }
+
+  async executeOrThrow(slug: string, dto: IUpdateUser): Promise<UserEntity> {
+    const result = await this.execute(slug, dto);
+    if (result.error) {
+      throw result.error;
+    }
+    return result.data as UserEntity;
+  }
 }
 
 @Injectable()
@@ -195,6 +227,14 @@ class InMemoryDeleteUserUseCase implements IDeleteUserUseCase {
   async execute(slug: string): Promise<Result<void>> {
     this.store.delete(slug);
     return success(undefined);
+  }
+
+  async executeOrThrow(slug: string): Promise<void> {
+    const result = await this.execute(slug);
+    if (result.error) {
+      throw result.error;
+    }
+    return result.data as void;
   }
 }
 
@@ -207,7 +247,7 @@ describe('UsersController (e2e)', () => {
     supabaseId: 'supabase-seed',
     slug: 'joao-silva',
     email: 'joao@clinic.com',
-    name: 'João Silva',
+    name: 'Joï¿½o Silva',
     cpf: '52998224725',
     phone: '11999990000',
     role: RolesEnum.PROFESSIONAL,
@@ -293,7 +333,7 @@ describe('UsersController (e2e)', () => {
     await app.close();
   });
 
-  it('lista usuários existentes com paginação padrão', async () => {
+  it('lista usuï¿½rios existentes com paginaï¿½ï¿½o padrï¿½o', async () => {
     await request(app.getHttpServer())
       .get('/users')
       .expect(200)
@@ -303,7 +343,7 @@ describe('UsersController (e2e)', () => {
       });
   });
 
-  it('cria, atualiza e remove um usuário mantendo cobertura do fluxo completo', async () => {
+  it('cria, atualiza e remove um usuï¿½rio mantendo cobertura do fluxo completo', async () => {
     // Create
     const createResponse = await request(app.getHttpServer())
       .post('/users')

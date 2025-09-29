@@ -11,6 +11,12 @@ export interface IListAnamnesisStepTemplatesUseCase {
     requesterRole: string;
     filters?: GetStepTemplatesFilters;
   }): Promise<Result<AnamnesisStepTemplate[]>>;
+  executeOrThrow(params: {
+    tenantId: string;
+    requesterId: string;
+    requesterRole: string;
+    filters?: GetStepTemplatesFilters;
+  }): Promise<AnamnesisStepTemplate[]>;
 }
 
 export const IListAnamnesisStepTemplatesUseCase = Symbol('IListAnamnesisStepTemplatesUseCase');

@@ -1,4 +1,4 @@
-﻿import { ConfirmPasswordResetUseCase } from '@modules/auth/use-cases/confirm-password-reset.use-case';
+import { ConfirmPasswordResetUseCase } from '@modules/auth/use-cases/confirm-password-reset.use-case';
 import { IAuthRepository } from '@domain/auth/interfaces/repositories/auth.repository.interface';
 import { ISupabaseAuthService } from '@domain/auth/interfaces/services/supabase-auth.service.interface';
 import { IEmailService } from '@domain/auth/interfaces/services/email.service.interface';
@@ -100,9 +100,9 @@ describe('ConfirmPasswordResetUseCase', () => {
       error: new Error('fail'),
     });
 
-    const result = await useCase.execute({ accessToken: 'token', newPassword: 'Senha123!' });
-
-    expect(result.error).toBeDefined();
+    await expect(
+      useCase.execute({ accessToken: 'token', newPassword: 'Senha123!' }),
+    ).rejects.toBeDefined();
   });
 
   it('retorna erro quando token de acesso e invalido', async () => {
@@ -110,8 +110,8 @@ describe('ConfirmPasswordResetUseCase', () => {
 
     (supabaseAuthService.getUser as jest.Mock).mockResolvedValue({ error: new Error('invalid') });
 
-    const result = await useCase.execute({ accessToken: 'token', newPassword: 'Senha123!' });
-
-    expect(result.error).toBeDefined();
+    await expect(
+      useCase.execute({ accessToken: 'token', newPassword: 'Senha123!' }),
+    ).rejects.toBeDefined();
   });
 });

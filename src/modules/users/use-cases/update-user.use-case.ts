@@ -48,6 +48,10 @@ export class UpdateUserUseCase implements IUpdateUserUseCase {
     return this.wrapper.execute({ slug, dto, currentUserId });
   }
 
+  async executeOrThrow(slug: string, dto: IUpdateUser, currentUserId: string): Promise<UserEntity> {
+    return this.wrapper.executeOrThrow({ slug, dto, currentUserId });
+  }
+
   private async handleUpdate(input: UpdateUserInput): Promise<UserEntity> {
     const { slug, dto, currentUserId } = input;
 

@@ -13,6 +13,17 @@ export interface IStartAnamnesisUseCase {
     requesterId: string;
     requesterRole: string;
   }): Promise<Result<Anamnesis>>;
+  executeOrThrow(params: {
+    tenantId: string;
+    consultationId: string;
+    patientId: string;
+    professionalId: string;
+    totalSteps: number;
+    initialStep?: number;
+    formData?: Partial<AnamnesisFormData>;
+    requesterId: string;
+    requesterRole: string;
+  }): Promise<Anamnesis>;
 }
 
 export const IStartAnamnesisUseCase = Symbol('IStartAnamnesisUseCase');

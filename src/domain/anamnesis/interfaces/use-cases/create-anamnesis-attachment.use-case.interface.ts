@@ -13,6 +13,17 @@ export interface ICreateAnamnesisAttachmentUseCase {
     requesterId: string;
     requesterRole: string;
   }): Promise<Result<AnamnesisAttachment>>;
+  executeOrThrow(params: {
+    tenantId: string;
+    anamnesisId: string;
+    stepNumber?: number;
+    fileName: string;
+    mimeType: string;
+    size: number;
+    fileBuffer: Buffer;
+    requesterId: string;
+    requesterRole: string;
+  }): Promise<AnamnesisAttachment>;
 }
 
 export const ICreateAnamnesisAttachmentUseCase = Symbol('ICreateAnamnesisAttachmentUseCase');
