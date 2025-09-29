@@ -73,39 +73,39 @@ export class UsersController {
   @Public()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
-    summary: 'Criar novo usu·rio',
-    description: `Cadastro de novo usu·rio no sistema.
+    summary: 'Criar novo usu√°rio',
+    description: `Cadastro de novo usu√°rio no sistema.
 
 **Funcionalidades:**
-- Cria usu·rio no Supabase Auth
+- Cria usu√°rio no Supabase Auth
 - Valida CPF brasileiro
 - Valida unicidade de email
-- Define role e permissıes
+- Define role e permiss√µes
 - Auto-confirma email para desenvolvimento
 
 **Emails enviados:**
-- Email de verificaÁ„o com link para confirmar conta
-- Email de boas-vindas com informaÁıes da plataforma
+- Email de verifica√ß√£o com link para confirmar conta
+- Email de boas-vindas com informa√ß√µes da plataforma
 
-**Roles disponÌveis:**
+**Roles dispon√≠veis:**
 - PATIENT: Paciente
-- PROFESSIONAL: Profissional de sa˙de
-- SECRETARY: Secret·ria
-- CLINIC_OWNER: Propriet·rio de clÌnica
+- PROFESSIONAL: Profissional de sa√∫de
+- SECRETARY: Secret√°ria
+- CLINIC_OWNER: Propriet√°rio de cl√≠nica
 - SUPER_ADMIN: Administrador do sistema
 
-**Roles:** P˙blico`,
+**Roles:** P√∫blico`,
   })
   @ApiBody({
     type: CreateUserInputDTO,
-    description: 'Dados do novo usu·rio',
+    description: 'Dados do novo usu√°rio',
     examples: {
       patient: {
         summary: 'Paciente',
         value: {
           email: 'joao.silva@email.com',
           password: 'SenhaForte123!',
-          name: 'Jo„o Silva',
+          name: 'Jo√£o Silva',
           cpf: '12345678901',
           phone: '11999999999',
           role: 'PATIENT',
@@ -127,12 +127,12 @@ export class UsersController {
   })
   @ApiResponse({
     status: 201,
-    description: 'Usu·rio criado com sucesso',
+    description: 'Usu√°rio criado com sucesso',
     type: CreateUserResponseDto,
   })
   @ApiResponse({
     status: 409,
-    description: 'Email ou CPF j· cadastrado',
+    description: 'Email ou CPF j√° cadastrado',
   })
   async create(
     @Body(new ZodValidationPipe(createUserSchema)) dto: CreateUserSchemaType,
@@ -147,8 +147,8 @@ export class UsersController {
   @Roles(RolesEnum.SUPER_ADMIN, RolesEnum.ADMIN_SUPORTE)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Listar todos usu·rios',
-    description: `Apenas administradores podem listar todos os usu·rios.
+    summary: 'Listar todos usu√°rios',
+    description: `Apenas administradores podem listar todos os usu√°rios.
 
 **Roles:** SUPER_ADMIN, ADMIN_SUPORTE`,
   })
@@ -156,14 +156,14 @@ export class UsersController {
     name: 'page',
     required: false,
     type: Number,
-    description: 'P·gina da listagem',
+    description: 'P√°gina da listagem',
     example: 1,
   })
   @ApiQuery({
     name: 'limit',
     required: false,
     type: Number,
-    description: 'Limite de resultados por p·gina',
+    description: 'Limite de resultados por p√°gina',
     example: 20,
   })
   @ApiQuery({
@@ -177,7 +177,7 @@ export class UsersController {
     name: 'tenantId',
     required: false,
     type: String,
-    description: 'Filtrar por tenant (clÌnica)',
+    description: 'Filtrar por tenant (cl√≠nica)',
     example: '550e8400-e29b-41d4-a716-446655440000',
   })
   @ApiQuery({
@@ -189,7 +189,7 @@ export class UsersController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Lista de usu·rios retornada com sucesso',
+    description: 'Lista de usu√°rios retornada com sucesso',
     type: ListUsersResponseDto,
   })
   async findAll(
@@ -208,14 +208,14 @@ export class UsersController {
   @UseGuards(JwtAuthGuard, UserOwnerGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Buscar usuario por slug',
-    description: `Administrador (SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO) ou o proprio usuario podem visualizar.
+    summary: 'Buscar usu√°rio por slug',
+    description: `Administrador (SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO) ou o pr√≥prio usu√°rio podem visualizar.
 
-**Roles:** SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO ou o proprio usuario autenticado`,
+**Roles:** SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO ou o pr√≥prio usu√°rio autenticado`,
   })
   @ApiParam({
     name: 'slug',
-    description: 'Slug do usuario',
+    description: 'Slug do usu√°rio',
     example: 'joao-silva',
   })
   @ApiResponse({
@@ -231,7 +231,7 @@ export class UsersController {
     const user = await this.findUserBySlugUseCase.executeOrThrow(slug);
 
     if (!user) {
-      throw new NotFoundException('Usu·rio n„o encontrado');
+      throw new NotFoundException('Usu√°rio n√£o encontrado');
     }
 
     return UserPresenter.toResponse(user);
@@ -241,14 +241,14 @@ export class UsersController {
   @UseGuards(JwtAuthGuard, UserOwnerGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Atualizar usuario',
-    description: `Administrador (SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO) ou o proprio usuario podem atualizar.
+    summary: 'Atualizar usu√°rio',
+    description: `Administrador (SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO) ou o pr√≥prio usu√°rio podem atualizar.
 
-**Roles:** SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO ou o proprio usuario autenticado`,
+**Roles:** SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO ou o pr√≥prio usu√°rio autenticado`,
   })
   @ApiParam({
     name: 'slug',
-    description: 'Slug do usuario',
+    description: 'Slug do usu√°rio',
     example: 'joao-silva',
   })
   @ApiBody({
@@ -258,7 +258,7 @@ export class UsersController {
       updateName: {
         summary: 'Atualizar nome',
         value: {
-          name: 'Jo„o Silva Santos',
+          name: 'Jo√£o Silva Santos',
         },
       },
       updatePhone: {
@@ -268,7 +268,7 @@ export class UsersController {
         },
       },
       deactivate: {
-        summary: 'Desativar usu·rio',
+        summary: 'Desativar usu√°rio',
         value: {
           isActive: false,
         },
@@ -286,7 +286,7 @@ export class UsersController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Usu·rio atualizado com sucesso',
+    description: 'Usu√°rio atualizado com sucesso',
     type: UserResponseDto,
   })
   async update(
@@ -304,14 +304,14 @@ export class UsersController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Deletar usuario',
-    description: `Soft delete realizado por administradores (SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO) ou pelo proprio usuario.
+    summary: 'Deletar usu√°rio',
+    description: `Soft delete realizado por administradores (SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO) ou pelo pr√≥prio usu√°rio.
 
-**Roles:** SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO ou o proprio usuario autenticado`,
+**Roles:** SUPER_ADMIN, ADMIN_SUPORTE, ADMIN_FINANCEIRO ou o pr√≥prio usu√°rio autenticado`,
   })
   @ApiParam({
     name: 'slug',
-    description: 'Slug do usuario',
+    description: 'Slug do usu√°rio',
     example: 'joao-silva',
   })
   @ApiResponse({
