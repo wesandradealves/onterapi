@@ -36,7 +36,6 @@ import {
 } from '../dtos/confirm-password-reset.dto';
 import { RefreshTokenDto, RefreshTokenResponseDto } from '../dtos/refresh.dto';
 import { MeResponseDto, SignOutDto, SignOutResponseDto } from '../dtos/sign-out.dto';
-import { unwrapResult } from '../../../../shared/types/result.type';
 
 import { ISignInUseCase } from '../../../../domain/auth/interfaces/use-cases/sign-in.use-case.interface';
 import { ISignOutUseCase } from '../../../../domain/auth/interfaces/use-cases/sign-out.use-case.interface';
@@ -161,7 +160,7 @@ export class AuthController {
   ) {
     const input = toSignInInput(dto, { ip, userAgentHeader: userAgent });
 
-    return unwrapResult(await this.signInUseCase.execute(input));
+    return await this.signInUseCase.executeOrThrow(input);
   }
 
   @Post('refresh')
@@ -198,7 +197,7 @@ export class AuthController {
   ) {
     const input = toRefreshTokenInput(dto, { ip, userAgentHeader: userAgent });
 
-    return unwrapResult(await this.refreshTokenUseCase.execute(input));
+    return await this.refreshTokenUseCase.executeOrThrow(input);
   }
 
   @Post('verification/resend')
@@ -236,7 +235,7 @@ export class AuthController {
       userAgentHeader: userAgent,
     });
 
-    return unwrapResult(await this.resendVerificationEmailUseCase.execute(input));
+    return await this.resendVerificationEmailUseCase.executeOrThrow(input);
   }
 
   @Post('password/reset/request')
@@ -274,7 +273,7 @@ export class AuthController {
       userAgentHeader: userAgent,
     });
 
-    return unwrapResult(await this.requestPasswordResetUseCase.execute(input));
+    return await this.requestPasswordResetUseCase.executeOrThrow(input);
   }
 
   @Post('password/reset/confirm')
@@ -307,7 +306,7 @@ export class AuthController {
   ) {
     const input = toConfirmPasswordResetInput(dto);
 
-    return unwrapResult(await this.confirmPasswordResetUseCase.execute(input));
+    return await this.confirmPasswordResetUseCase.executeOrThrow(input);
   }
   @Post('sign-out')
   @UseGuards(JwtAuthGuard)
@@ -355,7 +354,7 @@ export class AuthController {
   ) {
     const input = toSignOutInput(user.id, dto, authorization);
 
-    return unwrapResult(await this.signOutUseCase.execute(input));
+    return await this.signOutUseCase.executeOrThrow(input);
   }
 
   @Get('me')

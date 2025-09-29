@@ -54,6 +54,21 @@ function buildUser(partial: Partial<UserEntity> = {}): UserEntity {
   } as UserEntity;
 }
 
+function makeUseCaseMock<T>() {
+  const execute = jest.fn();
+  const executeOrThrow = jest.fn(async (...args: any[]) => {
+    const result = await execute(...args);
+
+    if (result && typeof result === 'object' && 'error' in result && result.error) {
+      throw result.error;
+    }
+
+    return result ? (result as any).data : undefined;
+  });
+
+  return { execute, executeOrThrow } as unknown as jest.Mocked<T>;
+}
+
 describe('UsersController (integration)', () => {
   let app: INestApplication;
 
@@ -67,11 +82,11 @@ describe('UsersController (integration)', () => {
     metadata: { slug: 'admin-slug' },
   } as ICurrentUser;
 
-  const createUseCase = { execute: jest.fn() } as jest.Mocked<ICreateUserUseCase>;
-  const findAllUseCase = { execute: jest.fn() } as jest.Mocked<IFindAllUsersUseCase>;
-  const findBySlugUseCase = { execute: jest.fn() } as jest.Mocked<IFindUserBySlugUseCase>;
-  const updateUseCase = { execute: jest.fn() } as jest.Mocked<IUpdateUserUseCase>;
-  const deleteUseCase = { execute: jest.fn() } as jest.Mocked<IDeleteUserUseCase>;
+  const createUseCase = makeUseCaseMock<ICreateUserUseCase>();
+  const findAllUseCase = makeUseCaseMock<IFindAllUsersUseCase>();
+  const findBySlugUseCase = makeUseCaseMock<IFindUserBySlugUseCase>();
+  const updateUseCase = makeUseCaseMock<IUpdateUserUseCase>();
+  const deleteUseCase = makeUseCaseMock<IDeleteUserUseCase>();
 
   beforeAll(async () => {
     const moduleRef: TestingModule = await Test.createTestingModule({
@@ -127,7 +142,7 @@ describe('UsersController (integration)', () => {
     currentUser.metadata = { slug: 'admin-slug' };
   });
 
-  it('cria usuário mapeando payload via mapper compartilhado', async () => {
+  it('cria usuï¿½rio mapeando payload via mapper compartilhado', async () => {
     const createdUser = buildUser();
     createUseCase.execute.mockResolvedValue({ data: createdUser });
 
@@ -164,7 +179,7 @@ describe('UsersController (integration)', () => {
     });
   });
 
-  it('lista usuários aplicando fallback de tenant e formato do presenter', async () => {
+  it('lista usuï¿½rios aplicando fallback de tenant e formato do presenter', async () => {
     const user = buildUser();
     findAllUseCase.execute.mockResolvedValue({
       data: {
@@ -196,7 +211,7 @@ describe('UsersController (integration)', () => {
     expect(listCallArgs.isActive).toBeUndefined();
   });
 
-  it('mantém tenant informado quando recebido no filtro', async () => {
+  it('mantï¿½m tenant informado quando recebido no filtro', async () => {
     findAllUseCase.execute.mockResolvedValue({
       data: {
         data: [],
@@ -216,7 +231,7 @@ describe('UsersController (integration)', () => {
     expect(explicitCallArgs.isActive).toBeUndefined();
   });
 
-  it('recupera usuário por slug delegando ao use case', async () => {
+  it('recupera usuï¿½rio por slug delegando ao use case', async () => {
     const user = buildUser();
     findBySlugUseCase.execute.mockResolvedValue({ data: user });
 
@@ -235,15 +250,15 @@ describe('UsersController (integration)', () => {
     expect(findBySlugUseCase.execute).toHaveBeenCalledWith('ana-souza');
   });
 
-  it('propaga erro 404 quando usuário não encontrado', async () => {
+  it('propaga erro 404 quando usuï¿½rio nï¿½o encontrado', async () => {
     findBySlugUseCase.execute.mockResolvedValue({
-      error: new NotFoundException('Usuário não encontrado'),
+      error: new NotFoundException('Usuï¿½rio nï¿½o encontrado'),
     });
 
     await request(app.getHttpServer()).get('/users/desconhecido').expect(404);
   });
 
-  it('atualiza usuário convertendo input para contrato de domínio', async () => {
+  it('atualiza usuï¿½rio convertendo input para contrato de domï¿½nio', async () => {
     const updatedUser = buildUser({ name: 'Ana Atualizada' });
     updateUseCase.execute.mockResolvedValue({ data: updatedUser });
     currentUser.metadata = { slug: 'ana-souza' };
@@ -273,7 +288,7 @@ describe('UsersController (integration)', () => {
     );
   });
 
-  it('deleta usuário via use case mantendo contexto', async () => {
+  it('deleta usuï¿½rio via use case mantendo contexto', async () => {
     deleteUseCase.execute.mockResolvedValue({ data: undefined });
 
     await request(app.getHttpServer()).delete('/users/ana-souza').expect(204);
@@ -281,7 +296,7 @@ describe('UsersController (integration)', () => {
     expect(deleteUseCase.execute).toHaveBeenCalledWith('ana-souza', currentUser.id);
   });
 
-  it('bloqueia criação com payload inválido retornando 400', async () => {
+  it('bloqueia criaï¿½ï¿½o com payload invï¿½lido retornando 400', async () => {
     await request(app.getHttpServer())
       .post('/users')
       .send({ email: 'invalido', password: '123', cpf: '999' })

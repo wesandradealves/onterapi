@@ -2,6 +2,7 @@ import { Result } from '@shared/types/result.type';
 
 export interface IVerifyEmailUseCase {
   execute(input: VerifyEmailInput): Promise<Result<VerifyEmailOutput>>;
+  executeOrThrow(input: VerifyEmailInput): Promise<VerifyEmailOutput>;
 }
 
 export interface VerifyEmailInput {

@@ -14,4 +14,5 @@ type FindAllUsersOutput = {
 
 export interface IFindAllUsersUseCase {
   execute(filters: IUserFilters): Promise<Result<FindAllUsersOutput>>;
+  executeOrThrow(filters: IUserFilters): Promise<FindAllUsersOutput>;
 }

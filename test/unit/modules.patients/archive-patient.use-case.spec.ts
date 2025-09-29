@@ -61,30 +61,28 @@ describe('ArchivePatientUseCase', () => {
   it('falha quando paciente nao encontrado', async () => {
     repository.findBySlug.mockResolvedValue(null);
 
-    const result = await useCase.execute({
-      tenantId,
-      patientSlug: 'unknown',
-      requesterRole: RolesEnum.CLINIC_OWNER,
-      requestedBy: 'user-1',
-      reason: 'duplicate',
-    });
-
-    expect(result.data).toBeUndefined();
-    expect(result.error).toBeInstanceOf(Error);
+    await expect(
+      useCase.execute({
+        tenantId,
+        patientSlug: 'unknown',
+        requesterRole: RolesEnum.CLINIC_OWNER,
+        requestedBy: 'user-1',
+        reason: 'duplicate',
+      }),
+    ).rejects.toBeInstanceOf(Error);
     expect(repository.archive).not.toHaveBeenCalled();
   });
 
   it('bloqueia usuarios sem permissao', async () => {
-    const result = await useCase.execute({
-      tenantId,
-      patientSlug: 'patient-1',
-      requesterRole: RolesEnum.SECRETARY,
-      requestedBy: 'user-1',
-      reason: 'duplicate',
-    });
-
-    expect(result.data).toBeUndefined();
-    expect(result.error).toBeInstanceOf(Error);
+    await expect(
+      useCase.execute({
+        tenantId,
+        patientSlug: 'patient-1',
+        requesterRole: RolesEnum.SECRETARY,
+        requestedBy: 'user-1',
+        reason: 'duplicate',
+      }),
+    ).rejects.toBeInstanceOf(Error);
     expect(repository.archive).not.toHaveBeenCalled();
   });
 });

@@ -2,6 +2,7 @@ import { Result } from '@shared/types/result.type';
 
 export interface IResetPasswordUseCase {
   execute(input: ResetPasswordInput): Promise<Result<ResetPasswordOutput>>;
+  executeOrThrow(input: ResetPasswordInput): Promise<ResetPasswordOutput>;
 }
 
 export interface ResetPasswordInput {

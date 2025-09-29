@@ -2,6 +2,7 @@ import { Result } from '@shared/types/result.type';
 
 export interface ISignOutUseCase {
   execute(input: SignOutInput): Promise<Result<SignOutOutput>>;
+  executeOrThrow(input: SignOutInput): Promise<SignOutOutput>;
 }
 
 export interface SignOutInput {

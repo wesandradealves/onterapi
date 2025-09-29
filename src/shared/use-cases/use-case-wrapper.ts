@@ -15,6 +15,10 @@ export class UseCaseWrapper<TInput, TOutput> {
   async execute(input: TInput): Promise<Result<TOutput>> {
     return this.internalUseCase.execute(input);
   }
+
+  async executeOrThrow(input: TInput): Promise<TOutput> {
+    return this.internalUseCase.executeOrThrow(input);
+  }
 }
 
 class InternalUseCase<TInput, TOutput> extends BaseUseCase<TInput, TOutput> {

@@ -44,7 +44,6 @@ import { ArchivePatientDto } from '../dtos/archive-patient.dto';
 import { ExportPatientsDto } from '../dtos/export-patients.dto';
 import { PatientResponseDto, PatientsListResponseDto } from '../dtos/patient-response.dto';
 import { PatientPresenter } from '../presenters/patient.presenter';
-import { unwrapResult } from '../../../../shared/types/result.type';
 import { PatientDetailDto } from '../dtos/patient-detail.dto';
 import { createPatientSchema, CreatePatientSchema } from '../schemas/create-patient.schema';
 import { updatePatientSchema, UpdatePatientSchema } from '../schemas/update-patient.schema';
@@ -117,19 +116,16 @@ export class PatientsController {
   ): Promise<PatientsListResponseDto> {
     const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
     const filters = toPatientListFilters(query);
-
-    const payload = unwrapResult(
-      await this.listPatientsUseCase.execute({
-        tenantId: context.tenantId,
-        requesterId: context.userId,
-        requesterRole: context.role,
-        filters,
-        page: query.page,
-        limit: query.limit,
-        sortBy: query.sortBy,
-        sortOrder: query.sortOrder,
-      }),
-    );
+    const payload = await this.listPatientsUseCase.executeOrThrow({
+      tenantId: context.tenantId,
+      requesterId: context.userId,
+      requesterRole: context.role,
+      filters,
+      page: query.page,
+      limit: query.limit,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
+    });
 
     return {
       data: payload.data.map((patient: PatientListItem) => PatientPresenter.listItem(patient)),
@@ -156,7 +152,7 @@ export class PatientsController {
     const context = this.resolveContext(currentUser, tenantHeader ?? body?.tenantId);
     const input = toCreatePatientInput(body, context);
 
-    const patient = unwrapResult(await this.createPatientUseCase.execute(input));
+    const patient = await this.createPatientUseCase.executeOrThrow(input);
 
     return PatientPresenter.summary(patient);
   }
@@ -188,14 +184,13 @@ export class PatientsController {
   ): Promise<PatientDetailDto> {
     const context = this.resolveContext(currentUser, tenantHeader);
 
-    const { patient, summary, timeline, insights, quickActions } = unwrapResult(
-      await this.getPatientUseCase.execute({
+    const { patient, summary, timeline, insights, quickActions } =
+      await this.getPatientUseCase.executeOrThrow({
         tenantId: context.tenantId,
         requesterId: context.userId,
         requesterRole: context.role,
         patientSlug,
-      }),
-    );
+      });
 
     return {
       patient: PatientPresenter.detail(patient),
@@ -250,7 +245,7 @@ export class PatientsController {
     const context = this.resolveContext(currentUser, tenantHeader);
     const input = toUpdatePatientInput(patientSlug, body, context);
 
-    const updated = unwrapResult(await this.updatePatientUseCase.execute(input));
+    const updated = await this.updatePatientUseCase.executeOrThrow(input);
 
     return PatientPresenter.summary(updated);
   }
@@ -276,7 +271,7 @@ export class PatientsController {
     const context = this.resolveContext(currentUser, tenantHeader);
     const input = toTransferPatientInput(patientSlug, body, context);
 
-    const transferred = unwrapResult(await this.transferPatientUseCase.execute(input));
+    const transferred = await this.transferPatientUseCase.executeOrThrow(input);
 
     return PatientPresenter.summary(transferred);
   }
@@ -301,7 +296,7 @@ export class PatientsController {
     const context = this.resolveContext(currentUser);
     const input = toArchivePatientInput(patientSlug, body, context);
 
-    unwrapResult(await this.archivePatientUseCase.execute(input));
+    await this.archivePatientUseCase.executeOrThrow(input);
   }
 
   @Post('export')
@@ -331,7 +326,7 @@ export class PatientsController {
     const context = this.resolveContext(currentUser, body?.tenantId);
     const request = toExportPatientRequest(body, context);
 
-    return unwrapResult(await this.exportPatientsUseCase.execute(request));
+    return await this.exportPatientsUseCase.executeOrThrow(request);
   }
 
   private resolveContext(

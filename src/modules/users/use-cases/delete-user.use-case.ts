@@ -32,6 +32,10 @@ export class DeleteUserUseCase implements IDeleteUserUseCase {
     return this.wrapper.execute({ slug, currentUserId });
   }
 
+  async executeOrThrow(slug: string, currentUserId: string): Promise<void> {
+    return this.wrapper.executeOrThrow({ slug, currentUserId });
+  }
+
   private async handleDelete(input: DeleteUserInput): Promise<void> {
     const { slug, currentUserId } = input;
     const user = await this.userRepository.findBySlug(slug);

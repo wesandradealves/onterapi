@@ -2,6 +2,7 @@ import { Result } from '@shared/types/result.type';
 
 export interface IValidateTwoFAUseCase {
   execute(input: ValidateTwoFAInput): Promise<Result<ValidateTwoFAOutput>>;
+  executeOrThrow(input: ValidateTwoFAInput): Promise<ValidateTwoFAOutput>;
 }
 
 export interface ValidateTwoFAInput {

@@ -1,4 +1,4 @@
-﻿# OnTerapi 
+# OnTerapi 
 
 Plataforma SaaS multi-tenant para gestao de clinicas e terapeutas, com Supabase Auth, 2FA, RBAC e modulo de pacientes conectado diretamente ao storage do Supabase.
 
@@ -8,6 +8,7 @@ Plataforma SaaS multi-tenant para gestao de clinicas e terapeutas, com Supabase 
 - [Fluxo de Autenticacao](#fluxo-de-autenticacao)
 - [Modulo de Pacientes](#modulo-de-pacientes)
 - [Modulo de Usuarios](#modulo-de-usuarios)
+- [Modulo de Anamnese](#modulo-de-anamnese)
 - [Exportacao de Pacientes](#exportacao-de-pacientes)
 - [Documentacao Swagger](#documentacao-swagger)
 - [Como Rodar Localmente](#como-rodar-localmente)
@@ -28,9 +29,9 @@ Plataforma SaaS multi-tenant para gestao de clinicas e terapeutas, com Supabase 
 - DRY/Clean Architecture com BaseUseCase, BaseGuard e MessageBus unificados
 
 ## Credenciais de Teste
-NÃƒÂ£o mantemos mais credenciais padrÃƒÂ£o em repositÃƒÂ³rio. Gere usuÃƒÂ¡rios administrativos manualmente via `/users` e armazene os acessos em um cofre seguro.
+NÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o mantemos mais credenciais padrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o em repositÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³rio. Gere usuÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡rios administrativos manualmente via `/users` e armazene os acessos em um cofre seguro.
 
-> Para fluxos locais, utilize os dados de ambiente em `./.env` e gere o 2FA pelo endpoint `/auth/two-factor/send` quando necessÃƒÂ¡rio.
+> Para fluxos locais, utilize os dados de ambiente em `./.env` e gere o 2FA pelo endpoint `/auth/two-factor/send` quando necessÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡rio.
 
 ## Fluxo de Autenticacao
 1. `POST /auth/sign-in` com email/senha. Super admin exige 2FA automaticamente.
@@ -70,6 +71,199 @@ Rotas principais:
 - Script `npm run backfill:user-slugs` sincroniza o slug do banco relacional com o metadata do Supabase Auth para contas legadas.
 - Script `npm run sync:users` garante que apenas os usuarios presentes no Postgres estejam registrados no Supabase Auth (executa insert/update e remove contas extras).
 - Script `npm run assign-super-admin-tenant` vincula o tenant padrao aos SUPER_ADMIN no Supabase e atualiza a coluna tenant_id da base relacional.
+
+## Modulo de Anamnese
+
+### Visao Geral
+- Formulario clinico multi-etapas (10 steps) utilizado antes da consulta para consolidar dados do paciente, alimentar a IA e registrar historico auditavel.
+- Suporta rascunhos idempotentes, anexos versionados, geracao de plano terapeutico, feedback supervisionado e metricas de conclusao.
+- Todo fluxo utiliza os guards `JwtAuthGuard`, `TenantGuard` e `RolesGuard`, devolvendo as respostas formatadas pelo `AnamnesisPresenter`.
+
+### Autenticacao e Cabecalhos
+- `Authorization: Bearer <accessToken>` obrigatorio para todas as rotas autenticadas; o webhook de IA e marcado com `@Public`, mas ainda passa pelo `AnamnesisAIWebhookGuard`.
+- `x-tenant-id: <uuid>` obrigatorio. Para rotas autenticadas o guard usa `currentUser.tenantId` como fallback, enquanto o webhook exige o header explicitamente.
+- Roles permitidas:
+  - `PATIENT` acessa apenas a propria anamnese.
+  - `PROFESSIONAL`, `CLINIC_OWNER` e `MANAGER` executam todas as operacoes do modulo.
+  - `SUPER_ADMIN` possui acesso total.
+  - `SECRETARY` e `FINANCE` nao sao autorizados.
+
+### Enumeracoes Principais
+- `AnamnesisStatus`: `draft`, `submitted`, `completed`, `cancelled`.
+- `AnamnesisStepKey`: `identification`, `chiefComplaint`, `currentDisease`, `pathologicalHistory`, `familyHistory`, `systemsReview`, `lifestyle`, `psychosocial`, `medication`, `physicalExam`.
+- `approvalStatus` (feedback): `approved`, `modified`, `rejected`.
+
+### Fluxo Sugerido no Swagger
+1. `POST /anamneses/start` cria ou recupera o rascunho vinculado a consulta.
+2. `PUT /anamneses/{anamnesisId}/steps/{stepNumber}` e `POST /anamneses/{anamnesisId}/auto-save` alimentam cada etapa.
+3. `POST /anamneses/{anamnesisId}/attachments` (opcional) envia exames e documentos.
+4. `POST /anamneses/{anamnesisId}/submit` valida o preenchimento e dispara a fila da IA.
+5. `POST /anamneses/{anamnesisId}/plan` registra o plano recebido; `POST /anamneses/{anamnesisId}/plan/feedback` guarda o parecer humano.
+6. Consultas subsequentes usam `GET /anamneses/{anamnesisId}` e `GET /anamneses/patient/{patientId}`.
+
+> Schemas Zod e DTOs: `src/modules/anamnesis/api/schemas/anamnesis.schema.ts` e `src/modules/anamnesis/api/dtos/`.
+
+### Endpoints Detalhados
+
+#### GET /anamneses/templates
+- Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN, PATIENT.
+- Query (`ListStepTemplatesQuerySchema`):
+| Query | Tipo | Obrigatorio | Descricao |
+| --- | --- | --- | --- |
+| `specialty` | string | nao | Prioriza templates cadastrados para a especialidade. |
+| `includeInactive` | boolean | nao | Quando `true`, retorna templates inativos para auditoria. |
+- Resposta: array de `AnamnesisStepTemplateDto` com `id`, `key`, `title`, `schema`, `version`, `specialty`, `isActive`, `createdAt`, `updatedAt`.
+```json
+[
+  {
+    "id": "template-identification",
+    "key": "identification",
+    "title": "Identificacao",
+    "schema": { "fields": [] },
+    "version": 1,
+    "specialty": "default",
+    "isActive": true,
+    "createdAt": "2025-09-26T00:00:00.000Z"
+  }
+]
+```
+
+#### POST /anamneses/start
+- Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN, PATIENT.
+- Body (`StartAnamnesisRequestDto`):
+| Campo | Tipo | Obrigatorio | Descricao |
+| --- | --- | --- | --- |
+| `consultationId` | uuid | sim | Consulta relacionada. |
+| `patientId` | uuid | sim | Paciente que respondera a anamnese. |
+| `professionalId` | uuid | sim | Profissional responsavel pela consulta. |
+| `totalSteps` | inteiro (1-50) | nao | Quantidade total de etapas disponiveis. |
+| `initialStep` | inteiro | nao | Etapa inicial a ser exibida. |
+| `formData` | objeto | nao | Dados iniciais para pre-preenchimento. |
+- Resposta (`AnamnesisDetailResponseDto`):
+```json
+{
+  "id": "5c4a...",
+  "consultationId": "c1d2...",
+  "patientId": "p1d2...",
+  "professionalId": "8799...",
+  "tenantId": "1111...",
+  "status": "draft",
+  "totalSteps": 10,
+  "currentStep": 1,
+  "completionRate": 0,
+  "isDraft": true,
+  "steps": [],
+  "latestPlan": null,
+  "attachments": []
+}
+```
+
+#### GET /anamneses/{anamnesisId}
+- Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN, PATIENT (somente a propria).
+- Query (`GetAnamnesisQuerySchema`):
+| Query | Tipo | Obrigatorio | Descricao |
+| --- | --- | --- | --- |
+| `includeSteps` | boolean | nao | Inclui a lista de steps preenchidos. |
+| `includeLatestPlan` | boolean | nao | Retorna o plano terapeutico mais recente. |
+| `includeAttachments` | boolean | nao | Retorna anexos vinculados. |
+- Resposta: `AnamnesisDetailResponseDto` com `steps`, `latestPlan` e `attachments` quando solicitados.
+
+#### PUT /anamneses/{anamnesisId}/steps/{stepNumber}
+- Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN, PATIENT (proprio).
+- Path: `stepNumber` (inteiro 1-50).
+- Body (`SaveAnamnesisStepRequestDto`):
+| Campo | Tipo | Obrigatorio | Descricao |
+| --- | --- | --- | --- |
+| `key` | string (`AnamnesisStepKey`) | sim | Identifica a etapa. |
+| `payload` | objeto | sim | Dados preenchidos no passo. |
+| `completed` | boolean | nao | Marca o passo como finalizado. |
+| `hasErrors` | boolean | nao | Indica erros de validacao. |
+| `validationScore` | numero (0-100) | nao | Score calculado pelo front/IA. |
+- Resposta: `AnamnesisDetailResponseDto` com progresso atualizado.
+
+#### POST /anamneses/{anamnesisId}/auto-save
+- Mesmas roles e DTO baseando-se em `AutoSaveAnamnesisStepRequestDto` (inclui `stepNumber` e `autoSavedAt` ISO).
+- Resposta: `AnamnesisDetailResponseDto` mantendo o status `draft`.
+
+#### POST /anamneses/{anamnesisId}/submit
+- Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN.
+- Sem body. Retorna `AnamnesisDetailResponseDto` com `status` = `submitted` e `submittedAt` preenchido.
+
+#### POST /anamneses/{anamnesisId}/plan
+- Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN.
+- Body (`SaveTherapeuticPlanRequestDto`):
+| Campo | Tipo | Obrigatorio | Descricao |
+| --- | --- | --- | --- |
+| `clinicalReasoning` | string | nao | Raciocinio clinico gerado. |
+| `summary` | string | nao | Resumo apresentado ao paciente. |
+| `therapeuticPlan` | objeto | nao | Representacao estruturada do plano. |
+| `riskFactors` | array | nao | Lista de fatores de risco (`id`, `description`, `severity`). |
+| `recommendations` | array | nao | Lista de recomendacoes (`id`, `description`, `priority`). |
+| `confidence` | numero (0-1) | nao | Confianca da IA. |
+| `reviewRequired` | boolean | nao | Indica necessidade de revisao humana. |
+| `generatedAt` | string ISO | sim | Momento em que a IA concluiu a analise. |
+- Resposta: `TherapeuticPlanDto` com ids, feedback, timestamps e metadados.
+
+#### POST /anamneses/{anamnesisId}/plan/feedback
+- Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN.
+- Body (`SavePlanFeedbackRequestDto`): campos `approvalStatus`, `liked`, `feedbackComment`.
+- Resposta: `TherapeuticPlanDto` atualizado com feedback humano (`approvalStatus`, `liked`, `feedbackGivenBy`, `feedbackGivenAt`).
+
+#### GET /anamneses/patient/{patientId}
+- Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN, PATIENT (proprio).
+- Query (`ListAnamnesesQuerySchema`):
+| Query | Tipo | Obrigatorio | Descricao |
+| --- | --- | --- | --- |
+| `status` | string ou array | nao | Lista de status validos (`draft`, `submitted`, `completed`, `cancelled`). |
+| `professionalId` | uuid | nao | Filtra pelo responsavel. |
+| `from` | string ISO | nao | Data/hora inicial (UTC). |
+| `to` | string ISO | nao | Data/hora final (UTC). |
+- Resposta: array de `AnamnesisListItemDto` (id, consultationId, patientId, professionalId, status, completionRate, submittedAt, updatedAt).
+
+#### GET /anamneses/patient/{patientId}/history
+- Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN, PATIENT.
+- Query (`AnamnesisHistoryQuerySchema`):
+| Query | Tipo | Obrigatorio | Descricao |
+| --- | --- | --- | --- |
+| `limit` | inteiro (1-50) | nao | Limita quantidade de registros. |
+| `status` | string ou array | nao | Filtra por status validos. |
+| `includeDrafts` | boolean | nao | Inclui anamneses em rascunho. |
+- Resposta: `AnamnesisHistoryResponseDto` com `entries` (steps, anexos, plano) e `prefill` reutilizavel.
+
+#### POST /anamneses/{anamnesisId}/attachments
+- Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN, PATIENT.
+- Consome `multipart/form-data` (`CreateAnamnesisAttachmentRequestDto`): campo `file` (binario, max 10 MB), `stepNumber` opcional, `fileName` opcional.
+- Resposta: `AnamnesisAttachmentDto` (`id`, `fileName`, `mimeType`, `size`, `storagePath`, `uploadedBy`, `uploadedAt`).
+
+#### DELETE /anamneses/{anamnesisId}/attachments/{attachmentId}
+- Mesmas roles. Retorna HTTP 204 e emite `DomainEvents.ANAMNESIS_ATTACHMENT_REMOVED`.
+
+#### POST /anamneses/{anamnesisId}/ai-result
+- `@Public` + `AnamnesisAIWebhookGuard` (valida assinatura e exige `x-tenant-id`).
+- Body (`ReceiveAIResultRequestDto`):
+| Campo | Tipo | Obrigatorio | Descricao |
+| --- | --- | --- | --- |
+| `analysisId` | uuid | sim | Analise original solicitada. |
+| `status` | enum (`completed`, `failed`) | sim | Resultado da IA. |
+| `respondedAt` | string ISO | sim | Momento da resposta. |
+| `clinicalReasoning` | string | nao | Raciocinio clinico. |
+| `summary` | string | nao | Resumo para exibicao. |
+| `therapeuticPlan` | objeto | nao | Plano estruturado. |
+| `riskFactors` | array | nao | Fatores de risco (mesma estrutura do plano). |
+| `recommendations` | array | nao | Recomendacoes (mesma estrutura do plano). |
+| `confidence` | numero (0-1) | nao | Confianca atribuida pela IA. |
+| `payload` | objeto | nao | Payload bruto para auditoria. |
+| `errorMessage` | string | nao | Populado quando `status=failed`. |
+- Resposta: HTTP 202 sem body; dispara `DomainEvents.ANAMNESIS_AI_COMPLETED` e `DomainEvents.ANAMNESIS_PLAN_FEEDBACK_SAVED` quando aplicavel.
+
+### Persistencia e Storage
+- Migrations: `1738100000000-CreateAnamnesisTables`, `1738200000000-AddAnamnesisTemplatesAndAIResponses`, `1738300000000-AddAnamnesisFeedbackScoreboard`.
+- Storage: `SupabaseAnamnesisAttachmentStorageService` salva anexos com checksum, `mimeType`, `size` e `storagePath` versionado.
+
+### Testes
+- Suites unitarias/integracao/E2E: `test/unit/modules.anamnesis/**`, `test/integration/anamnesis.controller.integration.spec.ts`, `test/e2e/anamnesis.e2e-spec.ts`.
+- Pipeline recomendado: `npm run lint` -> `npx tsc --noEmit` -> `npm run test:unit` -> `npm run test:int` -> `npm run test:e2e` -> `npm run test:cov` -> `npm run build`.
+
 
 ## Exportacao de Pacientes
 - `POST /patients/export` enfileira solicitacao na tabela `patient_exports`.
@@ -166,13 +360,14 @@ CORS_ORIGIN=http://localhost:3000
 | E2E | `npm run test:e2e` | Fluxos HTTP completos via supertest | Requer Supabase configurado; usa fixtures em `test/e2e`. |
 | Cobertura | `npm run test:cov` | Agrega suites unit e integracao com cobertura 100% | Mantem thresholds globais em 100% para statements/branches/functions/lines. |
 
-Resultados recentes: 150 testes executados; cobertura global 100% (`npm run test:cov`).
+Resultados recentes: 202 testes executados; cobertura global 100% (`npm run test:cov`).
 
 ## Fluxo Completo de Teste via cURL
 > Observacoes:
 > - Utilize `curl.exe` no PowerShell para evitar o alias `Invoke-WebRequest`.
 > - Centralize arquivos temporarios em `payloads/` e limpe-os ao final.
 > - Confirme que a API esta ativa (`http://localhost:3000/health`) e que `.env` contem `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` validos.
+> - Garanta que o bucket configurado em `ANAMNESIS_STORAGE_BUCKET` exista no Supabase Storage (ex.: `anamneses`) antes de testar uploads de anexos.
 
 1. **Preparacao**
    ```powershell
@@ -218,6 +413,7 @@ Resultados recentes: 150 testes executados; cobertura global 100% (`npm run test
      --data @payloads/auth-two-fa-validate.json | ConvertFrom-Json
    $accessToken = $tokens.accessToken
    $refreshToken = $tokens.refreshToken
+   $tenantId = $tokens.user.tenantId
    ```
 
 5. **Fluxo completo de USERS**
@@ -259,11 +455,111 @@ Resultados recentes: 150 testes executados; cobertura global 100% (`npm run test
    curl.exe -s -X POST "$BASE_URL/patients/$($createdPatient.slug)/archive" -H "Authorization: Bearer $accessToken" \
      -H "Content-Type: application/json" --data @payloads/patients-archive.json | Out-Null
 
-   curl.exe -s -X DELETE "$SUPABASE_URL/rest/v1/patients?id=eq.$($createdPatient.id)" \
-     -H "apikey: $SERVICE_ROLE_KEY" -H "Authorization: Bearer $SERVICE_ROLE_KEY" | Out-Null
+
    ```
 
-7. **Logout**
+7. **Fluxo completo de ANAMNESES (incluindo anexos)**
+   > Requer que o bucket configurado em `ANAMNESIS_STORAGE_BUCKET` exista no Supabase Storage.
+
+   Inicie o rascunho:
+   ```powershell
+   $patientId = $createdPatient.id
+   $professionalId = if ($createdPatient.professionalId) { $createdPatient.professionalId } else { $tokens.user.id }
+   $consultationId = [guid]::NewGuid().ToString()
+
+   @{
+     consultationId = $consultationId
+     patientId      = $patientId
+     professionalId = $professionalId
+     totalSteps     = 10
+     initialStep    = 1
+     formData       = @{ notes = 'Fluxo manual via curl' }
+   } | ConvertTo-Json -Depth 5 |
+     Set-Content -NoNewline -Path payloads/anamnesis-start.json
+
+   $anamnesis = curl.exe -s -X POST "$BASE_URL/anamneses/start" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" -H "Content-Type: application/json" --data @payloads/anamnesis-start.json | ConvertFrom-Json
+   $anamnesisId = $anamnesis.id
+   ```
+
+   Preencha as etapas (exemplo simplificado):
+   ```powershell
+   $steps = @(
+     @{ number = 1; key = 'identification'; payload = @{ personalInfo = @{ fullName = 'Paciente Fluxo API'; birthDate = '1990-01-10'; gender = 'female' }; contactInfo = @{ phone = '11999999999' } } }
+     @{ number = 2; key = 'chiefComplaint'; payload = @{ complaint = @{ history = 'Dor lombar ha 3 semanas'; duration = '3 semanas' } } }
+     @{ number = 3; key = 'currentDisease'; payload = @{ evolution = @{ description = 'Dor moderada que piora no fim do dia'; intensity = 3 } } }
+     @{ number = 4; key = 'pathologicalHistory'; payload = @{ previousDiseases = @('Hipertensao') } }
+     @{ number = 5; key = 'familyHistory'; payload = @{ familyDiseases = @(@{ id = 'fam-1'; relationship = 'mother'; disease = 'Hipertensao' }) } }
+     @{ number = 6; key = 'systemsReview'; payload = @{ musculoskeletal = @{ hasSymptoms = $true; symptoms = @('Dor lombar') } } }
+     @{ number = 7; key = 'lifestyle'; payload = @{ physicalActivity = @{ level = 'moderate'; frequency = 4 }; smoking = @{ status = 'former' } } }
+     @{ number = 8; key = 'psychosocial'; payload = @{ emotional = @{ currentMood = 'good'; stressLevel = 5 } } }
+     @{ number = 9; key = 'medication'; payload = @{ currentMedications = @(@{ id = 'med-1'; name = 'Ibuprofeno'; frequency = '2x ao dia' }) } }
+     @{ number = 10; key = 'physicalExam'; payload = @{ vitalSigns = @{ heartRate = 72; temperature = 36.5 }; anthropometry = @{ height = 168; weight = 68 } } }
+   )
+
+   foreach ($step in $steps) {
+     $body = [pscustomobject]@{
+       key             = $step.key
+       payload         = $step.payload
+       completed       = $true
+       hasErrors       = $false
+       validationScore = 100
+     } | ConvertTo-Json -Depth 10
+
+     $path = "payloads/anamnesis-step-$($step.number).json"
+     Set-Content -NoNewline -Path $path -Value $body
+
+     curl.exe -s -X PUT "$BASE_URL/anamneses/$anamnesisId/steps/$($step.number)" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" -H "Content-Type: application/json" --data @$path | Out-Null
+   }
+   ```
+
+   Gerar anexos de teste e enviar:
+   ```powershell
+   'Laudo gerado via curl em ' + (Get-Date -Format o) | Set-Content -NoNewline -Path payloads/anamnesis-attachment.txt
+
+   curl.exe -s -X POST "$BASE_URL/anamneses/$anamnesisId/attachments" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" -F "stepNumber=3" -F "fileName=laudo.txt" -F "file=@payloads/anamnesis-attachment.txt;type=text/plain" | Out-Null
+   ```
+
+   Submeter, registrar plano e feedback:
+   ```powershell
+   curl.exe -s -X POST "$BASE_URL/anamneses/$anamnesisId/submit" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" -H "Content-Type: application/json" --data '{}' | Out-Null
+
+   @{
+     clinicalReasoning = 'Quadro compatÃ­vel com lombalgia mecÃ¢nica.'
+     summary           = 'Plano com foco em dor, mobilidade e fortalecimento.'
+     therapeuticPlan   = @{ goals = @('Reduzir dor', 'Fortalecer core') }
+     confidence        = 0.9
+     reviewRequired    = $false
+     generatedAt       = (Get-Date).ToUniversalTime().ToString('o')
+   } | ConvertTo-Json -Depth 6 |
+     Set-Content -NoNewline -Path payloads/anamnesis-plan.json
+
+   $plan = curl.exe -s -X POST "$BASE_URL/anamneses/$anamnesisId/plan" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" -H "Content-Type: application/json" --data @payloads/anamnesis-plan.json | ConvertFrom-Json
+
+   @{
+     approvalStatus  = 'approved'
+     liked           = $true
+     feedbackComment = 'Plano revisado manualmente via curl em ' + (Get-Date -Format s) + 'Z'
+   } | ConvertTo-Json -Depth 4 |
+     Set-Content -NoNewline -Path payloads/anamnesis-feedback.json
+
+   curl.exe -s -X POST "$BASE_URL/anamneses/$anamnesisId/plan/feedback" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" -H "Content-Type: application/json" --data @payloads/anamnesis-feedback.json | Out-Null
+   ```
+
+   Consultar detalhes e histÃ³rico:
+   ```powershell
+   curl.exe -s "$BASE_URL/anamneses/$anamnesisId?includeSteps=true&includeLatestPlan=true&includeAttachments=true" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" > payloads/anamnesis-detail.json
+
+   curl.exe -s "$BASE_URL/anamneses/patient/$patientId/history" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" > payloads/anamnesis-history.json
+   ```
+
+   > Para anexar novos arquivos, repita o `POST /attachments` com outro nome; o storage nÃ£o permite sobrescrita (upsert=false).
+
+8. **Remover o paciente de teste no Supabase (opcional)**
+   ```powershell
+   curl.exe -s -X DELETE "$SUPABASE_URL/rest/v1/patients?id=eq.$($createdPatient.id)" -H "apikey: $SERVICE_ROLE_KEY" -H "Authorization: Bearer $SERVICE_ROLE_KEY" | Out-Null
+   ```
+
+9. **Logout**
    ```powershell
    '{"allDevices":true,"refreshToken":"' + $refreshToken + '"}' |
      Set-Content -NoNewline -Path payloads/auth-sign-out.json
@@ -271,7 +567,7 @@ Resultados recentes: 150 testes executados; cobertura global 100% (`npm run test
      -H "Content-Type: application/json" --data @payloads/auth-sign-out.json | Out-Null
    ```
 
-8. **Limpeza**
+10. **Limpeza**
    ```powershell
    Remove-Item -Recurse -Force payloads
    ```
@@ -280,35 +576,40 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 
 ## Linha de Base de Qualidade
 
-- Data: 2025-09-26
-- Commit analisado: feature/patients-new-fields (worktree)
-- Ambiente: desenvolvimento local (Node 22.18.0)
+- Data: 2025-09-28
+- Commit analisado: feature/anamnesis (worktree)
+- Ambiente: desenvolvimento local (Node 22.18.0 - suite completa validada)
 
 ## Pontuacao Atual
 
 | Criterio | Nota atual (0-10) | Meta | Evidencias chave |
 | --- | --- | --- | --- |
-| DRY / Reuso de codigo | 9.7 | >= 9.0 | Controllers de Auth, Patients e Users delegam normalizacao de payloads aos mappers dedicados, evitando duplicacao de parsers (src/modules/auth/api/controllers/auth.controller.ts:118, src/modules/patients/api/controllers/patients.controller.ts:110, src/modules/users/api/controllers/users.controller.ts:97) enquanto user-request.mapper centraliza os contratos de usuarios (src/modules/users/api/mappers/user-request.mapper.ts:13). |
-| Automacao de qualidade | 8.5 | >= 8.5 | Sequencia padrao npm run lint -> test:unit -> test:int -> test:e2e -> test:cov confirmada em 26/09 com threshold 100% (jest.config.js:12-29, package.json:23-38). |
-| Testes automatizados | 10.0 | >= 9.5 | 173 testes cobrindo unidade/int/e2e executados em 26/09, com cobertura global 100% (test/unit/modules.auth.resend-verification-email.use-case.spec.ts:1, test/integration/auth.controller.integration.spec.ts:1, coverage/coverage-summary.json:1). |
-| Validacoes e contratos | 9.2 | >= 9.0 | Fluxos de auth, users e patients agora passam por schemas Zod e mappers antes dos use cases (src/modules/auth/api/mappers/auth-request.mapper.ts:117, src/modules/users/api/controllers/users.controller.ts:144, src/modules/patients/api/controllers/patients.controller.ts:110). |
-| Governanca de dominio / RBAC | 8.0 | >= 9.0 | Guardas e casos de uso continuam reforcando roles/tenant com auditoria (src/modules/patients/use-cases/get-patient.use-case.ts:89, test/e2e/patients.e2e-spec.ts:58). |
+| DRY / Reuso de codigo | 9.7 | >= 9.0 | Controllers de Auth, Patients, Users e Anamnesis continuam delegando normalizacao a mappers/presenters; selecao de templates por especialidade usa helpers reutilizaveis (`TemplateSelectionContext`, `getTemplatePriority`, `shouldReplaceTemplate`) e evita condicionais duplicadas. |
+| Automacao de qualidade | 8.9 | >= 8.5 | Sequencia manual revalidada em 29/09 (06:36h) com Node 22.18.0: npm run lint -> npx tsc --noEmit -> npm run test:unit -> npm run test:int -> npm run test:e2e -> npm run test:cov -> npm run build. |
+| Testes automatizados | 10.0 | >= 9.5 | 248 testes (unit, integration, e2e e cobertura) executados em ~18 s; presenter, mapper, metrics e repositorio de anamnese seguem com branches 100% cobertos apos os novos cenarios de templates e IA. |
+| Validacoes e contratos | 9.5 | >= 9.0 | Controllers de Anamnesis aplicam Zod para filtros e usam o util `validateAnamnesisStepPayload` (calculo de BMI/pack-years) em save/auto-save/submit, garantindo payload sanitizado antes de publicar eventos de IA. |
+| Governanca de dominio / RBAC | 9.0 | >= 9.0 | Casos de uso de Anamnesis reforcam ensureCanModifyAnamnesis e publicam eventos com tenantId; rotas de anexos, historico, templates e webhook usam TenantGuard + RolesGuard dedicados para cada perfil. |
 
 ## Observacoes Detalhadas
 
 ### DRY e reuso
-- AuthController, TwoFactorController, PatientsController e agora UsersController compartilham resolucao de contexto/mapeamento via helpers, eliminando spreads e normalizacoes ad-hoc nos endpoints.
-- Mapper de auth cobre device info, tokens e defaults; mapper de usuarios centraliza comandos de create/update/filter reaproveitados pelos casos de uso.
-- Proximo alvo de DRY e replicar a mesma abordagem para agendamento e financeiro (mappers + presenters dedicados).
+- Controllers (Auth, TwoFactor, Patients, Users, Anamnesis) compartilham helpers de contexto e mappers, evitando spreads e normalizacoes ad-hoc nos endpoints.
+- Repositorio de anamnese usa `TemplateSelectionContext`, `getTemplatePriority` e `shouldReplaceTemplate` para escolher templates por tenant/especialidade sem condiÃƒÂ§ÃƒÂµes duplicadas.
+- SupabaseAnamnesisAttachmentStorageService e AnamnesisMetricsService concentram storage/metricas e reutilizam factories/eventos multi-tenant.
 
 ### Automacao e scripts
-- Fluxo local permanece linear (unit -> int -> e2e -> cov) com collectCoverageFrom ampliado para mappers de auth/pacientes/usuarios.
-- Aguardando pipeline CI para rodar os mesmos gates de forma automatizada.
+- Bateria manual confirmada em 29/09 (06:36h) com Node 22.18.0: lint -> tsc -> test:unit -> test:int -> test:e2e -> test:cov -> build, com logs arquivados.
+- coverage-summary.json segue versionado como referencia; migrations `1738200000000` e `1738300000000` foram exercitadas com `npm run typeorm migration:run -- -d src/infrastructure/database/data-source.ts` antes de aplicacao em ambientes compartilhados.
 
 ### Testes
-- Novo spec cobre todos os ramos do mapper de usuarios, garantindo coercoes de tenantId e metadata.
-- Contagem total de 173 testes em ~13s; branch coverage mantida em 100% global.
-- Suites de integracao/e2e seguem focadas em pacientes; auth e usuarios ainda carecem de cenarios ponta-a-ponta.
+- Novos specs cobrem selecao de templates, metrics service, feedback scoreboard e fluxo webhook; mocks em memoria mantem branches do repositorio alinhados com as entidades reais.
+- 248 testes (unit, integration, e2e, coverage) em ~18s com branches 100%: suites e2e percorrem start -> auto-save -> submit -> webhook -> feedback, incluindo anexos via storage Supabase.
+- Cenarios negativos validam RBAC (PATIENT vs PROFESSIONAL), conflitos de autosave, erros de storage e webhooks nao autorizados sem gerar falsos positivos.
+
+### IntegraÃ¯Â¿Â½Ã¯Â¿Â½o IA & MÃ¯Â¿Â½tricas
+- SubmitAnamnesisUseCase publica evento completo para CrewAI; webhook `/anamneses/:id/ai-result` persiste `analysisId`, reasoning, risk e recommendations e dispara ANAMNESIS_AI_COMPLETED.
+- SavePlanFeedbackUseCase grava scoreboard em `anamnesis_ai_feedbacks` (approvalStatus, liked, comentario) e emite ANAMNESIS_PLAN_FEEDBACK_SAVED para alimentar treinamento supervisionado.
+- AnamnesisEventsSubscriber alimenta `AnamnesisMetricsService` (steps salvos, autosaves, completude, feedbacks aprovados) mantendo indicadores por tenant prontos para dashboards.
 
 ### Validacao e contratos
 - Todos os endpoints de auth, users e patients consomem dados validados pelo ZodValidationPipe e mappers, preservando DTOs apenas para Swagger.
@@ -319,10 +620,13 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 - Necessario expandir cobertura para agenda/financeiro antes de elevar a meta.
 
 ## Testes Executados
+- npm run lint
+- npx tsc --noEmit
 - npm run test:unit
 - npm run test:int
 - npm run test:e2e
 - npm run test:cov
+- npm run build
 
 Este documento serve como baseline; reavalie os criterios depois de cada entrega significativa.
 ## Fluxograma do Projeto
@@ -345,10 +649,17 @@ flowchart LR
 - **Supabase signOut error: invalid JWT**: agora tratado como `debug`, fluxo segue normalmente.
 - **Token nao fornecido**: verifique header `Authorization: Bearer <accessToken>`.
 - **Tenant invalido**: sempre enviar o tenant real ou deixar o guard resolver via metadata. Execute `npm run assign-super-admin-tenant` apos criar/atualizar tenants internos para garantir que os SUPER_ADMIN recebam o tenant padrao.
-- **Emails/Resend**: conferir painel do Resend ou a caixa do destinatÃƒÂ¡rio configurado para visualizar credenciais e cÃƒÂ³digos 2FA.
+- **Emails/Resend**: conferir painel do Resend ou a caixa do destinatÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡rio configurado para visualizar credenciais e cÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³digos 2FA.
 
 ## Changelog
-Mudancas recentes estao em [CHANGELOG.md](./CHANGELOG.md). Ultima versao: v0.16.2 (25/09/2025).
+Mudancas recentes estao em [CHANGELOG.md](./CHANGELOG.md). Ultima versao: v0.16.7 (29/09/2025).
+
+
+
+
+
+
+
 
 
 

@@ -5,7 +5,6 @@ import { PatientNotificationService } from '@infrastructure/patients/services/pa
 import { MessageBus } from '@shared/messaging/message-bus';
 import { RolesEnum } from '@domain/auth/enums/roles.enum';
 import { Patient } from '@domain/patients/types/patient.types';
-import { unwrapResult } from '@shared/types/result.type';
 
 describe('TransferPatientUseCase', () => {
   let repository: jest.Mocked<IPatientRepository>;
@@ -45,17 +44,15 @@ describe('TransferPatientUseCase', () => {
   });
 
   it('transfere paciente quando role autorizada', async () => {
-    const result = unwrapResult(
-      await useCase.execute({
-        tenantId: 'tenant-1',
-        patientSlug: 'patient-1',
-        requesterRole: RolesEnum.CLINIC_OWNER,
-        requestedBy: 'admin-1',
-        fromProfessionalId: 'professional-1',
-        toProfessionalId: 'professional-2',
-        reason: 'Realloc',
-      }),
-    );
+    const result = await useCase.executeOrThrow({
+      tenantId: 'tenant-1',
+      patientSlug: 'patient-1',
+      requesterRole: RolesEnum.CLINIC_OWNER,
+      requestedBy: 'admin-1',
+      fromProfessionalId: 'professional-1',
+      toProfessionalId: 'professional-2',
+      reason: 'Realloc',
+    });
 
     expect(repository.transfer).toHaveBeenCalledWith(
       expect.objectContaining({ patientId: 'patient-1', toProfessionalId: 'professional-2' }),
@@ -74,47 +71,44 @@ describe('TransferPatientUseCase', () => {
   it('bloqueia quando paciente nao encontrado', async () => {
     repository.findBySlug.mockResolvedValue(null);
 
-    const result = await useCase.execute({
-      tenantId: 'tenant-1',
-      patientSlug: 'missing',
-      requesterRole: RolesEnum.CLINIC_OWNER,
-      requestedBy: 'admin-1',
-      toProfessionalId: 'professional-2',
-      reason: 'Realloc',
-    });
-
-    expect(result.data).toBeUndefined();
-    expect(result.error).toBeInstanceOf(Error);
+    await expect(
+      useCase.execute({
+        tenantId: 'tenant-1',
+        patientSlug: 'missing',
+        requesterRole: RolesEnum.CLINIC_OWNER,
+        requestedBy: 'admin-1',
+        toProfessionalId: 'professional-2',
+        reason: 'Realloc',
+      }),
+    ).rejects.toThrow(Error);
     expect(repository.transfer).not.toHaveBeenCalled();
   });
 
   it('bloqueia quando profissional atual diverge', async () => {
-    const result = await useCase.execute({
-      tenantId: 'tenant-1',
-      patientSlug: 'patient-1',
-      requesterRole: RolesEnum.CLINIC_OWNER,
-      requestedBy: 'admin-1',
-      fromProfessionalId: 'different-professional',
-      toProfessionalId: 'professional-2',
-      reason: 'Realloc',
-    });
-
-    expect(result.data).toBeUndefined();
-    expect(result.error).toBeInstanceOf(Error);
+    await expect(
+      useCase.execute({
+        tenantId: 'tenant-1',
+        patientSlug: 'patient-1',
+        requesterRole: RolesEnum.CLINIC_OWNER,
+        requestedBy: 'admin-1',
+        fromProfessionalId: 'different-professional',
+        toProfessionalId: 'professional-2',
+        reason: 'Realloc',
+      }),
+    ).rejects.toThrow(Error);
     expect(repository.transfer).not.toHaveBeenCalled();
   });
 
   it('bloqueia roles nao autorizadas', async () => {
-    const result = await useCase.execute({
-      tenantId: 'tenant-1',
-      patientSlug: 'patient-1',
-      requesterRole: RolesEnum.SECRETARY,
-      requestedBy: 'secretary-1',
-      toProfessionalId: 'professional-2',
-      reason: 'Realloc',
-    });
-
-    expect(result.data).toBeUndefined();
-    expect(result.error).toBeInstanceOf(Error);
+    await expect(
+      useCase.execute({
+        tenantId: 'tenant-1',
+        patientSlug: 'patient-1',
+        requesterRole: RolesEnum.SECRETARY,
+        requestedBy: 'secretary-1',
+        toProfessionalId: 'professional-2',
+        reason: 'Realloc',
+      }),
+    ).rejects.toThrow(Error);
   });
 });

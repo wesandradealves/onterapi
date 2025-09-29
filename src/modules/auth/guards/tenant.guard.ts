@@ -1,10 +1,11 @@
-import { ExecutionContext, Injectable, Logger } from '@nestjs/common';
+﻿import { ExecutionContext, Injectable, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
 import { INTERNAL_ROLES, RolesEnum } from '../../../domain/auth/enums/roles.enum';
 import { AuthErrorFactory, AuthErrorType } from '../../../shared/factories/auth-error.factory';
 import { MESSAGES } from '../../../shared/constants/messages.constants';
 import { BaseGuard } from '../../../shared/guards/base.guard';
+import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
 interface RequestWithTenant {
   params?: Record<string, unknown>;
@@ -22,6 +23,15 @@ export class TenantGuard extends BaseGuard {
   }
 
   canActivate(context: ExecutionContext): boolean {
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (isPublic) {
+      return true;
+    }
+
     const user = this.getUser(context);
     const request = context.switchToHttp().getRequest<RequestWithTenant>();
 

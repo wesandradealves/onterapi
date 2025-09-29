@@ -22,6 +22,15 @@ export class DomainEvents {
   static PATIENT_TRANSFERRED = 'patient.transferred';
   static PATIENT_ARCHIVED = 'patient.archived';
   static PATIENT_RESTORED = 'patient.restored';
+  static ANAMNESIS_CREATED = 'anamnesis.created';
+  static ANAMNESIS_STEP_SAVED = 'anamnesis.step_saved';
+  static ANAMNESIS_SUBMITTED = 'anamnesis.submitted';
+  static ANAMNESIS_PLAN_GENERATED = 'anamnesis.plan.generated';
+  static ANAMNESIS_PLAN_FEEDBACK_SAVED = 'anamnesis.plan.feedback_saved';
+  static ANAMNESIS_AI_REQUESTED = 'anamnesis.ai.requested';
+  static ANAMNESIS_AI_COMPLETED = 'anamnesis.ai.completed';
+  static ANAMNESIS_ATTACHMENT_CREATED = 'anamnesis.attachment.created';
+  static ANAMNESIS_ATTACHMENT_REMOVED = 'anamnesis.attachment.removed';
 
   static createEvent<
     TPayload = Record<string, unknown>,
@@ -231,6 +240,140 @@ export class DomainEvents {
       this.PATIENT_RESTORED,
       patientId,
       { patientId, restoredAt: new Date() },
+      metadata,
+    );
+  }
+
+  static anamnesisCreated(
+    anamnesisId: string,
+    anamnesisData: Record<string, unknown>,
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.ANAMNESIS_CREATED,
+      anamnesisId,
+      { anamnesisId, ...anamnesisData },
+      metadata,
+    );
+  }
+
+  static anamnesisStepSaved(
+    anamnesisId: string,
+    stepData: Record<string, unknown>,
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.ANAMNESIS_STEP_SAVED,
+      anamnesisId,
+      { anamnesisId, ...stepData },
+      metadata,
+    );
+  }
+
+  static anamnesisSubmitted(
+    anamnesisId: string,
+    submissionData: Record<string, unknown>,
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.ANAMNESIS_SUBMITTED,
+      anamnesisId,
+      { anamnesisId, ...submissionData },
+      metadata,
+    );
+  }
+
+  static therapeuticPlanGenerated(
+    anamnesisId: string,
+    planData: Record<string, unknown>,
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.ANAMNESIS_PLAN_GENERATED,
+      anamnesisId,
+      { anamnesisId, ...planData },
+      metadata,
+    );
+  }
+
+  static therapeuticPlanFeedbackSaved(
+    anamnesisId: string,
+    feedbackData: Record<string, unknown>,
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.ANAMNESIS_PLAN_FEEDBACK_SAVED,
+      anamnesisId,
+      { anamnesisId, ...feedbackData },
+      metadata,
+    );
+  }
+
+  static anamnesisAIRequested(
+    anamnesisId: string,
+    requestData: {
+      tenantId: string;
+      analysisId: string;
+      consultationId: string;
+      patientId: string;
+      professionalId: string;
+      payload: unknown;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.ANAMNESIS_AI_REQUESTED,
+      anamnesisId,
+      { anamnesisId, ...requestData },
+      metadata,
+    );
+  }
+
+  static anamnesisAICompleted(
+    anamnesisId: string,
+    resultData: {
+      tenantId: string;
+      analysisId: string;
+      status: string;
+      respondedAt: Date;
+      confidence?: number;
+      clinicalReasoning?: string;
+      summary?: string;
+      errorMessage?: string;
+      payload?: unknown;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.ANAMNESIS_AI_COMPLETED,
+      anamnesisId,
+      { anamnesisId, ...resultData },
+      metadata,
+    );
+  }
+
+  static anamnesisAttachmentCreated(
+    anamnesisId: string,
+    attachmentData: Record<string, unknown>,
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.ANAMNESIS_ATTACHMENT_CREATED,
+      anamnesisId,
+      { anamnesisId, ...attachmentData },
+      metadata,
+    );
+  }
+
+  static anamnesisAttachmentRemoved(
+    anamnesisId: string,
+    attachmentData: Record<string, unknown>,
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.ANAMNESIS_ATTACHMENT_REMOVED,
+      anamnesisId,
+      { anamnesisId, ...attachmentData },
       metadata,
     );
   }

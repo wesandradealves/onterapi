@@ -3,6 +3,7 @@ import { Patient, UpdatePatientInput } from '../../types/patient.types';
 
 export interface IUpdatePatientUseCase {
   execute(input: UpdatePatientInput): Promise<Result<Patient>>;
+  executeOrThrow(input: UpdatePatientInput): Promise<Patient>;
 }
 
 export const IUpdatePatientUseCase = Symbol('IUpdatePatientUseCase');

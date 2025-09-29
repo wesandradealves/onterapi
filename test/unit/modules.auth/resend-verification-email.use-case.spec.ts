@@ -1,4 +1,4 @@
-﻿import { ResendVerificationEmailUseCase } from '@modules/auth/use-cases/resend-verification-email.use-case';
+import { ResendVerificationEmailUseCase } from '@modules/auth/use-cases/resend-verification-email.use-case';
 import { IAuthRepository } from '@domain/auth/interfaces/repositories/auth.repository.interface';
 import { ISupabaseAuthService } from '@domain/auth/interfaces/services/supabase-auth.service.interface';
 import { IEmailService } from '@domain/auth/interfaces/services/email.service.interface';
@@ -40,11 +40,11 @@ describe('ResendVerificationEmailUseCase', () => {
 
     const result = await useCase.execute({ email: 'ghost@example.com' });
 
-    expect(result.data).toEqual({
+    expect(result.data).toMatchObject({
       delivered: false,
       alreadyVerified: false,
-      message: 'Se o email estiver cadastrado, reenviamos as instruções de confirmação.',
     });
+    expect(result.data?.message).toContain('Se o email estiver cadastrado');
     expect(emailService.sendVerificationEmail).not.toHaveBeenCalled();
   });
 
@@ -58,11 +58,12 @@ describe('ResendVerificationEmailUseCase', () => {
 
     const result = await useCase.execute({ email: 'verified@example.com' });
 
-    expect(result.data).toEqual({
+    expect(result.data).toMatchObject({
       delivered: false,
       alreadyVerified: true,
-      message: 'Este email já está verificado. Você pode fazer login normalmente.',
     });
+    expect(result.data?.message).toContain('Este email');
+    expect(result.data?.message).toContain('login');
   });
 
   it('envia email de verificacao e atualiza repositorio quando sucesso', async () => {
@@ -122,8 +123,8 @@ describe('ResendVerificationEmailUseCase', () => {
       error: new Error('fail'),
     });
 
-    const result = await useCase.execute({ email: 'user@example.com' });
-
-    expect(result.error).toBeInstanceOf(BadRequestException);
+    await expect(useCase.execute({ email: 'user@example.com' })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 });

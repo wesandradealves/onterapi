@@ -14,6 +14,7 @@ export interface ResendVerificationEmailOutput {
 
 export interface IResendVerificationEmailUseCase {
   execute(input: ResendVerificationEmailInput): Promise<Result<ResendVerificationEmailOutput>>;
+  executeOrThrow(input: ResendVerificationEmailInput): Promise<ResendVerificationEmailOutput>;
 }
 
 export const IResendVerificationEmailUseCase = Symbol('IResendVerificationEmailUseCase');

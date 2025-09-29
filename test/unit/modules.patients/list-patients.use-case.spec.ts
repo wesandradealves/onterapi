@@ -1,7 +1,6 @@
 import { ListPatientsUseCase } from '@modules/patients/use-cases/list-patients.use-case';
 import { IPatientRepository } from '@domain/patients/interfaces/repositories/patient.repository.interface';
 import { RolesEnum } from '@domain/auth/enums/roles.enum';
-import { unwrapResult } from '@shared/types/result.type';
 
 describe('ListPatientsUseCase', () => {
   let repository: jest.Mocked<IPatientRepository>;
@@ -43,7 +42,7 @@ describe('ListPatientsUseCase', () => {
       sortOrder: 'desc' as const,
     };
 
-    const result = unwrapResult(await useCase.execute(params));
+    const result = await useCase.executeOrThrow(params);
 
     expect(repository.findAll).toHaveBeenCalledWith({
       tenantId: 'tenant-1',
@@ -57,14 +56,12 @@ describe('ListPatientsUseCase', () => {
   });
 
   it('forca filtro de profissional quando role PROFESSIONAL', async () => {
-    const result = unwrapResult(
-      await useCase.execute({
-        tenantId: 'tenant-1',
-        requesterId: 'professional-1',
-        requesterRole: RolesEnum.PROFESSIONAL,
-        filters: { status: ['active'], assignedProfessionalIds: ['other'] },
-      }),
-    );
+    const result = await useCase.executeOrThrow({
+      tenantId: 'tenant-1',
+      requesterId: 'professional-1',
+      requesterRole: RolesEnum.PROFESSIONAL,
+      filters: { status: ['active'], assignedProfessionalIds: ['other'] },
+    });
 
     expect(repository.findAll).toHaveBeenCalledWith({
       tenantId: 'tenant-1',
@@ -77,13 +74,11 @@ describe('ListPatientsUseCase', () => {
     expect(result.total).toBe(1);
   });
   it('usa filtros vazios quando nao informados', async () => {
-    const result = unwrapResult(
-      await useCase.execute({
-        tenantId: 'tenant-1',
-        requesterId: 'secretary-1',
-        requesterRole: RolesEnum.SECRETARY,
-      }),
-    );
+    const result = await useCase.executeOrThrow({
+      tenantId: 'tenant-1',
+      requesterId: 'secretary-1',
+      requesterRole: RolesEnum.SECRETARY,
+    });
 
     expect(repository.findAll).toHaveBeenCalledWith({
       tenantId: 'tenant-1',

@@ -86,15 +86,14 @@ describe('GetPatientUseCase', () => {
   it('impede acesso de profissional sem vinculo', async () => {
     repository.findBySlug.mockResolvedValue({ ...patient, professionalId: 'other-prof' });
 
-    const result = await useCase.execute({
-      tenantId: 'tenant-1',
-      requesterId: 'professional-1',
-      requesterRole: RolesEnum.PROFESSIONAL,
-      patientSlug: 'john-doe',
-    });
-
-    expect(result.data).toBeUndefined();
-    expect(result.error).toBeInstanceOf(Error);
+    await expect(
+      useCase.execute({
+        tenantId: 'tenant-1',
+        requesterId: 'professional-1',
+        requesterRole: RolesEnum.PROFESSIONAL,
+        patientSlug: 'john-doe',
+      }),
+    ).rejects.toBeInstanceOf(Error);
     expect(repository.findSummary).not.toHaveBeenCalled();
   });
 
@@ -117,28 +116,26 @@ describe('GetPatientUseCase', () => {
   it('retorna erro quando paciente nao encontrado', async () => {
     repository.findBySlug.mockResolvedValueOnce(null as unknown as Patient);
 
-    const result = await useCase.execute({
-      tenantId: 'tenant-1',
-      requesterId: 'owner-1',
-      requesterRole: RolesEnum.CLINIC_OWNER,
-      patientSlug: 'john-doe',
-    });
-
-    expect(result.data).toBeUndefined();
-    expect(result.error).toBeInstanceOf(Error);
+    await expect(
+      useCase.execute({
+        tenantId: 'tenant-1',
+        requesterId: 'owner-1',
+        requesterRole: RolesEnum.CLINIC_OWNER,
+        patientSlug: 'john-doe',
+      }),
+    ).rejects.toBeInstanceOf(Error);
     expect(repository.findSummary).not.toHaveBeenCalled();
   });
 
   it('bloqueia acesso quando role nao mapeada', async () => {
-    const result = await useCase.execute({
-      tenantId: 'tenant-1',
-      requesterId: 'user-1',
-      requesterRole: 'UNKNOWN_ROLE',
-      patientSlug: 'john-doe',
-    });
-
-    expect(result.data).toBeUndefined();
-    expect(result.error).toBeInstanceOf(Error);
+    await expect(
+      useCase.execute({
+        tenantId: 'tenant-1',
+        requesterId: 'user-1',
+        requesterRole: 'UNKNOWN_ROLE',
+        patientSlug: 'john-doe',
+      }),
+    ).rejects.toBeInstanceOf(Error);
     expect(repository.findSummary).not.toHaveBeenCalled();
   });
 
@@ -179,15 +176,14 @@ describe('GetPatientUseCase', () => {
     );
   });
   it('bloqueia acesso para roles publicas', async () => {
-    const result = await useCase.execute({
-      tenantId: 'tenant-1',
-      requesterId: 'patient-1',
-      requesterRole: RolesEnum.PATIENT,
-      patientSlug: 'john-doe',
-    });
-
-    expect(result.data).toBeUndefined();
-    expect(result.error).toBeInstanceOf(Error);
+    await expect(
+      useCase.execute({
+        tenantId: 'tenant-1',
+        requesterId: 'patient-1',
+        requesterRole: RolesEnum.PATIENT,
+        patientSlug: 'john-doe',
+      }),
+    ).rejects.toBeInstanceOf(Error);
     expect(repository.findSummary).not.toHaveBeenCalled();
   });
 });

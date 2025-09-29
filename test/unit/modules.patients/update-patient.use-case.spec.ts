@@ -4,7 +4,6 @@ import { PatientAuditService } from '@infrastructure/patients/services/patient-a
 import { MessageBus } from '@shared/messaging/message-bus';
 import { RolesEnum } from '@domain/auth/enums/roles.enum';
 import { Patient } from '@domain/patients/types/patient.types';
-import { unwrapResult } from '@shared/types/result.type';
 import { DomainEvents } from '@shared/events/domain-events';
 
 describe('UpdatePatientUseCase', () => {
@@ -53,19 +52,17 @@ describe('UpdatePatientUseCase', () => {
   });
 
   it('atualiza paciente e publica evento de mudanca', async () => {
-    const result = unwrapResult(
-      await useCase.execute({
-        tenantId: 'tenant-1',
-        patientSlug: 'patient-1',
-        updatedBy: 'admin-1',
-        requesterRole: RolesEnum.SUPER_ADMIN,
-        fullName: 'Paciente Atualizado',
-        status: 'inactive',
-        professionalId: 'professional-2',
-        riskLevel: 'high',
-        tags: ['vip'],
-      }),
-    );
+    const result = await useCase.executeOrThrow({
+      tenantId: 'tenant-1',
+      patientSlug: 'patient-1',
+      updatedBy: 'admin-1',
+      requesterRole: RolesEnum.SUPER_ADMIN,
+      fullName: 'Paciente Atualizado',
+      status: 'inactive',
+      professionalId: 'professional-2',
+      riskLevel: 'high',
+      tags: ['vip'],
+    });
 
     expect(repository.update).toHaveBeenCalledWith(
       expect.objectContaining({ patientId: 'patient-1', professionalId: 'professional-2' }),
@@ -86,66 +83,61 @@ describe('UpdatePatientUseCase', () => {
   });
 
   it('bloqueia quando role nao mapeada', async () => {
-    const result = await useCase.execute({
-      tenantId: 'tenant-1',
-      patientSlug: 'patient-1',
-      updatedBy: 'user-1',
-      requesterRole: 'UNKNOWN_ROLE',
-    });
-
-    expect(result.data).toBeUndefined();
-    expect(result.error).toBeInstanceOf(Error);
+    await expect(
+      useCase.execute({
+        tenantId: 'tenant-1',
+        patientSlug: 'patient-1',
+        updatedBy: 'user-1',
+        requesterRole: 'UNKNOWN_ROLE',
+      }),
+    ).rejects.toThrow(Error);
   });
 
   it('bloqueia profissional que nao e responsavel', async () => {
-    const result = await useCase.execute({
-      tenantId: 'tenant-1',
-      patientSlug: 'patient-1',
-      updatedBy: 'another-prof',
-      requesterRole: RolesEnum.PROFESSIONAL,
-    });
-
-    expect(result.data).toBeUndefined();
-    expect(result.error).toBeInstanceOf(Error);
+    await expect(
+      useCase.execute({
+        tenantId: 'tenant-1',
+        patientSlug: 'patient-1',
+        updatedBy: 'another-prof',
+        requesterRole: RolesEnum.PROFESSIONAL,
+      }),
+    ).rejects.toThrow(Error);
   });
 
   it('bloqueia secretaria alterando dados clinicos', async () => {
-    const result = await useCase.execute({
-      tenantId: 'tenant-1',
-      patientSlug: 'patient-1',
-      updatedBy: 'secretary-1',
-      requesterRole: RolesEnum.SECRETARY,
-      medical: { observations: 'dados clinicos' },
-    });
-
-    expect(result.data).toBeUndefined();
-    expect(result.error).toBeInstanceOf(Error);
+    await expect(
+      useCase.execute({
+        tenantId: 'tenant-1',
+        patientSlug: 'patient-1',
+        updatedBy: 'secretary-1',
+        requesterRole: RolesEnum.SECRETARY,
+        medical: { observations: 'dados clinicos' },
+      }),
+    ).rejects.toThrow(Error);
   });
 
   it('bloqueia manager alterando dados clinicos', async () => {
-    const result = await useCase.execute({
-      tenantId: 'tenant-1',
-      patientSlug: 'patient-1',
-      updatedBy: 'manager-1',
-      requesterRole: RolesEnum.MANAGER,
-      medical: { observations: 'dados clinicos' },
-    });
-
-    expect(result.data).toBeUndefined();
-    expect(result.error).toBeInstanceOf(Error);
+    await expect(
+      useCase.execute({
+        tenantId: 'tenant-1',
+        patientSlug: 'patient-1',
+        updatedBy: 'manager-1',
+        requesterRole: RolesEnum.MANAGER,
+        medical: { observations: 'dados clinicos' },
+      }),
+    ).rejects.toThrow(Error);
   });
   it('retorna erro quando paciente nao encontrado', async () => {
     repository.findBySlug.mockResolvedValueOnce(null as unknown as Patient);
 
-    const result = await useCase.execute({
-      tenantId: 'tenant-1',
-      patientSlug: 'patient-1',
-      updatedBy: 'admin-1',
-      requesterRole: RolesEnum.SUPER_ADMIN,
-    });
-
-    expect(result.data).toBeUndefined();
-    expect(result.error).toBeInstanceOf(Error);
+    await expect(
+      useCase.execute({
+        tenantId: 'tenant-1',
+        patientSlug: 'patient-1',
+        updatedBy: 'admin-1',
+        requesterRole: RolesEnum.SUPER_ADMIN,
+      }),
+    ).rejects.toThrow(Error);
     expect(repository.update).not.toHaveBeenCalled();
   });
 
@@ -158,15 +150,13 @@ describe('UpdatePatientUseCase', () => {
 
     repository.update.mockResolvedValueOnce(updatedPatient);
 
-    const result = unwrapResult(
-      await useCase.execute({
-        tenantId: 'tenant-1',
-        patientSlug: 'patient-1',
-        updatedBy: 'secretary-1',
-        requesterRole: RolesEnum.SECRETARY,
-        contact: { email: 'nova-secretaria@example.com' } as Patient['contact'],
-      }),
-    );
+    const result = await useCase.executeOrThrow({
+      tenantId: 'tenant-1',
+      patientSlug: 'patient-1',
+      updatedBy: 'secretary-1',
+      requesterRole: RolesEnum.SECRETARY,
+      contact: { email: 'nova-secretaria@example.com' } as Patient['contact'],
+    });
 
     expect(repository.update).toHaveBeenCalledWith(
       expect.objectContaining({ patientId: 'patient-1', contact: expect.any(Object) }),
@@ -183,15 +173,13 @@ describe('UpdatePatientUseCase', () => {
 
     repository.update.mockResolvedValueOnce(updatedPatient);
 
-    const result = unwrapResult(
-      await useCase.execute({
-        tenantId: 'tenant-1',
-        patientSlug: 'patient-1',
-        updatedBy: 'manager-1',
-        requesterRole: RolesEnum.MANAGER,
-        status: 'inactive',
-      }),
-    );
+    const result = await useCase.executeOrThrow({
+      tenantId: 'tenant-1',
+      patientSlug: 'patient-1',
+      updatedBy: 'manager-1',
+      requesterRole: RolesEnum.MANAGER,
+      status: 'inactive',
+    });
 
     expect(repository.update).toHaveBeenCalled();
     expect(result.status).toBe('inactive');
@@ -205,28 +193,25 @@ describe('UpdatePatientUseCase', () => {
 
     repository.update.mockResolvedValueOnce(updatedPatient);
 
-    const result = unwrapResult(
-      await useCase.execute({
-        tenantId: 'tenant-1',
-        patientSlug: 'patient-1',
-        updatedBy: 'professional-1',
-        requesterRole: RolesEnum.PROFESSIONAL,
-        fullName: 'Nome Profissional',
-      }),
-    );
+    const result = await useCase.executeOrThrow({
+      tenantId: 'tenant-1',
+      patientSlug: 'patient-1',
+      updatedBy: 'professional-1',
+      requesterRole: RolesEnum.PROFESSIONAL,
+      fullName: 'Nome Profissional',
+    });
 
     expect(result.fullName).toBe('Nome Profissional');
   });
 
   it('bloqueia roles internas nao autorizadas', async () => {
-    const result = await useCase.execute({
-      tenantId: 'tenant-1',
-      patientSlug: 'patient-1',
-      updatedBy: 'finance-1',
-      requesterRole: RolesEnum.ADMIN_FINANCEIRO,
-    });
-
-    expect(result.data).toBeUndefined();
-    expect(result.error).toBeInstanceOf(Error);
+    await expect(
+      useCase.execute({
+        tenantId: 'tenant-1',
+        patientSlug: 'patient-1',
+        updatedBy: 'finance-1',
+        requesterRole: RolesEnum.ADMIN_FINANCEIRO,
+      }),
+    ).rejects.toThrow(Error);
   });
 });

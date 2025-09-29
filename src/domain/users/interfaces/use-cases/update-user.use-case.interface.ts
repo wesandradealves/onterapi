@@ -4,4 +4,5 @@ import { IUpdateUser } from '../../types/user.types';
 
 export interface IUpdateUserUseCase {
   execute(slug: string, dto: IUpdateUser, currentUserId: string): Promise<Result<UserEntity>>;
+  executeOrThrow(slug: string, dto: IUpdateUser, currentUserId: string): Promise<UserEntity>;
 }

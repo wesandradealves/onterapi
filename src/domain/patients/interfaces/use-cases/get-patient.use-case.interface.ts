@@ -20,6 +20,23 @@ export interface IGetPatientUseCase {
       quickActions: string[];
     }>
   >;
+
+  executeOrThrow(params: {
+    tenantId: string;
+    requesterId: string;
+    requesterRole: string;
+    patientSlug: string;
+  }): Promise<{
+    patient: Patient;
+    summary: PatientSummary;
+    timeline: PatientTimelineEntry[];
+    insights?: {
+      nextSteps?: string[];
+      followUps?: string[];
+      risks?: string[];
+    };
+    quickActions: string[];
+  }>;
 }
 
 export const IGetPatientUseCase = Symbol('IGetPatientUseCase');

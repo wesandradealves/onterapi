@@ -43,7 +43,6 @@ import { UpdateUserDto } from '../dtos/update-user.dto';
 import { UserResponseDto } from '../dtos/user-response.dto';
 import { ListUsersResponseDto } from '../dtos/list-users.dto';
 import { UserPresenter } from '../presenters/user.presenter';
-import { unwrapResult } from '../../../../shared/types/result.type';
 import { createUserSchema, CreateUserSchemaType } from '../schemas/create-user.schema';
 import { updateUserSchema, UpdateUserSchemaType } from '../schemas/update-user.schema';
 import { listUsersSchema, ListUsersSchema } from '../schemas/list-users.schema';
@@ -139,7 +138,7 @@ export class UsersController {
     @Body(new ZodValidationPipe(createUserSchema)) dto: CreateUserSchemaType,
   ): Promise<CreateUserResponseDto> {
     const command = toCreateUserCommand(dto);
-    const user = unwrapResult(await this.createUserUseCase.execute(command));
+    const user = await this.createUserUseCase.executeOrThrow(command);
     return UserPresenter.toCreateResponse(user);
   }
 
@@ -198,7 +197,7 @@ export class UsersController {
     @CurrentUser() currentUser: ICurrentUser,
   ): Promise<ListUsersResponseDto> {
     const normalizedFilters = toUserFilters(filters, { currentUser });
-    const payload = unwrapResult(await this.findAllUsersUseCase.execute(normalizedFilters));
+    const payload = await this.findAllUsersUseCase.executeOrThrow(normalizedFilters);
     return {
       data: payload.data.map((user) => UserPresenter.toResponse(user)),
       pagination: payload.pagination,
@@ -229,7 +228,7 @@ export class UsersController {
     description: 'Usuario nao encontrado',
   })
   async findOne(@Param('slug') slug: string): Promise<UserResponseDto> {
-    const user = unwrapResult(await this.findUserBySlugUseCase.execute(slug));
+    const user = await this.findUserBySlugUseCase.executeOrThrow(slug);
 
     if (!user) {
       throw new NotFoundException('Usuário não encontrado');
@@ -296,9 +295,7 @@ export class UsersController {
     @CurrentUser() currentUser: ICurrentUser,
   ): Promise<UserResponseDto> {
     const updateInput = toUpdateUserInput(dto);
-    const updated = unwrapResult(
-      await this.updateUserUseCase.execute(slug, updateInput, currentUser.id),
-    );
+    const updated = await this.updateUserUseCase.executeOrThrow(slug, updateInput, currentUser.id);
     return UserPresenter.toResponse(updated);
   }
 
@@ -325,6 +322,6 @@ export class UsersController {
     @Param('slug') slug: string,
     @CurrentUser() currentUser: ICurrentUser,
   ): Promise<void> {
-    unwrapResult(await this.deleteUserUseCase.execute(slug, currentUser.id));
+    await this.deleteUserUseCase.executeOrThrow(slug, currentUser.id);
   }
 }

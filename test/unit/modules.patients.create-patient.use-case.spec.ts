@@ -1,9 +1,8 @@
-import { CreatePatientUseCase } from '@modules/patients/use-cases/create-patient.use-case';
+﻿import { CreatePatientUseCase } from '@modules/patients/use-cases/create-patient.use-case';
 import { IPatientRepository } from '@domain/patients/interfaces/repositories/patient.repository.interface';
 import { PatientNotificationService } from '@infrastructure/patients/services/patient-notification.service';
 import { PatientAuditService } from '@infrastructure/patients/services/patient-audit.service';
 import { MessageBus } from '@shared/messaging/message-bus';
-import { unwrapResult } from '@shared/types/result.type';
 import { RolesEnum } from '@domain/auth/enums/roles.enum';
 import { Patient } from '@domain/patients/types/patient.types';
 
@@ -63,8 +62,7 @@ describe('CreatePatientUseCase', () => {
   });
 
   it('cria paciente quando role autorizada', async () => {
-    const result = await useCase.execute(input);
-    const created = unwrapResult(result);
+    const created = await useCase.executeOrThrow(input);
 
     expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ status: 'new' }));
     expect(notification.sendWelcomeMessage).toHaveBeenCalledWith(patient.id, patient.tenantId);
@@ -76,20 +74,14 @@ describe('CreatePatientUseCase', () => {
   it('retorna erro quando CPF ja cadastrado', async () => {
     repository.existsByCpf.mockResolvedValue(true);
 
-    const result = await useCase.execute(input);
-
-    expect(result.data).toBeUndefined();
-    expect(result.error).toBeInstanceOf(Error);
+    await expect(useCase.execute(input)).rejects.toThrow(Error);
     expect(repository.create).not.toHaveBeenCalled();
   });
 
   it('retorna erro quando role nao autorizada', async () => {
     const unauthorizedInput = { ...input, requesterRole: RolesEnum.PATIENT };
 
-    const result = await useCase.execute(unauthorizedInput);
-
-    expect(result.data).toBeUndefined();
-    expect(result.error).toBeInstanceOf(Error);
+    await expect(useCase.execute(unauthorizedInput)).rejects.toThrow(Error);
     expect(repository.create).not.toHaveBeenCalled();
   });
 });

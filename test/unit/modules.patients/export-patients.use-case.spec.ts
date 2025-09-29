@@ -40,15 +40,15 @@ describe('ExportPatientsUseCase', () => {
   });
 
   it('bloqueia solicitacao de role nao autorizada', async () => {
-    const result = await useCase.execute({
-      tenantId: 'tenant-1',
-      requestedBy: 'user-1',
-      requesterRole: RolesEnum.SECRETARY,
-      format: 'csv',
-    });
+    await expect(
+      useCase.execute({
+        tenantId: 'tenant-1',
+        requestedBy: 'user-1',
+        requesterRole: RolesEnum.SECRETARY,
+        format: 'csv',
+      }),
+    ).rejects.toBeInstanceOf(Error);
 
-    expect(result.data).toBeUndefined();
-    expect(result.error).toBeInstanceOf(Error);
     expect(repository.export).not.toHaveBeenCalled();
   });
 });
