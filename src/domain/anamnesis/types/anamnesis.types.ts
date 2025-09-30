@@ -348,6 +348,7 @@ export interface TherapeuticPlanData {
   recommendations?: TherapeuticPlanRecommendation[];
   confidence?: number;
   reviewRequired?: boolean;
+  termsAccepted: boolean;
   approvalStatus: 'pending' | 'approved' | 'modified' | 'rejected';
   liked?: boolean;
   feedbackComment?: string;
@@ -476,6 +477,9 @@ export interface Anamnesis {
   latestPlan?: TherapeuticPlanData | null;
   attachments?: AnamnesisAttachment[];
   aiAnalyses?: AnamnesisAIAnalysis[];
+  deletedAt?: Date | null;
+  deletedBy?: string | null;
+  deletedReason?: string | null;
 }
 
 export interface CreateAnamnesisInput {
@@ -521,6 +525,14 @@ export interface SubmitAnamnesisInput {
   completionRate: number;
 }
 
+export interface CancelAnamnesisInput {
+  anamnesisId: string;
+  tenantId: string;
+  requestedBy: string;
+  requesterRole: string;
+  reason?: string;
+}
+
 export interface SaveTherapeuticPlanInput {
   anamnesisId: string;
   tenantId: string;
@@ -532,6 +544,7 @@ export interface SaveTherapeuticPlanInput {
   recommendations?: TherapeuticPlanRecommendation[];
   confidence?: number;
   reviewRequired?: boolean;
+  termsAccepted: boolean;
   generatedAt: Date;
 }
 

@@ -15,6 +15,7 @@ import { IGetAnamnesisUseCase } from '@domain/anamnesis/interfaces/use-cases/get
 import { ISaveAnamnesisStepUseCase } from '@domain/anamnesis/interfaces/use-cases/save-anamnesis-step.use-case.interface';
 import { IAutoSaveAnamnesisUseCase } from '@domain/anamnesis/interfaces/use-cases/auto-save-anamnesis.use-case.interface';
 import { ISubmitAnamnesisUseCase } from '@domain/anamnesis/interfaces/use-cases/submit-anamnesis.use-case.interface';
+import { ICancelAnamnesisUseCase } from '@domain/anamnesis/interfaces/use-cases/cancel-anamnesis.use-case.interface';
 import { IListAnamnesesByPatientUseCase } from '@domain/anamnesis/interfaces/use-cases/list-anamneses-by-patient.use-case.interface';
 import { IGetAnamnesisHistoryUseCase } from '@domain/anamnesis/interfaces/use-cases/get-anamnesis-history.use-case.interface';
 import { ISaveTherapeuticPlanUseCase } from '@domain/anamnesis/interfaces/use-cases/save-therapeutic-plan.use-case.interface';
@@ -111,6 +112,9 @@ describe('AnamnesisController (integration)', () => {
     steps: overrides.steps ?? [],
     latestPlan: overrides.latestPlan ?? null,
     attachments: overrides.attachments ?? [],
+    deletedAt: overrides.deletedAt,
+    deletedBy: overrides.deletedBy,
+    deletedReason: overrides.deletedReason,
   });
 
   const createPlan = (overrides: Partial<TherapeuticPlanData> = {}): TherapeuticPlanData => ({
@@ -123,6 +127,7 @@ describe('AnamnesisController (integration)', () => {
     recommendations: overrides.recommendations ?? [],
     confidence: overrides.confidence ?? 0.9,
     reviewRequired: overrides.reviewRequired ?? false,
+    termsAccepted: overrides.termsAccepted ?? true,
     approvalStatus: overrides.approvalStatus ?? 'pending',
     liked: overrides.liked,
     feedbackComment: overrides.feedbackComment,
@@ -169,6 +174,7 @@ describe('AnamnesisController (integration)', () => {
     saveStep: createUseCaseMock<any, Anamnesis>(),
     autoSave: createUseCaseMock<any, Anamnesis>(),
     submit: createUseCaseMock<any, Anamnesis>(),
+    cancel: createUseCaseMock<any, void>(),
     list: createUseCaseMock<any, AnamnesisListItem[]>(),
     history: createUseCaseMock<any, AnamnesisHistoryData>(),
     savePlan: createUseCaseMock<any, TherapeuticPlanData>(),
@@ -188,6 +194,7 @@ describe('AnamnesisController (integration)', () => {
         { provide: ISaveAnamnesisStepUseCase, useValue: useCases.saveStep },
         { provide: IAutoSaveAnamnesisUseCase, useValue: useCases.autoSave },
         { provide: ISubmitAnamnesisUseCase, useValue: useCases.submit },
+        { provide: ICancelAnamnesisUseCase, useValue: useCases.cancel },
         { provide: IListAnamnesesByPatientUseCase, useValue: useCases.list },
         { provide: IGetAnamnesisHistoryUseCase, useValue: useCases.history },
         { provide: ISaveTherapeuticPlanUseCase, useValue: useCases.savePlan },
@@ -397,6 +404,24 @@ describe('AnamnesisController (integration)', () => {
     expect(useCases.submit.execute).toHaveBeenCalled();
   });
 
+  it('POST /anamneses/:id/cancel should cancelar anamnese', async () => {
+    useCases.cancel.execute.mockResolvedValue({ data: undefined });
+
+    await request(app.getHttpServer())
+      .post(`/anamneses/${FIXTURE_IDS.anamnesis}/cancel`)
+      .set('x-tenant-id', FIXTURE_IDS.tenant)
+      .send({ reason: 'Paciente solicitou reagendamento' })
+      .expect(204);
+
+    expect(useCases.cancel.executeOrThrow).toHaveBeenCalledWith({
+      tenantId: FIXTURE_IDS.tenant,
+      anamnesisId: FIXTURE_IDS.anamnesis,
+      requestedBy: FIXTURE_IDS.professional,
+      requesterRole: RolesEnum.PROFESSIONAL,
+      reason: 'Paciente solicitou reagendamento',
+    });
+  });
+
   it('POST /anamneses/:id/ai-result should receber resultado da IA', async () => {
     useCases.receiveAiResult.execute.mockResolvedValue({
       data: createAIAnalysis({ status: 'completed' }),
@@ -434,6 +459,7 @@ describe('AnamnesisController (integration)', () => {
       recommendations: [{ id: 'rec-1', description: 'Recomendacao', priority: 'medium' }],
       confidence: 0.8,
       reviewRequired: false,
+      termsAccepted: true,
       generatedAt: '2025-09-26T01:00:00.000Z',
     };
 
@@ -444,9 +470,10 @@ describe('AnamnesisController (integration)', () => {
       .expect(201);
 
     expect(useCases.savePlan.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ confidence: 0.8 }),
+      expect.objectContaining({ confidence: 0.8, termsAccepted: true }),
     );
     expect(response.body.id).toBe(FIXTURE_IDS.plan);
+    expect(response.body.termsAccepted).toBe(true);
   });
 
   it('POST /anamneses/:id/plan/feedback should persist feedback', async () => {

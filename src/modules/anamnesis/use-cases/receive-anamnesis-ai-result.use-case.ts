@@ -72,6 +72,7 @@ export class ReceiveAnamnesisAIResultUseCase
         recommendations: params.recommendations,
         confidence: params.confidence,
         reviewRequired: true,
+        termsAccepted: false,
         generatedAt: params.respondedAt,
       });
 

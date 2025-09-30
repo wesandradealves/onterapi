@@ -156,6 +156,19 @@ describe('AnamnesisPresenter', () => {
     expect(dto.therapeuticPlan).toEqual({});
   });
 
+  it('expoe metadados de cancelamento quando presentes', () => {
+    const cancelled = AnamnesisPresenter.detail({
+      ...buildAnamnesis(),
+      deletedAt: baseDate,
+      deletedBy: 'user-99',
+      deletedReason: 'Paciente reagendou',
+    });
+
+    expect(cancelled.deletedAt).toBe(baseDate.toISOString());
+    expect(cancelled.deletedBy).toBe('user-99');
+    expect(cancelled.deletedReason).toBe('Paciente reagendou');
+  });
+
   it('garante fallback para datas ausentes', () => {
     const stepWithoutDates: AnamnesisStep = {
       ...buildStep({}),

@@ -18,6 +18,7 @@ import {
   AnamnesisStepKey,
   AnamnesisStepTemplate,
   AutoSaveAnamnesisStepInput,
+  CancelAnamnesisInput,
   CompleteAnamnesisAIAnalysisInput,
   CreateAnamnesisAIAnalysisInput,
   CreateAnamnesisAttachmentInput,
@@ -246,7 +247,8 @@ export class AnamnesisRepository implements IAnamnesisRepository {
     const query = this.anamnesisRepository
       .createQueryBuilder('anamnesis')
       .where('anamnesis.id = :id', { id: anamnesisId })
-      .andWhere('anamnesis.tenantId = :tenantId', { tenantId });
+      .andWhere('anamnesis.tenantId = :tenantId', { tenantId })
+      .andWhere('anamnesis.deletedAt IS NULL');
 
     if (options?.steps) {
       query.leftJoinAndSelect('anamnesis.steps', 'steps');
@@ -285,7 +287,8 @@ export class AnamnesisRepository implements IAnamnesisRepository {
     const query = this.anamnesisRepository
       .createQueryBuilder('anamnesis')
       .where('anamnesis.consultationId = :consultationId', { consultationId })
-      .andWhere('anamnesis.tenantId = :tenantId', { tenantId });
+      .andWhere('anamnesis.tenantId = :tenantId', { tenantId })
+      .andWhere('anamnesis.deletedAt IS NULL');
 
     if (options?.steps) {
       query.leftJoinAndSelect('anamnesis.steps', 'steps');
@@ -459,7 +462,8 @@ export class AnamnesisRepository implements IAnamnesisRepository {
         'anamnesis.updatedAt',
       ])
       .where('anamnesis.tenantId = :tenantId', { tenantId })
-      .andWhere('anamnesis.patientId = :patientId', { patientId });
+      .andWhere('anamnesis.patientId = :patientId', { patientId })
+      .andWhere('anamnesis.deletedAt IS NULL');
 
     if (filters?.status && filters.status.length) {
       query.andWhere('anamnesis.status IN (:...status)', { status: filters.status });
@@ -514,7 +518,8 @@ export class AnamnesisRepository implements IAnamnesisRepository {
       .leftJoinAndSelect('anamnesis.attachments', 'attachments')
       .leftJoinAndSelect('anamnesis.plans', 'plans')
       .where('anamnesis.tenantId = :tenantId', { tenantId })
-      .andWhere('anamnesis.patientId = :patientId', { patientId });
+      .andWhere('anamnesis.patientId = :patientId', { patientId })
+      .andWhere('anamnesis.deletedAt IS NULL');
 
     if (statuses && statuses.length) {
       query.andWhere('anamnesis.status IN (:...statuses)', { statuses });
@@ -639,6 +644,7 @@ export class AnamnesisRepository implements IAnamnesisRepository {
         : undefined,
       confidence: data.confidence ?? undefined,
       reviewRequired: data.reviewRequired ?? false,
+      termsAccepted: data.termsAccepted,
       approvalStatus: 'pending',
       generatedAt: data.generatedAt,
     };
@@ -716,6 +722,30 @@ export class AnamnesisRepository implements IAnamnesisRepository {
       feedbackGivenBy: saved.feedbackGivenBy,
       createdAt: saved.createdAt ?? new Date(),
     };
+  }
+
+  async cancel(input: CancelAnamnesisInput): Promise<void> {
+    const now = new Date();
+
+    const result = await this.anamnesisRepository
+      .createQueryBuilder()
+      .update(AnamnesisEntity)
+      .set({
+        status: 'cancelled',
+        isDraft: false,
+        updatedAt: now,
+        deletedAt: now,
+        deletedBy: input.requestedBy,
+        deletedReason: input.reason ?? null,
+      })
+      .where('id = :id', { id: input.anamnesisId })
+      .andWhere('tenant_id = :tenantId', { tenantId: input.tenantId })
+      .andWhere('deleted_at IS NULL')
+      .execute();
+
+    if (!result.affected) {
+      throw new Error('Anamnesis not found or already cancelled');
+    }
   }
 
   async createAttachment(data: CreateAnamnesisAttachmentInput): Promise<AnamnesisAttachment> {

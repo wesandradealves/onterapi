@@ -77,6 +77,7 @@ Rotas principais:
 ### Visao Geral
 - Formulario clinico multi-etapas (10 steps) utilizado antes da consulta para consolidar dados do paciente, alimentar a IA e registrar historico auditavel.
 - Suporta rascunhos idempotentes, anexos versionados, geracao de plano terapeutico, feedback supervisionado e metricas de conclusao.
+- Cancelamento soft delete preserva auditoria (`deletedAt`, `deletedBy`, `deletedReason`) e remove registros das listagens padrao.
 - Todo fluxo utiliza os guards `JwtAuthGuard`, `TenantGuard` e `RolesGuard`, devolvendo as respostas formatadas pelo `AnamnesisPresenter`.
 
 ### Autenticacao e Cabecalhos
@@ -189,6 +190,14 @@ Rotas principais:
 - Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN.
 - Sem body. Retorna `AnamnesisDetailResponseDto` com `status` = `submitted` e `submittedAt` preenchido.
 
+#### POST /anamneses/{anamnesisId}/cancel
+- Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN.
+- Body opcional (CancelAnamnesisRequestDto):
+| Campo | Tipo | Obrigatorio | Descricao |
+| --- | --- | --- | --- |
+| `reason` | string (1-1000) | nao | Justificativa registrada no cancelamento. |
+- Resposta: HTTP 204 (sem corpo). Registro permanece para auditoria (`deletedAt`, `deletedBy`, `deletedReason`) e deixa de aparecer nas listagens e historico padrao.
+
 #### POST /anamneses/{anamnesisId}/plan
 - Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN.
 - Body (`SaveTherapeuticPlanRequestDto`):
@@ -201,6 +210,7 @@ Rotas principais:
 | `recommendations` | array | nao | Lista de recomendacoes (`id`, `description`, `priority`). |
 | `confidence` | numero (0-1) | nao | Confianca da IA. |
 | `reviewRequired` | boolean | nao | Indica necessidade de revisao humana. |
+| `termsAccepted` | boolean | sim | Confirma que o profissional assume a responsabilidade de revisar o plano gerado por IA antes de utiliza-lo com o paciente. |
 | `generatedAt` | string ISO | sim | Momento em que a IA concluiu a analise. |
 - Resposta: `TherapeuticPlanDto` com ids, feedback, timestamps e metadados.
 
@@ -585,8 +595,8 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 | Criterio | Nota atual (0-10) | Meta | Evidencias chave |
 | --- | --- | --- | --- |
 | DRY / Reuso de codigo | 9.7 | >= 9.0 | Controllers de Auth, Patients, Users e Anamnesis continuam delegando normalizacao a mappers/presenters; selecao de templates por especialidade usa helpers reutilizaveis (`TemplateSelectionContext`, `getTemplatePriority`, `shouldReplaceTemplate`) e evita condicionais duplicadas. |
-| Automacao de qualidade | 8.9 | >= 8.5 | Sequencia manual revalidada em 29/09 (06:36h) com Node 22.18.0: npm run lint -> npx tsc --noEmit -> npm run test:unit -> npm run test:int -> npm run test:e2e -> npm run test:cov -> npm run build. |
-| Testes automatizados | 10.0 | >= 9.5 | 248 testes (unit, integration, e2e e cobertura) executados em ~18 s; presenter, mapper, metrics e repositorio de anamnese seguem com branches 100% cobertos apos os novos cenarios de templates e IA. |
+| Automacao de qualidade | 8.9 | >= 8.5 | Sequencia manual revalidada em 30/09 (10:06h) com Node 22.18.0: npm run lint -> npx tsc --noEmit -> npm run test:unit -> npm run test:int -> npm run test:e2e -> npm run test:cov -> npm run build. |
+| Testes automatizados | 10.0 | >= 9.5 | 219 testes unitarios (23.5 s), 35 de integracao (12.7 s) e 27 e2e (18.5 s) executados na sequencia atual; suite com cobertura completa (test:cov) confirmou 255 testes em 15.9 s mantendo 100%. |
 | Validacoes e contratos | 9.5 | >= 9.0 | Controllers de Anamnesis aplicam Zod para filtros e usam o util `validateAnamnesisStepPayload` (calculo de BMI/pack-years) em save/auto-save/submit, garantindo payload sanitizado antes de publicar eventos de IA. |
 | Governanca de dominio / RBAC | 9.0 | >= 9.0 | Casos de uso de Anamnesis reforcam ensureCanModifyAnamnesis e publicam eventos com tenantId; rotas de anexos, historico, templates e webhook usam TenantGuard + RolesGuard dedicados para cada perfil. |
 
@@ -598,12 +608,12 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 - SupabaseAnamnesisAttachmentStorageService e AnamnesisMetricsService concentram storage/metricas e reutilizam factories/eventos multi-tenant.
 
 ### Automacao e scripts
-- Bateria manual confirmada em 29/09 (06:36h) com Node 22.18.0: lint -> tsc -> test:unit -> test:int -> test:e2e -> test:cov -> build, com logs arquivados.
+- Bateria manual confirmada em 30/09 (10:06h) com Node 22.18.0: lint -> tsc -> test:unit -> test:int -> test:e2e -> test:cov -> build, com logs arquivados.
 - coverage-summary.json segue versionado como referencia; migrations `1738200000000` e `1738300000000` foram exercitadas com `npm run typeorm migration:run -- -d src/infrastructure/database/data-source.ts` antes de aplicacao em ambientes compartilhados.
 
 ### Testes
 - Novos specs cobrem selecao de templates, metrics service, feedback scoreboard e fluxo webhook; mocks em memoria mantem branches do repositorio alinhados com as entidades reais.
-- 248 testes (unit, integration, e2e, coverage) em ~18s com branches 100%: suites e2e percorrem start -> auto-save -> submit -> webhook -> feedback, incluindo anexos via storage Supabase.
+- 219 (unit, 23.5 s) + 35 (integration, 12.7 s) + 27 (e2e, 18.5 s) testes por etapa; test:cov executou 255 casos em 15.9 s preservando 100% de cobertura, com e2e percorrendo start -> auto-save -> submit -> cancel -> webhook -> feedback incluindo anexos Supabase.
 - Cenarios negativos validam RBAC (PATIENT vs PROFESSIONAL), conflitos de autosave, erros de storage e webhooks nao autorizados sem gerar falsos positivos.
 
 ### IntegraÃ¯Â¿Â½Ã¯Â¿Â½o IA & MÃ¯Â¿Â½tricas

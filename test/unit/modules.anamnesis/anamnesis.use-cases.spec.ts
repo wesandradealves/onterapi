@@ -10,6 +10,7 @@ import { SavePlanFeedbackUseCase } from '@modules/anamnesis/use-cases/save-plan-
 import { CreateAnamnesisAttachmentUseCase } from '@modules/anamnesis/use-cases/create-anamnesis-attachment.use-case';
 import { RemoveAnamnesisAttachmentUseCase } from '@modules/anamnesis/use-cases/remove-anamnesis-attachment.use-case';
 import { ReceiveAnamnesisAIResultUseCase } from '@modules/anamnesis/use-cases/receive-anamnesis-ai-result.use-case';
+import { CancelAnamnesisUseCase } from '@modules/anamnesis/use-cases/cancel-anamnesis.use-case';
 import { ListAnamnesisStepTemplatesUseCase } from '@modules/anamnesis/use-cases/list-anamnesis-step-templates.use-case';
 import { IAnamnesisRepository } from '@domain/anamnesis/interfaces/repositories/anamnesis.repository.interface';
 import { IAnamnesisAttachmentStorageService } from '@domain/anamnesis/interfaces/services/anamnesis-attachment-storage.service.interface';
@@ -50,6 +51,9 @@ const createAnamnesis = (overrides: Partial<Anamnesis> = {}): Anamnesis => ({
   steps: overrides.steps ?? [],
   latestPlan: overrides.latestPlan ?? null,
   attachments: overrides.attachments ?? [],
+  deletedAt: overrides.deletedAt,
+  deletedBy: overrides.deletedBy,
+  deletedReason: overrides.deletedReason,
 });
 
 const createStep = (overrides: Partial<AnamnesisStep> = {}): AnamnesisStep => ({
@@ -93,6 +97,7 @@ const createPlan = (overrides: Partial<TherapeuticPlanData> = {}): TherapeuticPl
   recommendations: overrides.recommendations ?? [],
   confidence: overrides.confidence ?? 0.8,
   reviewRequired: overrides.reviewRequired ?? false,
+  termsAccepted: overrides.termsAccepted ?? true,
   approvalStatus: overrides.approvalStatus ?? 'pending',
   liked: overrides.liked,
   feedbackComment: overrides.feedbackComment,
@@ -177,6 +182,7 @@ describe('Anamnesis use cases', () => {
       savePlanFeedback: jest.fn(),
       createAttachment: jest.fn(),
       removeAttachment: jest.fn(),
+      cancel: jest.fn(),
       getStepTemplates: jest.fn(),
       getStepTemplateByKey: jest.fn(),
       createAIAnalysis: jest.fn(),
@@ -669,6 +675,99 @@ describe('Anamnesis use cases', () => {
     });
   });
 
+  describe('CancelAnamnesisUseCase', () => {
+    it('should cancel anamnesis and publish domain event', async () => {
+      const anamnesis = createAnamnesis({ status: 'submitted', isDraft: false });
+      repository.findById.mockResolvedValue(anamnesis);
+      repository.cancel.mockResolvedValue(undefined);
+
+      const useCase = new CancelAnamnesisUseCase(repository, messageBus);
+
+      await useCase.executeOrThrow({
+        tenantId: 'tenant-1',
+        anamnesisId: 'anamnesis-1',
+        requestedBy: 'professional-1',
+        requesterRole: RolesEnum.PROFESSIONAL,
+        reason: 'Paciente reagendou a consulta',
+      });
+
+      expect(repository.cancel).toHaveBeenCalledWith({
+        tenantId: 'tenant-1',
+        anamnesisId: 'anamnesis-1',
+        requestedBy: 'professional-1',
+        requesterRole: RolesEnum.PROFESSIONAL,
+        reason: 'Paciente reagendou a consulta',
+      });
+      expect(messageBus.publish).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventName: DomainEvents.ANAMNESIS_CANCELLED,
+          aggregateId: 'anamnesis-1',
+          payload: expect.objectContaining({
+            cancelledBy: 'professional-1',
+            reason: 'Paciente reagendou a consulta',
+          }),
+        }),
+      );
+    });
+
+    it('should trim reason and persist null when only whitespace is provided', async () => {
+      const anamnesis = createAnamnesis({ status: 'submitted', isDraft: false });
+      repository.findById.mockResolvedValue(anamnesis);
+      repository.cancel.mockResolvedValue(undefined);
+
+      const useCase = new CancelAnamnesisUseCase(repository, messageBus);
+
+      await useCase.executeOrThrow({
+        tenantId: 'tenant-1',
+        anamnesisId: 'anamnesis-1',
+        requestedBy: 'professional-1',
+        requesterRole: RolesEnum.PROFESSIONAL,
+        reason: '   ',
+      });
+
+      expect(repository.cancel).toHaveBeenCalledWith({
+        tenantId: 'tenant-1',
+        anamnesisId: 'anamnesis-1',
+        requestedBy: 'professional-1',
+        requesterRole: RolesEnum.PROFESSIONAL,
+        reason: undefined,
+      });
+    });
+
+    it('should block cancellation when already cancelled', async () => {
+      const anamnesis = createAnamnesis({ status: 'cancelled', deletedAt: new Date() });
+      repository.findById.mockResolvedValue(anamnesis);
+
+      const useCase = new CancelAnamnesisUseCase(repository, messageBus);
+
+      await expect(
+        useCase.executeOrThrow({
+          tenantId: 'tenant-1',
+          anamnesisId: 'anamnesis-1',
+          requestedBy: 'professional-1',
+          requesterRole: RolesEnum.PROFESSIONAL,
+        }),
+      ).rejects.toThrow('Anamnese ja foi cancelada anteriormente');
+      expect(repository.cancel).not.toHaveBeenCalled();
+    });
+
+    it('should propagate not found error when anamnesis is missing', async () => {
+      repository.findById.mockResolvedValue(null);
+
+      const useCase = new CancelAnamnesisUseCase(repository, messageBus);
+
+      await expect(
+        useCase.executeOrThrow({
+          tenantId: 'tenant-1',
+          anamnesisId: 'missing',
+          requestedBy: 'professional-1',
+          requesterRole: RolesEnum.PROFESSIONAL,
+        }),
+      ).rejects.toThrow('Anamnese nao encontrada');
+      expect(repository.cancel).not.toHaveBeenCalled();
+    });
+  });
+
   describe('ReceiveAnamnesisAIResultUseCase', () => {
     it('should persist analysis result and therapeutic plan when completed', async () => {
       const anamnesis = createAnamnesis({ status: 'submitted', isDraft: false });
@@ -832,6 +931,7 @@ describe('Anamnesis use cases', () => {
         await useCase.execute({
           tenantId: 'tenant-1',
           anamnesisId: 'anamnesis-1',
+          termsAccepted: true,
           generatedAt: new Date('2025-09-26T01:00:00Z'),
           requesterId: 'professional-1',
           requesterRole: RolesEnum.PROFESSIONAL,
@@ -840,6 +940,27 @@ describe('Anamnesis use cases', () => {
 
       expect(result).toEqual(plan);
       expect(messageBus.publish).toHaveBeenCalled();
+    });
+
+    it('should reject plan persistence when terms are not accepted', async () => {
+      repository.findById.mockResolvedValue(createAnamnesis());
+
+      const useCase = new SaveTherapeuticPlanUseCase(repository, messageBus);
+
+      await expect(
+        useCase
+          .execute({
+            tenantId: 'tenant-1',
+            anamnesisId: 'anamnesis-1',
+            termsAccepted: false,
+            generatedAt: new Date('2025-09-26T01:00:00Z'),
+            requesterId: 'professional-1',
+            requesterRole: RolesEnum.PROFESSIONAL,
+          })
+          .then(unwrapResult),
+      ).rejects.toThrow(
+        'Termo de responsabilidade deve ser aceito para registrar o plano terapeutico.',
+      );
     });
   });
 

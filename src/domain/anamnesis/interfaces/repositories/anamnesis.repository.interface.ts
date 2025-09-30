@@ -12,6 +12,7 @@ import {
   AnamnesisStepKey,
   AnamnesisStepTemplate,
   AutoSaveAnamnesisStepInput,
+  CancelAnamnesisInput,
   CompleteAnamnesisAIAnalysisInput,
   CreateAnamnesisAIAnalysisInput,
   CreateAnamnesisAttachmentInput,
@@ -58,6 +59,7 @@ export interface IAnamnesisRepository {
   ): Promise<AnamnesisAITrainingFeedback>;
   createAttachment(data: CreateAnamnesisAttachmentInput): Promise<AnamnesisAttachment>;
   removeAttachment(data: RemoveAnamnesisAttachmentInput): Promise<void>;
+  cancel(data: CancelAnamnesisInput): Promise<void>;
   getStepTemplates(filters?: GetStepTemplatesFilters): Promise<AnamnesisStepTemplate[]>;
   getStepTemplateByKey(
     key: AnamnesisStepKey,

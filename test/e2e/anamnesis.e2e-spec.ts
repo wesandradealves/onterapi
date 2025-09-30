@@ -52,6 +52,7 @@ import { ISavePlanFeedbackUseCase } from '@domain/anamnesis/interfaces/use-cases
 import { ICreateAnamnesisAttachmentUseCase } from '@domain/anamnesis/interfaces/use-cases/create-anamnesis-attachment.use-case.interface';
 import { IRemoveAnamnesisAttachmentUseCase } from '@domain/anamnesis/interfaces/use-cases/remove-anamnesis-attachment.use-case.interface';
 import { IReceiveAnamnesisAIResultUseCase } from '@domain/anamnesis/interfaces/use-cases/receive-anamnesis-ai-result.use-case.interface';
+import { ICancelAnamnesisUseCase } from '@domain/anamnesis/interfaces/use-cases/cancel-anamnesis.use-case.interface';
 import { IListAnamnesisStepTemplatesUseCase } from '@domain/anamnesis/interfaces/use-cases/list-anamnesis-step-templates.use-case.interface';
 import {
   IPatientRepository,
@@ -77,6 +78,7 @@ import { SavePlanFeedbackUseCase } from '@modules/anamnesis/use-cases/save-plan-
 import { CreateAnamnesisAttachmentUseCase } from '@modules/anamnesis/use-cases/create-anamnesis-attachment.use-case';
 import { RemoveAnamnesisAttachmentUseCase } from '@modules/anamnesis/use-cases/remove-anamnesis-attachment.use-case';
 import { ReceiveAnamnesisAIResultUseCase } from '@modules/anamnesis/use-cases/receive-anamnesis-ai-result.use-case';
+import { CancelAnamnesisUseCase } from '@modules/anamnesis/use-cases/cancel-anamnesis.use-case';
 import { ListAnamnesisStepTemplatesUseCase } from '@modules/anamnesis/use-cases/list-anamnesis-step-templates.use-case';
 import { MessageBus } from '@shared/messaging/message-bus';
 import { DomainEvent } from '@shared/events/domain-event.interface';
@@ -163,6 +165,9 @@ class InMemoryAnamnesisRepository implements IAnamnesisRepository {
       latestPlan: null,
       attachments: [],
       aiAnalyses: [],
+      deletedAt: null,
+      deletedBy: null,
+      deletedReason: null,
     };
 
     this.records.set(record.id, record);
@@ -176,7 +181,7 @@ class InMemoryAnamnesisRepository implements IAnamnesisRepository {
   ): Promise<Anamnesis | null> {
     const record = this.records.get(anamnesisId);
 
-    if (!record || record.tenantId !== tenantId) {
+    if (!record || record.tenantId !== tenantId || record.deletedAt) {
       return null;
     }
 
@@ -192,7 +197,7 @@ class InMemoryAnamnesisRepository implements IAnamnesisRepository {
       (item) => item.tenantId === tenantId && item.consultationId === consultationId,
     );
 
-    if (!record) {
+    if (!record || record.deletedAt) {
       return null;
     }
 
@@ -221,16 +226,44 @@ class InMemoryAnamnesisRepository implements IAnamnesisRepository {
     return step;
   }
 
+  async submit(data: SubmitAnamnesisInput): Promise<Anamnesis> {
+    const record = this.records.get(data.anamnesisId);
+
+    if (!record || record.tenantId !== data.tenantId) {
+      throw AnamnesisErrorFactory.notFound();
+    }
+
+    if (record.deletedAt || record.status === 'cancelled') {
+      throw AnamnesisErrorFactory.invalidState('Anamnese ja foi cancelada anteriormente');
+    }
+
+    const submissionDate = data.submissionDate ?? new Date();
+
+    record.status = 'submitted';
+    record.isDraft = false;
+    record.submittedAt = submissionDate;
+    record.updatedAt = submissionDate;
+
+    if (typeof data.completionRate === 'number') {
+      record.completionRate = data.completionRate;
+    }
+
+    return this.cloneAnamnesis(record);
+  }
+
   async listByPatient(
     tenantId: string,
     patientId: string,
     filters?: AnamnesisListFilters,
   ): Promise<AnamnesisListItem[]> {
     const items = Array.from(this.records.values()).filter(
-      (item) => item.tenantId === tenantId && item.patientId === patientId,
+      (item) => item.tenantId === tenantId && item.patientId === patientId && !item.deletedAt,
     );
 
     const filtered = items.filter((item) => {
+      if (item.deletedAt) {
+        return false;
+      }
       if (filters?.status && filters.status.length > 0 && !filters.status.includes(item.status)) {
         return false;
       }
@@ -269,8 +302,13 @@ class InMemoryAnamnesisRepository implements IAnamnesisRepository {
     const statuses = filters?.statuses ?? [];
 
     const entries = Array.from(this.records.values())
-      .filter((item) => item.tenantId === tenantId && item.patientId === patientId)
+      .filter(
+        (item) => item.tenantId === tenantId && item.patientId === patientId && !item.deletedAt,
+      )
       .filter((item) => {
+        if (item.deletedAt) {
+          return false;
+        }
         if (!includeDrafts && item.status === 'draft') {
           return false;
         }
@@ -312,20 +350,26 @@ class InMemoryAnamnesisRepository implements IAnamnesisRepository {
     return entries;
   }
 
-  async submit(data: SubmitAnamnesisInput): Promise<Anamnesis> {
+  async cancel(data: CancelAnamnesisInput): Promise<void> {
     const record = this.records.get(data.anamnesisId);
 
     if (!record || record.tenantId !== data.tenantId) {
       throw AnamnesisErrorFactory.notFound();
     }
 
-    record.status = 'submitted';
-    record.isDraft = false;
-    record.submittedAt = data.submissionDate;
-    record.updatedAt = data.submissionDate;
-    record.completionRate = data.completionRate;
+    if (record.deletedAt || record.status === 'cancelled') {
+      throw AnamnesisErrorFactory.invalidState('Anamnese ja foi cancelada anteriormente');
+    }
 
-    return this.cloneAnamnesis(record);
+    const reason = typeof data.reason === 'string' ? data.reason.trim() : undefined;
+    const now = new Date();
+
+    record.status = 'cancelled';
+    record.isDraft = false;
+    record.updatedAt = now;
+    record.deletedAt = now;
+    record.deletedBy = data.requestedBy ?? null;
+    record.deletedReason = reason && reason.length ? reason : null;
   }
 
   async saveTherapeuticPlan(data: SaveTherapeuticPlanInput): Promise<TherapeuticPlanData> {
@@ -347,6 +391,7 @@ class InMemoryAnamnesisRepository implements IAnamnesisRepository {
       recommendations: clonePayload(data.recommendations),
       confidence: data.confidence,
       reviewRequired: data.reviewRequired ?? false,
+      termsAccepted: data.termsAccepted,
       approvalStatus: 'pending',
       generatedAt: now,
       createdAt: now,
@@ -620,6 +665,9 @@ class InMemoryAnamnesisRepository implements IAnamnesisRepository {
       completedAt: entity.completedAt ? new Date(entity.completedAt) : undefined,
       createdAt: new Date(entity.createdAt),
       updatedAt: new Date(entity.updatedAt),
+      deletedAt: entity.deletedAt ? new Date(entity.deletedAt) : null,
+      deletedBy: entity.deletedBy ?? null,
+      deletedReason: entity.deletedReason ?? null,
       steps: includeSteps ? entity.steps.map((step) => this.cloneStep(step)) : undefined,
       latestPlan: includeLatestPlan && entity.latestPlan ? { ...entity.latestPlan } : undefined,
       attachments: includeAttachments
@@ -652,6 +700,7 @@ const PATIENT_ID = '22222222-2222-2222-2222-222222222222';
 const PROFESSIONAL_ID = '33333333-3333-3333-3333-333333333333';
 const CONSULTATION_ID = '11111111-1111-1111-1111-111111111111';
 const SECOND_CONSULTATION_ID = '44444444-4444-4444-4444-444444444444';
+const CANCELLED_CONSULTATION_ID = '55555555-5555-5555-5555-555555555555';
 
 const buildIdentificationPayload = (fullName: string) => ({
   personalInfo: {
@@ -754,6 +803,7 @@ describe('AnamnesisModule (e2e)', () => {
         { provide: ICreateAnamnesisAttachmentUseCase, useClass: CreateAnamnesisAttachmentUseCase },
         { provide: IRemoveAnamnesisAttachmentUseCase, useClass: RemoveAnamnesisAttachmentUseCase },
         { provide: IReceiveAnamnesisAIResultUseCase, useClass: ReceiveAnamnesisAIResultUseCase },
+        { provide: ICancelAnamnesisUseCase, useClass: CancelAnamnesisUseCase },
         {
           provide: IListAnamnesisStepTemplatesUseCase,
           useClass: ListAnamnesisStepTemplatesUseCase,
@@ -893,11 +943,13 @@ describe('AnamnesisModule (e2e)', () => {
         recommendations: [{ id: 'rec-1', description: 'Exercicios leves', priority: 'medium' }],
         confidence: 0.8,
         reviewRequired: false,
+        termsAccepted: true,
         generatedAt: new Date('2025-09-26T03:00:00.000Z').toISOString(),
       })
       .expect(201);
 
     expect(planResponse.body.id).toBeDefined();
+    expect(planResponse.body.termsAccepted).toBe(true);
     expect(planResponse.body.riskFactors[0].id).toBe('risk-1');
 
     const feedbackResponse = await request(app.getHttpServer())
@@ -963,6 +1015,57 @@ describe('AnamnesisModule (e2e)', () => {
 
     expect(submittedEvent).toBeDefined();
     expect(aiRequestedEvent).toBeDefined();
+  });
+
+  it('cancela uma anamnese preservando auditoria e removendo das listagens', async () => {
+    const startResponse = await request(app.getHttpServer())
+      .post('/anamneses/start')
+      .set('x-tenant-id', TENANT_ID)
+      .send({
+        consultationId: CANCELLED_CONSULTATION_ID,
+        patientId: PATIENT_ID,
+        professionalId: PROFESSIONAL_ID,
+        totalSteps: 2,
+      })
+      .expect(201);
+
+    const cancelledId = startResponse.body.id;
+
+    await request(app.getHttpServer())
+      .post(`/anamneses/${cancelledId}/cancel`)
+      .set('x-tenant-id', TENANT_ID)
+      .send({ reason: 'Paciente reagendou a consulta' })
+      .expect(204);
+
+    const cancelEvent = messageBus.events.find(
+      (event) =>
+        event.eventName === DomainEvents.ANAMNESIS_CANCELLED && event.aggregateId === cancelledId,
+    );
+
+    expect(cancelEvent).toBeDefined();
+    expect(cancelEvent?.payload.cancelledBy).toBe(PROFESSIONAL_ID);
+    expect(cancelEvent?.payload.reason).toBe('Paciente reagendou a consulta');
+
+    await request(app.getHttpServer())
+      .get(`/anamneses/${cancelledId}`)
+      .set('x-tenant-id', TENANT_ID)
+      .expect(404);
+
+    const listResponse = await request(app.getHttpServer())
+      .get(`/anamneses/patient/${PATIENT_ID}`)
+      .set('x-tenant-id', TENANT_ID)
+      .expect(200);
+
+    expect(listResponse.body.find((item: any) => item.id === cancelledId)).toBeUndefined();
+
+    const historyResponse = await request(app.getHttpServer())
+      .get(`/anamneses/patient/${PATIENT_ID}/history?includeDrafts=true`)
+      .set('x-tenant-id', TENANT_ID)
+      .expect(200);
+
+    expect(
+      historyResponse.body.entries.find((entry: any) => entry.id === cancelledId),
+    ).toBeUndefined();
   });
 
   it('lista as anamneses do paciente', async () => {
