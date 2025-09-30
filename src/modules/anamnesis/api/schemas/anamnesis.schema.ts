@@ -54,6 +54,9 @@ export const saveTherapeuticPlanSchema = z.object({
   recommendations: z.array(recommendationSchema).optional(),
   confidence: z.number().min(0).max(1).optional(),
   reviewRequired: z.boolean().optional(),
+  termsAccepted: z.boolean().refine((value) => value === true, {
+    message: 'Termo de responsabilidade deve ser aceito',
+  }),
   generatedAt: z.string().datetime({ message: 'Data de geracao invalida' }),
 });
 
@@ -193,3 +196,14 @@ export const listAnamnesesQuerySchema = z.object({
 });
 
 export type ListAnamnesesQuerySchema = z.infer<typeof listAnamnesesQuerySchema>;
+
+export const cancelAnamnesisSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(1, 'Motivo deve ter pelo menos 1 caractere')
+    .max(1000, 'Motivo deve ter no maximo 1000 caracteres')
+    .optional(),
+});
+
+export type CancelAnamnesisSchema = z.infer<typeof cancelAnamnesisSchema>;

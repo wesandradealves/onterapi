@@ -152,6 +152,7 @@ const mapPlan = (plan: TherapeuticPlanData): TherapeuticPlanDto => ({
   recommendations: mapRecommendations(plan.recommendations),
   confidence: plan.confidence,
   reviewRequired: plan.reviewRequired ?? false,
+  termsAccepted: plan.termsAccepted ?? false,
   approvalStatus: plan.approvalStatus,
   liked: plan.liked,
   feedbackComment: plan.feedbackComment,
@@ -180,6 +181,10 @@ export class AnamnesisPresenter {
       completedAt: toIsoString(entity.completedAt),
       createdAt: toIsoString(entity.createdAt) ?? new Date().toISOString(),
       updatedAt: toIsoString(entity.updatedAt) ?? new Date().toISOString(),
+
+      deletedAt: entity.deletedAt ? toIsoString(entity.deletedAt) : null,
+      deletedBy: entity.deletedBy ?? undefined,
+      deletedReason: entity.deletedReason ?? undefined,
       steps: entity.steps ? entity.steps.map(mapStep) : undefined,
       latestPlan: entity.latestPlan ? mapPlan(entity.latestPlan) : null,
       attachments: entity.attachments ? entity.attachments.map(mapAttachment) : undefined,

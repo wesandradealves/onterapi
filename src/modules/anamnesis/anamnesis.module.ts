@@ -28,6 +28,7 @@ import { IListAnamnesisStepTemplatesUseCase } from '../../domain/anamnesis/inter
 import { ICreateAnamnesisAttachmentUseCase } from '../../domain/anamnesis/interfaces/use-cases/create-anamnesis-attachment.use-case.interface';
 import { IRemoveAnamnesisAttachmentUseCase } from '../../domain/anamnesis/interfaces/use-cases/remove-anamnesis-attachment.use-case.interface';
 import { IReceiveAnamnesisAIResultUseCase } from '../../domain/anamnesis/interfaces/use-cases/receive-anamnesis-ai-result.use-case.interface';
+import { ICancelAnamnesisUseCase } from '../../domain/anamnesis/interfaces/use-cases/cancel-anamnesis.use-case.interface';
 import { IAnamnesisAttachmentStorageServiceToken } from '../../domain/anamnesis/interfaces/services/anamnesis-attachment-storage.service.interface';
 import { StartAnamnesisUseCase } from './use-cases/start-anamnesis.use-case';
 import { GetAnamnesisUseCase } from './use-cases/get-anamnesis.use-case';
@@ -42,6 +43,7 @@ import { ListAnamnesisStepTemplatesUseCase } from './use-cases/list-anamnesis-st
 import { CreateAnamnesisAttachmentUseCase } from './use-cases/create-anamnesis-attachment.use-case';
 import { RemoveAnamnesisAttachmentUseCase } from './use-cases/remove-anamnesis-attachment.use-case';
 import { ReceiveAnamnesisAIResultUseCase } from './use-cases/receive-anamnesis-ai-result.use-case';
+import { CancelAnamnesisUseCase } from './use-cases/cancel-anamnesis.use-case';
 import { MessageBus } from '../../shared/messaging/message-bus';
 import { AnamnesisAIWebhookGuard } from './guards/anamnesis-ai-webhook.guard';
 import { SupabaseAnamnesisAttachmentStorageService } from '../../infrastructure/anamnesis/services/supabase-anamnesis-attachment-storage.service';
@@ -105,6 +107,10 @@ const useCaseProviders: Provider[] = [
     useClass: ReceiveAnamnesisAIResultUseCase,
   },
   {
+    provide: ICancelAnamnesisUseCase,
+    useClass: CancelAnamnesisUseCase,
+  },
+  {
     provide: IListAnamnesisStepTemplatesUseCase,
     useClass: ListAnamnesisStepTemplatesUseCase,
   },
@@ -156,6 +162,7 @@ const storageProviders: Provider[] = [
     ICreateAnamnesisAttachmentUseCase,
     IRemoveAnamnesisAttachmentUseCase,
     IReceiveAnamnesisAIResultUseCase,
+    ICancelAnamnesisUseCase,
     IListAnamnesisStepTemplatesUseCase,
     IAnamnesisRepositoryToken,
     IAnamnesisAttachmentStorageServiceToken,

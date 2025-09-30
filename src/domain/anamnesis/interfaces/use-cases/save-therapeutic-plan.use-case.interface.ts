@@ -16,6 +16,7 @@ export interface ISaveTherapeuticPlanUseCase {
     recommendations?: TherapeuticPlanRecommendation[];
     confidence?: number;
     reviewRequired?: boolean;
+    termsAccepted: boolean;
     generatedAt: Date;
     requesterId: string;
     requesterRole: string;
@@ -30,6 +31,7 @@ export interface ISaveTherapeuticPlanUseCase {
     recommendations?: TherapeuticPlanRecommendation[];
     confidence?: number;
     reviewRequired?: boolean;
+    termsAccepted: boolean;
     generatedAt: Date;
     requesterId: string;
     requesterRole: string;

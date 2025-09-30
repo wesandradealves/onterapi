@@ -29,6 +29,11 @@ export class StartAnamnesisRequestDto {
   formData?: Record<string, unknown>;
 }
 
+export class CancelAnamnesisRequestDto {
+  @ApiPropertyOptional({ description: 'Justificativa opcional do cancelamento', maxLength: 1000 })
+  reason?: string;
+}
+
 export class SaveAnamnesisStepRequestDto {
   @ApiProperty({ description: 'Chave do step', example: 'lifestyle' })
   key!: string;
@@ -121,6 +126,13 @@ export class SaveTherapeuticPlanRequestDto {
 
   @ApiPropertyOptional({ description: 'Indica se revisao humana e necessaria', example: false })
   reviewRequired?: boolean;
+
+  @ApiProperty({
+    description:
+      'Confirma que o profissional assume a responsabilidade de revisar o plano gerado por IA antes de utiliza-lo com o paciente',
+    example: true,
+  })
+  termsAccepted!: boolean;
 
   @ApiProperty({ description: 'Data de geracao do plano (ISO)', example: '2025-09-26T04:40:00Z' })
   generatedAt!: string;

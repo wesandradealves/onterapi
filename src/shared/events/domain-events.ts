@@ -25,6 +25,7 @@ export class DomainEvents {
   static ANAMNESIS_CREATED = 'anamnesis.created';
   static ANAMNESIS_STEP_SAVED = 'anamnesis.step_saved';
   static ANAMNESIS_SUBMITTED = 'anamnesis.submitted';
+  static ANAMNESIS_CANCELLED = 'anamnesis.cancelled';
   static ANAMNESIS_PLAN_GENERATED = 'anamnesis.plan.generated';
   static ANAMNESIS_PLAN_FEEDBACK_SAVED = 'anamnesis.plan.feedback_saved';
   static ANAMNESIS_AI_REQUESTED = 'anamnesis.ai.requested';
@@ -279,6 +280,19 @@ export class DomainEvents {
       this.ANAMNESIS_SUBMITTED,
       anamnesisId,
       { anamnesisId, ...submissionData },
+      metadata,
+    );
+  }
+
+  static anamnesisCancelled(
+    anamnesisId: string,
+    cancelData: { tenantId: string; reason?: string; cancelledBy: string },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.ANAMNESIS_CANCELLED,
+      anamnesisId,
+      { anamnesisId, cancelledAt: new Date(), ...cancelData },
       metadata,
     );
   }

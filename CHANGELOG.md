@@ -1,6 +1,17 @@
-﻿# Changelog
+# Changelog
 
 Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
+## [0.16.8] - 2025-09-30
+
+### Added
+- Migracao 1738400000000-AddSoftDeleteToAnamnesis incluindo colunas `deleted_at`, `deleted_by` e `deleted_reason` em `anamneses` com suporte a soft delete e auditoria.
+- Migracao 1738501000000-AddTermsAcceptedToTherapeuticPlan adicionando `terms_accepted` em `anamnesis_therapeutic_plans`.
+- Caso de uso CancelAnamnesisUseCase, endpoint `POST /anamneses/{id}/cancel` e evento DomainEvents.ANAMNESIS_CANCELLED para propagar cancelamentos sob auditoria.
+
+### Changed
+- Salvamento do plano terapeutico passa a exigir `termsAccepted`, validando o aceite do termo de responsabilidade e persistindo o flag nas entidades, mappers, presenters e respostas da API.
+- Listagens, historico e detalhe de anamnese ignoram registros cancelados e expoem `deletedAt`, `deletedBy` e `deletedReason` para auditoria.
+- Suites unitarias, de integracao e e2e atualizadas com cenarios de cancelamento e aceite obrigatorio, mantendo payloads e factories alinhados as novas validacoes.
 
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o projeto adota [Versionamento Semantico](https://semver.org/lang/pt-BR/).
 
@@ -24,12 +35,13 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 - Servico de armazenamento de anexos (SupabaseAnamnesisAttachmentStorageService) integrado aos casos de uso do modulo.
 - Seeds adicionais por especialidade (nutrition, physiotherapy, psychology) para templates de passos com indice uniq_step_template_scope.
 - Guard e caso de uso para ingestao de resultados de IA via webhook, com endpoint REST, DTOs e validacoes dedicadas.
-- Entidade e fluxo de feedback supervisionado (AnamnesisAITrainingFeedbackEntity, ecordAITrainingFeedback).
+- Entidade e fluxo de feedback supervisionado (AnamnesisAITrainingFeedbackEntity, 
+ecordAITrainingFeedback).
 - Servico AnamnesisMetricsService e subscriber de eventos agregando metricas de steps, autosaves, IA e feedback humano.
 
 ### Changed
 - Repositorio, presenters e DTOs atualizados para preservar anexos no historico, normalizar payloads JSON e expor auditoria (tenant/usuario).
-- Planos terapeuticos agora vinculam nalysisId e normalizam payloads/feedback ao salvar resultados da IA.
+- Planos terapeuticos agora vinculam analysisId e normalizam payloads/feedback ao salvar resultados da IA.
 - ReceiveAnamnesisAIResultUseCase e savePlanFeedback conectados ao scoreboard de treinamentos, disparando eventos de dominio.
 - Fluxos de auto-save, listagem e historico reforcados com idempotencia, guardas RBAC e publicacao de eventos.
 - Rotas REST de anamnese aplicam TenantGuard junto aos guardas JWT/Roles para isolamento multi-tenant consistente.
@@ -49,7 +61,7 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ### Added
 - Estrutura base de dominio para Anamnese (src/domain/anamnesis/types/anamnesis.types.ts) com status, steps, planos terapeuticos e anexos.
-- Entidades TypeORM para namneses, namnesis_steps, namnesis_therapeutic_plans, namnesis_attachments e migracao 1738100000000-CreateAnamnesisTables.
+- Entidades TypeORM para anamneses, anamnesis_steps, anamnesis_therapeutic_plans, anamnesis_attachments e migracao 1738100000000-CreateAnamnesisTables.
 - Mapper AnamnesisMapper convertendo entidades para tipos de dominio e normalizando payloads JSON.
 - Repositorio AnamnesisRepository com fluxos de criacao, salvamento de etapas, submissao, historico, anexos e feedback de planos.
 

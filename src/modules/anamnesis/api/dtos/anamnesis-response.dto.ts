@@ -28,6 +28,22 @@ export class AnamnesisStepDto {
   @ApiProperty({ description: 'Data da ultima atualizacao (ISO)', example: '2025-09-26T03:15:00Z' })
   updatedAt!: string;
 
+  @ApiPropertyOptional({
+    description: 'Data de cancelamento (ISO)',
+    example: '2025-09-26T06:00:00Z',
+    nullable: true,
+  })
+  deletedAt?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Responsavel pelo cancelamento',
+    example: '33333333-3333-3333-3333-333333333333',
+  })
+  deletedBy?: string;
+
+  @ApiPropertyOptional({ description: 'Motivo registrado no cancelamento' })
+  deletedReason?: string;
+
   @ApiProperty({ description: 'Data de criacao (ISO)', example: '2025-09-26T03:05:00Z' })
   createdAt!: string;
 }
@@ -176,6 +192,9 @@ export class TherapeuticPlanDto {
   @ApiProperty({ description: 'Indica se revisao humana e necessaria', example: true })
   reviewRequired!: boolean;
 
+  @ApiProperty({ description: 'Termo de responsabilidade aceito', example: true })
+  termsAccepted!: boolean;
+
   @ApiProperty({ description: 'Status de aprovacao', example: 'pending' })
   approvalStatus!: 'pending' | 'approved' | 'modified' | 'rejected';
 
@@ -270,6 +289,22 @@ export class AnamnesisDetailResponseDto {
 
   @ApiProperty({ description: 'Data de atualizacao (ISO)', example: '2025-09-26T04:25:00Z' })
   updatedAt!: string;
+
+  @ApiPropertyOptional({
+    description: 'Data de cancelamento (ISO)',
+    example: '2025-09-26T06:00:00Z',
+    nullable: true,
+  })
+  deletedAt?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Responsavel pelo cancelamento',
+    example: '33333333-3333-3333-3333-333333333333',
+  })
+  deletedBy?: string;
+
+  @ApiPropertyOptional({ description: 'Motivo registrado no cancelamento' })
+  deletedReason?: string;
 
   @ApiPropertyOptional({ description: 'Steps da anamnese', type: () => [AnamnesisStepDto] })
   steps?: AnamnesisStepDto[];
@@ -368,6 +403,22 @@ export class AnamnesisHistoryEntryDto {
 
   @ApiProperty({ description: 'Ultima atualizacao (ISO)', example: '2025-09-26T10:05:00Z' })
   updatedAt!: string;
+
+  @ApiPropertyOptional({
+    description: 'Data de cancelamento (ISO)',
+    example: '2025-09-26T06:00:00Z',
+    nullable: true,
+  })
+  deletedAt?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Responsavel pelo cancelamento',
+    example: '33333333-3333-3333-3333-333333333333',
+  })
+  deletedBy?: string;
+
+  @ApiPropertyOptional({ description: 'Motivo registrado no cancelamento' })
+  deletedReason?: string;
 
   @ApiProperty({ description: 'Steps registrados', type: () => [AnamnesisHistoryStepDto] })
   steps!: AnamnesisHistoryStepDto[];

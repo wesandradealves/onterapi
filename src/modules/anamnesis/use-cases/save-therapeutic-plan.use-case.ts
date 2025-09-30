@@ -22,6 +22,7 @@ interface SaveTherapeuticPlanCommand {
   recommendations?: TherapeuticPlanData['recommendations'];
   confidence?: number;
   reviewRequired?: boolean;
+  termsAccepted: boolean;
   generatedAt: Date;
   requesterId: string;
   requesterRole: string;
@@ -55,6 +56,12 @@ export class SaveTherapeuticPlanUseCase
       professionalId: record.professionalId,
     });
 
+    if (!params.termsAccepted) {
+      throw AnamnesisErrorFactory.invalidPayload(
+        'Termo de responsabilidade deve ser aceito para registrar o plano terapeutico.',
+      );
+    }
+
     const plan = await this.anamnesisRepository.saveTherapeuticPlan({
       anamnesisId: params.anamnesisId,
       tenantId: params.tenantId,
@@ -65,6 +72,7 @@ export class SaveTherapeuticPlanUseCase
       recommendations: params.recommendations,
       confidence: params.confidence,
       reviewRequired: params.reviewRequired,
+      termsAccepted: params.termsAccepted,
       generatedAt: params.generatedAt,
     });
 
@@ -76,6 +84,7 @@ export class SaveTherapeuticPlanUseCase
           generatedAt: plan.generatedAt,
           confidence: plan.confidence,
           reviewRequired: plan.reviewRequired,
+          termsAccepted: plan.termsAccepted,
         },
         { userId: params.requesterId, tenantId: params.tenantId },
       ),

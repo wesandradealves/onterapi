@@ -49,6 +49,9 @@ export class AnamnesisTherapeuticPlanEntity {
   @Column({ name: 'review_required', type: 'boolean', default: false })
   reviewRequired!: boolean;
 
+  @Column({ name: 'terms_accepted', type: 'boolean', default: false })
+  termsAccepted!: boolean;
+
   @Column({ name: 'approval_status', type: 'varchar', length: 16, default: 'pending' })
   approvalStatus!: 'pending' | 'approved' | 'modified' | 'rejected';
 

@@ -54,6 +54,7 @@ import { ISavePlanFeedbackUseCase } from '../../../../domain/anamnesis/interface
 import { ICreateAnamnesisAttachmentUseCase } from '../../../../domain/anamnesis/interfaces/use-cases/create-anamnesis-attachment.use-case.interface';
 import { IRemoveAnamnesisAttachmentUseCase } from '../../../../domain/anamnesis/interfaces/use-cases/remove-anamnesis-attachment.use-case.interface';
 import { IReceiveAnamnesisAIResultUseCase } from '../../../../domain/anamnesis/interfaces/use-cases/receive-anamnesis-ai-result.use-case.interface';
+import { ICancelAnamnesisUseCase } from '../../../../domain/anamnesis/interfaces/use-cases/cancel-anamnesis.use-case.interface';
 import { IListAnamnesisStepTemplatesUseCase } from '../../../../domain/anamnesis/interfaces/use-cases/list-anamnesis-step-templates.use-case.interface';
 import {
   AnamnesisAttachmentDto,
@@ -65,6 +66,7 @@ import {
 } from '../dtos/anamnesis-response.dto';
 import {
   AutoSaveAnamnesisStepRequestDto,
+  CancelAnamnesisRequestDto,
   CreateAnamnesisAttachmentRequestDto,
   ReceiveAIResultRequestDto,
   SaveAnamnesisStepRequestDto,
@@ -73,28 +75,30 @@ import {
   StartAnamnesisRequestDto,
 } from '../dtos/anamnesis-request.dto';
 import {
-  anamnesisHistoryQuerySchema,
   AnamnesisHistoryQuerySchema,
-  autoSaveAnamnesisStepSchema,
+  anamnesisHistoryQuerySchema,
   AutoSaveAnamnesisStepSchema,
-  createAttachmentSchema,
+  autoSaveAnamnesisStepSchema,
+  CancelAnamnesisSchema,
+  cancelAnamnesisSchema,
   CreateAttachmentSchema,
-  getAnamnesisQuerySchema,
+  createAttachmentSchema,
   GetAnamnesisQuerySchema,
-  listAnamnesesQuerySchema,
+  getAnamnesisQuerySchema,
   ListAnamnesesQuerySchema,
-  listStepTemplatesQuerySchema,
+  listAnamnesesQuerySchema,
   ListStepTemplatesQuerySchema,
-  receiveAIResultSchema,
+  listStepTemplatesQuerySchema,
   ReceiveAIResultSchema,
-  saveAnamnesisStepSchema,
+  receiveAIResultSchema,
   SaveAnamnesisStepSchema,
-  savePlanFeedbackSchema,
+  saveAnamnesisStepSchema,
   SavePlanFeedbackSchema,
-  saveTherapeuticPlanSchema,
+  savePlanFeedbackSchema,
   SaveTherapeuticPlanSchema,
-  startAnamnesisSchema,
+  saveTherapeuticPlanSchema,
   StartAnamnesisSchema,
+  startAnamnesisSchema,
 } from '../schemas/anamnesis.schema';
 import { AnamnesisPresenter } from '../presenters/anamnesis.presenter';
 import { memoryStorage } from 'multer';
@@ -139,6 +143,8 @@ export class AnamnesisController {
     private readonly removeAttachmentUseCase: IRemoveAnamnesisAttachmentUseCase,
     @Inject(IReceiveAnamnesisAIResultUseCase)
     private readonly receiveAIResultUseCase: IReceiveAnamnesisAIResultUseCase,
+    @Inject(ICancelAnamnesisUseCase)
+    private readonly cancelAnamnesisUseCase: ICancelAnamnesisUseCase,
     @Inject(IListAnamnesisStepTemplatesUseCase)
     private readonly listStepTemplatesUseCase: IListAnamnesisStepTemplatesUseCase,
   ) {}
@@ -481,6 +487,33 @@ export class AnamnesisController {
     });
     return AnamnesisPresenter.detail(anamnesis);
   }
+  @Post(':anamnesisId/cancel')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles(RolesEnum.PROFESSIONAL, RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({
+    summary: 'Cancelar anamnese',
+    description: 'Cancela a anamnese preservando o registro para auditoria.',
+  })
+  @ApiParam({ name: 'anamnesisId', description: 'Identificador da anamnese' })
+  @ApiBody({ type: CancelAnamnesisRequestDto })
+  @ApiResponse({ status: 204, description: 'Anamnese cancelada' })
+  async cancel(
+    @Param('anamnesisId') anamnesisId: string,
+    @Body(new ZodValidationPipe(cancelAnamnesisSchema)) body: CancelAnamnesisSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<void> {
+    const context = this.resolveContext(currentUser, tenantHeader);
+
+    await this.cancelAnamnesisUseCase.executeOrThrow({
+      anamnesisId,
+      tenantId: context.tenantId,
+      requestedBy: context.userId,
+      requesterRole: context.role,
+      reason: body.reason,
+    });
+  }
+
   @Post(':anamnesisId/plan')
   @HttpCode(HttpStatus.CREATED)
   @Roles(RolesEnum.PROFESSIONAL, RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
@@ -518,6 +551,7 @@ export class AnamnesisController {
       recommendations,
       confidence: body.confidence,
       reviewRequired: body.reviewRequired,
+      termsAccepted: body.termsAccepted,
       generatedAt: new Date(body.generatedAt),
       requesterId: context.userId,
       requesterRole: context.role,

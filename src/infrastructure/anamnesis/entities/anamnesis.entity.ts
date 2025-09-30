@@ -1,6 +1,7 @@
 import {
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
   Index,
   OneToMany,
@@ -64,6 +65,15 @@ export class AnamnesisEntity {
 
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamp with time zone' })
   updatedAt!: Date;
+
+  @DeleteDateColumn({ name: 'deleted_at', type: 'timestamp with time zone', nullable: true })
+  deletedAt?: Date | null;
+
+  @Column({ name: 'deleted_by', type: 'uuid', nullable: true })
+  deletedBy?: string | null;
+
+  @Column({ name: 'deleted_reason', type: 'text', nullable: true })
+  deletedReason?: string | null;
 
   @OneToMany(() => AnamnesisStepEntity, (step) => step.anamnesis, {
     cascade: ['insert', 'update'],
