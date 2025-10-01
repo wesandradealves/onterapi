@@ -139,3 +139,10 @@ npm run migration:run
 - [ ] Validar renderizaÃ§Ã£o do plano/raciocÃ­nio/evidÃªncias no front.
 - [ ] Monitorar mÃ©tricas (tokens, latÃªncia) e LOGs para custos.
 - Worker de referÃªncia disponÃ­vel em scripts/anamnesis-ai-worker: expÃµe POST /jobs/anamnesis-ai-request e reenvia o resultado para /anamneses/:id/ai-result com as mÃ©tricas capturadas.
+
+
+### Autenticação do Webhook
+- Envie os headers `x-anamnesis-ai-timestamp` (timestamp em ms) e `x-anamnesis-ai-signature` (`sha256=<hash>`) em todas as chamadas.
+- A assinatura é calculada como `HMAC_SHA256(secret, timestamp + '.' + bodyJson)`.
+- Requisições com timestamp fora da janela configurável (`ANAMNESIS_AI_WEBHOOK_MAX_SKEW_MS`, padrão 300000 ms) são rejeitadas.
+

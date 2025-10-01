@@ -1,4 +1,5 @@
-﻿import { setTimeout as sleep } from 'node:timers/promises';
+import { createHmac } from 'node:crypto';
+import { setTimeout as sleep } from 'node:timers/promises';
 
 import { WorkerConfig } from './config';
 import { AiWorkerRequestBody, ProviderResult } from './types';
@@ -23,13 +24,15 @@ export async function postResultToBackend(
   const url = `${config.webhookBaseUrl.replace(/\/$/, '')}/anamneses/${job.anamnesisId}/ai-result`;
   const respondedAt = new Date().toISOString();
   const body = buildWebhookBody(job, result, respondedAt);
+  const bodyJson = JSON.stringify(body);
+  const headers = buildWebhookHeaders(config, job, bodyJson);
 
   for (let attempt = 1; attempt <= resolvedOptions.maxAttempts; attempt += 1) {
     try {
       const response = await fetch(url, {
         method: 'POST',
-        headers: buildWebhookHeaders(config, job),
-        body: JSON.stringify(body),
+        headers,
+        body: bodyJson,
       });
 
       if (response.ok) {
@@ -48,10 +51,20 @@ export async function postResultToBackend(
   }
 }
 
-function buildWebhookHeaders(config: WorkerConfig, job: AiWorkerRequestBody): Record<string, string> {
+function buildWebhookHeaders(
+  config: WorkerConfig,
+  job: AiWorkerRequestBody,
+  bodyJson: string,
+): Record<string, string> {
+  const timestamp = Date.now().toString();
+  const signature = createHmac('sha256', config.webhookSecret)
+    .update(`${timestamp}.${bodyJson}`)
+    .digest('hex');
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'x-anamnesis-ai-secret': config.webhookSecret,
+    'x-anamnesis-ai-timestamp': timestamp,
+    'x-anamnesis-ai-signature': `sha256=${signature}`,
   };
 
   if (config.tenantHeaderEnabled) {

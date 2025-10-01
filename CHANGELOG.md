@@ -1,4 +1,4 @@
-﻿# Changelog
+# Changelog
 
 Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 
@@ -22,6 +22,9 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 - SubmitAnamnesisUseCase reaproveita buildAnamnesisAIRequestPayload, mantendo o JSON compacto tanto na persistencia quanto nos eventos.
 - Worker tenta modo local antes de enviar HTTP quando configurado.
 - README e docs/AI_CONTRACT.md reforcam o pipeline completo (submit -> worker -> webhook -> aceite) e os requisitos de configuracao do worker.
+
+### Security
+- Webhook `/anamneses/:id/ai-result` agora exige assinatura HMAC (`x-anamnesis-ai-signature` + `x-anamnesis-ai-timestamp`) com janela configurável (`ANAMNESIS_AI_WEBHOOK_MAX_SKEW_MS`).
 
 ### Testing
 - npm run lint

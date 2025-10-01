@@ -1,3 +1,5 @@
+import { createHmac } from 'node:crypto';
+
 import { ExecutionContext, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
@@ -38,6 +40,18 @@ import { Result } from '@shared/types/result.type';
 interface UseCaseMock<TInput, TOutput> {
   execute: jest.Mock<Promise<Result<TOutput>>, [TInput]>;
   executeOrThrow: jest.Mock<Promise<TOutput>, [TInput]>;
+}
+
+const WEBHOOK_SECRET = 'test-secret';
+
+function buildSignedHeaders(body: unknown) {
+  const timestamp = `${Date.now()}`;
+  const payload = `${timestamp}.${JSON.stringify(body ?? {})}`;
+  const digest = createHmac('sha256', WEBHOOK_SECRET).update(payload).digest('hex');
+  return {
+    timestamp,
+    signature: `sha256=${digest}`,
+  };
 }
 
 describe('AnamnesisController (integration)', () => {
@@ -236,7 +250,7 @@ describe('AnamnesisController (integration)', () => {
         { provide: IRemoveAnamnesisAttachmentUseCase, useValue: useCases.removeAttachment },
         { provide: IReceiveAnamnesisAIResultUseCase, useValue: useCases.receiveAiResult },
         { provide: IListAnamnesisStepTemplatesUseCase, useValue: useCases.listTemplates },
-        { provide: ConfigService, useValue: { get: jest.fn(() => 'test-secret') } },
+        { provide: ConfigService, useValue: { get: jest.fn(() => WEBHOOK_SECRET) } },
         { provide: AnamnesisAIWebhookGuard, useValue: { canActivate: () => true } },
       ],
     })
@@ -460,16 +474,20 @@ describe('AnamnesisController (integration)', () => {
       data: createAIAnalysis({ status: 'completed' }),
     });
 
+    const body = {
+      analysisId: '11111111-2222-3333-4444-555555555555',
+      status: 'completed',
+      respondedAt: '2025-09-27T10:00:00.000Z',
+      clinicalReasoning: 'Raciocinio IA',
+    };
+    const { timestamp, signature } = buildSignedHeaders(body);
+
     await request(app.getHttpServer())
       .post(`/anamneses/${FIXTURE_IDS.anamnesis}/ai-result`)
       .set('x-tenant-id', FIXTURE_IDS.tenant)
-      .set('x-ai-secret', 'dummy')
-      .send({
-        analysisId: '11111111-2222-3333-4444-555555555555',
-        status: 'completed',
-        respondedAt: '2025-09-27T10:00:00.000Z',
-        clinicalReasoning: 'Raciocinio IA',
-      })
+      .set('x-anamnesis-ai-timestamp', timestamp)
+      .set('x-anamnesis-ai-signature', signature)
+      .send(body)
       .expect(202);
 
     expect(useCases.receiveAiResult.execute).toHaveBeenCalledWith(

@@ -1,4 +1,4 @@
-﻿# OnTerapi 
+# OnTerapi 
 
 Plataforma SaaS multi-tenant para gestao de clinicas e terapeutas, com Supabase Auth, 2FA, RBAC e modulo de pacientes conectado diretamente ao storage do Supabase.
 
@@ -109,7 +109,8 @@ Rotas principais:
 - Configure `ANAMNESIS_AI_WORKER_URL`, `ANAMNESIS_AI_WORKER_TOKEN` (opcional), `ANAMNESIS_AI_PROMPT_VERSION` e `ANAMNESIS_AI_WORKER_TIMEOUT_MS` para habilitar o disparo HTTP do worker externo.
 - Worker de referência: use `npm run worker:start` para subir o servidor Express que recebe os jobs e encaminha o resultado para o webhook. Configure `ANAMNESIS_AI_WEBHOOK_BASE_URL`/`ANAMNESIS_AI_WEBHOOK_SECRET` e defina `ANAMNESIS_AI_PROVIDER=openai|local`.
 - Variáveis adicionais do worker: `ANAMNESIS_AI_WORKER_PORT`, `ANAMNESIS_AI_WORKER_MAX_RETRIES`, `ANAMNESIS_AI_WORKER_TIMEOUT_MS`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_TEMPERATURE`. Consulte `.env.example` para a lista completa.
-- O worker assina o webhook com `x-anamnesis-ai-secret` e replica `x-tenant-id`, além de informar `tokensInput`, `tokensOutput` e `latencyMs` reais no retorno.
+- Configure `ANAMNESIS_AI_WEBHOOK_MAX_SKEW_MS` quando necessário para ajustar a janela de tolerância do timestamp da assinatura (padrão 5 minutos).
+- O worker assina o webhook via HMAC-SHA256 usando `x-anamnesis-ai-timestamp` + `x-anamnesis-ai-signature` (payload `timestamp.body`), replica `x-tenant-id` e envia `tokensInput`, `tokensOutput` e `latencyMs` reais no retorno.
 - Webhook persiste metadados do modelo (planText, reasoningText, evidenceMap, tokens, latência, rawResponse) e materializa o plano com status `generated`.
 - Aceite (`POST /anamneses/:id/plan`) exige `termsVersion`, `termsTextSnapshot`, grava histórico em `therapeutic_plan_acceptances` e recalcula `patient_anamnesis_rollups`.
 - Contrato completo, payloads e checklist estão documentados em `docs/AI_CONTRACT.md`.
