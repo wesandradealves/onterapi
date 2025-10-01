@@ -15,6 +15,7 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 - AnamnesisMetricsService passa a registrar tokens de entrada/saida e latencia media para os planos gerados pela IA.
 - Script `npm run worker:start` sobe o worker externo de IA (Express) com suporte a OpenAI/local e retorno assinado ao webhook.
 - Endpoints `/legal/terms` permitem criar, publicar e desativar termos legais versionados por tenant, com validação de acesso multi-tenant.
+- Observabilidade reforçada: logs de acesso ao plano terapêutico, métricas de turnaround/tokens/custo e alerta de latência configurável.
 
 ### Changed
 - Evento ANAMNESIS_AI_REQUESTED passa a publicar AnamnesisAIRequestedEventPayload tipado e o submit agrupa eventos em DomainEvent<unknown>[] reutilizando o payload sanitizado.

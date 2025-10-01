@@ -132,6 +132,7 @@ npm run migration:run
 
 ## Checklist de Integração
 - [x] Disponibilizar API de termos legais (`/legal/terms`) para versionamento e publicação.
+- [x] Registrar access log do plano terapêutico e monitorar tokens/latência/custo via `AnamnesisMetricsService` (configurável por env).
 - [ ] Atualizar worker para o novo contrato do webhook.
 - [ ] Incluir `termsVersion` + `termsTextSnapshot` no POST /plan.
 - [ ] Rodar migrations em todos os ambientes.

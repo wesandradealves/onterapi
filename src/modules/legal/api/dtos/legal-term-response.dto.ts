@@ -28,4 +28,3 @@ export class LegalTermResponseDto {
   @ApiProperty()
   updatedAt!: string;
 }
-
