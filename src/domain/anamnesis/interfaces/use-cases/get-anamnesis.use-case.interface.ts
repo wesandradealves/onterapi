@@ -10,6 +10,8 @@ export interface IGetAnamnesisUseCase {
     includeAttachments?: boolean;
     requesterId: string;
     requesterRole: string;
+    requesterIp?: string;
+    requesterUserAgent?: string;
   }): Promise<Result<Anamnesis>>;
   executeOrThrow(params: {
     tenantId: string;
@@ -19,6 +21,8 @@ export interface IGetAnamnesisUseCase {
     includeAttachments?: boolean;
     requesterId: string;
     requesterRole: string;
+    requesterIp?: string;
+    requesterUserAgent?: string;
   }): Promise<Anamnesis>;
 }
 

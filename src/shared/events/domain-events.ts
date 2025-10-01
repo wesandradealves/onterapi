@@ -353,8 +353,17 @@ export class DomainEvents {
       confidence?: number;
       clinicalReasoning?: string;
       summary?: string;
+      planText?: string | null;
+      reasoningText?: string | null;
+      evidenceMap?: Array<Record<string, unknown>> | null;
+      model?: string;
+      promptVersion?: string;
+      tokensInput?: number;
+      tokensOutput?: number;
+      latencyMs?: number;
       errorMessage?: string;
       payload?: unknown;
+      rawResponse?: unknown;
     },
     metadata?: DomainEventMetadata,
   ): DomainEvent {

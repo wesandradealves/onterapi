@@ -7,6 +7,8 @@ import { ListAnamnesesByPatientUseCase } from '@modules/anamnesis/use-cases/list
 import { GetAnamnesisHistoryUseCase } from '@modules/anamnesis/use-cases/get-anamnesis-history.use-case';
 import { SaveTherapeuticPlanUseCase } from '@modules/anamnesis/use-cases/save-therapeutic-plan.use-case';
 import { SavePlanFeedbackUseCase } from '@modules/anamnesis/use-cases/save-plan-feedback.use-case';
+import { PatientAnamnesisRollupService } from '@modules/anamnesis/services/patient-anamnesis-rollup.service';
+import { LegalTermsService } from '@modules/legal/legal-terms.service';
 import { CreateAnamnesisAttachmentUseCase } from '@modules/anamnesis/use-cases/create-anamnesis-attachment.use-case';
 import { RemoveAnamnesisAttachmentUseCase } from '@modules/anamnesis/use-cases/remove-anamnesis-attachment.use-case';
 import { ReceiveAnamnesisAIResultUseCase } from '@modules/anamnesis/use-cases/receive-anamnesis-ai-result.use-case';
@@ -95,7 +97,11 @@ const createPlan = (overrides: Partial<TherapeuticPlanData> = {}): TherapeuticPl
   therapeuticPlan: overrides.therapeuticPlan ?? {},
   riskFactors: overrides.riskFactors ?? [],
   recommendations: overrides.recommendations ?? [],
+  planText: overrides.planText,
+  reasoningText: overrides.reasoningText,
+  evidenceMap: overrides.evidenceMap,
   confidence: overrides.confidence ?? 0.8,
+  status: overrides.status ?? 'generated',
   reviewRequired: overrides.reviewRequired ?? false,
   termsAccepted: overrides.termsAccepted ?? true,
   approvalStatus: overrides.approvalStatus ?? 'pending',
@@ -103,6 +109,10 @@ const createPlan = (overrides: Partial<TherapeuticPlanData> = {}): TherapeuticPl
   feedbackComment: overrides.feedbackComment,
   feedbackGivenBy: overrides.feedbackGivenBy,
   feedbackGivenAt: overrides.feedbackGivenAt,
+  acceptedAt: overrides.acceptedAt,
+  acceptedBy: overrides.acceptedBy,
+  termsVersion: overrides.termsVersion,
+  acceptances: overrides.acceptances,
   generatedAt: overrides.generatedAt ?? new Date('2025-09-26T02:00:00Z'),
   createdAt: overrides.createdAt ?? new Date('2025-09-26T02:00:00Z'),
   updatedAt: overrides.updatedAt ?? new Date('2025-09-26T02:00:00Z'),
@@ -167,7 +177,9 @@ describe('Anamnesis use cases', () => {
   let patientRepository: jest.Mocked<IPatientRepository>;
   let authRepository: jest.Mocked<IAuthRepository>;
   let messageBus: jest.Mocked<MessageBus>;
+  let rollupService: jest.Mocked<PatientAnamnesisRollupService>;
 
+  let legalTermsService: jest.Mocked<LegalTermsService>;
   beforeEach(() => {
     repository = {
       create: jest.fn(),
@@ -180,6 +192,11 @@ describe('Anamnesis use cases', () => {
       submit: jest.fn(),
       saveTherapeuticPlan: jest.fn(),
       savePlanFeedback: jest.fn(),
+      createPlanAcceptance: jest.fn(),
+      createPlanAccessLog: jest.fn(),
+      listPlanAcceptances: jest.fn(),
+      getPatientRollup: jest.fn(),
+      savePatientRollup: jest.fn(),
       createAttachment: jest.fn(),
       removeAttachment: jest.fn(),
       cancel: jest.fn(),
@@ -190,6 +207,47 @@ describe('Anamnesis use cases', () => {
       getLatestAIAnalysis: jest.fn(),
     } as unknown as jest.Mocked<IAnamnesisRepository>;
 
+    repository.getPatientRollup.mockResolvedValue(null);
+    repository.savePatientRollup.mockResolvedValue({
+      id: 'rollup-1',
+      tenantId: 'tenant-1',
+      patientId: 'patient-1',
+      summaryText: 'Resumo placeholder',
+      summaryVersion: 1,
+      lastAnamnesisId: 'anamnesis-1',
+      updatedBy: 'professional-1',
+      createdAt: new Date('2025-09-26T00:00:00Z'),
+      updatedAt: new Date('2025-09-26T00:00:00Z'),
+    });
+    repository.listPlanAcceptances.mockResolvedValue([]);
+    repository.createPlanAcceptance.mockResolvedValue({
+      id: 'acceptance-1',
+      tenantId: 'tenant-1',
+      therapeuticPlanId: 'plan-1',
+      professionalId: 'professional-1',
+      accepted: true,
+      termsVersion: 'v1',
+      termsTextSnapshot: 'Termos de teste',
+      acceptedAt: new Date('2025-09-26T00:00:00Z'),
+      acceptedIp: null,
+      acceptedUserAgent: null,
+      createdAt: new Date('2025-09-26T00:00:00Z'),
+      updatedAt: new Date('2025-09-26T00:00:00Z'),
+    });
+
+    repository.createPlanAccessLog.mockResolvedValue(undefined);
+    rollupService = {
+      buildSummary: jest.fn().mockReturnValue({
+        tenantId: 'tenant-1',
+        patientId: 'patient-1',
+        summaryText: 'Resumo placeholder',
+        summaryVersion: 1,
+        lastAnamnesisId: 'anamnesis-1',
+        updatedBy: 'professional-1',
+      }),
+    } as unknown as jest.Mocked<PatientAnamnesisRollupService>;
+
+    legalTermsService = { getActiveTerm: jest.fn() } as unknown as jest.Mocked<LegalTermsService>;
     patientRepository = {
       create: jest.fn(),
       findById: jest.fn(),
@@ -304,7 +362,7 @@ describe('Anamnesis use cases', () => {
         ],
       });
       repository.findById.mockResolvedValue(anamnesis);
-      const useCase = new GetAnamnesisUseCase(repository);
+      const useCase = new GetAnamnesisUseCase(repository, legalTermsService);
 
       const result = unwrapResult(
         await useCase.execute({
@@ -318,12 +376,70 @@ describe('Anamnesis use cases', () => {
         }),
       );
 
+      expect(repository.createPlanAccessLog).not.toHaveBeenCalled();
       expect(repository.findById).toHaveBeenCalledWith('tenant-1', 'anamnesis-1', {
         steps: true,
         latestPlan: false,
         attachments: false,
       });
       expect(result).toEqual(anamnesis);
+    });
+
+    it('should hydrate plan terms and log access when latest plan is requested', async () => {
+      const plan = createPlan({
+        id: 'plan-1',
+        status: 'generated',
+        termsAccepted: false,
+        termsVersion: undefined,
+        termsTextSnapshot: undefined,
+      });
+      const anamnesis = createAnamnesis({
+        id: 'anamnesis-1',
+        tenantId: 'tenant-1',
+        latestPlan: plan,
+      });
+
+      repository.findById.mockResolvedValue(anamnesis);
+      legalTermsService.getActiveTerm.mockResolvedValue({
+        id: 'term-1',
+        tenantId: null,
+        context: 'therapeutic_plan',
+        version: 'v1-termo',
+        content: 'Termo vigente',
+        isActive: true,
+        publishedAt: new Date('2025-09-01T00:00:00Z'),
+        createdAt: new Date('2025-09-01T00:00:00Z'),
+        updatedAt: new Date('2025-09-01T00:00:00Z'),
+      });
+
+      const useCase = new GetAnamnesisUseCase(repository, legalTermsService);
+
+      const result = unwrapResult(
+        await useCase.execute({
+          tenantId: 'tenant-1',
+          anamnesisId: 'anamnesis-1',
+          includeLatestPlan: true,
+          requesterId: 'professional-1',
+          requesterRole: RolesEnum.PROFESSIONAL,
+          requesterIp: '203.0.113.10',
+          requesterUserAgent: 'jest',
+        }),
+      );
+
+      expect(legalTermsService.getActiveTerm).toHaveBeenCalledWith('therapeutic_plan', 'tenant-1');
+      expect(repository.createPlanAccessLog).toHaveBeenCalledTimes(1);
+      expect(repository.createPlanAccessLog).toHaveBeenCalledWith({
+        tenantId: 'tenant-1',
+        anamnesisId: 'anamnesis-1',
+        planId: 'plan-1',
+        professionalId: 'professional-1',
+        viewerRole: RolesEnum.PROFESSIONAL,
+        viewedAt: expect.any(Date),
+        ipAddress: '203.0.113.10',
+        userAgent: 'jest',
+      });
+      expect(result.latestPlan?.termsVersion).toBe('v1-termo');
+      expect(result.latestPlan?.termsTextSnapshot).toBe('Termo vigente');
     });
   });
 
@@ -781,7 +897,11 @@ describe('Anamnesis use cases', () => {
       const plan = createPlan({ id: 'plan-ai-1' });
       repository.saveTherapeuticPlan.mockResolvedValue(plan);
 
-      const useCase = new ReceiveAnamnesisAIResultUseCase(repository, messageBus);
+      const useCase = new ReceiveAnamnesisAIResultUseCase(
+        repository,
+        messageBus,
+        legalTermsService,
+      );
       const result = unwrapResult(
         await useCase.execute({
           tenantId: 'tenant-1',
@@ -823,7 +943,11 @@ describe('Anamnesis use cases', () => {
         createAIAnalysis({ status: 'failed', errorMessage: 'timeout' }),
       );
 
-      const useCase = new ReceiveAnamnesisAIResultUseCase(repository, messageBus);
+      const useCase = new ReceiveAnamnesisAIResultUseCase(
+        repository,
+        messageBus,
+        legalTermsService,
+      );
       const result = unwrapResult(
         await useCase.execute({
           tenantId: 'tenant-1',
@@ -850,7 +974,11 @@ describe('Anamnesis use cases', () => {
       );
       repository.completeAIAnalysis.mockRejectedValue(new Error('AI analysis not found'));
 
-      const useCase = new ReceiveAnamnesisAIResultUseCase(repository, messageBus);
+      const useCase = new ReceiveAnamnesisAIResultUseCase(
+        repository,
+        messageBus,
+        legalTermsService,
+      );
 
       await expect(
         useCase
@@ -869,7 +997,11 @@ describe('Anamnesis use cases', () => {
     it('should throw not found when anamnesis does not exist', async () => {
       repository.findById.mockResolvedValue(null);
 
-      const useCase = new ReceiveAnamnesisAIResultUseCase(repository, messageBus);
+      const useCase = new ReceiveAnamnesisAIResultUseCase(
+        repository,
+        messageBus,
+        legalTermsService,
+      );
 
       await expect(
         useCase
@@ -922,30 +1054,72 @@ describe('Anamnesis use cases', () => {
 
   describe('SaveTherapeuticPlanUseCase', () => {
     it('should persist plan and emit event', async () => {
-      repository.findById.mockResolvedValue(createAnamnesis());
-      const plan = createPlan();
-      repository.saveTherapeuticPlan.mockResolvedValue(plan);
+      const anamnesis = createAnamnesis();
+      repository.findById.mockResolvedValue(anamnesis);
 
-      const useCase = new SaveTherapeuticPlanUseCase(repository, messageBus);
+      const plan = createPlan({
+        id: 'plan-1',
+        status: 'generated',
+        termsAccepted: false,
+        generatedAt: new Date('2025-09-26T01:00:00Z'),
+      });
+      repository.saveTherapeuticPlan.mockResolvedValue({ ...plan });
+
+      const acceptance = {
+        id: 'acceptance-1',
+        tenantId: 'tenant-1',
+        therapeuticPlanId: 'plan-1',
+        professionalId: 'professional-1',
+        accepted: true,
+        termsVersion: 'v1',
+        termsTextSnapshot: 'Termos de teste',
+        acceptedAt: new Date('2025-09-26T02:00:00Z'),
+        acceptedIp: null,
+        acceptedUserAgent: null,
+        createdAt: new Date('2025-09-26T02:00:00Z'),
+        updatedAt: new Date('2025-09-26T02:00:00Z'),
+      };
+      repository.createPlanAcceptance.mockResolvedValue(acceptance);
+      repository.listPlanAcceptances.mockResolvedValue([acceptance]);
+      repository.savePatientRollup.mockResolvedValue({
+        tenantId: 'tenant-1',
+        patientId: anamnesis.patientId,
+        summaryText: 'Resumo placeholder',
+        summaryVersion: 1,
+        lastAnamnesisId: anamnesis.id,
+        updatedBy: 'professional-1',
+      });
+
+      const useCase = new SaveTherapeuticPlanUseCase(repository, messageBus, rollupService);
       const result = unwrapResult(
         await useCase.execute({
           tenantId: 'tenant-1',
-          anamnesisId: 'anamnesis-1',
+          anamnesisId: anamnesis.id,
           termsAccepted: true,
-          generatedAt: new Date('2025-09-26T01:00:00Z'),
+          termsVersion: 'v1',
+          termsTextSnapshot: 'Termos de teste',
+          planText: 'Plano IA',
+          reasoningText: 'Raciocínio IA',
+          analysisId: 'analysis-1',
+          generatedAt: plan.generatedAt,
           requesterId: 'professional-1',
           requesterRole: RolesEnum.PROFESSIONAL,
         }),
       );
 
-      expect(result).toEqual(plan);
+      expect(repository.createPlanAcceptance).toHaveBeenCalled();
+      expect(repository.listPlanAcceptances).toHaveBeenCalledWith('tenant-1', plan.id);
+      expect(repository.savePatientRollup).toHaveBeenCalled();
+      expect(rollupService.buildSummary).toHaveBeenCalled();
+      expect(result.status).toBe('accepted');
+      expect(result.termsAccepted).toBe(true);
       expect(messageBus.publish).toHaveBeenCalled();
     });
 
     it('should reject plan persistence when terms are not accepted', async () => {
       repository.findById.mockResolvedValue(createAnamnesis());
 
-      const useCase = new SaveTherapeuticPlanUseCase(repository, messageBus);
+      const useCase = new SaveTherapeuticPlanUseCase(repository, messageBus, rollupService);
 
       await expect(
         useCase
@@ -953,6 +1127,8 @@ describe('Anamnesis use cases', () => {
             tenantId: 'tenant-1',
             anamnesisId: 'anamnesis-1',
             termsAccepted: false,
+            termsVersion: 'v1',
+            termsTextSnapshot: 'Termos de teste',
             generatedAt: new Date('2025-09-26T01:00:00Z'),
             requesterId: 'professional-1',
             requesterRole: RolesEnum.PROFESSIONAL,

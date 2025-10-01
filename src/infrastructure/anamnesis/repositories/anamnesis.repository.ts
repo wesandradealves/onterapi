@@ -23,14 +23,19 @@ import {
   CreateAnamnesisAIAnalysisInput,
   CreateAnamnesisAttachmentInput,
   CreateAnamnesisInput,
+  CreateTherapeuticPlanAcceptanceInput,
+  CreateTherapeuticPlanAccessLogInput,
   GetStepTemplatesFilters,
+  PatientAnamnesisRollup,
   RecordAITrainingFeedbackInput,
   RemoveAnamnesisAttachmentInput,
   SaveAnamnesisStepInput,
   SavePlanFeedbackInput,
   SaveTherapeuticPlanInput,
   SubmitAnamnesisInput,
+  TherapeuticPlanAcceptance,
   TherapeuticPlanData,
+  UpsertPatientAnamnesisRollupInput,
 } from '../../../domain/anamnesis/types/anamnesis.types';
 import { IAnamnesisRepository } from '../../../domain/anamnesis/interfaces/repositories/anamnesis.repository.interface';
 import { AnamnesisEntity } from '../entities/anamnesis.entity';
@@ -39,6 +44,9 @@ import { AnamnesisTherapeuticPlanEntity } from '../entities/anamnesis-therapeuti
 import { AnamnesisAttachmentEntity } from '../entities/anamnesis-attachment.entity';
 import { AnamnesisStepTemplateEntity } from '../entities/anamnesis-step-template.entity';
 import { AnamnesisAIAnalysisEntity } from '../entities/anamnesis-ai-analysis.entity';
+import { TherapeuticPlanAcceptanceEntity } from '../entities/therapeutic-plan-acceptance.entity';
+import { PatientAnamnesisRollupEntity } from '../entities/patient-anamnesis-rollup.entity';
+import { TherapeuticPlanAccessLogEntity } from '../entities/therapeutic-plan-access-log.entity';
 import { AnamnesisAITrainingFeedbackEntity } from '../entities/anamnesis-ai-feedback.entity';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import {
@@ -46,7 +54,9 @@ import {
   mapAnamnesisEntityToDomain,
   mapAnamnesisStepEntityToDomain,
   mapAttachmentEntityToDomain,
+  mapPatientRollupEntityToDomain,
   mapStepTemplateEntityToDomain,
+  mapTherapeuticPlanAcceptanceEntityToDomain,
   mapTherapeuticPlanEntityToDomain,
 } from '../../../shared/mappers/anamnesis.mapper';
 
@@ -167,6 +177,9 @@ export class AnamnesisRepository implements IAnamnesisRepository {
   private readonly attachmentRepository: Repository<AnamnesisAttachmentEntity>;
   private readonly stepTemplateRepository: Repository<AnamnesisStepTemplateEntity>;
   private readonly aiAnalysisRepository: Repository<AnamnesisAIAnalysisEntity>;
+  private readonly planAcceptanceRepository: Repository<TherapeuticPlanAcceptanceEntity>;
+  private readonly rollupRepository: Repository<PatientAnamnesisRollupEntity>;
+  private readonly planAccessLogRepository: Repository<TherapeuticPlanAccessLogEntity>;
   private readonly aiFeedbackRepository: Repository<AnamnesisAITrainingFeedbackEntity>;
 
   constructor(
@@ -179,6 +192,9 @@ export class AnamnesisRepository implements IAnamnesisRepository {
     this.attachmentRepository = dataSource.getRepository(AnamnesisAttachmentEntity);
     this.stepTemplateRepository = dataSource.getRepository(AnamnesisStepTemplateEntity);
     this.aiAnalysisRepository = dataSource.getRepository(AnamnesisAIAnalysisEntity);
+    this.planAcceptanceRepository = dataSource.getRepository(TherapeuticPlanAcceptanceEntity);
+    this.rollupRepository = dataSource.getRepository(PatientAnamnesisRollupEntity);
+    this.planAccessLogRepository = dataSource.getRepository(TherapeuticPlanAccessLogEntity);
     this.aiFeedbackRepository = dataSource.getRepository(AnamnesisAITrainingFeedbackEntity);
   }
 
@@ -259,7 +275,11 @@ export class AnamnesisRepository implements IAnamnesisRepository {
     }
 
     if (options?.latestPlan) {
-      query.leftJoinAndSelect('anamnesis.plans', 'plans');
+      query
+        .leftJoinAndSelect('anamnesis.plans', 'plans')
+        .leftJoinAndSelect('plans.acceptances', 'planAcceptances')
+        .orderBy('plans.createdAt', 'DESC')
+        .addOrderBy('planAcceptances.acceptedAt', 'DESC');
     }
 
     if (options?.aiAnalyses) {
@@ -299,7 +319,11 @@ export class AnamnesisRepository implements IAnamnesisRepository {
     }
 
     if (options?.latestPlan) {
-      query.leftJoinAndSelect('anamnesis.plans', 'plans');
+      query
+        .leftJoinAndSelect('anamnesis.plans', 'plans')
+        .leftJoinAndSelect('plans.acceptances', 'planAcceptances')
+        .orderBy('plans.createdAt', 'DESC')
+        .addOrderBy('planAcceptances.acceptedAt', 'DESC');
     }
 
     if (options?.aiAnalyses) {
@@ -642,9 +666,16 @@ export class AnamnesisRepository implements IAnamnesisRepository {
       recommendations: data.recommendations
         ? JSON.parse(JSON.stringify(data.recommendations))
         : undefined,
+      planText: data.planText ?? undefined,
+      reasoningText: data.reasoningText ?? undefined,
+      evidenceMap: data.evidenceMap ? JSON.parse(JSON.stringify(data.evidenceMap)) : null,
       confidence: data.confidence ?? undefined,
       reviewRequired: data.reviewRequired ?? false,
+      status: data.status ?? 'generated',
       termsAccepted: data.termsAccepted,
+      acceptedAt: data.acceptedAt ?? undefined,
+      acceptedBy: data.acceptedBy ?? undefined,
+      termsVersion: data.termsVersion ?? undefined,
       approvalStatus: 'pending',
       generatedAt: data.generatedAt,
     };
@@ -692,6 +723,97 @@ export class AnamnesisRepository implements IAnamnesisRepository {
     }
 
     return mapTherapeuticPlanEntityToDomain(updated);
+  }
+
+  async listPlanAcceptances(
+    tenantId: string,
+    therapeuticPlanId: string,
+  ): Promise<TherapeuticPlanAcceptance[]> {
+    const entities = await this.planAcceptanceRepository.find({
+      where: { tenantId, therapeuticPlanId },
+      order: { acceptedAt: 'DESC', createdAt: 'DESC' },
+    });
+
+    return entities.map(mapTherapeuticPlanAcceptanceEntityToDomain);
+  }
+
+  async createPlanAcceptance(
+    data: CreateTherapeuticPlanAcceptanceInput,
+  ): Promise<TherapeuticPlanAcceptance> {
+    const entity = this.planAcceptanceRepository.create({
+      id: uuid(),
+      tenantId: data.tenantId,
+      therapeuticPlanId: data.therapeuticPlanId,
+      professionalId: data.professionalId,
+      accepted: true,
+      termsVersion: data.termsVersion,
+      termsTextSnapshot: data.termsTextSnapshot,
+      acceptedAt: data.acceptedAt,
+      acceptedIp: data.acceptedIp ?? null,
+      acceptedUserAgent: data.acceptedUserAgent ?? null,
+    });
+
+    const saved = await this.planAcceptanceRepository.save(entity);
+
+    return mapTherapeuticPlanAcceptanceEntityToDomain(saved);
+  }
+
+  async createPlanAccessLog(data: CreateTherapeuticPlanAccessLogInput): Promise<void> {
+    const entity = this.planAccessLogRepository.create({
+      id: uuid(),
+      tenantId: data.tenantId,
+      anamnesisId: data.anamnesisId,
+      planId: data.planId,
+      professionalId: data.professionalId,
+      viewerRole: data.viewerRole,
+      viewedAt: data.viewedAt,
+      ipAddress: data.ipAddress ?? null,
+      userAgent: data.userAgent ?? null,
+    });
+
+    await this.planAccessLogRepository.save(entity);
+  }
+
+  async getPatientRollup(
+    tenantId: string,
+    patientId: string,
+  ): Promise<PatientAnamnesisRollup | null> {
+    const entity = await this.rollupRepository.findOne({ where: { tenantId, patientId } });
+
+    return entity ? mapPatientRollupEntityToDomain(entity) : null;
+  }
+
+  async savePatientRollup(
+    data: UpsertPatientAnamnesisRollupInput,
+  ): Promise<PatientAnamnesisRollup> {
+    const existing = await this.rollupRepository.findOne({
+      where: { tenantId: data.tenantId, patientId: data.patientId },
+    });
+
+    if (existing) {
+      existing.summaryText = data.summaryText;
+      existing.summaryVersion = data.summaryVersion;
+      existing.lastAnamnesisId = data.lastAnamnesisId ?? null;
+      existing.updatedBy = data.updatedBy ?? null;
+
+      const saved = await this.rollupRepository.save(existing);
+
+      return mapPatientRollupEntityToDomain(saved);
+    }
+
+    const entity = this.rollupRepository.create({
+      id: uuid(),
+      tenantId: data.tenantId,
+      patientId: data.patientId,
+      summaryText: data.summaryText,
+      summaryVersion: data.summaryVersion,
+      lastAnamnesisId: data.lastAnamnesisId ?? null,
+      updatedBy: data.updatedBy ?? null,
+    });
+
+    const saved = await this.rollupRepository.save(entity);
+
+    return mapPatientRollupEntityToDomain(saved);
   }
 
   async recordAITrainingFeedback(

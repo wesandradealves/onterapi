@@ -9,6 +9,8 @@ import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@modules/auth/guards/roles.guard';
 import { TenantGuard } from '@modules/auth/guards/tenant.guard';
 import { ConfigService } from '@nestjs/config';
+import { LegalTermsService } from '@modules/legal/legal-terms.service';
+import { ILegalTermsRepository, ILegalTermsRepositoryToken } from '@domain/legal/interfaces/legal-terms.repository.interface';
 import {
   IAnamnesisRepositoryToken as ANAMNESIS_REPOSITORY_TOKEN,
   IAnamnesisRepository,
@@ -81,6 +83,7 @@ import { ReceiveAnamnesisAIResultUseCase } from '@modules/anamnesis/use-cases/re
 import { CancelAnamnesisUseCase } from '@modules/anamnesis/use-cases/cancel-anamnesis.use-case';
 import { ListAnamnesisStepTemplatesUseCase } from '@modules/anamnesis/use-cases/list-anamnesis-step-templates.use-case';
 import { MessageBus } from '@shared/messaging/message-bus';
+import { PatientAnamnesisRollupService } from '@modules/anamnesis/services/patient-anamnesis-rollup.service';
 import { DomainEvent } from '@shared/events/domain-event.interface';
 import { DomainEvents } from '@shared/events/domain-events';
 import { AnamnesisErrorFactory } from '@shared/factories/anamnesis-error.factory';
@@ -128,6 +131,8 @@ class InMemoryAnamnesisRepository implements IAnamnesisRepository {
   private readonly analyses = new Map<string, AnamnesisAIAnalysis>();
   private sequence = 1;
   private readonly trainingFeedbacks: AnamnesisAITrainingFeedback[] = [];
+  private readonly planAcceptances: TherapeuticPlanAcceptance[] = [];
+  private readonly rollups = new Map<string, PatientAnamnesisRollup>();
 
   constructor() {
     this.templates.set('identification', {
@@ -380,32 +385,181 @@ class InMemoryAnamnesisRepository implements IAnamnesisRepository {
     }
 
     const now = data.generatedAt ?? new Date();
-    const plan: RepositoryPlan = {
-      id: this.generateId('plan'),
-      anamnesisId: record.id,
-      analysisId: data.analysisId ?? null,
-      clinicalReasoning: data.clinicalReasoning,
-      summary: data.summary,
-      therapeuticPlan: clonePayload(data.therapeuticPlan),
-      riskFactors: clonePayload(data.riskFactors),
-      recommendations: clonePayload(data.recommendations),
-      confidence: data.confidence,
-      reviewRequired: data.reviewRequired ?? false,
-      termsAccepted: data.termsAccepted,
-      approvalStatus: 'pending',
-      generatedAt: now,
-      createdAt: now,
-      updatedAt: now,
-      liked: undefined,
-      feedbackComment: undefined,
-      feedbackGivenAt: undefined,
-      feedbackGivenBy: undefined,
-    };
+    const status = data.status ?? 'generated';
+
+    let plan = record.latestPlan ? { ...record.latestPlan } : null;
+
+    if (!plan) {
+      plan = {
+        id: this.generateId('plan'),
+        anamnesisId: record.id,
+        analysisId: data.analysisId ?? null,
+        clinicalReasoning: data.clinicalReasoning,
+        summary: data.summary,
+        therapeuticPlan: clonePayload(data.therapeuticPlan),
+        riskFactors: clonePayload(data.riskFactors),
+        recommendations: clonePayload(data.recommendations),
+        planText: data.planText ?? undefined,
+        reasoningText: data.reasoningText ?? undefined,
+        evidenceMap: clonePayload(data.evidenceMap) ?? undefined,
+        confidence: data.confidence,
+        reviewRequired: data.reviewRequired ?? false,
+        status,
+        termsAccepted: data.termsAccepted,
+        approvalStatus: status === 'accepted' ? 'approved' : 'pending',
+        liked: undefined,
+        feedbackComment: undefined,
+        feedbackGivenBy: undefined,
+        feedbackGivenAt: undefined,
+        acceptedAt: data.acceptedAt ?? null,
+        acceptedBy: data.acceptedBy ?? null,
+        termsVersion: data.termsVersion ?? null,
+        termsTextSnapshot: status === 'accepted' ? (data.termsTextSnapshot ?? null) : null,
+        generatedAt: now,
+        createdAt: now,
+        updatedAt: now,
+        acceptances: [],
+      } as RepositoryPlan;
+    } else {
+      plan.analysisId = data.analysisId ?? plan.analysisId ?? null;
+      plan.clinicalReasoning = data.clinicalReasoning ?? plan.clinicalReasoning;
+      plan.summary = data.summary ?? plan.summary;
+      if (data.therapeuticPlan !== undefined) {
+        plan.therapeuticPlan = clonePayload(data.therapeuticPlan);
+      }
+      if (data.riskFactors !== undefined) {
+        plan.riskFactors = clonePayload(data.riskFactors);
+      }
+      if (data.recommendations !== undefined) {
+        plan.recommendations = clonePayload(data.recommendations);
+      }
+      if (data.planText !== undefined) {
+        plan.planText = data.planText ?? undefined;
+      }
+      if (data.reasoningText !== undefined) {
+        plan.reasoningText = data.reasoningText ?? undefined;
+      }
+      if (data.evidenceMap !== undefined) {
+        plan.evidenceMap = clonePayload(data.evidenceMap) ?? undefined;
+      }
+      if (data.confidence !== undefined) {
+        plan.confidence = data.confidence;
+      }
+      if (data.reviewRequired !== undefined) {
+        plan.reviewRequired = data.reviewRequired;
+      }
+      plan.status = status;
+      plan.termsAccepted = data.termsAccepted;
+      plan.termsVersion = data.termsVersion ?? plan.termsVersion ?? null;
+      plan.updatedAt = now;
+    }
+
+    if (status === 'accepted') {
+      plan.acceptedAt = data.acceptedAt ?? now;
+      plan.acceptedBy = data.acceptedBy ?? null;
+      plan.termsVersion = data.termsVersion ?? plan.termsVersion ?? null;
+      plan.termsTextSnapshot = data.termsTextSnapshot ?? plan.termsTextSnapshot ?? null;
+      plan.approvalStatus = 'approved';
+    } else {
+      plan.acceptedAt = data.acceptedAt ?? null;
+      plan.acceptedBy = data.acceptedBy ?? null;
+      plan.approvalStatus =
+        status === 'rejected' ? 'rejected' : status === 'superseded' ? 'modified' : 'pending';
+      if (status !== 'accepted' && data.termsTextSnapshot !== undefined) {
+        plan.termsTextSnapshot = data.termsTextSnapshot ?? null;
+      }
+    }
+
+    plan.acceptances = this.planAcceptances.filter(
+      (item) => item.therapeuticPlanId === plan.id && item.tenantId === record.tenantId,
+    );
 
     record.latestPlan = plan;
     record.updatedAt = now;
 
     return { ...plan };
+  }
+
+  async listPlanAcceptances(
+    tenantId: string,
+    therapeuticPlanId: string,
+  ): Promise<TherapeuticPlanAcceptance[]> {
+    return this.planAcceptances
+      .filter(
+        (acceptance) =>
+          acceptance.tenantId === tenantId && acceptance.therapeuticPlanId === therapeuticPlanId,
+      )
+      .sort((a, b) => b.acceptedAt.getTime() - a.acceptedAt.getTime());
+  }
+
+  async createPlanAcceptance(
+    data: CreateTherapeuticPlanAcceptanceInput,
+  ): Promise<TherapeuticPlanAcceptance> {
+    const acceptance: TherapeuticPlanAcceptance = {
+      id: this.generateId('acceptance'),
+      tenantId: data.tenantId,
+      therapeuticPlanId: data.therapeuticPlanId,
+      professionalId: data.professionalId,
+      accepted: true,
+      termsVersion: data.termsVersion,
+      termsTextSnapshot: data.termsTextSnapshot,
+      acceptedAt: data.acceptedAt,
+      acceptedIp: data.acceptedIp ?? null,
+      acceptedUserAgent: data.acceptedUserAgent ?? null,
+      createdAt: data.acceptedAt,
+      updatedAt: data.acceptedAt,
+    };
+
+    this.planAcceptances.push(acceptance);
+
+    const entry = Array.from(this.records.values()).find(
+      (item) => item.latestPlan?.id === data.therapeuticPlanId && item.tenantId === data.tenantId,
+    );
+
+    if (entry?.latestPlan) {
+      entry.latestPlan.acceptances = [acceptance];
+      entry.latestPlan.acceptedAt = acceptance.acceptedAt;
+      entry.latestPlan.acceptedBy = acceptance.professionalId;
+      entry.latestPlan.termsVersion = acceptance.termsVersion;
+      entry.latestPlan.termsTextSnapshot = acceptance.termsTextSnapshot;
+      entry.latestPlan.termsAccepted = true;
+      entry.latestPlan.status = 'accepted';
+      entry.latestPlan.approvalStatus = 'approved';
+      entry.latestPlan.updatedAt = acceptance.acceptedAt;
+    }
+
+    return acceptance;
+  }
+
+  async getPatientRollup(
+    tenantId: string,
+    patientId: string,
+  ): Promise<PatientAnamnesisRollup | null> {
+    const key = `${tenantId}:${patientId}`;
+    return this.rollups.get(key) ?? null;
+  }
+
+  async savePatientRollup(
+    data: UpsertPatientAnamnesisRollupInput,
+  ): Promise<PatientAnamnesisRollup> {
+    const key = `${data.tenantId}:${data.patientId}`;
+    const existing = this.rollups.get(key);
+    const now = new Date();
+
+    const rollup: PatientAnamnesisRollup = {
+      id: existing?.id ?? this.generateId('rollup'),
+      tenantId: data.tenantId,
+      patientId: data.patientId,
+      summaryText: data.summaryText,
+      summaryVersion: data.summaryVersion,
+      lastAnamnesisId: data.lastAnamnesisId ?? null,
+      updatedBy: data.updatedBy ?? null,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    };
+
+    this.rollups.set(key, rollup);
+    return rollup;
   }
 
   async savePlanFeedback(data: SavePlanFeedbackInput): Promise<TherapeuticPlanData> {
@@ -770,6 +924,20 @@ describe('AnamnesisModule (e2e)', () => {
       updatedAt: new Date('2025-01-01T00:00:00Z'),
     })),
   } as unknown as jest.Mocked<IAuthRepository>;
+  const legalTermsRepositoryMock = {
+    findActiveByContext: jest.fn(async () => ({
+      id: 'term-1',
+      tenantId: TENANT_ID,
+      context: 'therapeutic_plan',
+      version: 'v1.0',
+      content: 'Declaro estar ciente de que o plano terapeutico e uma assistencia de IA.',
+      isActive: true,
+      publishedAt: new Date('2025-01-01T00:00:00Z'),
+      createdAt: new Date('2025-01-01T00:00:00Z'),
+      updatedAt: new Date('2025-01-01T00:00:00Z'),
+    })),
+  } as unknown as jest.Mocked<ILegalTermsRepository>;
+
 
   const currentUser: ICurrentUser = {
     id: PROFESSIONAL_ID,
@@ -791,6 +959,9 @@ describe('AnamnesisModule (e2e)', () => {
         { provide: IAnamnesisAttachmentStorageServiceToken, useValue: storageServiceMock },
         { provide: IPatientRepositoryToken, useValue: patientRepositoryMock },
         { provide: IAuthRepositoryToken, useValue: authRepositoryMock },
+        { provide: ILegalTermsRepositoryToken, useValue: legalTermsRepositoryMock },
+        LegalTermsService,
+        PatientAnamnesisRollupService,
         { provide: IStartAnamnesisUseCase, useClass: StartAnamnesisUseCase },
         { provide: IGetAnamnesisUseCase, useClass: GetAnamnesisUseCase },
         { provide: ISaveAnamnesisStepUseCase, useClass: SaveAnamnesisStepUseCase },
@@ -943,6 +1114,9 @@ describe('AnamnesisModule (e2e)', () => {
         recommendations: [{ id: 'rec-1', description: 'Exercicios leves', priority: 'medium' }],
         confidence: 0.8,
         reviewRequired: false,
+        termsVersion: 'v1-test',
+        termsTextSnapshot:
+          'Declaro estar ciente do plano terapeutico gerado por IA e assumo a responsabilidade clinica.',
         termsAccepted: true,
         generatedAt: new Date('2025-09-26T03:00:00.000Z').toISOString(),
       })
@@ -1121,3 +1295,9 @@ describe('AnamnesisModule (e2e)', () => {
     expect(withDrafts.body.prefill.sourceAnamnesisId).toBe(anamnesisId);
   });
 });
+
+
+
+
+
+

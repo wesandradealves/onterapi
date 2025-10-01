@@ -103,6 +103,12 @@ Rotas principais:
 6. Consultas subsequentes usam `GET /anamneses/{anamnesisId}` e `GET /anamneses/patient/{patientId}`.
 
 > Schemas Zod e DTOs: `src/modules/anamnesis/api/schemas/anamnesis.schema.ts` e `src/modules/anamnesis/api/dtos/`.
+### IA Assistida e Aceite Legal
+- Worker consome `ANAMNESIS_SUBMITTED`, monta prompt com `compactAnamnesis` + `patientRollup` e envia o resultado para `POST /anamneses/:id/ai-result`.
+- Webhook persiste metadados do modelo (planText, reasoningText, evidenceMap, tokens, latência, rawResponse) e materializa o plano com status `generated`.
+- Aceite (`POST /anamneses/:id/plan`) exige `termsVersion`, `termsTextSnapshot`, grava histórico em `therapeutic_plan_acceptances` e recalcula `patient_anamnesis_rollups`.
+- Contrato completo, payloads e checklist estão documentados em `docs/AI_CONTRACT.md`.
+
 
 ### Endpoints Detalhados
 
@@ -253,21 +259,28 @@ Rotas principais:
 - Body (`ReceiveAIResultRequestDto`):
 | Campo | Tipo | Obrigatorio | Descricao |
 | --- | --- | --- | --- |
-| `analysisId` | uuid | sim | Analise original solicitada. |
-| `status` | enum (`completed`, `failed`) | sim | Resultado da IA. |
-| `respondedAt` | string ISO | sim | Momento da resposta. |
-| `clinicalReasoning` | string | nao | Raciocinio clinico. |
-| `summary` | string | nao | Resumo para exibicao. |
-| `therapeuticPlan` | objeto | nao | Plano estruturado. |
-| `riskFactors` | array | nao | Fatores de risco (mesma estrutura do plano). |
-| `recommendations` | array | nao | Recomendacoes (mesma estrutura do plano). |
-| `confidence` | numero (0-1) | nao | Confianca atribuida pela IA. |
-| `payload` | objeto | nao | Payload bruto para auditoria. |
-| `errorMessage` | string | nao | Populado quando `status=failed`. |
-- Resposta: HTTP 202 sem body; dispara `DomainEvents.ANAMNESIS_AI_COMPLETED` e `DomainEvents.ANAMNESIS_PLAN_FEEDBACK_SAVED` quando aplicavel.
-
+| `analysisId` | uuid | sim | Identificador da análise solicitada. |
+| `status` | enum (`completed`, `failed`) | sim | Resultado retornado pelo provider. |
+| `respondedAt` | string ISO | sim | Momento da resposta da IA. |
+| `clinicalReasoning` | string | nao | Raciocínio textual da IA. |
+| `summary` | string | nao | Resumo curto para cards/listas. |
+| `therapeuticPlan` | objeto | nao | Plano estruturado compatível com versões anteriores. |
+| `riskFactors` | array | nao | Fatores de risco (estrutura herdada). |
+| `recommendations` | array | nao | Recomendações sugeridas (estrutura herdada). |
+| `planText` | string | nao | Plano em texto corrido para exibição direta. |
+| `reasoningText` | string | nao | Raciocínio clínico em texto corrido. |
+| `evidenceMap` | array | nao | Mapa `{ recommendation, evidence[], confidence }`. |
+| `confidence` | numero (0-1) | nao | Grau de confiança declarado pelo modelo. |
+| `model` | string | nao | Modelo utilizado (ex.: gpt-4o-mini-2025). |
+| `promptVersion` | string | nao | Versão do prompt aplicado. |
+| `tokensInput` | inteiro | nao | Tokens de entrada (custo). |
+| `tokensOutput` | inteiro | nao | Tokens de saída (custo). |
+| `latencyMs` | inteiro | nao | Latência total em milissegundos. |
+| `rawResponse` | objeto | nao | Payload bruto para auditoria/reprocesso. |
+| `errorMessage` | string | nao | Motivo quando `status = failed`. |
+- Resposta: HTTP 202 sem body; dispara `DomainEvents.ANAMNESIS_AI_COMPLETED` e salva plano com status `generated`. Se `status = completed`, também emite `DomainEvents.ANAMNESIS_PLAN_GENERATED` (status `generated`).
 ### Persistencia e Storage
-- Migrations: `1738100000000-CreateAnamnesisTables`, `1738200000000-AddAnamnesisTemplatesAndAIResponses`, `1738300000000-AddAnamnesisFeedbackScoreboard`.
+- Migrations: `1738100000000-CreateAnamnesisTables`, `1738200000000-AddAnamnesisTemplatesAndAIResponses`, `1738300000000-AddAnamnesisFeedbackScoreboard`, `1738600000000-UpdateAnamnesisAIAndPlans`, `1738601000000-CreateTherapeuticPlanAcceptances`, `1738602000000-CreatePatientAnamnesisRollups`.
 - Storage: `SupabaseAnamnesisAttachmentStorageService` salva anexos com checksum, `mimeType`, `size` e `storagePath` versionado.
 
 ### Testes

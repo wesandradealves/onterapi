@@ -5,12 +5,14 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
 import { AnamnesisEntity } from './anamnesis.entity';
 import { AnamnesisAIAnalysisEntity } from './anamnesis-ai-analysis.entity';
+import { TherapeuticPlanAcceptanceEntity } from './therapeutic-plan-acceptance.entity';
 
 @Entity('anamnesis_therapeutic_plans')
 @Index(['anamnesisId', 'createdAt'])
@@ -43,11 +45,23 @@ export class AnamnesisTherapeuticPlanEntity {
   @Column({ name: 'recommendations', type: 'jsonb', nullable: true })
   recommendations?: unknown;
 
+  @Column({ name: 'plan_text', type: 'text', nullable: true })
+  planText?: string;
+
+  @Column({ name: 'reasoning_text', type: 'text', nullable: true })
+  reasoningText?: string;
+
+  @Column({ name: 'evidence_map', type: 'jsonb', nullable: true })
+  evidenceMap?: Record<string, unknown> | null;
+
   @Column({ name: 'confidence', type: 'numeric', precision: 5, scale: 2, nullable: true })
   confidence?: number;
 
   @Column({ name: 'review_required', type: 'boolean', default: false })
   reviewRequired!: boolean;
+
+  @Column({ name: 'status', type: 'varchar', length: 16, default: 'generated' })
+  status!: 'generated' | 'accepted' | 'rejected' | 'superseded';
 
   @Column({ name: 'terms_accepted', type: 'boolean', default: false })
   termsAccepted!: boolean;
@@ -67,6 +81,15 @@ export class AnamnesisTherapeuticPlanEntity {
   @Column({ name: 'feedback_given_at', type: 'timestamp with time zone', nullable: true })
   feedbackGivenAt?: Date;
 
+  @Column({ name: 'accepted_at', type: 'timestamp with time zone', nullable: true })
+  acceptedAt?: Date | null;
+
+  @Column({ name: 'accepted_by', type: 'uuid', nullable: true })
+  acceptedBy?: string | null;
+
+  @Column({ name: 'terms_version', type: 'varchar', length: 32, nullable: true })
+  termsVersion?: string | null;
+
   @Column({ name: 'generated_at', type: 'timestamp with time zone' })
   generatedAt!: Date;
 
@@ -81,4 +104,9 @@ export class AnamnesisTherapeuticPlanEntity {
   })
   @JoinColumn({ name: 'anamnesis_id' })
   anamnesis!: AnamnesisEntity;
+
+  @OneToMany(() => TherapeuticPlanAcceptanceEntity, (acceptance) => acceptance.plan, {
+    cascade: false,
+  })
+  acceptances?: TherapeuticPlanAcceptanceEntity[];
 }

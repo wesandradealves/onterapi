@@ -4,6 +4,18 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o projeto adota [Versionamento Semantico](https://semver.org/lang/pt-BR/).
 
+## [0.16.9] - 2025-10-01
+
+### Added
+- Migracoes `1738600000000-UpdateAnamnesisAIAndPlans`, `1738601000000-CreateTherapeuticPlanAcceptances` e `1738602000000-CreatePatientAnamnesisRollups` para enriquecer auditoria do plano e manter resumo incremental por paciente.
+- Tabela `therapeutic_plan_acceptances` com snapshot de termos, IP e User-Agent; serviço `PatientAnamnesisRollupService` responsável por consolidar anamneses aceitas.
+- Documentacao `docs/AI_CONTRACT.md` detalhando payloads do webhook, aceite versionado e checklist de integraçao.
+
+### Changed
+- Webhook `POST /anamneses/:id/ai-result` agora aceita `planText`, `reasoningText`, `evidenceMap`, metadados do modelo e métricas de custo.
+- Aceite `POST /anamneses/:id/plan` exige `termsVersion` + `termsTextSnapshot`, grava histórico em `therapeutic_plan_acceptances` e recalcula o rollup após o aceite.
+- Domain events, DTOs, presenters e suites de testes alinharam novos status (`generated`/`accepted`), histórico de aceitações e dados exibidos no front.
+
 ## [0.16.8] - 2025-09-30
 
 ### Added

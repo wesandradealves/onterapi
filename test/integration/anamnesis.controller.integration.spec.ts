@@ -119,22 +119,55 @@ describe('AnamnesisController (integration)', () => {
 
   const createPlan = (overrides: Partial<TherapeuticPlanData> = {}): TherapeuticPlanData => ({
     id: overrides.id ?? FIXTURE_IDS.plan,
+
     anamnesisId: overrides.anamnesisId ?? FIXTURE_IDS.anamnesis,
+
+    analysisId: overrides.analysisId ?? 'analysis-1',
+
     clinicalReasoning: overrides.clinicalReasoning ?? 'Raciocinio',
+
     summary: overrides.summary ?? 'Resumo',
+
     therapeuticPlan: overrides.therapeuticPlan ?? {},
+
     riskFactors: overrides.riskFactors ?? [],
+
     recommendations: overrides.recommendations ?? [],
+
+    planText: overrides.planText,
+
+    reasoningText: overrides.reasoningText,
+
+    evidenceMap: overrides.evidenceMap,
+
     confidence: overrides.confidence ?? 0.9,
+
+    status: overrides.status ?? 'generated',
+
     reviewRequired: overrides.reviewRequired ?? false,
+
     termsAccepted: overrides.termsAccepted ?? true,
+
     approvalStatus: overrides.approvalStatus ?? 'pending',
+
     liked: overrides.liked,
+
     feedbackComment: overrides.feedbackComment,
+
     feedbackGivenBy: overrides.feedbackGivenBy,
+
     feedbackGivenAt: overrides.feedbackGivenAt,
+
+    acceptedAt: overrides.acceptedAt,
+
+    acceptedBy: overrides.acceptedBy,
+
+    termsVersion: overrides.termsVersion,
+
     generatedAt: overrides.generatedAt ?? new Date('2025-09-26T01:00:00Z'),
+
     createdAt: overrides.createdAt ?? new Date('2025-09-26T01:00:00Z'),
+
     updatedAt: overrides.updatedAt ?? new Date('2025-09-26T01:00:00Z'),
   });
 
@@ -457,9 +490,14 @@ describe('AnamnesisController (integration)', () => {
       therapeuticPlan: {},
       riskFactors: [{ id: 'risk-1', description: 'Fator', severity: 'high' }],
       recommendations: [{ id: 'rec-1', description: 'Recomendacao', priority: 'medium' }],
+      planText: 'Plano IA',
+      reasoningText: 'Raciocínio IA',
+      evidenceMap: [{ recommendation: 'rec-1', evidence: ['dados'], confidence: 0.8 }],
       confidence: 0.8,
       reviewRequired: false,
       termsAccepted: true,
+      termsVersion: 'v1',
+      termsTextSnapshot: 'Termos de teste',
       generatedAt: '2025-09-26T01:00:00.000Z',
     };
 
@@ -470,7 +508,15 @@ describe('AnamnesisController (integration)', () => {
       .expect(201);
 
     expect(useCases.savePlan.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ confidence: 0.8, termsAccepted: true }),
+      expect.objectContaining({
+        confidence: 0.8,
+        termsAccepted: true,
+        termsVersion: 'v1',
+        termsTextSnapshot: 'Termos de teste',
+        planText: 'Plano IA',
+        reasoningText: 'Raciocínio IA',
+        evidenceMap: expect.any(Array),
+      }),
     );
     expect(response.body.id).toBe(FIXTURE_IDS.plan);
     expect(response.body.termsAccepted).toBe(true);

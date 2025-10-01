@@ -17,16 +17,20 @@ import {
   CreateAnamnesisAIAnalysisInput,
   CreateAnamnesisAttachmentInput,
   CreateAnamnesisInput,
+  CreateTherapeuticPlanAcceptanceInput,
+  CreateTherapeuticPlanAccessLogInput,
   GetStepTemplatesFilters,
+  PatientAnamnesisRollup,
   RecordAITrainingFeedbackInput,
   RemoveAnamnesisAttachmentInput,
   SaveAnamnesisStepInput,
   SavePlanFeedbackInput,
   SaveTherapeuticPlanInput,
   SubmitAnamnesisInput,
+  TherapeuticPlanAcceptance,
   TherapeuticPlanData,
+  UpsertPatientAnamnesisRollupInput,
 } from '../../types/anamnesis.types';
-
 export interface IAnamnesisRepository {
   create(data: CreateAnamnesisInput): Promise<Anamnesis>;
   findById(
@@ -54,12 +58,23 @@ export interface IAnamnesisRepository {
   submit(data: SubmitAnamnesisInput): Promise<Anamnesis>;
   saveTherapeuticPlan(data: SaveTherapeuticPlanInput): Promise<TherapeuticPlanData>;
   savePlanFeedback(data: SavePlanFeedbackInput): Promise<TherapeuticPlanData>;
+  listPlanAcceptances(
+    tenantId: string,
+    therapeuticPlanId: string,
+  ): Promise<TherapeuticPlanAcceptance[]>;
+  createPlanAcceptance(
+    data: CreateTherapeuticPlanAcceptanceInput,
+  ): Promise<TherapeuticPlanAcceptance>;
+  createPlanAccessLog(data: CreateTherapeuticPlanAccessLogInput): Promise<void>;
+
   recordAITrainingFeedback(
     data: RecordAITrainingFeedbackInput,
   ): Promise<AnamnesisAITrainingFeedback>;
   createAttachment(data: CreateAnamnesisAttachmentInput): Promise<AnamnesisAttachment>;
   removeAttachment(data: RemoveAnamnesisAttachmentInput): Promise<void>;
   cancel(data: CancelAnamnesisInput): Promise<void>;
+  getPatientRollup(tenantId: string, patientId: string): Promise<PatientAnamnesisRollup | null>;
+  savePatientRollup(data: UpsertPatientAnamnesisRollupInput): Promise<PatientAnamnesisRollup>;
   getStepTemplates(filters?: GetStepTemplatesFilters): Promise<AnamnesisStepTemplate[]>;
   getStepTemplateByKey(
     key: AnamnesisStepKey,
@@ -69,5 +84,4 @@ export interface IAnamnesisRepository {
   completeAIAnalysis(data: CompleteAnamnesisAIAnalysisInput): Promise<AnamnesisAIAnalysis>;
   getLatestAIAnalysis(tenantId: string, anamnesisId: string): Promise<AnamnesisAIAnalysis | null>;
 }
-
 export const IAnamnesisRepositoryToken = Symbol('IAnamnesisRepository');

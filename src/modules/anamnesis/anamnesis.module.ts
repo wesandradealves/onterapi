@@ -12,9 +12,15 @@ import { AnamnesisAttachmentEntity } from '../../infrastructure/anamnesis/entiti
 import { AnamnesisStepTemplateEntity } from '../../infrastructure/anamnesis/entities/anamnesis-step-template.entity';
 import { AnamnesisAIAnalysisEntity } from '../../infrastructure/anamnesis/entities/anamnesis-ai-analysis.entity';
 import { AnamnesisAITrainingFeedbackEntity } from '../../infrastructure/anamnesis/entities/anamnesis-ai-feedback.entity';
+import { TherapeuticPlanAcceptanceEntity } from '../../infrastructure/anamnesis/entities/therapeutic-plan-acceptance.entity';
+import { PatientAnamnesisRollupEntity } from '../../infrastructure/anamnesis/entities/patient-anamnesis-rollup.entity';
+import { TherapeuticPlanAccessLogEntity } from '../../infrastructure/anamnesis/entities/therapeutic-plan-access-log.entity';
+import { LegalTermEntity } from '../../infrastructure/legal/entities/legal-term.entity';
 import { AnamnesisRepository } from '../../infrastructure/anamnesis/repositories/anamnesis.repository';
+import { LegalTermsRepository } from '../../infrastructure/legal/legal-terms.repository';
 import { SupabaseService } from '../../infrastructure/auth/services/supabase.service';
 import { IAnamnesisRepositoryToken } from '../../domain/anamnesis/interfaces/repositories/anamnesis.repository.interface';
+import { ILegalTermsRepositoryToken } from '../../domain/legal/interfaces/legal-terms.repository.interface';
 import { IStartAnamnesisUseCase } from '../../domain/anamnesis/interfaces/use-cases/start-anamnesis.use-case.interface';
 import { IGetAnamnesisUseCase } from '../../domain/anamnesis/interfaces/use-cases/get-anamnesis.use-case.interface';
 import { ISaveAnamnesisStepUseCase } from '../../domain/anamnesis/interfaces/use-cases/save-anamnesis-step.use-case.interface';
@@ -48,12 +54,18 @@ import { MessageBus } from '../../shared/messaging/message-bus';
 import { AnamnesisAIWebhookGuard } from './guards/anamnesis-ai-webhook.guard';
 import { SupabaseAnamnesisAttachmentStorageService } from '../../infrastructure/anamnesis/services/supabase-anamnesis-attachment-storage.service';
 import { AnamnesisMetricsService } from './services/anamnesis-metrics.service';
+import { PatientAnamnesisRollupService } from './services/patient-anamnesis-rollup.service';
+import { LegalTermsService } from '../legal/legal-terms.service';
 import { AnamnesisEventsSubscriber } from './subscribers/anamnesis-events.subscriber';
 
 const repositoryProviders: Provider[] = [
   {
     provide: IAnamnesisRepositoryToken,
     useClass: AnamnesisRepository,
+  },
+  {
+    provide: ILegalTermsRepositoryToken,
+    useClass: LegalTermsRepository,
   },
 ];
 
@@ -135,6 +147,10 @@ const storageProviders: Provider[] = [
       AnamnesisStepTemplateEntity,
       AnamnesisAIAnalysisEntity,
       AnamnesisAITrainingFeedbackEntity,
+      LegalTermEntity,
+      TherapeuticPlanAcceptanceEntity,
+      PatientAnamnesisRollupEntity,
+      TherapeuticPlanAccessLogEntity,
     ]),
     forwardRef(() => AuthModule),
     forwardRef(() => PatientsModule),
@@ -147,6 +163,8 @@ const storageProviders: Provider[] = [
     MessageBus,
     AnamnesisAIWebhookGuard,
     AnamnesisMetricsService,
+    LegalTermsService,
+    PatientAnamnesisRollupService,
     AnamnesisEventsSubscriber,
   ],
   exports: [

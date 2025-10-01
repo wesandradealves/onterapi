@@ -53,6 +53,33 @@ export class AnamnesisAIAnalysisEntity {
   @Column({ name: 'error_message', type: 'text', nullable: true })
   errorMessage?: string;
 
+  @Column({ name: 'model', type: 'text', nullable: true })
+  model?: string;
+
+  @Column({ name: 'prompt_version', type: 'text', nullable: true })
+  promptVersion?: string;
+
+  @Column({ name: 'plan_text', type: 'text', nullable: true })
+  planText?: string;
+
+  @Column({ name: 'reasoning_text', type: 'text', nullable: true })
+  reasoningText?: string;
+
+  @Column({ name: 'evidence_map', type: 'jsonb', nullable: true })
+  evidenceMap?: Record<string, unknown> | null;
+
+  @Column({ name: 'tokens_input', type: 'integer', nullable: true })
+  tokensInput?: number;
+
+  @Column({ name: 'tokens_output', type: 'integer', nullable: true })
+  tokensOutput?: number;
+
+  @Column({ name: 'latency_ms', type: 'integer', nullable: true })
+  latencyMs?: number;
+
+  @Column({ name: 'raw_response', type: 'jsonb', nullable: true })
+  rawResponse?: Record<string, unknown> | null;
+
   @ManyToOne(() => AnamnesisEntity, (anamnesis) => anamnesis.aiAnalyses, {
     onDelete: 'CASCADE',
   })
