@@ -14,6 +14,10 @@ interface InternalStats {
   aiFailed: number;
   aiConfidenceSum: number;
   aiConfidenceCount: number;
+  aiTokensInputSum: number;
+  aiTokensOutputSum: number;
+  aiLatencySum: number;
+  aiLatencyCount: number;
   feedbackTotal: number;
   feedbackApprovals: number;
   feedbackModifications: number;
@@ -33,6 +37,9 @@ export interface AnamnesisMetricsSnapshot {
   aiCompleted: number;
   aiFailed: number;
   averageAIConfidence: number;
+  tokensInputTotal: number;
+  tokensOutputTotal: number;
+  averageAILatencyMs: number;
   feedback: {
     total: number;
     approvals: number;
@@ -56,6 +63,10 @@ const createEmptyStats = (): InternalStats => ({
   aiFailed: 0,
   aiConfidenceSum: 0,
   aiConfidenceCount: 0,
+  aiTokensInputSum: 0,
+  aiTokensOutputSum: 0,
+  aiLatencySum: 0,
+  aiLatencyCount: 0,
   feedbackTotal: 0,
   feedbackApprovals: 0,
   feedbackModifications: 0,
@@ -125,6 +136,9 @@ export class AnamnesisMetricsService {
     const tenantId = this.resolveTenantId(event);
     const status = String(payload['status'] ?? '');
     const confidence = this.extractNumber(payload['confidence']);
+    const tokensInput = this.extractNumber(payload['tokensInput']);
+    const tokensOutput = this.extractNumber(payload['tokensOutput']);
+    const latencyMs = this.extractNumber(payload['latencyMs']);
 
     this.applyToStats(tenantId, (stats) => {
       if (status === 'completed') {
@@ -136,6 +150,16 @@ export class AnamnesisMetricsService {
         stats.aiConfidenceSum += confidence;
         stats.aiConfidenceCount += 1;
       }
+      if (typeof tokensInput === 'number') {
+        stats.aiTokensInputSum += tokensInput;
+      }
+      if (typeof tokensOutput === 'number') {
+        stats.aiTokensOutputSum += tokensOutput;
+      }
+      if (typeof latencyMs === 'number') {
+        stats.aiLatencySum += latencyMs;
+        stats.aiLatencyCount += 1;
+      }
       stats.lastUpdatedAt = new Date();
     });
 
@@ -143,6 +167,9 @@ export class AnamnesisMetricsService {
       tenantId,
       status,
       confidence,
+      tokensInput,
+      tokensOutput,
+      latencyMs,
     });
   }
 
@@ -198,6 +225,9 @@ export class AnamnesisMetricsService {
       aiCompleted: stats.aiCompleted,
       aiFailed: stats.aiFailed,
       averageAIConfidence: this.calculateAverage(stats.aiConfidenceSum, stats.aiConfidenceCount),
+      tokensInputTotal: stats.aiTokensInputSum,
+      tokensOutputTotal: stats.aiTokensOutputSum,
+      averageAILatencyMs: this.calculateAverage(stats.aiLatencySum, stats.aiLatencyCount),
       feedback: {
         total: stats.feedbackTotal,
         approvals: stats.feedbackApprovals,

@@ -66,7 +66,13 @@ describe('AnamnesisMetricsService', () => {
     service.recordAICompleted(
       buildEvent({
         eventName: 'anamnesis.ai.completed',
-        payload: { status: 'completed', confidence: 0.8 },
+        payload: {
+          status: 'completed',
+          confidence: 0.8,
+          tokensInput: 120,
+          tokensOutput: 80,
+          latencyMs: 1500,
+        },
         metadata: { tenantId: 'tenant-1' },
       }),
     );
@@ -74,7 +80,13 @@ describe('AnamnesisMetricsService', () => {
     service.recordAICompleted(
       buildEvent({
         eventName: 'anamnesis.ai.completed',
-        payload: { status: 'failed', confidence: 0.4 },
+        payload: {
+          status: 'failed',
+          confidence: 0.4,
+          tokensInput: 60,
+          tokensOutput: 40,
+          latencyMs: 900,
+        },
         metadata: { tenantId: 'tenant-1' },
       }),
     );
@@ -83,6 +95,9 @@ describe('AnamnesisMetricsService', () => {
     expect(snapshot.aiCompleted).toBe(1);
     expect(snapshot.aiFailed).toBe(1);
     expect(snapshot.averageAIConfidence).toBe(0.6);
+    expect(snapshot.tokensInputTotal).toBe(120 + 60);
+    expect(snapshot.tokensOutputTotal).toBe(80 + 40);
+    expect(snapshot.averageAILatencyMs).toBe(1200);
   });
 
   it('records plan feedback likes and approvals', () => {

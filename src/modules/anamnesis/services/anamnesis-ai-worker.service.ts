@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { DomainEvent } from '../../../shared/events/domain-event.interface';
@@ -11,6 +11,8 @@ import {
   AnamnesisStepKey,
 } from '../../../domain/anamnesis/types/anamnesis.types';
 import { buildAnamnesisAIPrompt } from '../utils/anamnesis-ai-prompt.util';
+import { LocalAIPlanGeneratorService } from './local-ai-plan-generator.service';
+import { IReceiveAnamnesisAIResultUseCase } from '../../../domain/anamnesis/interfaces/use-cases/receive-anamnesis-ai-result.use-case.interface';
 
 interface AiWorkerRequestBody {
   analysisId: string;
@@ -31,6 +33,7 @@ const TIMEOUT_ENV_KEY = 'ANAMNESIS_AI_WORKER_TIMEOUT_MS';
 const ENDPOINT_ENV_KEY = 'ANAMNESIS_AI_WORKER_URL';
 const TOKEN_ENV_KEY = 'ANAMNESIS_AI_WORKER_TOKEN';
 const PROMPT_VERSION_ENV_KEY = 'ANAMNESIS_AI_PROMPT_VERSION';
+const MODE_ENV_KEY = 'ANAMNESIS_AI_WORKER_MODE';
 
 @Injectable()
 export class AnamnesisAIWorkerService implements OnModuleInit, OnModuleDestroy {
@@ -40,6 +43,9 @@ export class AnamnesisAIWorkerService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly messageBus: MessageBus,
     private readonly configService: ConfigService,
+    private readonly localPlanGenerator: LocalAIPlanGeneratorService,
+    @Inject(IReceiveAnamnesisAIResultUseCase)
+    private readonly receiveAIResultUseCase: IReceiveAnamnesisAIResultUseCase,
   ) {}
 
   onModuleInit(): void {
@@ -62,18 +68,8 @@ export class AnamnesisAIWorkerService implements OnModuleInit, OnModuleDestroy {
   }
 
   async handleAIRequested(event: DomainEvent<AnamnesisAIRequestedEventPayload>): Promise<void> {
-    const endpoint = this.configService.get<string>(ENDPOINT_ENV_KEY);
-
-    if (!endpoint) {
-      this.logger.warn(
-        'AI worker URL not configured (ANAMNESIS_AI_WORKER_URL). Skipping dispatch.',
-      );
-      return;
-    }
-
     const payload = event.payload;
     const analysisPayload = payload.payload;
-
     const compact = this.resolveCompactSummary(analysisPayload);
     const promptVersion =
       this.configService.get<string>(PROMPT_VERSION_ENV_KEY) ?? PROMPT_VERSION_FALLBACK;
@@ -82,6 +78,27 @@ export class AnamnesisAIWorkerService implements OnModuleInit, OnModuleDestroy {
       compact,
       promptVersion,
     });
+
+    const mode = (this.configService.get<string>(MODE_ENV_KEY) ?? 'http').toLowerCase();
+    if (mode === 'local') {
+      await this.processLocally(
+        event,
+        analysisPayload,
+        compact,
+        promptVersion,
+        prompt.rollupSummary,
+      );
+      return;
+    }
+
+    const endpoint = this.configService.get<string>(ENDPOINT_ENV_KEY);
+
+    if (!endpoint) {
+      this.logger.warn(
+        'AI worker URL not configured (ANAMNESIS_AI_WORKER_URL). Skipping dispatch.',
+      );
+      return;
+    }
 
     const body: AiWorkerRequestBody = {
       analysisId: payload.analysisId,
@@ -151,6 +168,79 @@ export class AnamnesisAIWorkerService implements OnModuleInit, OnModuleDestroy {
         stepNumber: attachment.stepNumber,
       })),
     };
+  }
+  private async processLocally(
+    event: DomainEvent<AnamnesisAIRequestedEventPayload>,
+    request: AnamnesisAIRequestPayload,
+    compact: AnamnesisCompactSummary,
+    promptVersion: string,
+    rollupSummary: string,
+  ): Promise<void> {
+    try {
+      const result = this.localPlanGenerator.generate({ request, compact, rollupSummary });
+
+      await this.receiveAIResultUseCase.executeOrThrow({
+        tenantId: event.payload.tenantId,
+        anamnesisId: event.payload.anamnesisId,
+        analysisId: event.payload.analysisId,
+        status: 'completed',
+        clinicalReasoning: result.reasoningText,
+        summary: result.summary,
+        riskFactors: result.riskFactors,
+        recommendations: result.recommendations,
+        planText: result.planText,
+        reasoningText: result.reasoningText,
+        evidenceMap: result.evidenceMap.map((entry) => ({ ...entry })) as Array<
+          Record<string, unknown>
+        >,
+        confidence: result.confidence,
+        therapeuticPlan: {
+          planText: result.planText,
+          reasoningText: result.reasoningText,
+          recommendations: result.recommendations,
+          riskFactors: result.riskFactors,
+        },
+        payload: this.toPlain({
+          mode: 'local',
+          request,
+          compact,
+          rollupSummary,
+        }),
+        model: result.model,
+        promptVersion,
+        tokensInput: result.tokensIn,
+        tokensOutput: result.tokensOut,
+        latencyMs: result.latencyMs,
+        rawResponse: this.toPlain({ mode: 'local', data: result }),
+        respondedAt: new Date(),
+      });
+
+      this.logger.log(
+        `AI plan generated locally for analysis ${event.payload.analysisId}`,
+        JSON.stringify({
+          tenantId: event.payload.tenantId,
+          anamnesisId: event.payload.anamnesisId,
+        }),
+      );
+    } catch (error) {
+      this.logger.error('Failed to generate local AI plan', error as Error, {
+        analysisId: event.payload.analysisId,
+        anamnesisId: event.payload.anamnesisId,
+        tenantId: event.payload.tenantId,
+      });
+    }
+  }
+
+  private toPlain(value: unknown): Record<string, unknown> {
+    if (value === null || value === undefined) {
+      return {};
+    }
+
+    try {
+      return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+    } catch {
+      return {};
+    }
   }
 
   private resolveTimeout(): number {

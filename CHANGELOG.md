@@ -1,14 +1,17 @@
-## [0.17.0] - 2025-10-01
+ï»¿## [0.17.0] - 2025-10-01
 
 ### Added
 - Servico AnamnesisAIWorkerService escuta ANAMNESIS_AI_REQUESTED, monta prompt com resumo compacto e rollup e dispara job HTTP configuravel para o worker externo.
 - Utilitario buildAnamnesisAIPrompt sanitiza payloads e gera instrucoes padrao mais o JSON compacto enviado ao provedor.
 - Seed 1738605000000-SeedTherapeuticPlanTerms adiciona termo padrao; .env documenta ANAMNESIS_AI_WORKER_URL, ANAMNESIS_AI_WORKER_TOKEN, ANAMNESIS_AI_PROMPT_VERSION e ANAMNESIS_AI_WORKER_TIMEOUT_MS.
 - Suites unitarias dedicadas para o prompt e para o worker garantindo cobertura do novo fluxo.
+- Modo local do worker (`ANAMNESIS_AI_WORKER_MODE=local`) gera plano assistivo diretamente via regra heuristica.
+- AnamnesisMetricsService passa a registrar tokens de entrada/saida e latencia media para os planos gerados pela IA.
 
 ### Changed
 - Evento ANAMNESIS_AI_REQUESTED passa a publicar AnamnesisAIRequestedEventPayload tipado e o submit agrupa eventos em DomainEvent<unknown>[] reutilizando o payload sanitizado.
 - SubmitAnamnesisUseCase reaproveita buildAnamnesisAIRequestPayload, mantendo o JSON compacto tanto na persistencia quanto nos eventos.
+- Worker tenta modo local antes de enviar HTTP quando configurado.
 - README e docs/AI_CONTRACT.md reforcam o pipeline completo (submit -> worker -> webhook -> aceite) e os requisitos de configuracao do worker.
 
 ### Testing
@@ -30,12 +33,12 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 - Interface ExecutableUseCase padronizando execute/executeOrThrow para os casos de uso.
 
 ### Changed
-- BaseUseCase e UseCaseWrapper passam a lançar exceções diretamente e expõem executeOrThrow, eliminando a dependência de unwrapResult nos controllers e garantindo propagação uniforme de erros.
-- Controllers e casos de uso de Auth, Users, Patients e Anamnesis atualizados para o novo contrato; suites unitárias, de integração e E2E ajustadas para refletir o comportamento.
-- .gitignore agora ignora a pasta payloads, evitando sujar o repositório com artefatos dos fluxos manuais de anamnese.
+- BaseUseCase e UseCaseWrapper passam a lanÃ§ar exceÃ§Ãµes diretamente e expÃµem executeOrThrow, eliminando a dependÃªncia de unwrapResult nos controllers e garantindo propagaÃ§Ã£o uniforme de erros.
+- Controllers e casos de uso de Auth, Users, Patients e Anamnesis atualizados para o novo contrato; suites unitÃ¡rias, de integraÃ§Ã£o e E2E ajustadas para refletir o comportamento.
+- .gitignore agora ignora a pasta payloads, evitando sujar o repositÃ³rio com artefatos dos fluxos manuais de anamnese.
 
 ### Documentation
-- README atualizado com as métricas da bateria manual de 29/09, novo total de 248 testes automatizados (~18 s) e referência de cobertura preservada em 100%.
+- README atualizado com as mÃ©tricas da bateria manual de 29/09, novo total de 248 testes automatizados (~18 s) e referÃªncia de cobertura preservada em 100%.
 
 ## [0.16.6] - 2025-09-26
 
@@ -121,3 +124,4 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 ## [0.16.3] - 2025-09-25
 
 ...
+

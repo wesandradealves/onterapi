@@ -118,6 +118,7 @@ npm run migration:run
 
 ## Requisitos para o Worker
 - Tratar ausência de `patientRollup` como primeira anamnese.
+- Ambiente local pode usar `ANAMNESIS_AI_WORKER_MODE=local` para gerar resposta heurística e postar no webhook.
 - Versionar prompts (`promptVersion`).
 - Preencher métricas (`tokensInput`, `tokensOutput`, `latencyMs`) quando disponíveis.
 - Enviar `errorMessage` em falhas (status `failed`).

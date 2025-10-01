@@ -56,6 +56,7 @@ import { SupabaseAnamnesisAttachmentStorageService } from '../../infrastructure/
 import { AnamnesisMetricsService } from './services/anamnesis-metrics.service';
 import { PatientAnamnesisRollupService } from './services/patient-anamnesis-rollup.service';
 import { AnamnesisAIWorkerService } from './services/anamnesis-ai-worker.service';
+import { LocalAIPlanGeneratorService } from './services/local-ai-plan-generator.service';
 import { LegalTermsService } from '../legal/legal-terms.service';
 import { AnamnesisEventsSubscriber } from './subscribers/anamnesis-events.subscriber';
 
@@ -166,6 +167,7 @@ const storageProviders: Provider[] = [
     AnamnesisMetricsService,
     LegalTermsService,
     PatientAnamnesisRollupService,
+    LocalAIPlanGeneratorService,
     AnamnesisAIWorkerService,
     AnamnesisEventsSubscriber,
   ],
