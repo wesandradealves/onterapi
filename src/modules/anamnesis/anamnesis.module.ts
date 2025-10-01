@@ -1,9 +1,10 @@
-import { forwardRef, Module, Provider } from '@nestjs/common';
+﻿import { forwardRef, Module, Provider } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuthModule } from '../auth/auth.module';
 import { PatientsModule } from '../patients/patients.module';
+import { LegalModule } from '../legal/legal.module';
 import { AnamnesisController } from './api/controllers/anamnesis.controller';
 import { AnamnesisEntity } from '../../infrastructure/anamnesis/entities/anamnesis.entity';
 import { AnamnesisStepEntity } from '../../infrastructure/anamnesis/entities/anamnesis-step.entity';
@@ -17,10 +18,8 @@ import { PatientAnamnesisRollupEntity } from '../../infrastructure/anamnesis/ent
 import { TherapeuticPlanAccessLogEntity } from '../../infrastructure/anamnesis/entities/therapeutic-plan-access-log.entity';
 import { LegalTermEntity } from '../../infrastructure/legal/entities/legal-term.entity';
 import { AnamnesisRepository } from '../../infrastructure/anamnesis/repositories/anamnesis.repository';
-import { LegalTermsRepository } from '../../infrastructure/legal/legal-terms.repository';
 import { SupabaseService } from '../../infrastructure/auth/services/supabase.service';
 import { IAnamnesisRepositoryToken } from '../../domain/anamnesis/interfaces/repositories/anamnesis.repository.interface';
-import { ILegalTermsRepositoryToken } from '../../domain/legal/interfaces/legal-terms.repository.interface';
 import { IStartAnamnesisUseCase } from '../../domain/anamnesis/interfaces/use-cases/start-anamnesis.use-case.interface';
 import { IGetAnamnesisUseCase } from '../../domain/anamnesis/interfaces/use-cases/get-anamnesis.use-case.interface';
 import { ISaveAnamnesisStepUseCase } from '../../domain/anamnesis/interfaces/use-cases/save-anamnesis-step.use-case.interface';
@@ -57,17 +56,12 @@ import { AnamnesisMetricsService } from './services/anamnesis-metrics.service';
 import { PatientAnamnesisRollupService } from './services/patient-anamnesis-rollup.service';
 import { AnamnesisAIWorkerService } from './services/anamnesis-ai-worker.service';
 import { LocalAIPlanGeneratorService } from './services/local-ai-plan-generator.service';
-import { LegalTermsService } from '../legal/legal-terms.service';
 import { AnamnesisEventsSubscriber } from './subscribers/anamnesis-events.subscriber';
 
 const repositoryProviders: Provider[] = [
   {
     provide: IAnamnesisRepositoryToken,
     useClass: AnamnesisRepository,
-  },
-  {
-    provide: ILegalTermsRepositoryToken,
-    useClass: LegalTermsRepository,
   },
 ];
 
@@ -156,6 +150,7 @@ const storageProviders: Provider[] = [
     ]),
     forwardRef(() => AuthModule),
     forwardRef(() => PatientsModule),
+    LegalModule,
   ],
   controllers: [AnamnesisController],
   providers: [
@@ -165,7 +160,7 @@ const storageProviders: Provider[] = [
     MessageBus,
     AnamnesisAIWebhookGuard,
     AnamnesisMetricsService,
-    LegalTermsService,
+
     PatientAnamnesisRollupService,
     LocalAIPlanGeneratorService,
     AnamnesisAIWorkerService,

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+﻿import { Module } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { CoreModule } from './core/core.module';
 import { DatabaseModule } from './infrastructure/database.module';
@@ -7,6 +7,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { PatientsModule } from './modules/patients/patients.module';
 import { AnamnesisModule } from './modules/anamnesis/anamnesis.module';
+import { LegalModule } from './modules/legal/legal.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { AnamnesisModule } from './modules/anamnesis/anamnesis.module';
     AuthModule,
     UsersModule,
     PatientsModule,
+    LegalModule,
     AnamnesisModule,
   ],
 })

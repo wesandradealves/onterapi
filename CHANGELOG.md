@@ -14,6 +14,7 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 - Modo local do worker (ANAMNESIS_AI_WORKER_MODE=local) gera plano assistivo diretamente via regra heuristica.
 - AnamnesisMetricsService passa a registrar tokens de entrada/saida e latencia media para os planos gerados pela IA.
 - Script `npm run worker:start` sobe o worker externo de IA (Express) com suporte a OpenAI/local e retorno assinado ao webhook.
+- Endpoints `/legal/terms` permitem criar, publicar e desativar termos legais versionados por tenant, com validação de acesso multi-tenant.
 
 ### Changed
 - Evento ANAMNESIS_AI_REQUESTED passa a publicar AnamnesisAIRequestedEventPayload tipado e o submit agrupa eventos em DomainEvent<unknown>[] reutilizando o payload sanitizado.
