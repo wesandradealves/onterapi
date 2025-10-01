@@ -55,6 +55,7 @@ import { AnamnesisAIWebhookGuard } from './guards/anamnesis-ai-webhook.guard';
 import { SupabaseAnamnesisAttachmentStorageService } from '../../infrastructure/anamnesis/services/supabase-anamnesis-attachment-storage.service';
 import { AnamnesisMetricsService } from './services/anamnesis-metrics.service';
 import { PatientAnamnesisRollupService } from './services/patient-anamnesis-rollup.service';
+import { AnamnesisAIWorkerService } from './services/anamnesis-ai-worker.service';
 import { LegalTermsService } from '../legal/legal-terms.service';
 import { AnamnesisEventsSubscriber } from './subscribers/anamnesis-events.subscriber';
 
@@ -165,6 +166,7 @@ const storageProviders: Provider[] = [
     AnamnesisMetricsService,
     LegalTermsService,
     PatientAnamnesisRollupService,
+    AnamnesisAIWorkerService,
     AnamnesisEventsSubscriber,
   ],
   exports: [

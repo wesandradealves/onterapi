@@ -482,7 +482,6 @@ export interface AnamnesisAIRequestProfessionalProfile {
   role: string;
   preferences?: Record<string, unknown>;
 }
-
 export interface AnamnesisAIRequestPayload {
   tenantId: string;
   anamnesisId: string;
@@ -509,6 +508,17 @@ export interface AnamnesisAIRequestPayload {
     lastAnamnesisId?: string | null;
     updatedAt: Date;
   };
+  metadata?: Record<string, unknown>;
+}
+
+export interface AnamnesisAIRequestedEventPayload {
+  anamnesisId: string;
+  tenantId: string;
+  analysisId: string;
+  consultationId: string;
+  patientId: string;
+  professionalId: string;
+  payload: AnamnesisAIRequestPayload;
   metadata?: Record<string, unknown>;
 }
 

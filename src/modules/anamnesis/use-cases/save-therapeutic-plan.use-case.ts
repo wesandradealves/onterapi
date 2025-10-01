@@ -20,6 +20,9 @@ import { MessageBus } from '../../../shared/messaging/message-bus';
 import { DomainEvents } from '../../../shared/events/domain-events';
 
 import { PatientAnamnesisRollupService } from '../services/patient-anamnesis-rollup.service';
+import { LegalTermsService } from '../../legal/legal-terms.service';
+
+const THERAPEUTIC_PLAN_TERMS_CONTEXT = 'therapeutic_plan';
 
 interface SaveTherapeuticPlanCommand {
   tenantId: string;
@@ -79,6 +82,8 @@ export class SaveTherapeuticPlanUseCase
     private readonly messageBus: MessageBus,
 
     private readonly rollupService: PatientAnamnesisRollupService,
+
+    private readonly legalTermsService: LegalTermsService,
   ) {
     super();
   }
@@ -109,6 +114,8 @@ export class SaveTherapeuticPlanUseCase
         'Termo de responsabilidade deve ser aceito para registrar o plano terapeutico.',
       );
     }
+
+    const termsSnapshot = await this.ensureActiveTermIsCurrent(params);
 
     const acceptanceTimestamp = new Date();
 
@@ -163,7 +170,7 @@ export class SaveTherapeuticPlanUseCase
 
       termsVersion: params.termsVersion,
 
-      termsTextSnapshot: params.termsTextSnapshot,
+      termsTextSnapshot: termsSnapshot,
 
       acceptedIp: params.acceptanceIp,
 
@@ -188,7 +195,7 @@ export class SaveTherapeuticPlanUseCase
 
     plan.acceptances = acceptances;
 
-    plan.termsTextSnapshot = acceptances.length ? acceptances[0].termsTextSnapshot : null;
+    plan.termsTextSnapshot = acceptances.length ? acceptances[0].termsTextSnapshot : termsSnapshot;
 
     const previousRollup = await this.anamnesisRepository.getPatientRollup(
       params.tenantId,
@@ -245,5 +252,41 @@ export class SaveTherapeuticPlanUseCase
     );
 
     return plan;
+  }
+
+  private async ensureActiveTermIsCurrent(params: SaveTherapeuticPlanCommand): Promise<string> {
+    const activeTerm = await this.legalTermsService.getActiveTerm(
+      THERAPEUTIC_PLAN_TERMS_CONTEXT,
+      params.tenantId,
+    );
+
+    if (!activeTerm) {
+      throw AnamnesisErrorFactory.invalidState(
+        'Nao ha termo de responsabilidade ativo configurado.',
+      );
+    }
+
+    if (activeTerm.version !== params.termsVersion) {
+      throw AnamnesisErrorFactory.invalidPayload(
+        'Versao do termo desatualizada. Recarregue o plano para confirmar o aceite.',
+      );
+    }
+
+    if (params.termsTextSnapshot) {
+      const provided = this.normaliseTermText(params.termsTextSnapshot);
+      const expected = this.normaliseTermText(activeTerm.content);
+
+      if (provided !== expected) {
+        throw AnamnesisErrorFactory.invalidPayload(
+          'Conteudo do termo nao confere com a versao atual. Recarregue o plano.',
+        );
+      }
+    }
+
+    return activeTerm.content;
+  }
+
+  private normaliseTermText(text: string): string {
+    return text.replace(/\r?\n/g, '\n').trim();
   }
 }

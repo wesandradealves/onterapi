@@ -10,7 +10,10 @@ import { RolesGuard } from '@modules/auth/guards/roles.guard';
 import { TenantGuard } from '@modules/auth/guards/tenant.guard';
 import { ConfigService } from '@nestjs/config';
 import { LegalTermsService } from '@modules/legal/legal-terms.service';
-import { ILegalTermsRepository, ILegalTermsRepositoryToken } from '@domain/legal/interfaces/legal-terms.repository.interface';
+import {
+  ILegalTermsRepository,
+  ILegalTermsRepositoryToken,
+} from '@domain/legal/interfaces/legal-terms.repository.interface';
 import {
   IAnamnesisRepositoryToken as ANAMNESIS_REPOSITORY_TOKEN,
   IAnamnesisRepository,
@@ -938,7 +941,6 @@ describe('AnamnesisModule (e2e)', () => {
     })),
   } as unknown as jest.Mocked<ILegalTermsRepository>;
 
-
   const currentUser: ICurrentUser = {
     id: PROFESSIONAL_ID,
     email: 'pro@example.com',
@@ -1114,9 +1116,9 @@ describe('AnamnesisModule (e2e)', () => {
         recommendations: [{ id: 'rec-1', description: 'Exercicios leves', priority: 'medium' }],
         confidence: 0.8,
         reviewRequired: false,
-        termsVersion: 'v1-test',
+        termsVersion: 'v1.0',
         termsTextSnapshot:
-          'Declaro estar ciente do plano terapeutico gerado por IA e assumo a responsabilidade clinica.',
+          'Declaro estar ciente de que o plano terapeutico e uma assistencia de IA.',
         termsAccepted: true,
         generatedAt: new Date('2025-09-26T03:00:00.000Z').toISOString(),
       })
@@ -1295,9 +1297,3 @@ describe('AnamnesisModule (e2e)', () => {
     expect(withDrafts.body.prefill.sourceAnamnesisId).toBe(anamnesisId);
   });
 });
-
-
-
-
-
-

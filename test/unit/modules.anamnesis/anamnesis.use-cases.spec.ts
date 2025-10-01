@@ -247,7 +247,19 @@ describe('Anamnesis use cases', () => {
       }),
     } as unknown as jest.Mocked<PatientAnamnesisRollupService>;
 
-    legalTermsService = { getActiveTerm: jest.fn() } as unknown as jest.Mocked<LegalTermsService>;
+    legalTermsService = {
+      getActiveTerm: jest.fn().mockResolvedValue({
+        id: 'term-1',
+        tenantId: 'tenant-1',
+        context: 'therapeutic_plan',
+        version: 'v1',
+        content: 'Termos de teste',
+        isActive: true,
+        publishedAt: new Date('2025-09-26T00:00:00Z'),
+        createdAt: new Date('2025-09-26T00:00:00Z'),
+        updatedAt: new Date('2025-09-26T00:00:00Z'),
+      }),
+    } as unknown as jest.Mocked<LegalTermsService>;
     patientRepository = {
       create: jest.fn(),
       findById: jest.fn(),
@@ -1090,7 +1102,12 @@ describe('Anamnesis use cases', () => {
         updatedBy: 'professional-1',
       });
 
-      const useCase = new SaveTherapeuticPlanUseCase(repository, messageBus, rollupService);
+      const useCase = new SaveTherapeuticPlanUseCase(
+        repository,
+        messageBus,
+        rollupService,
+        legalTermsService,
+      );
       const result = unwrapResult(
         await useCase.execute({
           tenantId: 'tenant-1',
@@ -1099,7 +1116,7 @@ describe('Anamnesis use cases', () => {
           termsVersion: 'v1',
           termsTextSnapshot: 'Termos de teste',
           planText: 'Plano IA',
-          reasoningText: 'Raciocínio IA',
+          reasoningText: 'Raciocinio IA',
           analysisId: 'analysis-1',
           generatedAt: plan.generatedAt,
           requesterId: 'professional-1',
@@ -1119,7 +1136,12 @@ describe('Anamnesis use cases', () => {
     it('should reject plan persistence when terms are not accepted', async () => {
       repository.findById.mockResolvedValue(createAnamnesis());
 
-      const useCase = new SaveTherapeuticPlanUseCase(repository, messageBus, rollupService);
+      const useCase = new SaveTherapeuticPlanUseCase(
+        repository,
+        messageBus,
+        rollupService,
+        legalTermsService,
+      );
 
       await expect(
         useCase
@@ -1137,6 +1159,114 @@ describe('Anamnesis use cases', () => {
       ).rejects.toThrow(
         'Termo de responsabilidade deve ser aceito para registrar o plano terapeutico.',
       );
+    });
+
+    it('should reject when no legal terms are configured', async () => {
+      const anamnesis = createAnamnesis();
+      repository.findById.mockResolvedValue(anamnesis);
+      legalTermsService.getActiveTerm.mockResolvedValueOnce(null);
+
+      const useCase = new SaveTherapeuticPlanUseCase(
+        repository,
+        messageBus,
+        rollupService,
+        legalTermsService,
+      );
+
+      await expect(
+        useCase
+          .execute({
+            tenantId: 'tenant-1',
+            anamnesisId: anamnesis.id,
+            termsAccepted: true,
+            termsVersion: 'v1',
+            termsTextSnapshot: 'Termos de teste',
+            generatedAt: new Date('2025-09-26T01:00:00Z'),
+            requesterId: 'professional-1',
+            requesterRole: RolesEnum.PROFESSIONAL,
+          })
+          .then(unwrapResult),
+      ).rejects.toThrow('Nao ha termo de responsabilidade ativo configurado.');
+    });
+
+    it('should reject when legal terms version is outdated', async () => {
+      const anamnesis = createAnamnesis();
+      repository.findById.mockResolvedValue(anamnesis);
+
+      legalTermsService.getActiveTerm.mockResolvedValueOnce({
+        id: 'term-2',
+        tenantId: 'tenant-1',
+        context: 'therapeutic_plan',
+        version: 'v2',
+        content: 'Termos atualizados',
+        isActive: true,
+        publishedAt: new Date('2025-10-01T00:00:00Z'),
+        createdAt: new Date('2025-10-01T00:00:00Z'),
+        updatedAt: new Date('2025-10-01T00:00:00Z'),
+      });
+
+      const useCase = new SaveTherapeuticPlanUseCase(
+        repository,
+        messageBus,
+        rollupService,
+        legalTermsService,
+      );
+
+      await expect(
+        useCase
+          .execute({
+            tenantId: 'tenant-1',
+            anamnesisId: anamnesis.id,
+            termsAccepted: true,
+            termsVersion: 'v1',
+            termsTextSnapshot: 'Termos de teste',
+            generatedAt: new Date('2025-09-26T01:00:00Z'),
+            requesterId: 'professional-1',
+            requesterRole: RolesEnum.PROFESSIONAL,
+          })
+          .then(unwrapResult),
+      ).rejects.toThrow(
+        'Versao do termo desatualizada. Recarregue o plano para confirmar o aceite.',
+      );
+    });
+
+    it('should reject when legal terms content mismatches', async () => {
+      const anamnesis = createAnamnesis();
+      repository.findById.mockResolvedValue(anamnesis);
+
+      legalTermsService.getActiveTerm.mockResolvedValueOnce({
+        id: 'term-1',
+        tenantId: 'tenant-1',
+        context: 'therapeutic_plan',
+        version: 'v1',
+        content: 'Conteudo oficial do termo',
+        isActive: true,
+        publishedAt: new Date('2025-09-26T00:00:00Z'),
+        createdAt: new Date('2025-09-26T00:00:00Z'),
+        updatedAt: new Date('2025-09-26T00:00:00Z'),
+      });
+
+      const useCase = new SaveTherapeuticPlanUseCase(
+        repository,
+        messageBus,
+        rollupService,
+        legalTermsService,
+      );
+
+      await expect(
+        useCase
+          .execute({
+            tenantId: 'tenant-1',
+            anamnesisId: anamnesis.id,
+            termsAccepted: true,
+            termsVersion: 'v1',
+            termsTextSnapshot: 'Termos de teste',
+            generatedAt: new Date('2025-09-26T01:00:00Z'),
+            requesterId: 'professional-1',
+            requesterRole: RolesEnum.PROFESSIONAL,
+          })
+          .then(unwrapResult),
+      ).rejects.toThrow('Conteudo do termo nao confere com a versao atual. Recarregue o plano.');
     });
   });
 

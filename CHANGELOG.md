@@ -1,32 +1,26 @@
+## [0.17.0] - 2025-10-01
+
+### Added
+- Servico AnamnesisAIWorkerService escuta ANAMNESIS_AI_REQUESTED, monta prompt com resumo compacto e rollup e dispara job HTTP configuravel para o worker externo.
+- Utilitario buildAnamnesisAIPrompt sanitiza payloads e gera instrucoes padrao mais o JSON compacto enviado ao provedor.
+- Seed 1738605000000-SeedTherapeuticPlanTerms adiciona termo padrao; .env documenta ANAMNESIS_AI_WORKER_URL, ANAMNESIS_AI_WORKER_TOKEN, ANAMNESIS_AI_PROMPT_VERSION e ANAMNESIS_AI_WORKER_TIMEOUT_MS.
+- Suites unitarias dedicadas para o prompt e para o worker garantindo cobertura do novo fluxo.
+
+### Changed
+- Evento ANAMNESIS_AI_REQUESTED passa a publicar AnamnesisAIRequestedEventPayload tipado e o submit agrupa eventos em DomainEvent<unknown>[] reutilizando o payload sanitizado.
+- SubmitAnamnesisUseCase reaproveita buildAnamnesisAIRequestPayload, mantendo o JSON compacto tanto na persistencia quanto nos eventos.
+- README e docs/AI_CONTRACT.md reforcam o pipeline completo (submit -> worker -> webhook -> aceite) e os requisitos de configuracao do worker.
+
+### Testing
+- npm run lint
+- npx tsc --noEmit
+- npm run test -- --runInBand --silent
+- npm run test:int -- --runInBand --silent
+- npm run test:e2e -- --runInBand --silent
+
 # Changelog
 
 Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
-
-O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o projeto adota [Versionamento Semantico](https://semver.org/lang/pt-BR/).
-
-## [0.16.9] - 2025-10-01
-
-### Added
-- Migracoes `1738600000000-UpdateAnamnesisAIAndPlans`, `1738601000000-CreateTherapeuticPlanAcceptances` e `1738602000000-CreatePatientAnamnesisRollups` para enriquecer auditoria do plano e manter resumo incremental por paciente.
-- Tabela `therapeutic_plan_acceptances` com snapshot de termos, IP e User-Agent; serviço `PatientAnamnesisRollupService` responsável por consolidar anamneses aceitas.
-- Documentacao `docs/AI_CONTRACT.md` detalhando payloads do webhook, aceite versionado e checklist de integraçao.
-
-### Changed
-- Webhook `POST /anamneses/:id/ai-result` agora aceita `planText`, `reasoningText`, `evidenceMap`, metadados do modelo e métricas de custo.
-- Aceite `POST /anamneses/:id/plan` exige `termsVersion` + `termsTextSnapshot`, grava histórico em `therapeutic_plan_acceptances` e recalcula o rollup após o aceite.
-- Domain events, DTOs, presenters e suites de testes alinharam novos status (`generated`/`accepted`), histórico de aceitações e dados exibidos no front.
-
-## [0.16.8] - 2025-09-30
-
-### Added
-- Migracao 1738400000000-AddSoftDeleteToAnamnesis incluindo colunas `deleted_at`, `deleted_by` e `deleted_reason` em `anamneses` com suporte a soft delete e auditoria.
-- Migracao 1738501000000-AddTermsAcceptedToTherapeuticPlan adicionando `terms_accepted` em `anamnesis_therapeutic_plans`.
-- Caso de uso CancelAnamnesisUseCase, endpoint `POST /anamneses/{id}/cancel` e evento DomainEvents.ANAMNESIS_CANCELLED para propagar cancelamentos sob auditoria.
-
-### Changed
-- Salvamento do plano terapeutico passa a exigir `termsAccepted`, validando o aceite do termo de responsabilidade e persistindo o flag nas entidades, mappers, presenters e respostas da API.
-- Listagens, historico e detalhe de anamnese ignoram registros cancelados e expoem `deletedAt`, `deletedBy` e `deletedReason` para auditoria.
-- Suites unitarias, de integracao e e2e atualizadas com cenarios de cancelamento e aceite obrigatorio, mantendo payloads e factories alinhados as novas validacoes.
 
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o projeto adota [Versionamento Semantico](https://semver.org/lang/pt-BR/).
 
@@ -36,12 +30,12 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 - Interface ExecutableUseCase padronizando execute/executeOrThrow para os casos de uso.
 
 ### Changed
-- BaseUseCase e UseCaseWrapper passam a lanÃ§ar exceÃ§Ãµes diretamente e expÃµem executeOrThrow, eliminando a dependÃªncia de unwrapResult nos controllers e garantindo propagaÃ§Ã£o uniforme de erros.
-- Controllers e casos de uso de Auth, Users, Patients e Anamnesis atualizados para o novo contrato; suites unitÃ¡rias, de integraÃ§Ã£o e E2E ajustadas para refletir o comportamento.
-- .gitignore agora ignora a pasta payloads, evitando sujar o repositÃ³rio com artefatos dos fluxos manuais de anamnese.
+- BaseUseCase e UseCaseWrapper passam a lançar exceções diretamente e expõem executeOrThrow, eliminando a dependência de unwrapResult nos controllers e garantindo propagação uniforme de erros.
+- Controllers e casos de uso de Auth, Users, Patients e Anamnesis atualizados para o novo contrato; suites unitárias, de integração e E2E ajustadas para refletir o comportamento.
+- .gitignore agora ignora a pasta payloads, evitando sujar o repositório com artefatos dos fluxos manuais de anamnese.
 
 ### Documentation
-- README atualizado com as mÃ©tricas da bateria manual de 29/09, novo total de 248 testes automatizados (~18 s) e referÃªncia de cobertura preservada em 100%.
+- README atualizado com as métricas da bateria manual de 29/09, novo total de 248 testes automatizados (~18 s) e referência de cobertura preservada em 100%.
 
 ## [0.16.6] - 2025-09-26
 
@@ -50,8 +44,7 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 - Servico de armazenamento de anexos (SupabaseAnamnesisAttachmentStorageService) integrado aos casos de uso do modulo.
 - Seeds adicionais por especialidade (nutrition, physiotherapy, psychology) para templates de passos com indice uniq_step_template_scope.
 - Guard e caso de uso para ingestao de resultados de IA via webhook, com endpoint REST, DTOs e validacoes dedicadas.
-- Entidade e fluxo de feedback supervisionado (AnamnesisAITrainingFeedbackEntity, 
-ecordAITrainingFeedback).
+- Entidade e fluxo de feedback supervisionado (AnamnesisAITrainingFeedbackEntity, recordAITrainingFeedback).
 - Servico AnamnesisMetricsService e subscriber de eventos agregando metricas de steps, autosaves, IA e feedback humano.
 
 ### Changed
