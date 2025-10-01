@@ -136,3 +136,4 @@ npm run migration:run
 - [ ] Rodar migrations em todos os ambientes.
 - [ ] Validar renderização do plano/raciocínio/evidências no front.
 - [ ] Monitorar métricas (tokens, latência) e LOGs para custos.
+- Worker de referência disponível em scripts/anamnesis-ai-worker: expõe POST /jobs/anamnesis-ai-request e reenvia o resultado para /anamneses/:id/ai-result com as métricas capturadas.
