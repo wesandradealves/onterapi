@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 import { DomainEvent } from '../../../shared/events/domain-event.interface';
 
@@ -14,6 +15,12 @@ interface InternalStats {
   aiFailed: number;
   aiConfidenceSum: number;
   aiConfidenceCount: number;
+  aiTokensInputSum: number;
+  aiTokensOutputSum: number;
+  aiLatencySum: number;
+  aiLatencyCount: number;
+  aiLatencyMax: number;
+  aiCostSum: number;
   feedbackTotal: number;
   feedbackApprovals: number;
   feedbackModifications: number;
@@ -33,6 +40,11 @@ export interface AnamnesisMetricsSnapshot {
   aiCompleted: number;
   aiFailed: number;
   averageAIConfidence: number;
+  tokensInputTotal: number;
+  tokensOutputTotal: number;
+  averageAILatencyMs: number;
+  maxAILatencyMs: number;
+  totalAICost: number;
   feedback: {
     total: number;
     approvals: number;
@@ -56,6 +68,12 @@ const createEmptyStats = (): InternalStats => ({
   aiFailed: 0,
   aiConfidenceSum: 0,
   aiConfidenceCount: 0,
+  aiTokensInputSum: 0,
+  aiTokensOutputSum: 0,
+  aiLatencySum: 0,
+  aiLatencyCount: 0,
+  aiLatencyMax: 0,
+  aiCostSum: 0,
   feedbackTotal: 0,
   feedbackApprovals: 0,
   feedbackModifications: 0,
@@ -70,6 +88,15 @@ export class AnamnesisMetricsService {
   private readonly logger = new Logger(AnamnesisMetricsService.name);
   private readonly globalStats: InternalStats = createEmptyStats();
   private readonly tenantStats = new Map<string, InternalStats>();
+  private readonly costInputPerToken: number;
+  private readonly costOutputPerToken: number;
+  private readonly latencyAlertThresholdMs: number;
+
+  constructor(private readonly configService: ConfigService) {
+    this.costInputPerToken = this.parsePositiveNumber('ANAMNESIS_AI_COST_TOKEN_INPUT');
+    this.costOutputPerToken = this.parsePositiveNumber('ANAMNESIS_AI_COST_TOKEN_OUTPUT');
+    this.latencyAlertThresholdMs = this.parsePositiveNumber('ANAMNESIS_AI_LATENCY_ALERT_MS');
+  }
 
   recordStepSaved(event: DomainEvent): void {
     const payload = event.payload as Record<string, unknown>;
@@ -125,16 +152,43 @@ export class AnamnesisMetricsService {
     const tenantId = this.resolveTenantId(event);
     const status = String(payload['status'] ?? '');
     const confidence = this.extractNumber(payload['confidence']);
+    const tokensInput = this.extractNumber(payload['tokensInput']);
+    const tokensOutput = this.extractNumber(payload['tokensOutput']);
+    const latencyMs = this.extractNumber(payload['latencyMs']);
 
     this.applyToStats(tenantId, (stats) => {
       if (status === 'completed') {
         stats.aiCompleted += 1;
-      } else {
+      } else if (status === 'failed') {
         stats.aiFailed += 1;
       }
       if (typeof confidence === 'number') {
         stats.aiConfidenceSum += confidence;
         stats.aiConfidenceCount += 1;
+      }
+      if (typeof tokensInput === 'number') {
+        stats.aiTokensInputSum += tokensInput;
+      }
+      if (typeof tokensOutput === 'number') {
+        stats.aiTokensOutputSum += tokensOutput;
+      }
+      if (typeof latencyMs === 'number') {
+        stats.aiLatencySum += latencyMs;
+        stats.aiLatencyCount += 1;
+        if (latencyMs > stats.aiLatencyMax) {
+          stats.aiLatencyMax = latencyMs;
+        }
+        if (this.latencyAlertThresholdMs > 0 && latencyMs > this.latencyAlertThresholdMs) {
+          this.logger.warn('AI latency threshold exceeded', {
+            tenantId,
+            latencyMs,
+            thresholdMs: this.latencyAlertThresholdMs,
+          });
+        }
+      }
+      const cost = this.calculateCost(tokensInput, tokensOutput);
+      if (typeof cost === 'number') {
+        stats.aiCostSum += cost;
       }
       stats.lastUpdatedAt = new Date();
     });
@@ -143,6 +197,9 @@ export class AnamnesisMetricsService {
       tenantId,
       status,
       confidence,
+      tokensInput,
+      tokensOutput,
+      latencyMs,
     });
   }
 
@@ -198,6 +255,11 @@ export class AnamnesisMetricsService {
       aiCompleted: stats.aiCompleted,
       aiFailed: stats.aiFailed,
       averageAIConfidence: this.calculateAverage(stats.aiConfidenceSum, stats.aiConfidenceCount),
+      tokensInputTotal: stats.aiTokensInputSum,
+      tokensOutputTotal: stats.aiTokensOutputSum,
+      averageAILatencyMs: this.calculateAverage(stats.aiLatencySum, stats.aiLatencyCount),
+      maxAILatencyMs: stats.aiLatencyMax,
+      totalAICost: Number(stats.aiCostSum.toFixed(6)),
       feedback: {
         total: stats.feedbackTotal,
         approvals: stats.feedbackApprovals,
@@ -235,6 +297,19 @@ export class AnamnesisMetricsService {
     return count > 0 ? Number((sum / count).toFixed(2)) : 0;
   }
 
+  private calculateCost(tokensInput?: number, tokensOutput?: number): number | undefined {
+    if (tokensInput === undefined && tokensOutput === undefined) {
+      return undefined;
+    }
+    const inputCost = tokensInput ? tokensInput * this.costInputPerToken : 0;
+    const outputCost = tokensOutput ? tokensOutput * this.costOutputPerToken : 0;
+    const total = inputCost + outputCost;
+    if (total <= 0) {
+      return undefined;
+    }
+    return total;
+  }
+
   private resetStats(stats: InternalStats): void {
     const fresh = createEmptyStats();
     Object.assign(stats, fresh);
@@ -267,5 +342,17 @@ export class AnamnesisMetricsService {
       }
     }
     return undefined;
+  }
+
+  private parsePositiveNumber(envKey: string): number {
+    const raw = this.configService.get<string | number | undefined>(envKey);
+    if (raw === undefined || raw === null || raw === '') {
+      return 0;
+    }
+    const value = typeof raw === 'number' ? raw : Number(raw);
+    if (!Number.isFinite(value) || value <= 0) {
+      return 0;
+    }
+    return value;
   }
 }

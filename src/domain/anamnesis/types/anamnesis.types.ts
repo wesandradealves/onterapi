@@ -337,6 +337,8 @@ export interface TherapeuticPlanRiskFactor {
   severity?: 'low' | 'medium' | 'high';
 }
 
+export type TherapeuticPlanStatus = 'generated' | 'accepted' | 'rejected' | 'superseded';
+
 export interface TherapeuticPlanData {
   id: string;
   anamnesisId: string;
@@ -346,17 +348,97 @@ export interface TherapeuticPlanData {
   therapeuticPlan?: Record<string, unknown>;
   riskFactors?: TherapeuticPlanRiskFactor[];
   recommendations?: TherapeuticPlanRecommendation[];
+  planText?: string | null;
+  reasoningText?: string | null;
+  evidenceMap?: Array<Record<string, unknown>> | null;
   confidence?: number;
   reviewRequired?: boolean;
+  status?: TherapeuticPlanStatus;
   termsAccepted: boolean;
   approvalStatus: 'pending' | 'approved' | 'modified' | 'rejected';
   liked?: boolean;
   feedbackComment?: string;
   feedbackGivenBy?: string;
   feedbackGivenAt?: Date;
+  acceptedAt?: Date | null;
+  acceptedBy?: string | null;
+  termsVersion?: string | null;
+  termsTextSnapshot?: string | null;
   generatedAt: Date;
   createdAt: Date;
   updatedAt: Date;
+  acceptances?: TherapeuticPlanAcceptance[];
+}
+
+export interface TherapeuticPlanAcceptance {
+  id: string;
+  tenantId: string;
+  therapeuticPlanId: string;
+  professionalId: string;
+  accepted: boolean;
+  termsVersion: string;
+  termsTextSnapshot: string;
+  acceptedAt: Date;
+  acceptedIp?: string | null;
+  acceptedUserAgent?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface TherapeuticPlanAccessLog {
+  id: string;
+  tenantId: string;
+  anamnesisId: string;
+  planId: string;
+  professionalId: string;
+  viewerRole: string;
+  viewedAt: Date;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  createdAt: Date;
+}
+
+export interface CreateTherapeuticPlanAccessLogInput {
+  tenantId: string;
+  anamnesisId: string;
+  planId: string;
+  professionalId: string;
+  viewerRole: string;
+  viewedAt: Date;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+}
+
+export interface PatientAnamnesisRollup {
+  id: string;
+  tenantId: string;
+  patientId: string;
+  summaryText: string;
+  summaryVersion: number;
+  lastAnamnesisId?: string | null;
+  updatedBy?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateTherapeuticPlanAcceptanceInput {
+  tenantId: string;
+  therapeuticPlanId: string;
+  professionalId: string;
+  acceptedAt: Date;
+  termsVersion: string;
+  termsTextSnapshot: string;
+  acceptedIp?: string | null;
+  acceptedUserAgent?: string | null;
+}
+
+export interface UpsertPatientAnamnesisRollupInput {
+  tenantId: string;
+  patientId: string;
+  summaryText: string;
+  summaryVersion: number;
+  lastAnamnesisId?: string | null;
+  updatedBy?: string | null;
 }
 
 export interface AnamnesisAttachment {
@@ -400,7 +482,6 @@ export interface AnamnesisAIRequestProfessionalProfile {
   role: string;
   preferences?: Record<string, unknown>;
 }
-
 export interface AnamnesisAIRequestPayload {
   tenantId: string;
   anamnesisId: string;
@@ -421,7 +502,45 @@ export interface AnamnesisAIRequestPayload {
   }>;
   patientProfile?: AnamnesisAIRequestPatientProfile;
   professionalProfile?: AnamnesisAIRequestProfessionalProfile;
+  patientRollup?: {
+    summaryText: string;
+    summaryVersion: number;
+    lastAnamnesisId?: string | null;
+    updatedAt: Date;
+  };
   metadata?: Record<string, unknown>;
+}
+
+export interface AnamnesisAIRequestedEventPayload {
+  anamnesisId: string;
+  tenantId: string;
+  analysisId: string;
+  consultationId: string;
+  patientId: string;
+  professionalId: string;
+  payload: AnamnesisAIRequestPayload;
+  metadata?: Record<string, unknown>;
+}
+
+export interface AnamnesisCompactSummary {
+  id: string;
+  tenantId: string;
+  consultationId: string;
+  patientId: string;
+  professionalId: string;
+  status: AnamnesisStatus;
+  submittedAt?: Date;
+  completionRate: number;
+  steps: Array<{
+    key: AnamnesisStepKey;
+    completed: boolean;
+    payload: Record<string, unknown>;
+  }>;
+  attachments?: Array<{
+    id: string;
+    fileName: string;
+    stepNumber?: number;
+  }>;
 }
 
 export interface AnamnesisStepTemplate {
@@ -450,7 +569,16 @@ export interface AnamnesisAIAnalysis {
   summary?: string;
   riskFactors?: TherapeuticPlanRiskFactor[];
   recommendations?: TherapeuticPlanRecommendation[];
+  planText?: string | null;
+  reasoningText?: string | null;
+  evidenceMap?: Array<Record<string, unknown>> | null;
   confidence?: number;
+  model?: string;
+  promptVersion?: string;
+  tokensInput?: number;
+  tokensOutput?: number;
+  latencyMs?: number;
+  rawResponse?: Record<string, unknown> | null;
   generatedAt?: Date;
   respondedAt?: Date;
   errorMessage?: string;
@@ -542,8 +670,18 @@ export interface SaveTherapeuticPlanInput {
   therapeuticPlan?: Record<string, unknown>;
   riskFactors?: TherapeuticPlanRiskFactor[];
   recommendations?: TherapeuticPlanRecommendation[];
+  planText?: string | null;
+  reasoningText?: string | null;
+  evidenceMap?: Array<Record<string, unknown>> | null;
   confidence?: number;
   reviewRequired?: boolean;
+  status?: TherapeuticPlanStatus;
+  acceptedAt?: Date;
+  acceptedBy?: string;
+  termsVersion?: string;
+  termsTextSnapshot?: string;
+  acceptanceIp?: string | null;
+  acceptanceUserAgent?: string | null;
   termsAccepted: boolean;
   generatedAt: Date;
 }
@@ -619,8 +757,17 @@ export interface CompleteAnamnesisAIAnalysisInput {
   summary?: string;
   riskFactors?: TherapeuticPlanRiskFactor[];
   recommendations?: TherapeuticPlanRecommendation[];
+  planText?: string | null;
+  reasoningText?: string | null;
+  evidenceMap?: Array<Record<string, unknown>> | null;
   confidence?: number;
   payload?: Record<string, unknown>;
+  model?: string;
+  promptVersion?: string;
+  tokensInput?: number;
+  tokensOutput?: number;
+  latencyMs?: number;
+  rawResponse?: Record<string, unknown> | null;
   respondedAt: Date;
   status?: Extract<AnamnesisAIAnalysisStatus, 'completed' | 'failed'>;
   errorMessage?: string;
@@ -635,9 +782,18 @@ export interface ReceiveAnamnesisAIResultInput {
   summary?: string;
   riskFactors?: TherapeuticPlanRiskFactor[];
   recommendations?: TherapeuticPlanRecommendation[];
+  planText?: string | null;
+  reasoningText?: string | null;
+  evidenceMap?: Array<Record<string, unknown>> | null;
   confidence?: number;
   therapeuticPlan?: Record<string, unknown>;
   payload?: Record<string, unknown>;
+  model?: string;
+  promptVersion?: string;
+  tokensInput?: number;
+  tokensOutput?: number;
+  latencyMs?: number;
+  rawResponse?: Record<string, unknown> | null;
   respondedAt: Date;
   errorMessage?: string;
 }

@@ -1,9 +1,10 @@
-import { forwardRef, Module, Provider } from '@nestjs/common';
+﻿import { forwardRef, Module, Provider } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuthModule } from '../auth/auth.module';
 import { PatientsModule } from '../patients/patients.module';
+import { LegalModule } from '../legal/legal.module';
 import { AnamnesisController } from './api/controllers/anamnesis.controller';
 import { AnamnesisEntity } from '../../infrastructure/anamnesis/entities/anamnesis.entity';
 import { AnamnesisStepEntity } from '../../infrastructure/anamnesis/entities/anamnesis-step.entity';
@@ -12,6 +13,10 @@ import { AnamnesisAttachmentEntity } from '../../infrastructure/anamnesis/entiti
 import { AnamnesisStepTemplateEntity } from '../../infrastructure/anamnesis/entities/anamnesis-step-template.entity';
 import { AnamnesisAIAnalysisEntity } from '../../infrastructure/anamnesis/entities/anamnesis-ai-analysis.entity';
 import { AnamnesisAITrainingFeedbackEntity } from '../../infrastructure/anamnesis/entities/anamnesis-ai-feedback.entity';
+import { TherapeuticPlanAcceptanceEntity } from '../../infrastructure/anamnesis/entities/therapeutic-plan-acceptance.entity';
+import { PatientAnamnesisRollupEntity } from '../../infrastructure/anamnesis/entities/patient-anamnesis-rollup.entity';
+import { TherapeuticPlanAccessLogEntity } from '../../infrastructure/anamnesis/entities/therapeutic-plan-access-log.entity';
+import { LegalTermEntity } from '../../infrastructure/legal/entities/legal-term.entity';
 import { AnamnesisRepository } from '../../infrastructure/anamnesis/repositories/anamnesis.repository';
 import { SupabaseService } from '../../infrastructure/auth/services/supabase.service';
 import { IAnamnesisRepositoryToken } from '../../domain/anamnesis/interfaces/repositories/anamnesis.repository.interface';
@@ -48,6 +53,9 @@ import { MessageBus } from '../../shared/messaging/message-bus';
 import { AnamnesisAIWebhookGuard } from './guards/anamnesis-ai-webhook.guard';
 import { SupabaseAnamnesisAttachmentStorageService } from '../../infrastructure/anamnesis/services/supabase-anamnesis-attachment-storage.service';
 import { AnamnesisMetricsService } from './services/anamnesis-metrics.service';
+import { PatientAnamnesisRollupService } from './services/patient-anamnesis-rollup.service';
+import { AnamnesisAIWorkerService } from './services/anamnesis-ai-worker.service';
+import { LocalAIPlanGeneratorService } from './services/local-ai-plan-generator.service';
 import { AnamnesisEventsSubscriber } from './subscribers/anamnesis-events.subscriber';
 
 const repositoryProviders: Provider[] = [
@@ -135,9 +143,14 @@ const storageProviders: Provider[] = [
       AnamnesisStepTemplateEntity,
       AnamnesisAIAnalysisEntity,
       AnamnesisAITrainingFeedbackEntity,
+      LegalTermEntity,
+      TherapeuticPlanAcceptanceEntity,
+      PatientAnamnesisRollupEntity,
+      TherapeuticPlanAccessLogEntity,
     ]),
     forwardRef(() => AuthModule),
     forwardRef(() => PatientsModule),
+    LegalModule,
   ],
   controllers: [AnamnesisController],
   providers: [
@@ -147,6 +160,10 @@ const storageProviders: Provider[] = [
     MessageBus,
     AnamnesisAIWebhookGuard,
     AnamnesisMetricsService,
+
+    PatientAnamnesisRollupService,
+    LocalAIPlanGeneratorService,
+    AnamnesisAIWorkerService,
     AnamnesisEventsSubscriber,
   ],
   exports: [

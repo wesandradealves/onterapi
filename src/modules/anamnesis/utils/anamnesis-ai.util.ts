@@ -3,6 +3,7 @@ import {
   AnamnesisAIRequestPayload,
   AnamnesisStepKey,
   LifestyleStepData,
+  PatientAnamnesisRollup,
   PhysicalExamStepData,
 } from '../../../domain/anamnesis/types/anamnesis.types';
 import { Patient } from '../../../domain/patients/types/patient.types';
@@ -19,6 +20,7 @@ interface BuildAIRequestPayloadParams {
   anamnesis: Anamnesis;
   patient?: Patient | null;
   professional?: ProfessionalSnapshot | null;
+  patientRollup?: PatientAnamnesisRollup | null;
   metadata?: Record<string, unknown>;
 }
 
@@ -229,6 +231,14 @@ export const buildAnamnesisAIRequestPayload = (
           email: professional.email,
           role: professional.role ?? 'professional',
           preferences: professional.metadata ?? undefined,
+        }
+      : undefined,
+    patientRollup: params.patientRollup
+      ? {
+          summaryText: params.patientRollup.summaryText,
+          summaryVersion: params.patientRollup.summaryVersion,
+          lastAnamnesisId: params.patientRollup.lastAnamnesisId ?? undefined,
+          updatedAt: params.patientRollup.updatedAt,
         }
       : undefined,
     metadata: params.metadata ?? undefined,

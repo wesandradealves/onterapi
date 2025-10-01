@@ -1,41 +1,17 @@
 import { Result } from '../../../../shared/types/result.type';
 import {
+  SaveTherapeuticPlanInput,
   TherapeuticPlanData,
-  TherapeuticPlanRecommendation,
-  TherapeuticPlanRiskFactor,
 } from '../../../anamnesis/types/anamnesis.types';
 
+export type SaveTherapeuticPlanUseCaseParams = SaveTherapeuticPlanInput & {
+  requesterId: string;
+  requesterRole: string;
+};
+
 export interface ISaveTherapeuticPlanUseCase {
-  execute(params: {
-    tenantId: string;
-    anamnesisId: string;
-    clinicalReasoning?: string;
-    summary?: string;
-    therapeuticPlan?: Record<string, unknown>;
-    riskFactors?: TherapeuticPlanRiskFactor[];
-    recommendations?: TherapeuticPlanRecommendation[];
-    confidence?: number;
-    reviewRequired?: boolean;
-    termsAccepted: boolean;
-    generatedAt: Date;
-    requesterId: string;
-    requesterRole: string;
-  }): Promise<Result<TherapeuticPlanData>>;
-  executeOrThrow(params: {
-    tenantId: string;
-    anamnesisId: string;
-    clinicalReasoning?: string;
-    summary?: string;
-    therapeuticPlan?: Record<string, unknown>;
-    riskFactors?: TherapeuticPlanRiskFactor[];
-    recommendations?: TherapeuticPlanRecommendation[];
-    confidence?: number;
-    reviewRequired?: boolean;
-    termsAccepted: boolean;
-    generatedAt: Date;
-    requesterId: string;
-    requesterRole: string;
-  }): Promise<TherapeuticPlanData>;
+  execute(params: SaveTherapeuticPlanUseCaseParams): Promise<Result<TherapeuticPlanData>>;
+  executeOrThrow(params: SaveTherapeuticPlanUseCaseParams): Promise<TherapeuticPlanData>;
 }
 
 export const ISaveTherapeuticPlanUseCase = Symbol('ISaveTherapeuticPlanUseCase');

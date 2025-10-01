@@ -13,6 +13,9 @@ import {
 import { AnamnesisErrorFactory } from '../../../shared/factories/anamnesis-error.factory';
 import { MessageBus } from '../../../shared/messaging/message-bus';
 import { DomainEvents } from '../../../shared/events/domain-events';
+import { LegalTermsService } from '../../legal/legal-terms.service';
+
+const THERAPEUTIC_PLAN_TERMS_CONTEXT = 'therapeutic_plan';
 
 @Injectable()
 export class ReceiveAnamnesisAIResultUseCase
@@ -25,6 +28,7 @@ export class ReceiveAnamnesisAIResultUseCase
     @Inject(IAnamnesisRepositoryToken)
     private readonly anamnesisRepository: IAnamnesisRepository,
     private readonly messageBus: MessageBus,
+    private readonly legalTermsService: LegalTermsService,
   ) {
     super();
   }
@@ -49,8 +53,17 @@ export class ReceiveAnamnesisAIResultUseCase
         summary: params.summary,
         riskFactors: params.riskFactors,
         recommendations: params.recommendations,
+        planText: params.planText,
+        reasoningText: params.reasoningText,
+        evidenceMap: params.evidenceMap,
         confidence: params.confidence,
         payload: params.payload,
+        model: params.model,
+        promptVersion: params.promptVersion,
+        tokensInput: params.tokensInput,
+        tokensOutput: params.tokensOutput,
+        latencyMs: params.latencyMs,
+        rawResponse: params.rawResponse,
         respondedAt: params.respondedAt,
         status: params.status,
         errorMessage: params.errorMessage,
@@ -61,6 +74,11 @@ export class ReceiveAnamnesisAIResultUseCase
     }
 
     if (params.status === 'completed') {
+      const activeTerms = await this.legalTermsService.getActiveTerm(
+        THERAPEUTIC_PLAN_TERMS_CONTEXT,
+        params.tenantId,
+      );
+
       const plan = await this.anamnesisRepository.saveTherapeuticPlan({
         anamnesisId: params.anamnesisId,
         tenantId: params.tenantId,
@@ -70,8 +88,14 @@ export class ReceiveAnamnesisAIResultUseCase
         therapeuticPlan: params.therapeuticPlan,
         riskFactors: params.riskFactors,
         recommendations: params.recommendations,
+        planText: params.planText ?? null,
+        reasoningText: params.reasoningText ?? null,
+        evidenceMap: params.evidenceMap ?? null,
         confidence: params.confidence,
         reviewRequired: true,
+        status: 'generated',
+        termsVersion: activeTerms?.version,
+        termsTextSnapshot: activeTerms?.content,
         termsAccepted: false,
         generatedAt: params.respondedAt,
       });
@@ -81,10 +105,12 @@ export class ReceiveAnamnesisAIResultUseCase
           params.anamnesisId,
           {
             tenantId: params.tenantId,
+            planId: plan.id,
             generatedAt: plan.generatedAt,
             confidence: plan.confidence,
             reviewRequired: plan.reviewRequired,
-            planId: plan.id,
+            status: plan.status,
+            termsVersion: plan.termsVersion,
           },
           { userId: 'ai-system', tenantId: params.tenantId },
         ),
@@ -104,6 +130,11 @@ export class ReceiveAnamnesisAIResultUseCase
           summary: analysis.summary,
           errorMessage: analysis.errorMessage,
           payload: analysis.payload,
+          model: analysis.model,
+          promptVersion: analysis.promptVersion,
+          tokensInput: analysis.tokensInput,
+          tokensOutput: analysis.tokensOutput,
+          latencyMs: analysis.latencyMs,
         },
         { tenantId: params.tenantId, userId: 'ai-system' },
       ),

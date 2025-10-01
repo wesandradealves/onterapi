@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 
 import { DomainEvent, DomainEventMetadata } from './domain-event.interface';
+import { AnamnesisAIRequestedEventPayload } from '../../domain/anamnesis/types/anamnesis.types';
 
 export class DomainEvents {
   static USER_CREATED = 'user.created';
@@ -325,16 +326,9 @@ export class DomainEvents {
 
   static anamnesisAIRequested(
     anamnesisId: string,
-    requestData: {
-      tenantId: string;
-      analysisId: string;
-      consultationId: string;
-      patientId: string;
-      professionalId: string;
-      payload: unknown;
-    },
+    requestData: Omit<AnamnesisAIRequestedEventPayload, 'anamnesisId'>,
     metadata?: DomainEventMetadata,
-  ): DomainEvent {
+  ): DomainEvent<AnamnesisAIRequestedEventPayload> {
     return this.createEvent(
       this.ANAMNESIS_AI_REQUESTED,
       anamnesisId,
@@ -353,8 +347,17 @@ export class DomainEvents {
       confidence?: number;
       clinicalReasoning?: string;
       summary?: string;
+      planText?: string | null;
+      reasoningText?: string | null;
+      evidenceMap?: Array<Record<string, unknown>> | null;
+      model?: string;
+      promptVersion?: string;
+      tokensInput?: number;
+      tokensOutput?: number;
+      latencyMs?: number;
       errorMessage?: string;
       payload?: unknown;
+      rawResponse?: unknown;
     },
     metadata?: DomainEventMetadata,
   ): DomainEvent {

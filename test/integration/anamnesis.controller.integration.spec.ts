@@ -1,3 +1,5 @@
+import { createHmac } from 'node:crypto';
+
 import { ExecutionContext, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
@@ -38,6 +40,18 @@ import { Result } from '@shared/types/result.type';
 interface UseCaseMock<TInput, TOutput> {
   execute: jest.Mock<Promise<Result<TOutput>>, [TInput]>;
   executeOrThrow: jest.Mock<Promise<TOutput>, [TInput]>;
+}
+
+const WEBHOOK_SECRET = 'test-secret';
+
+function buildSignedHeaders(body: unknown) {
+  const timestamp = `${Date.now()}`;
+  const payload = `${timestamp}.${JSON.stringify(body ?? {})}`;
+  const digest = createHmac('sha256', WEBHOOK_SECRET).update(payload).digest('hex');
+  return {
+    timestamp,
+    signature: `sha256=${digest}`,
+  };
 }
 
 describe('AnamnesisController (integration)', () => {
@@ -119,22 +133,55 @@ describe('AnamnesisController (integration)', () => {
 
   const createPlan = (overrides: Partial<TherapeuticPlanData> = {}): TherapeuticPlanData => ({
     id: overrides.id ?? FIXTURE_IDS.plan,
+
     anamnesisId: overrides.anamnesisId ?? FIXTURE_IDS.anamnesis,
+
+    analysisId: overrides.analysisId ?? 'analysis-1',
+
     clinicalReasoning: overrides.clinicalReasoning ?? 'Raciocinio',
+
     summary: overrides.summary ?? 'Resumo',
+
     therapeuticPlan: overrides.therapeuticPlan ?? {},
+
     riskFactors: overrides.riskFactors ?? [],
+
     recommendations: overrides.recommendations ?? [],
+
+    planText: overrides.planText,
+
+    reasoningText: overrides.reasoningText,
+
+    evidenceMap: overrides.evidenceMap,
+
     confidence: overrides.confidence ?? 0.9,
+
+    status: overrides.status ?? 'generated',
+
     reviewRequired: overrides.reviewRequired ?? false,
+
     termsAccepted: overrides.termsAccepted ?? true,
+
     approvalStatus: overrides.approvalStatus ?? 'pending',
+
     liked: overrides.liked,
+
     feedbackComment: overrides.feedbackComment,
+
     feedbackGivenBy: overrides.feedbackGivenBy,
+
     feedbackGivenAt: overrides.feedbackGivenAt,
+
+    acceptedAt: overrides.acceptedAt,
+
+    acceptedBy: overrides.acceptedBy,
+
+    termsVersion: overrides.termsVersion,
+
     generatedAt: overrides.generatedAt ?? new Date('2025-09-26T01:00:00Z'),
+
     createdAt: overrides.createdAt ?? new Date('2025-09-26T01:00:00Z'),
+
     updatedAt: overrides.updatedAt ?? new Date('2025-09-26T01:00:00Z'),
   });
 
@@ -203,7 +250,7 @@ describe('AnamnesisController (integration)', () => {
         { provide: IRemoveAnamnesisAttachmentUseCase, useValue: useCases.removeAttachment },
         { provide: IReceiveAnamnesisAIResultUseCase, useValue: useCases.receiveAiResult },
         { provide: IListAnamnesisStepTemplatesUseCase, useValue: useCases.listTemplates },
-        { provide: ConfigService, useValue: { get: jest.fn(() => 'test-secret') } },
+        { provide: ConfigService, useValue: { get: jest.fn(() => WEBHOOK_SECRET) } },
         { provide: AnamnesisAIWebhookGuard, useValue: { canActivate: () => true } },
       ],
     })
@@ -427,16 +474,20 @@ describe('AnamnesisController (integration)', () => {
       data: createAIAnalysis({ status: 'completed' }),
     });
 
+    const body = {
+      analysisId: '11111111-2222-3333-4444-555555555555',
+      status: 'completed',
+      respondedAt: '2025-09-27T10:00:00.000Z',
+      clinicalReasoning: 'Raciocinio IA',
+    };
+    const { timestamp, signature } = buildSignedHeaders(body);
+
     await request(app.getHttpServer())
       .post(`/anamneses/${FIXTURE_IDS.anamnesis}/ai-result`)
       .set('x-tenant-id', FIXTURE_IDS.tenant)
-      .set('x-ai-secret', 'dummy')
-      .send({
-        analysisId: '11111111-2222-3333-4444-555555555555',
-        status: 'completed',
-        respondedAt: '2025-09-27T10:00:00.000Z',
-        clinicalReasoning: 'Raciocinio IA',
-      })
+      .set('x-anamnesis-ai-timestamp', timestamp)
+      .set('x-anamnesis-ai-signature', signature)
+      .send(body)
       .expect(202);
 
     expect(useCases.receiveAiResult.execute).toHaveBeenCalledWith(
@@ -457,9 +508,14 @@ describe('AnamnesisController (integration)', () => {
       therapeuticPlan: {},
       riskFactors: [{ id: 'risk-1', description: 'Fator', severity: 'high' }],
       recommendations: [{ id: 'rec-1', description: 'Recomendacao', priority: 'medium' }],
+      planText: 'Plano IA',
+      reasoningText: 'Raciocínio IA',
+      evidenceMap: [{ recommendation: 'rec-1', evidence: ['dados'], confidence: 0.8 }],
       confidence: 0.8,
       reviewRequired: false,
       termsAccepted: true,
+      termsVersion: 'v1',
+      termsTextSnapshot: 'Termos de teste',
       generatedAt: '2025-09-26T01:00:00.000Z',
     };
 
@@ -470,7 +526,15 @@ describe('AnamnesisController (integration)', () => {
       .expect(201);
 
     expect(useCases.savePlan.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ confidence: 0.8, termsAccepted: true }),
+      expect.objectContaining({
+        confidence: 0.8,
+        termsAccepted: true,
+        termsVersion: 'v1',
+        termsTextSnapshot: 'Termos de teste',
+        planText: 'Plano IA',
+        reasoningText: 'Raciocínio IA',
+        evidenceMap: expect.any(Array),
+      }),
     );
     expect(response.body.id).toBe(FIXTURE_IDS.plan);
     expect(response.body.termsAccepted).toBe(true);

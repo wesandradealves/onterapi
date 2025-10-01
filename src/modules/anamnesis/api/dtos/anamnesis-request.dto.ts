@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+﻿import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class StartAnamnesisRequestDto {
   @ApiProperty({
@@ -100,6 +100,12 @@ export class TherapeuticPlanRecommendationInputDto {
 }
 
 export class SaveTherapeuticPlanRequestDto {
+  @ApiPropertyOptional({
+    description: 'Identificador da analise vinculada ao plano',
+    example: 'a1b2c3d4-5678-90ab-cdef-1234567890ab',
+  })
+  analysisId?: string;
+
   @ApiPropertyOptional({ description: 'Raciocinio clinico gerado pelo modelo' })
   clinicalReasoning?: string;
 
@@ -121,11 +127,44 @@ export class SaveTherapeuticPlanRequestDto {
   })
   recommendations?: TherapeuticPlanRecommendationInputDto[];
 
+  @ApiPropertyOptional({ description: 'Plano terapeutico em texto livre' })
+  planText?: string;
+
+  @ApiPropertyOptional({ description: 'Texto integral do raciocinio clinico' })
+  reasoningText?: string;
+
+  @ApiPropertyOptional({ description: 'Mapa de evidencias estruturado', type: () => [Object] })
+  evidenceMap?: Record<string, unknown>[];
+
+  @ApiPropertyOptional({ description: 'Modelo de IA utilizado', example: 'gpt-4.1' })
+  model?: string;
+
+  @ApiPropertyOptional({ description: 'Versao do prompt aplicado' })
+  promptVersion?: string;
+
+  @ApiPropertyOptional({ description: 'Tokens de entrada consumidos', example: 820 })
+  tokensInput?: number;
+
+  @ApiPropertyOptional({ description: 'Tokens de saida gerados', example: 1240 })
+  tokensOutput?: number;
+
+  @ApiPropertyOptional({ description: 'Latencia em milissegundos', example: 1340 })
+  latencyMs?: number;
+
+  @ApiPropertyOptional({ description: 'Carga util bruta retornada pela IA', type: () => Object })
+  rawResponse?: Record<string, unknown>;
+
   @ApiPropertyOptional({ description: 'Grau de confianca do modelo', example: 0.85 })
   confidence?: number;
 
   @ApiPropertyOptional({ description: 'Indica se revisao humana e necessaria', example: false })
   reviewRequired?: boolean;
+
+  @ApiProperty({ description: 'Versao do termo de responsabilidade aceito', example: '2025-09' })
+  termsVersion!: string;
+
+  @ApiProperty({ description: 'Snapshot do texto dos termos aceitos' })
+  termsTextSnapshot!: string;
 
   @ApiProperty({
     description:

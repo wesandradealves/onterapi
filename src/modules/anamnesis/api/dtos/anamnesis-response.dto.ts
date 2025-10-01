@@ -3,6 +3,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export class AnamnesisStepDto {
   @ApiProperty({
     description: 'Identificador do step',
+
     example: 'd1c2b3a4-5678-90ab-cdef-1234567890ab',
   })
   id!: string;
@@ -30,13 +31,16 @@ export class AnamnesisStepDto {
 
   @ApiPropertyOptional({
     description: 'Data de cancelamento (ISO)',
+
     example: '2025-09-26T06:00:00Z',
+
     nullable: true,
   })
   deletedAt?: string | null;
 
   @ApiPropertyOptional({
     description: 'Responsavel pelo cancelamento',
+
     example: '33333333-3333-3333-3333-333333333333',
   })
   deletedBy?: string;
@@ -51,6 +55,7 @@ export class AnamnesisStepDto {
 export class AnamnesisAttachmentDto {
   @ApiProperty({
     description: 'Identificador do anexo',
+
     example: 'b2a4c6d8-1234-5678-9101-abcdefabcdef',
   })
   id!: string;
@@ -69,12 +74,14 @@ export class AnamnesisAttachmentDto {
 
   @ApiProperty({
     description: 'Caminho no storage',
+
     example: 'anamnesis/2025/09/exame-hemograma.pdf',
   })
   storagePath!: string;
 
   @ApiProperty({
     description: 'Identificador de quem fez upload',
+
     example: '8799aa12-3456-7890-bcde-f1234567890a',
   })
   uploadedBy!: string;
@@ -110,6 +117,7 @@ export class AnamnesisStepTemplateDto {
 
   @ApiPropertyOptional({
     description: 'Tenant proprietario do template',
+
     example: '11111111-1111-1111-1111-111111111111',
   })
   tenantId?: string | null;
@@ -127,6 +135,7 @@ export class TherapeuticPlanRecommendationDto {
 
   @ApiProperty({
     description: 'Descricao da recomendacao',
+
     example: 'Praticar exercicios leves 3x por semana',
   })
   description!: string;
@@ -141,6 +150,7 @@ export class TherapeuticPlanRiskFactorDto {
 
   @ApiProperty({
     description: 'Descricao do fator de risco',
+
     example: 'Historico familiar de hipertensao',
   })
   description!: string;
@@ -155,12 +165,14 @@ export class TherapeuticPlanDto {
 
   @ApiProperty({
     description: 'Identificador da anamnese',
+
     example: 'd1c2b3a4-5678-90ab-cdef-1234567890ab',
   })
   anamnesisId!: string;
 
   @ApiPropertyOptional({
     description: 'Identificador da analise IA vinculada',
+
     example: 'analysis-123456',
   })
   analysisId?: string;
@@ -176,24 +188,60 @@ export class TherapeuticPlanDto {
 
   @ApiPropertyOptional({
     description: 'Fatores de risco identificados',
+
     type: () => [TherapeuticPlanRiskFactorDto],
   })
   riskFactors?: TherapeuticPlanRiskFactorDto[];
 
   @ApiPropertyOptional({
     description: 'Recomendacoes sugeridas',
+
     type: () => [TherapeuticPlanRecommendationDto],
   })
   recommendations?: TherapeuticPlanRecommendationDto[];
 
+  @ApiPropertyOptional({ description: 'Plano terapeutico em texto livre' })
+  planText?: string;
+
+  @ApiPropertyOptional({ description: 'Raciocinio clinico textual' })
+  reasoningText?: string;
+
+  @ApiPropertyOptional({
+    description: 'Mapa de evidencias associado ao plano',
+
+    type: () => [Object],
+  })
+  evidenceMap?: Record<string, unknown>[];
+
   @ApiPropertyOptional({ description: 'Nivel de confianca do modelo', example: 0.85 })
   confidence?: number;
+
+  @ApiProperty({ description: 'Status atual do plano', example: 'generated' })
+  status!: 'generated' | 'accepted' | 'rejected' | 'superseded';
 
   @ApiProperty({ description: 'Indica se revisao humana e necessaria', example: true })
   reviewRequired!: boolean;
 
   @ApiProperty({ description: 'Termo de responsabilidade aceito', example: true })
   termsAccepted!: boolean;
+
+  @ApiPropertyOptional({ description: 'Data de aceite (ISO)', example: '2025-09-26T05:45:00Z' })
+  acceptedAt?: string;
+
+  @ApiPropertyOptional({
+    description: 'Identificador do profissional que aceitou',
+    example: '33333333-3333-3333-3333-333333333333',
+  })
+  acceptedBy?: string;
+
+  @ApiPropertyOptional({ description: 'Versao dos termos aceitos', example: 'v1.3-2025-09-20' })
+  termsVersion?: string;
+
+  @ApiPropertyOptional({
+    description: 'Historico de aceites',
+    type: () => [TherapeuticPlanAcceptanceDto],
+  })
+  acceptances?: TherapeuticPlanAcceptanceDto[];
 
   @ApiProperty({ description: 'Status de aprovacao', example: 'pending' })
   approvalStatus!: 'pending' | 'approved' | 'modified' | 'rejected';
@@ -206,6 +254,7 @@ export class TherapeuticPlanDto {
 
   @ApiPropertyOptional({
     description: 'Identificador de quem forneceu o feedback',
+
     example: '8799aa12-3456-7890-bcde-f1234567890a',
   })
   feedbackGivenBy?: string;
@@ -218,38 +267,70 @@ export class TherapeuticPlanDto {
 
   @ApiProperty({
     description: 'Data de criacao do registro (ISO)',
+
     example: '2025-09-26T04:40:00Z',
   })
   createdAt!: string;
 
   @ApiProperty({
     description: 'Data de atualizacao do registro (ISO)',
+
     example: '2025-09-26T04:40:00Z',
   })
   updatedAt!: string;
 }
 
+export class TherapeuticPlanAcceptanceDto {
+  @ApiProperty({ description: 'Identificador do aceite', example: 'acc-1' })
+  id!: string;
+
+  @ApiProperty({
+    description: 'Profissional que realizou o aceite',
+    example: '33333333-3333-3333-3333-333333333333',
+  })
+  professionalId!: string;
+
+  @ApiProperty({ description: 'Data do aceite (ISO)', example: '2025-09-26T05:45:00Z' })
+  acceptedAt!: string;
+
+  @ApiProperty({ description: 'Versao dos termos aceitos', example: 'v1.4' })
+  termsVersion!: string;
+
+  @ApiProperty({ description: 'Snapshot do texto dos termos aceito' })
+  termsTextSnapshot!: string;
+
+  @ApiPropertyOptional({ description: 'IP utilizado no aceite' })
+  acceptedIp?: string;
+
+  @ApiPropertyOptional({ description: 'User-Agent do aceite' })
+  acceptedUserAgent?: string;
+}
+
 export class AnamnesisDetailResponseDto {
   @ApiProperty({
     description: 'Identificador da anamnese',
+
     example: 'd1c2b3a4-5678-90ab-cdef-1234567890ab',
   })
   id!: string;
 
   @ApiProperty({
     description: 'Identificador da consulta relacionada',
+
     example: 'c1d2e3f4-5678-90ab-cdef-1234567890ab',
   })
   consultationId!: string;
 
   @ApiProperty({
     description: 'Identificador do paciente',
+
     example: 'p1d2e3f4-5678-90ab-cdef-1234567890ab',
   })
   patientId!: string;
 
   @ApiProperty({
     description: 'Identificador do profissional responsavel',
+
     example: '8799aa12-3456-7890-bcde-f1234567890a',
   })
   professionalId!: string;
@@ -274,6 +355,7 @@ export class AnamnesisDetailResponseDto {
 
   @ApiPropertyOptional({
     description: 'Data do ultimo auto-save (ISO)',
+
     example: '2025-09-26T04:20:00Z',
   })
   lastAutoSavedAt?: string;
@@ -292,13 +374,16 @@ export class AnamnesisDetailResponseDto {
 
   @ApiPropertyOptional({
     description: 'Data de cancelamento (ISO)',
+
     example: '2025-09-26T06:00:00Z',
+
     nullable: true,
   })
   deletedAt?: string | null;
 
   @ApiPropertyOptional({
     description: 'Responsavel pelo cancelamento',
+
     example: '33333333-3333-3333-3333-333333333333',
   })
   deletedBy?: string;
@@ -311,6 +396,7 @@ export class AnamnesisDetailResponseDto {
 
   @ApiPropertyOptional({
     description: 'Plano terapeutico mais recente',
+
     type: () => TherapeuticPlanDto,
   })
   latestPlan?: TherapeuticPlanDto | null;
@@ -322,24 +408,28 @@ export class AnamnesisDetailResponseDto {
 export class AnamnesisListItemDto {
   @ApiProperty({
     description: 'Identificador da anamnese',
+
     example: 'd1c2b3a4-5678-90ab-cdef-1234567890ab',
   })
   id!: string;
 
   @ApiProperty({
     description: 'Identificador da consulta',
+
     example: 'c1d2e3f4-5678-90ab-cdef-1234567890ab',
   })
   consultationId!: string;
 
   @ApiProperty({
     description: 'Identificador do paciente',
+
     example: 'p1d2e3f4-5678-90ab-cdef-1234567890ab',
   })
   patientId!: string;
 
   @ApiProperty({
     description: 'Identificador do profissional',
+
     example: '8799aa12-3456-7890-bcde-f1234567890a',
   })
   professionalId!: string;
@@ -356,6 +446,7 @@ export class AnamnesisListItemDto {
   @ApiProperty({ description: 'Data da ultima atualizacao (ISO)', example: '2025-09-26T05:10:00Z' })
   updatedAt!: string;
 }
+
 export class AnamnesisHistoryStepDto {
   @ApiProperty({ description: 'Numero do step', example: 1 })
   stepNumber!: number;
@@ -388,6 +479,7 @@ export class AnamnesisHistoryEntryDto {
 
   @ApiProperty({
     description: 'Identificador do profissional responsavel',
+
     example: 'professional-001',
   })
   professionalId!: string;
@@ -406,13 +498,16 @@ export class AnamnesisHistoryEntryDto {
 
   @ApiPropertyOptional({
     description: 'Data de cancelamento (ISO)',
+
     example: '2025-09-26T06:00:00Z',
+
     nullable: true,
   })
   deletedAt?: string | null;
 
   @ApiPropertyOptional({
     description: 'Responsavel pelo cancelamento',
+
     example: '33333333-3333-3333-3333-333333333333',
   })
   deletedBy?: string;
@@ -428,6 +523,7 @@ export class AnamnesisHistoryEntryDto {
 
   @ApiPropertyOptional({
     description: 'Plano terapeutico associado',
+
     type: () => TherapeuticPlanDto,
   })
   latestPlan?: TherapeuticPlanDto | null;
@@ -445,6 +541,7 @@ export class AnamnesisHistoryPrefillDto {
 
   @ApiPropertyOptional({
     description: 'Momento da ultima atualizacao do prefill',
+
     example: '2025-09-26T10:05:00Z',
   })
   updatedAt?: string;
@@ -459,6 +556,7 @@ export class AnamnesisHistoryResponseDto {
 
   @ApiProperty({
     description: 'Dados consolidados para pre-preenchimento',
+
     type: () => AnamnesisHistoryPrefillDto,
   })
   prefill!: AnamnesisHistoryPrefillDto;
