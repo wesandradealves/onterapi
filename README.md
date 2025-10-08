@@ -29,9 +29,9 @@ Plataforma SaaS multi-tenant para gestao de clinicas e terapeutas, com Supabase 
 - DRY/Clean Architecture com BaseUseCase, BaseGuard e MessageBus unificados
 
 ## Credenciais de Teste
-NÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o mantemos mais credenciais padrÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o em repositÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³rio. Gere usuÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡rios administrativos manualmente via `/users` e armazene os acessos em um cofre seguro.
+Não mantemos mais credenciais padrão em repositório. Gere usuários administrativos manualmente via `/users` e armazene os acessos em um cofre seguro.
 
-> Para fluxos locais, utilize os dados de ambiente em `./.env` e gere o 2FA pelo endpoint `/auth/two-factor/send` quando necessÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡rio.
+> Para fluxos locais, utilize os dados de ambiente em `./.env` e gere o 2FA pelo endpoint `/auth/two-factor/send` quando necessário.
 
 ## Fluxo de Autenticacao
 1. `POST /auth/sign-in` com email/senha. Super admin exige 2FA automaticamente.
@@ -46,6 +46,11 @@ NÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒ
 ### Logs e Auditoria
 - Todos os eventos (sign-in, 2FA enviado/validado, logout) sao publicados via `MessageBus`.
 - Guardas `JwtAuthGuard`, `RolesGuard` e `TenantGuard` foram revisados para usar o contexto completo do usuario.
+
+### Recuperacao e verificacao
+- `POST /auth/verification/resend` reenvia o email de verificacao para contas pendentes; exige email valido e respeita limites de tentativa.
+- `POST /auth/password/reset/request` gera token de redefinicao e aciona o email via Resend; protecao contra enumeration habilitada.
+- `POST /auth/password/reset/confirm` aplica a troca de senha com o token recebido, invalida refresh tokens anteriores e registra o evento de auditoria.
 
 ## Modulo de Pacientes
 - CRUD completo persistido na tabela `patients` do Supabase.
@@ -369,7 +374,21 @@ Use `AnamnesisMetricsService.getSnapshot([tenantId])` ou o endpoint `GET /anamne
 | `errorMessage` | string | nao | Motivo quando `status = failed`. |
 - Resposta: HTTP 202 sem body; dispara `DomainEvents.ANAMNESIS_AI_COMPLETED` e salva plano com status `generated`. Se `status = completed`, também emite `DomainEvents.ANAMNESIS_PLAN_GENERATED` (status `generated`).
 ### Persistencia e Storage
-- Migrations: `1738100000000-CreateAnamnesisTables`, `1738200000000-AddAnamnesisTemplatesAndAIResponses`, `1738300000000-AddAnamnesisFeedbackScoreboard`, `1738600000000-UpdateAnamnesisAIAndPlans`, `1738601000000-CreateTherapeuticPlanAcceptances`, `1738602000000-CreatePatientAnamnesisRollups`.
+- Migrations essenciais:
+  - `1738100000000-CreateAnamnesisTables`
+  - `1738200000000-AddAnamnesisTemplatesAndAIResponses`
+  - `1738300000000-AddAnamnesisFeedbackScoreboard`
+  - `1738400000000-AddSoftDeleteToAnamnesis`
+  - `1738501000000-AddTermsAcceptedToTherapeuticPlan`
+  - `1738600000000-UpdateAnamnesisAIAndPlans`
+  - `1738601000000-CreateTherapeuticPlanAcceptances`
+  - `1738602000000-CreatePatientAnamnesisRollups`
+  - `1738603000000-CreateLegalTerms`
+  - `1738604000000-CreateTherapeuticPlanAccessLogs`
+  - `1738605000000-SeedTherapeuticPlanTerms`
+  - `1738606000000-CreateAnamnesisMetrics`
+  - `1738607000000-CreateAnamnesisAIWebhookRequests`
+  - `1738608000000-UpdateLegalTermsGovernance`
 - Storage: `SupabaseAnamnesisAttachmentStorageService` salva anexos com checksum, `mimeType`, `size` e `storagePath` versionado.
 
 ### Testes
@@ -507,7 +526,7 @@ npm run migration:run -- -d src/infrastructure/database/data-source.ts
 | E2E | `npm run test:e2e` | Fluxos HTTP completos via supertest | Requer Supabase configurado; usa fixtures em `test/e2e`. |
 | Cobertura | `npm run test:cov` | Agrega suites unit e integracao com cobertura 100% | Mantem thresholds globais em 100% para statements/branches/functions/lines. |
 
-Resultados recentes: 202 testes executados; cobertura global 100% (`npm run test:cov`).
+Resultados recentes: `npm run test:cov` reportou 255 testes (unit + integracao) com cobertura global 100%. As suites dedicadas registraram 219 unit, 35 integracao e 27 e2e.
 
 ## Fluxo Completo de Teste via cURL
 > Observacoes:
@@ -671,7 +690,7 @@ Resultados recentes: 202 testes executados; cobertura global 100% (`npm run test
    curl.exe -s -X POST "$BASE_URL/anamneses/$anamnesisId/submit" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" -H "Content-Type: application/json" --data '{}' | Out-Null
 
    @{
-     clinicalReasoning = 'Quadro compatÃƒÂ­vel com lombalgia mecÃƒÂ¢nica.'
+     clinicalReasoning = 'Quadro compatível com lombalgia mecânica.'
      summary           = 'Plano com foco em dor, mobilidade e fortalecimento.'
      therapeuticPlan   = @{ goals = @('Reduzir dor', 'Fortalecer core') }
      confidence        = 0.9
@@ -692,14 +711,14 @@ Resultados recentes: 202 testes executados; cobertura global 100% (`npm run test
    curl.exe -s -X POST "$BASE_URL/anamneses/$anamnesisId/plan/feedback" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" -H "Content-Type: application/json" --data @payloads/anamnesis-feedback.json | Out-Null
    ```
 
-   Consultar detalhes e histÃƒÂ³rico:
+   Consultar detalhes e histórico:
    ```powershell
    curl.exe -s "$BASE_URL/anamneses/$anamnesisId?includeSteps=true&includeLatestPlan=true&includeAttachments=true" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" > payloads/anamnesis-detail.json
 
    curl.exe -s "$BASE_URL/anamneses/patient/$patientId/history" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" > payloads/anamnesis-history.json
    ```
 
-   > Para anexar novos arquivos, repita o `POST /attachments` com outro nome; o storage nÃƒÂ£o permite sobrescrita (upsert=false).
+   > Para anexar novos arquivos, repita o `POST /attachments` com outro nome; o storage não permite sobrescrita (upsert=false).
 
 8. **Remover o paciente de teste no Supabase (opcional)**
    ```powershell
@@ -741,7 +760,7 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 
 ### DRY e reuso
 - Controllers (Auth, TwoFactor, Patients, Users, Anamnesis) compartilham helpers de contexto e mappers, evitando spreads e normalizacoes ad-hoc nos endpoints.
-- Repositorio de anamnese usa `TemplateSelectionContext`, `getTemplatePriority` e `shouldReplaceTemplate` para escolher templates por tenant/especialidade sem condiÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Âµes duplicadas.
+- Repositorio de anamnese usa `TemplateSelectionContext`, `getTemplatePriority` e `shouldReplaceTemplate` para escolher templates por tenant/especialidade sem condições duplicadas.
 - SupabaseAnamnesisAttachmentStorageService e AnamnesisMetricsService concentram storage/metricas e reutilizam factories/eventos multi-tenant.
 
 ### Automacao e scripts
@@ -750,10 +769,10 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 
 ### Testes
 - Novos specs cobrem selecao de templates, metrics service, feedback scoreboard e fluxo webhook; mocks em memoria mantem branches do repositorio alinhados com as entidades reais.
-- 219 (unit, 23.5 s) + 35 (integration, 12.7 s) + 27 (e2e, 18.5 s) testes por etapa; test:cov executou 255 casos em 15.9 s preservando 100% de cobertura, com e2e percorrendo start -> auto-save -> submit -> cancel -> webhook -> feedback incluindo anexos Supabase.
+- 219 (unit, 23.5 s) + 35 (integracao, 12.7 s) garantem o pipeline unit/int; 27 (e2e, 18.5 s) roda isolado. `npm run test:cov` consolidou 255 casos em 15.9 s com 100% de cobertura, incluindo o fluxo start -> auto-save -> submit -> cancel -> webhook -> feedback com anexos Supabase.
 - Cenarios negativos validam RBAC (PATIENT vs PROFESSIONAL), conflitos de autosave, erros de storage e webhooks nao autorizados sem gerar falsos positivos.
 
-### IntegraÃƒÂ¯Ã‚Â¿Ã‚Â½ÃƒÂ¯Ã‚Â¿Ã‚Â½o IA & MÃƒÂ¯Ã‚Â¿Ã‚Â½tricas
+### Integração IA & Métricas
 - SubmitAnamnesisUseCase publica evento completo para CrewAI; webhook `/anamneses/:id/ai-result` persiste `analysisId`, reasoning, risk e recommendations e dispara ANAMNESIS_AI_COMPLETED.
 - SavePlanFeedbackUseCase grava scoreboard em `anamnesis_ai_feedbacks` (approvalStatus, liked, comentario) e emite ANAMNESIS_PLAN_FEEDBACK_SAVED para alimentar treinamento supervisionado.
 - AnamnesisEventsSubscriber atualiza `anamnesis_metrics` via `AnamnesisMetricsRepository`, removendo caches em memória e permitindo agregações por tenant/dia com custo/token/latência.
@@ -784,30 +803,23 @@ flowchart LR
     API --> Auth[Auth Module]
     API --> Users[Users Module]
     API --> Patients[Patients Module]
+    API --> Anamnesis[Anamnesis Module]
+    API --> Legal[Legal Module]
     Auth --> SupabaseAuth[(Supabase Auth)]
     Users --> SupabaseDB[(Supabase Postgres)]
     Patients --> SupabaseDB
+    Anamnesis --> SupabaseDB
+    Legal --> SupabaseDB
+    Anamnesis --> Storage[(Supabase Storage)]
+    Anamnesis --> AIWorker[AI Worker/Webhooks]
+    AIWorker --> API
     Auth --> MessageBus[(MessageBus / Eventos)]
-    Auth --> Tests[[Testes Automatizados]]
-    Users --> Tests[[Testes Automatizados]]
-    Patients --> Tests
+    Anamnesis --> MessageBus
+    API --> Tests[[Testes Automatizados]]
 ```
 
 ## Troubleshooting
 - **Supabase signOut error: invalid JWT**: agora tratado como `debug`, fluxo segue normalmente.
 - **Token nao fornecido**: verifique header `Authorization: Bearer <accessToken>`.
 - **Tenant invalido**: sempre enviar o tenant real ou deixar o guard resolver via metadata. Execute `npm run assign-super-admin-tenant` apos criar/atualizar tenants internos para garantir que os SUPER_ADMIN recebam o tenant padrao.
-- **Emails/Resend**: conferir painel do Resend ou a caixa do destinatÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡rio configurado para visualizar credenciais e cÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³digos 2FA.
-
-## Changelog
-Mudancas recentes estao em [CHANGELOG.md](./CHANGELOG.md). Ultima versao: v0.16.7 (29/09/2025).
-
-
-
-
-
-
-
-
-
-
+- **Emails/Resend**: conferir painel do Resend ou a caixa do destinatário configurado para visualizar credenciais e códigos 2FA.
