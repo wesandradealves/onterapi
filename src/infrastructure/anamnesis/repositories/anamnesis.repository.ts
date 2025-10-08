@@ -726,7 +726,7 @@ export class AnamnesisRepository implements IAnamnesisRepository {
       });
     } catch (error) {
       this.logger.warn(
-        `Nao foi possivel registrar feedback de IA para o plano ${updated.id}`,
+        `Nao foi possivel registrar feedback de IA para o plano ${updated.id} (tenant=${data.tenantId}, anamnesis=${data.anamnesisId})`,
         error instanceof Error ? error.stack : undefined,
       );
     }
@@ -804,9 +804,10 @@ export class AnamnesisRepository implements IAnamnesisRepository {
       query.andWhere('log.viewedAt <= :to', { to: filters.to });
     }
 
-    const limit = filters.limit && filters.limit > 0 ? filters.limit : undefined;
-    if (limit) {
-      query.take(limit);
+    const normalizedLimit =
+      filters.limit && filters.limit > 0 ? Math.min(filters.limit, 200) : undefined;
+    if (normalizedLimit) {
+      query.take(normalizedLimit);
     }
 
     query.orderBy('log.viewedAt', 'DESC').addOrderBy('log.createdAt', 'DESC');

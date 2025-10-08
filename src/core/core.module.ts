@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { MessagingModule } from '../shared/messaging/messaging.module';
 
 @Module({
   imports: [
@@ -8,7 +9,8 @@ import { ConfigModule } from '@nestjs/config';
       envFilePath: ['.env', '.env.local'],
       cache: true,
     }),
+    MessagingModule,
   ],
-  exports: [ConfigModule],
+  exports: [ConfigModule, MessagingModule],
 })
 export class CoreModule {}

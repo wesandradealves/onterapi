@@ -1,4 +1,5 @@
 import { clonePlain } from '../../../../shared/utils/clone.util';
+import { isoStringOrNow } from '../../../../shared/utils/date.util';
 
 import {
   Anamnesis,
@@ -60,9 +61,9 @@ const mapStep = (step: AnamnesisStep): AnamnesisStepDto => ({
 
   validationScore: step.validationScore,
 
-  updatedAt: toIsoString(step.updatedAt) ?? new Date().toISOString(),
+  updatedAt: isoStringOrNow(step.updatedAt),
 
-  createdAt: toIsoString(step.createdAt) ?? new Date().toISOString(),
+  createdAt: isoStringOrNow(step.createdAt),
 });
 
 const mapAttachment = (attachment: AnamnesisAttachment): AnamnesisAttachmentDto => ({
@@ -80,7 +81,7 @@ const mapAttachment = (attachment: AnamnesisAttachment): AnamnesisAttachmentDto 
 
   uploadedBy: attachment.uploadedBy,
 
-  uploadedAt: toIsoString(attachment.uploadedAt) ?? new Date().toISOString(),
+  uploadedAt: isoStringOrNow(attachment.uploadedAt),
 });
 
 const mapTemplate = (template: AnamnesisStepTemplate): AnamnesisStepTemplateDto => ({
@@ -102,9 +103,9 @@ const mapTemplate = (template: AnamnesisStepTemplate): AnamnesisStepTemplateDto 
 
   tenantId: template.tenantId ?? undefined,
 
-  createdAt: toIsoString(template.createdAt) ?? new Date().toISOString(),
+  createdAt: isoStringOrNow(template.createdAt),
 
-  updatedAt: toIsoString(template.updatedAt) ?? new Date().toISOString(),
+  updatedAt: isoStringOrNow(template.updatedAt),
 });
 
 const mapRecommendations = (
@@ -137,7 +138,7 @@ const mapAcceptances = (
 
     professionalId: acceptance.professionalId,
 
-    acceptedAt: toIsoString(acceptance.acceptedAt) ?? new Date().toISOString(),
+    acceptedAt: isoStringOrNow(acceptance.acceptedAt),
 
     termsVersion: acceptance.termsVersion,
 
@@ -180,7 +181,7 @@ const mapHistoryStep = (step: AnamnesisHistoryStep): AnamnesisHistoryStepDto => 
 
   validationScore: step.validationScore,
 
-  updatedAt: toIsoString(step.updatedAt) ?? new Date().toISOString(),
+  updatedAt: isoStringOrNow(step.updatedAt),
 });
 
 const mapHistoryEntry = (entry: AnamnesisHistoryEntry): AnamnesisHistoryEntryDto => ({
@@ -196,7 +197,7 @@ const mapHistoryEntry = (entry: AnamnesisHistoryEntry): AnamnesisHistoryEntryDto
 
   submittedAt: toIsoString(entry.submittedAt),
 
-  updatedAt: toIsoString(entry.updatedAt) ?? new Date().toISOString(),
+  updatedAt: isoStringOrNow(entry.updatedAt),
 
   steps: entry.steps.map(mapHistoryStep),
 
@@ -268,11 +269,11 @@ const mapPlan = (plan: TherapeuticPlanData): TherapeuticPlanDto => ({
 
   termsVersion: plan.termsVersion ?? undefined,
 
-  generatedAt: toIsoString(plan.generatedAt) ?? new Date().toISOString(),
+  generatedAt: isoStringOrNow(plan.generatedAt),
 
-  createdAt: toIsoString(plan.createdAt) ?? new Date().toISOString(),
+  createdAt: isoStringOrNow(plan.createdAt),
 
-  updatedAt: toIsoString(plan.updatedAt) ?? new Date().toISOString(),
+  updatedAt: isoStringOrNow(plan.updatedAt),
 
   acceptances: mapAcceptances(plan.acceptances),
 });
@@ -306,9 +307,9 @@ export class AnamnesisPresenter {
 
       completedAt: toIsoString(entity.completedAt),
 
-      createdAt: toIsoString(entity.createdAt) ?? new Date().toISOString(),
+      createdAt: isoStringOrNow(entity.createdAt),
 
-      updatedAt: toIsoString(entity.updatedAt) ?? new Date().toISOString(),
+      updatedAt: isoStringOrNow(entity.updatedAt),
 
       deletedAt: entity.deletedAt ? toIsoString(entity.deletedAt) : null,
 
@@ -340,7 +341,7 @@ export class AnamnesisPresenter {
 
       submittedAt: toIsoString(item.submittedAt),
 
-      updatedAt: toIsoString(item.updatedAt) ?? new Date().toISOString(),
+      updatedAt: isoStringOrNow(item.updatedAt),
     };
   }
 
