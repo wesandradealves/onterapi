@@ -1,6 +1,6 @@
-﻿import { z } from 'zod';
+import { z } from 'zod';
 
-export const legalTermStatusEnum = z.enum(['active', 'draft', 'all']);
+export const legalTermStatusEnum = z.enum(['published', 'draft', 'retired', 'all']);
 
 export const listLegalTermsSchema = z.object({
   context: z.string().trim().min(1).max(64).optional(),

@@ -1,5 +1,3 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
-
 import {
   CanActivate,
   ExecutionContext,
@@ -9,113 +7,94 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
+import { normalizeSignature, verifyHmacSignature } from '../../../shared/utils/hmac.util';
+import { AnamnesisAIWebhookReplayService } from '../services/anamnesis-ai-webhook-replay.service';
+
 interface RequestLike {
   headers: Record<string, string | string[] | undefined>;
   body?: unknown;
 }
 
-const DEFAULT_MAX_SKEW_MS = 5 * 60 * 1000; // 5 minutes
-const SIGNATURE_HEADER_CANDIDATES = ['x-anamnesis-ai-signature', 'x-ai-signature'];
+const DEFAULT_MAX_SKEW_MS = 5 * 60 * 1000; // 5 minutos
 const TIMESTAMP_HEADER_CANDIDATES = ['x-anamnesis-ai-timestamp', 'x-ai-timestamp'];
+const SIGNATURE_HEADER_CANDIDATES = ['x-anamnesis-ai-signature', 'x-ai-signature'];
+const TENANT_HEADER_CANDIDATES = ['x-tenant-id', 'x-tenant'];
 
 @Injectable()
 export class AnamnesisAIWebhookGuard implements CanActivate {
   private readonly logger = new Logger(AnamnesisAIWebhookGuard.name);
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly replayService: AnamnesisAIWebhookReplayService,
+  ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<RequestLike>();
-    const secret = this.configService.get<string>('ANAMNESIS_AI_WEBHOOK_SECRET');
+    const configuredSecret = this.configService.get<string>('ANAMNESIS_AI_WEBHOOK_SECRET');
 
-    if (!secret) {
+    if (!configuredSecret) {
       this.logger.error('Segredo do webhook da IA nao configurado (ANAMNESIS_AI_WEBHOOK_SECRET)');
       throw new UnauthorizedException('Webhook nao autorizado');
     }
 
     const timestampHeader = this.extractHeader(request.headers, TIMESTAMP_HEADER_CANDIDATES);
     const signatureHeader = this.extractHeader(request.headers, SIGNATURE_HEADER_CANDIDATES);
-
     if (!timestampHeader || !signatureHeader) {
       this.logger.warn('Webhook IA sem timestamp ou assinatura.');
       throw new UnauthorizedException('Assinatura do webhook invalida');
     }
 
+    const maxSkewMs = this.getMaxSkewMs();
+    const verification = verifyHmacSignature({
+      secret: configuredSecret,
+      timestampHeader,
+      signatureHeader,
+      body: request.body ?? {},
+      maxSkewMs,
+    });
+
+    if (!verification.valid) {
+      this.logger.warn(
+        `Assinatura do webhook invalida (${verification.reason ?? 'motivo desconhecido'})`,
+      );
+      throw new UnauthorizedException('Assinatura do webhook invalida');
+    }
+
     const timestamp = Number(timestampHeader);
-    if (!Number.isFinite(timestamp)) {
-      this.logger.warn('Timestamp do webhook IA invalido.');
+    const signature = normalizeSignature(signatureHeader);
+    const tenant = this.extractHeader(request.headers, TENANT_HEADER_CANDIDATES);
+
+    const payloadTimestamp = new Date(timestamp);
+    if (Number.isNaN(payloadTimestamp.getTime())) {
+      this.logger.warn('Timestamp do webhook invalido.');
       throw new UnauthorizedException('Assinatura do webhook invalida');
     }
 
-    if (this.isTimestampExpired(timestamp)) {
-      this.logger.warn('Timestamp do webhook IA fora da janela permitida.');
-      throw new UnauthorizedException('Assinatura do webhook expirada');
-    }
+    const analysisId = this.extractAnalysisId(request.body);
+    const recorded = await this.replayService.registerRequest({
+      tenantId: tenant ?? null,
+      analysisId: analysisId ?? null,
+      signature,
+      payloadTimestamp,
+      receivedAt: new Date(),
+    });
 
-    const payload = this.buildPayload(timestampHeader, request.body);
-    const expectedSignature = this.computeSignature(secret, payload);
-    const providedSignature = this.normalizeSignature(signatureHeader);
-
-    if (!this.verifySignature(providedSignature, expectedSignature)) {
-      this.logger.warn('Webhook IA com assinatura invalida.');
-      throw new UnauthorizedException('Assinatura do webhook invalida');
+    if (!recorded) {
+      this.logger.warn('Tentativa de replay detectada para o webhook de IA.', {
+        tenantId: tenant,
+        analysisId,
+      });
+      throw new UnauthorizedException('Assinatura do webhook ja utilizada.');
     }
 
     return true;
-  }
-
-  private buildPayload(timestamp: string, body: unknown): string {
-    const serializedBody = this.safeStringify(body);
-    return `${timestamp}.${serializedBody}`;
-  }
-
-  private computeSignature(secret: string, payload: string): string {
-    return createHmac('sha256', secret).update(payload).digest('hex');
-  }
-
-  private normalizeSignature(signatureHeader: string): string {
-    const normalized = signatureHeader.startsWith('sha256=')
-      ? signatureHeader.slice('sha256='.length)
-      : signatureHeader;
-
-    if (!/^[0-9a-fA-F]+$/.test(normalized)) {
-      return '';
-    }
-
-    return normalized.toLowerCase();
-  }
-
-  private verifySignature(provided: string, expected: string): boolean {
-    if (!provided || provided.length !== expected.length) {
-      return false;
-    }
-
-    try {
-      const providedBuffer = Buffer.from(provided, 'hex');
-      const expectedBuffer = Buffer.from(expected, 'hex');
-
-      if (providedBuffer.length !== expectedBuffer.length) {
-        return false;
-      }
-
-      return timingSafeEqual(providedBuffer, expectedBuffer);
-    } catch (error) {
-      this.logger.debug('Falha ao comparar assinatura do webhook IA', error as Error);
-      return false;
-    }
-  }
-
-  private isTimestampExpired(timestamp: number): boolean {
-    const maxSkewMs = this.getMaxSkewMs();
-    const delta = Math.abs(Date.now() - timestamp);
-    return delta > maxSkewMs;
   }
 
   private getMaxSkewMs(): number {
     const configured = this.configService.get<string | number | undefined>(
       'ANAMNESIS_AI_WEBHOOK_MAX_SKEW_MS',
     );
-
     if (typeof configured === 'number' && Number.isFinite(configured) && configured > 0) {
       return configured;
     }
@@ -128,23 +107,6 @@ export class AnamnesisAIWebhookGuard implements CanActivate {
     }
 
     return DEFAULT_MAX_SKEW_MS;
-  }
-
-  private safeStringify(body: unknown): string {
-    if (body === undefined || body === null) {
-      return '{}';
-    }
-
-    if (typeof body === 'string') {
-      return body;
-    }
-
-    try {
-      return JSON.stringify(body);
-    } catch (error) {
-      this.logger.warn('Nao foi possivel serializar corpo do webhook IA para assinatura.');
-      throw new UnauthorizedException('Assinatura do webhook invalida');
-    }
   }
 
   private extractHeader(
@@ -161,6 +123,22 @@ export class AnamnesisAIWebhookGuard implements CanActivate {
         return value;
       }
     }
+    return undefined;
+  }
+
+  private extractAnalysisId(body: unknown): string | undefined {
+    if (!body || typeof body !== 'object') {
+      return undefined;
+    }
+
+    const candidate =
+      (body as Record<string, unknown>)['analysisId'] ??
+      (body as Record<string, unknown>)['analysis_id'];
+
+    if (typeof candidate === 'string' && candidate.trim().length > 0) {
+      return candidate;
+    }
+
     return undefined;
   }
 }

@@ -1,4 +1,4 @@
-﻿import { Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
 
@@ -11,6 +11,10 @@ import {
 } from '../../domain/legal/types/legal-term.types';
 import { ILegalTermsRepository } from '../../domain/legal/interfaces/legal-terms.repository.interface';
 import { LegalTermEntity } from './entities/legal-term.entity';
+
+const STATUS_PUBLISHED = 'published';
+const STATUS_DRAFT = 'draft';
+const STATUS_RETIRED = 'retired';
 
 @Injectable()
 export class LegalTermsRepository implements ILegalTermsRepository {
@@ -27,7 +31,7 @@ export class LegalTermsRepository implements ILegalTermsRepository {
     const query = this.repository
       .createQueryBuilder('term')
       .where('term.context = :context', { context })
-      .andWhere('term.isActive = true');
+      .andWhere('term.status = :status', { status: STATUS_PUBLISHED });
 
     this.applyTenantFilter(query, tenantId, true, true);
 
@@ -51,15 +55,17 @@ export class LegalTermsRepository implements ILegalTermsRepository {
       query.andWhere('term.context = :context', { context: filters.context });
     }
 
-    this.applyTenantFilter(query, filters.tenantId, filters.status === 'active');
+    const prioritizeTenant = filters.status === STATUS_PUBLISHED;
+    this.applyTenantFilter(query, filters.tenantId, prioritizeTenant);
 
-    if (filters.status === 'active') {
-      query.andWhere('term.isActive = true');
-    } else if (filters.status === 'draft') {
-      query.andWhere('term.isActive = false');
+    if (filters.status && filters.status !== 'all') {
+      query.andWhere('term.status = :status', { status: filters.status });
     }
 
-    query.addOrderBy('term.isActive', 'DESC');
+    query.addOrderBy(
+      `CASE term.status WHEN '${STATUS_PUBLISHED}' THEN 0 WHEN '${STATUS_DRAFT}' THEN 1 ELSE 2 END`,
+      'ASC',
+    );
     query.addOrderBy('term.publishedAt', 'DESC', 'NULLS LAST');
     query.addOrderBy('term.createdAt', 'DESC');
 
@@ -73,8 +79,13 @@ export class LegalTermsRepository implements ILegalTermsRepository {
       context: input.context,
       version: input.version,
       content: input.content,
+      status: STATUS_DRAFT,
       isActive: false,
+      createdBy: input.createdBy,
       publishedAt: null,
+      publishedBy: null,
+      retiredAt: null,
+      retiredBy: null,
     });
 
     const saved = await this.repository.save(entity);
@@ -89,15 +100,21 @@ export class LegalTermsRepository implements ILegalTermsRepository {
         throw new Error('LEGAL_TERM_NOT_FOUND');
       }
 
-      if (existing.isActive) {
+      if (existing.status === STATUS_PUBLISHED) {
         return this.mapEntityToDomain(existing);
       }
 
       const updateBuilder = manager
         .createQueryBuilder()
         .update(LegalTermEntity)
-        .set({ isActive: false })
-        .where('context = :context', { context: existing.context });
+        .set({
+          status: STATUS_RETIRED,
+          isActive: false,
+          retiredAt: input.publishedAt,
+          retiredBy: input.publishedBy,
+        })
+        .where('context = :context', { context: existing.context })
+        .andWhere('status = :status', { status: STATUS_PUBLISHED });
 
       if (existing.tenantId) {
         updateBuilder.andWhere('tenant_id = :tenantId', { tenantId: existing.tenantId });
@@ -107,8 +124,12 @@ export class LegalTermsRepository implements ILegalTermsRepository {
 
       await updateBuilder.execute();
 
+      existing.status = STATUS_PUBLISHED;
       existing.isActive = true;
       existing.publishedAt = input.publishedAt;
+      existing.publishedBy = input.publishedBy;
+      existing.retiredAt = null;
+      existing.retiredBy = null;
 
       const saved = await manager.save(existing);
       return this.mapEntityToDomain(saved);
@@ -122,11 +143,14 @@ export class LegalTermsRepository implements ILegalTermsRepository {
       throw new Error('LEGAL_TERM_NOT_FOUND');
     }
 
-    if (!term.isActive) {
+    if (term.status !== STATUS_PUBLISHED) {
       return this.mapEntityToDomain(term);
     }
 
+    term.status = STATUS_RETIRED;
     term.isActive = false;
+    term.retiredAt = input.retiredAt;
+    term.retiredBy = input.retiredBy;
     await this.repository.save(term);
 
     return this.mapEntityToDomain(term);
@@ -152,14 +176,20 @@ export class LegalTermsRepository implements ILegalTermsRepository {
   }
 
   private mapEntityToDomain(entity: LegalTermEntity): LegalTerm {
+    const status = (entity.status ?? STATUS_DRAFT) as LegalTerm['status'];
     return {
       id: entity.id,
       tenantId: entity.tenantId ?? null,
       context: entity.context,
       version: entity.version,
       content: entity.content,
-      isActive: entity.isActive,
+      status,
+      isActive: status === STATUS_PUBLISHED,
+      createdBy: entity.createdBy ?? null,
       publishedAt: entity.publishedAt ?? null,
+      publishedBy: entity.publishedBy ?? null,
+      retiredAt: entity.retiredAt ?? null,
+      retiredBy: entity.retiredBy ?? null,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
     };

@@ -1,4 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
+
+import { clonePlain } from '../../../shared/utils/clone.util';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, DeepPartial, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
@@ -87,7 +89,7 @@ const cloneRecord = (value?: Record<string, unknown>): Record<string, unknown> =
   }
 
   try {
-    return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+    return clonePlain(value) as Record<string, unknown>;
   } catch {
     return {};
   }
@@ -105,7 +107,7 @@ const mergeRecords = (
       return;
     }
 
-    result[key] = Array.isArray(value) ? JSON.parse(JSON.stringify(value)) : value;
+    result[key] = Array.isArray(value) ? clonePlain(value) : value;
   });
 
   return result;
@@ -580,7 +582,7 @@ export class AnamnesisRepository implements IAnamnesisRepository {
           hasErrors: step.hasErrors,
           validationScore: step.validationScore,
           updatedAt: new Date(step.updatedAt.getTime()),
-          payload: JSON.parse(JSON.stringify(step.payload ?? {})),
+          payload: clonePlain(step.payload ?? {}) as Record<string, unknown>,
         })) ?? [];
 
       const attachments =
@@ -595,7 +597,7 @@ export class AnamnesisRepository implements IAnamnesisRepository {
         ? {
             ...anamnesis.latestPlan,
             therapeuticPlan: anamnesis.latestPlan.therapeuticPlan
-              ? JSON.parse(JSON.stringify(anamnesis.latestPlan.therapeuticPlan))
+              ? (clonePlain(anamnesis.latestPlan.therapeuticPlan) as Record<string, unknown>)
               : undefined,
             riskFactors: anamnesis.latestPlan.riskFactors
               ? anamnesis.latestPlan.riskFactors.map((factor) => ({ ...factor }))
@@ -660,15 +662,19 @@ export class AnamnesisRepository implements IAnamnesisRepository {
       clinicalReasoning: data.clinicalReasoning,
       summary: data.summary,
       therapeuticPlan: data.therapeuticPlan
-        ? JSON.parse(JSON.stringify(data.therapeuticPlan))
+        ? (clonePlain(data.therapeuticPlan) as Record<string, unknown>)
         : undefined,
-      riskFactors: data.riskFactors ? JSON.parse(JSON.stringify(data.riskFactors)) : undefined,
+      riskFactors: data.riskFactors
+        ? (clonePlain(data.riskFactors) as TherapeuticPlanData['riskFactors'])
+        : undefined,
       recommendations: data.recommendations
-        ? JSON.parse(JSON.stringify(data.recommendations))
+        ? (clonePlain(data.recommendations) as TherapeuticPlanData['recommendations'])
         : undefined,
       planText: data.planText ?? undefined,
       reasoningText: data.reasoningText ?? undefined,
-      evidenceMap: data.evidenceMap ? JSON.parse(JSON.stringify(data.evidenceMap)) : null,
+      evidenceMap: data.evidenceMap
+        ? (clonePlain(data.evidenceMap) as unknown as Record<string, unknown>)
+        : null,
       confidence: data.confidence ?? undefined,
       reviewRequired: data.reviewRequired ?? false,
       status: data.status ?? 'generated',
@@ -1021,7 +1027,7 @@ export class AnamnesisRepository implements IAnamnesisRepository {
       anamnesisId: data.anamnesisId,
       tenantId: data.tenantId,
       status: data.status ?? 'pending',
-      payload: data.payload ? JSON.parse(JSON.stringify(data.payload)) : undefined,
+      payload: data.payload ? (clonePlain(data.payload) as Record<string, unknown>) : undefined,
       generatedAt: new Date(),
     });
 
@@ -1048,16 +1054,19 @@ export class AnamnesisRepository implements IAnamnesisRepository {
     analysis.clinicalReasoning = data.clinicalReasoning ?? analysis.clinicalReasoning;
     analysis.summary = data.summary ?? analysis.summary;
     if (data.riskFactors !== undefined) {
-      analysis.riskFactors = JSON.parse(JSON.stringify(data.riskFactors));
+      analysis.riskFactors = clonePlain(data.riskFactors) as unknown as Record<string, unknown>;
     }
     if (data.recommendations !== undefined) {
-      analysis.recommendations = JSON.parse(JSON.stringify(data.recommendations));
+      analysis.recommendations = clonePlain(data.recommendations) as unknown as Record<
+        string,
+        unknown
+      >;
     }
     if (data.confidence !== undefined) {
       analysis.confidence = data.confidence;
     }
     if (data.payload !== undefined) {
-      analysis.payload = JSON.parse(JSON.stringify(data.payload));
+      analysis.payload = clonePlain(data.payload) as unknown as Record<string, unknown>;
     }
     analysis.respondedAt = data.respondedAt;
     if (typeof data.errorMessage !== 'undefined') {

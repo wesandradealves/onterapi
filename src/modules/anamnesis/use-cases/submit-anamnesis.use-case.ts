@@ -33,6 +33,7 @@ import { MessageBus } from '../../../shared/messaging/message-bus';
 
 import { DomainEvents } from '../../../shared/events/domain-events';
 
+import { clonePlain } from '../../../shared/utils/clone.util';
 import { buildAnamnesisAIRequestPayload } from '../utils/anamnesis-ai.util';
 
 import { validateAnamnesisStepPayload } from '../utils/anamnesis-step-validation.util';
@@ -270,7 +271,7 @@ export class SubmitAnamnesisUseCase
     }
 
     try {
-      return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+      return clonePlain(value) as Record<string, unknown>;
     } catch {
       return {};
     }

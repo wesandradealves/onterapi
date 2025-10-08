@@ -6,6 +6,7 @@ import { SubmitAnamnesisUseCase } from '@modules/anamnesis/use-cases/submit-anam
 import { ListAnamnesesByPatientUseCase } from '@modules/anamnesis/use-cases/list-anamneses-by-patient.use-case';
 import { GetAnamnesisHistoryUseCase } from '@modules/anamnesis/use-cases/get-anamnesis-history.use-case';
 import { SaveTherapeuticPlanUseCase } from '@modules/anamnesis/use-cases/save-therapeutic-plan.use-case';
+import { TherapeuticPlanDomainService } from '@modules/anamnesis/services/therapeutic-plan-domain.service';
 import { SavePlanFeedbackUseCase } from '@modules/anamnesis/use-cases/save-plan-feedback.use-case';
 import { PatientAnamnesisRollupService } from '@modules/anamnesis/services/patient-anamnesis-rollup.service';
 import { LegalTermsService } from '@modules/legal/legal-terms.service';
@@ -1065,6 +1066,17 @@ describe('Anamnesis use cases', () => {
   });
 
   describe('SaveTherapeuticPlanUseCase', () => {
+    const createSavePlanUseCase = () =>
+      new SaveTherapeuticPlanUseCase(
+        repository as unknown as IAnamnesisRepository,
+        new TherapeuticPlanDomainService(
+          repository as unknown as IAnamnesisRepository,
+          rollupService as unknown as PatientAnamnesisRollupService,
+          legalTermsService as unknown as LegalTermsService,
+          messageBus as unknown as MessageBus,
+        ),
+      );
+
     it('should persist plan and emit event', async () => {
       const anamnesis = createAnamnesis();
       repository.findById.mockResolvedValue(anamnesis);
@@ -1102,12 +1114,7 @@ describe('Anamnesis use cases', () => {
         updatedBy: 'professional-1',
       });
 
-      const useCase = new SaveTherapeuticPlanUseCase(
-        repository,
-        messageBus,
-        rollupService,
-        legalTermsService,
-      );
+      const useCase = createSavePlanUseCase();
       const result = unwrapResult(
         await useCase.execute({
           tenantId: 'tenant-1',
@@ -1136,12 +1143,7 @@ describe('Anamnesis use cases', () => {
     it('should reject plan persistence when terms are not accepted', async () => {
       repository.findById.mockResolvedValue(createAnamnesis());
 
-      const useCase = new SaveTherapeuticPlanUseCase(
-        repository,
-        messageBus,
-        rollupService,
-        legalTermsService,
-      );
+      const useCase = createSavePlanUseCase();
 
       await expect(
         useCase
@@ -1166,12 +1168,7 @@ describe('Anamnesis use cases', () => {
       repository.findById.mockResolvedValue(anamnesis);
       legalTermsService.getActiveTerm.mockResolvedValueOnce(null);
 
-      const useCase = new SaveTherapeuticPlanUseCase(
-        repository,
-        messageBus,
-        rollupService,
-        legalTermsService,
-      );
+      const useCase = createSavePlanUseCase();
 
       await expect(
         useCase
@@ -1205,12 +1202,7 @@ describe('Anamnesis use cases', () => {
         updatedAt: new Date('2025-10-01T00:00:00Z'),
       });
 
-      const useCase = new SaveTherapeuticPlanUseCase(
-        repository,
-        messageBus,
-        rollupService,
-        legalTermsService,
-      );
+      const useCase = createSavePlanUseCase();
 
       await expect(
         useCase
@@ -1246,12 +1238,7 @@ describe('Anamnesis use cases', () => {
         updatedAt: new Date('2025-09-26T00:00:00Z'),
       });
 
-      const useCase = new SaveTherapeuticPlanUseCase(
-        repository,
-        messageBus,
-        rollupService,
-        legalTermsService,
-      );
+      const useCase = createSavePlanUseCase();
 
       await expect(
         useCase

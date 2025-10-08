@@ -1,3 +1,4 @@
+import { clonePlain } from '../../../shared/utils/clone.util';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
@@ -160,7 +161,7 @@ export class GetAnamnesisHistoryUseCase
   }
 
   private clonePayload(payload: Record<string, unknown>): Record<string, unknown> {
-    return JSON.parse(JSON.stringify(payload ?? {}));
+    return clonePlain(payload ?? {});
   }
 
   private cloneAttachment(attachment: AnamnesisAttachment): AnamnesisAttachment {
@@ -175,9 +176,7 @@ export class GetAnamnesisHistoryUseCase
   private clonePlan(plan: TherapeuticPlanData): TherapeuticPlanData {
     return {
       ...plan,
-      therapeuticPlan: plan.therapeuticPlan
-        ? JSON.parse(JSON.stringify(plan.therapeuticPlan))
-        : undefined,
+      therapeuticPlan: plan.therapeuticPlan ? clonePlain(plan.therapeuticPlan) : undefined,
       riskFactors: plan.riskFactors ? plan.riskFactors.map((factor) => ({ ...factor })) : undefined,
       recommendations: plan.recommendations
         ? plan.recommendations.map((recommendation) => ({ ...recommendation }))

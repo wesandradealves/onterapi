@@ -318,6 +318,14 @@ export const listAnamnesesQuerySchema = z.object({
 
 export type ListAnamnesesQuerySchema = z.infer<typeof listAnamnesesQuerySchema>;
 
+export const anamnesisMetricsQuerySchema = z.object({
+  tenantId: optionalTrimmedString,
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+});
+
+export type AnamnesisMetricsQuerySchema = z.infer<typeof anamnesisMetricsQuerySchema>;
+
 export const cancelAnamnesisSchema = z.object({
   reason: z
 

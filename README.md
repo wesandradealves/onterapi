@@ -104,6 +104,8 @@ Rotas principais:
 
 > Schemas Zod e DTOs: `src/modules/anamnesis/api/schemas/anamnesis.schema.ts` e `src/modules/anamnesis/api/dtos/`.
 ### IA Assistida e Aceite Legal
+> Endpoints locais expõem as rotas diretamente em `http://localhost:3000` (sem prefixo `/api/v1`). Configure o gateway/proxy externo se precisar de versionamento no caminho.
+
 - Worker consome `ANAMNESIS_AI_REQUESTED`, monta prompt a partir de `compactAnamnesis` + `patientRollup` e envia o resultado para `POST /anamneses/:id/ai-result`.
 - Modo local opcional (`ANAMNESIS_AI_WORKER_MODE=local`) gera plano assistivo internamente e chama o mesmo webhook.
 - Configure `ANAMNESIS_AI_WORKER_URL`, `ANAMNESIS_AI_WORKER_TOKEN` (opcional), `ANAMNESIS_AI_PROMPT_VERSION` e `ANAMNESIS_AI_WORKER_TIMEOUT_MS` para habilitar o disparo HTTP do worker externo.
@@ -113,7 +115,88 @@ Rotas principais:
 - O worker assina o webhook via HMAC-SHA256 usando `x-anamnesis-ai-timestamp` + `x-anamnesis-ai-signature` (payload `timestamp.body`), replica `x-tenant-id` e envia `tokensInput`, `tokensOutput` e `latencyMs` reais no retorno.
 - Webhook persiste metadados do modelo (planText, reasoningText, evidenceMap, tokens, latência, rawResponse) e materializa o plano com status `generated`.
 - Aceite (`POST /anamneses/:id/plan`) exige `termsVersion`, `termsTextSnapshot`, grava histórico em `therapeutic_plan_acceptances` e recalcula `patient_anamnesis_rollups`.
-- Contrato completo, payloads e checklist estão documentados em `docs/AI_CONTRACT.md`.
+- Fluxo, payloads e checklist da integração ficam detalhados nas seções abaixo.
+- As metricas do pipeline (passos salvos, submissoes, tokens, custo, feedback) sao persistidas em `anamnesis_metrics` por tenant/dia; `AnamnesisMetricsService.getSnapshot()` agrega direto do banco e aceita janelas customizadas.
+- Endpoint `GET /anamneses/metrics` disponibiliza o snapshot consolidado usando o mesmo servico; aceita `from`/`to` (ISO) para limitar o intervalo e `tenantId` apenas para perfis internos (SUPER_ADMIN) inspecionarem outros tenants.
+- Ajuste `ANAMNESIS_AI_COST_TOKEN_INPUT`/`ANAMNESIS_AI_COST_TOKEN_OUTPUT` para refletir o custo por token e `ANAMNESIS_AI_LATENCY_ALERT_MS` para alertas operacionais.
+- Termos legais versionados usam status `draft`/`published`/`retired`, mantendo `createdBy`, `publishedBy` e `retiredBy` para auditoria e restringindo um termo `published` por `(tenant, context)`.
+
+#### Fluxo Submit → IA → Aceite
+1. `POST /anamneses/:id/submit` compacta os dados e emite `ANAMNESIS_SUBMITTED`.  
+2. Worker externo (ou modo local) consome `ANAMNESIS_AI_REQUESTED`, monta o prompt com o rollup anterior + anamnese atual e chama o provedor de IA.  
+3. A resposta chega via `POST /anamneses/:id/ai-result`, assinada com HMAC; o backend persiste plano e métricas (tokens, latência, status).  
+4. Profissional revisa/aceita (`POST /anamneses/:id/plan`), salvando snapshot de termos em `therapeutic_plan_acceptances`, status `accepted` e rollup incremental (`patient_anamnesis_rollups`).  
+5. Feedback opcional (`POST /anamneses/:id/plan/feedback`) alimenta o scoreboard (`anamnesis_ai_feedbacks`).  
+6. Exibições do plano são logadas em `therapeutic_plan_access_logs` para auditoria.
+
+#### Payloads do Worker de IA
+**Job enviado ao worker**
+```json
+{
+  "analysisId": "d64ad7c4-0dc4-4c30-b8c2-c4030e845391",
+  "anamnesisId": "f5c07fb8-9aa1-4bc3-8e2b-3bb6f460d452",
+  "tenantId": "645d883f-535a-4c3e-9d93-4f1204bd489d",
+  "systemPrompt": "...",
+  "userPrompt": "...",
+  "compact": { "patientProfile": { "...": "..." }, "visit": { "...": "..." } },
+  "rollupSummary": { "version": 3, "summaryText": "..." },
+  "metadata": { "requestedAt": "2025-10-02T12:21:04.512Z", "correlationId": "..." }
+}
+```
+
+**Resposta esperada da IA**
+```json
+{
+  "plan_text": "1) Fitoterápico X ...",
+  "reasoning_text": "Recomenda-se X ...",
+  "confidence": 0.78,
+  "evidence_map": [
+    {
+      "recommendation": "Fitoterápico X",
+      "evidence": ["insônia atual", "estresse elevado"],
+      "confidence": 0.72
+    }
+  ],
+  "tokens_input": 842,
+  "tokens_output": 612,
+  "latency_ms": 1820,
+  "model": "gpt-4o-mini-2025-09-01",
+  "prompt_version": "therapeutic-plan/v3",
+  "raw_response": { "...": "..." }
+}
+```
+
+#### Webhook `/anamneses/:id/ai-result`
+- Headers obrigatórios: `x-anamnesis-ai-signature`, `x-anamnesis-ai-timestamp`, `Content-Type: application/json` e, idealmente, `x-tenant-id`.  
+- Assinatura HMAC-SHA256 sobre `timestamp.body` usando `ANAMNESIS_AI_WEBHOOK_SECRET`:  
+  ```
+  payload = `${timestamp}.${jsonBody}`
+  signature = sha256(payload, secret)
+  header = `sha256=${signatureHex}`
+  ```
+- Janela de tolerância configurável via `ANAMNESIS_AI_WEBHOOK_MAX_SKEW_MS` (5 minutos por padrão).  
+- Replays bloqueados por `analysisId` + assinatura na tabela `anamnesis_ai_webhook_requests`, registrada pelo `AnamnesisAIWebhookReplayService`.
+
+#### Métricas Persistidas
+`anamnesis_metrics` agrega diariamente por tenant:
+
+| Campo                        | Descrição                                           |
+|------------------------------|-----------------------------------------------------|
+| `steps_saved`, `auto_saves`  | Contagem de passos salvos/auto-saves                |
+| `submissions`                | Número de submissões + completude acumulada         |
+| `ai_completed` / `ai_failed` | Resultado da IA (sucesso/falha)                     |
+| `tokens_input_sum/_output`   | Tokens consumidos (entrada/saída)                   |
+| `ai_latency_sum/_count/_max` | Latência média e máxima (ms)                        |
+| `ai_cost_sum`                | Custo estimado via `ANAMNESIS_AI_COST_TOKEN_*`      |
+| `feedback_*`                 | Aprovações, modificações, rejeições, likes/dislikes |
+
+Use `AnamnesisMetricsService.getSnapshot([tenantId])` ou o endpoint `GET /anamneses/metrics` para dashboards e SLA (ambos aceitam recortes por intervalo).
+
+#### Governança de Termos Legais
+- `legal_terms` armazena `status (draft|published|retired)`, `createdBy`, `publishedBy`, `retiredBy`, `publishedAt` e `retiredAt`.  
+- Restrição: somente um termo `published` por `(tenant, context)`; para `therapeutic_plan` usamos a versão global seedada (`v1.0`).  
+- `/legal/terms` expõe CRUD multi-tenant (listar, criar, publicar, retirar).  
+- Aceite de plano exige `termsVersion` matching + snapshot idêntico; histórico de aceites em `therapeutic_plan_acceptances`.
 
 
 ### Endpoints Detalhados
@@ -342,6 +425,41 @@ CORS_ORIGIN=http://localhost:3000
 
 
 > Para evitar erros IPv6 use o pooler do Supabase (`aws-0-sa-east-1.pooler.supabase.com:6543`) e defina `NODE_OPTIONS=--dns-result-order=ipv4first`.
+
+### Migracoes obrigatorias
+Novos ambientes precisam aplicar as migrations `1738606000000`, `1738607000000` e `1738608000000` para habilitar metricas,
+auditoria de webhooks e governanca de termos. Execute a sequencia abaixo com as credenciais do Supabase/Postgres:
+
+```bash
+npm run migration:run -- -d src/infrastructure/database/data-source.ts
+```
+
+### Worker de IA em producao
+1. Provisionar uma VM/servico (Render, Fly, EC2, etc.) com Node 20+.
+2. Exportar as variaveis do bloco **AI Worker Configuration** (`ANAMNESIS_AI_WORKER_URL`, `ANAMNESIS_AI_WORKER_TOKEN`,
+   `ANAMNESIS_AI_WEBHOOK_SECRET`, custos por token, etc.) tanto no backend quanto no servico externo.
+3. Fazer deploy do worker com:
+   ```bash
+   npm install
+   npm run worker:start
+   ```
+4. Validar o webhook `/anamneses/:id/ai-result` chamando o worker com o segredo HMAC configurado.
+
+> Em staging/local, e possivel usar `ANAMNESIS_AI_WORKER_MODE=local` para gerar planos heuristicos sem depender do worker externo.
+
+- **Deploy como Supabase Edge Function**:
+  1. Autentique o CLI (`supabase login` ou defina `SUPABASE_ACCESS_TOKEN`).
+  2. Vincule o projeto: `supabase link --project-ref ogffdaemylaezxpunmop`.
+  3. Envie os segredos (use os mesmos valores do `.env`):  
+     `supabase secrets set ANAMNESIS_AI_PROVIDER=local ANAMNESIS_AI_WORKER_TOKEN=<TOKEN> ANAMNESIS_AI_WEBHOOK_SECRET=<SECRET> ...`
+  4. Faça o deploy: `supabase functions deploy anamnesis-worker --no-verify-jwt`.
+  5. Atualize `ANAMNESIS_AI_WORKER_URL` no backend para `https://ogffdaemylaezxpunmop.functions.supabase.co/anamnesis-worker`.
+  6. O backend envia automaticamente `x-worker-token` e replica `webhookBaseUrl`/`webhookSecret` via `metadata` em cada job.
+
+### Metricas e observabilidade
+- Snapshot consolidado disponivel em `GET /anamneses/metrics`, aceitando filtros `from`/`to` (ISO 8601).
+- Usuarios internos (SUPER_ADMIN) podem informar `tenantId`; demais perfis usam o tenant do header/guard.
+- As metricas persistem em `anamnesis_metrics` por (`tenant_id`, `metric_date`); utilize o endpoint ou consultas SQL para dashboards (Metabase, Grafana, etc.).
 
 ## Testes Manuais Recomendados
 1. Login SUPER_ADMIN + fluxo 2FA completo.
@@ -638,6 +756,7 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 ### IntegraÃƒÂ¯Ã‚Â¿Ã‚Â½ÃƒÂ¯Ã‚Â¿Ã‚Â½o IA & MÃƒÂ¯Ã‚Â¿Ã‚Â½tricas
 - SubmitAnamnesisUseCase publica evento completo para CrewAI; webhook `/anamneses/:id/ai-result` persiste `analysisId`, reasoning, risk e recommendations e dispara ANAMNESIS_AI_COMPLETED.
 - SavePlanFeedbackUseCase grava scoreboard em `anamnesis_ai_feedbacks` (approvalStatus, liked, comentario) e emite ANAMNESIS_PLAN_FEEDBACK_SAVED para alimentar treinamento supervisionado.
+- AnamnesisEventsSubscriber atualiza `anamnesis_metrics` via `AnamnesisMetricsRepository`, removendo caches em memória e permitindo agregações por tenant/dia com custo/token/latência.
 - AnamnesisEventsSubscriber alimenta `AnamnesisMetricsService` (steps salvos, autosaves, completude, feedbacks aprovados) mantendo indicadores por tenant prontos para dashboards.
 
 ### Validacao e contratos

@@ -17,19 +17,19 @@ export class AnamnesisEventsSubscriber implements OnModuleInit, OnModuleDestroy 
 
   onModuleInit(): void {
     this.registerHandler(DomainEvents.ANAMNESIS_STEP_SAVED, async (event) => {
-      this.metricsService.recordStepSaved(event);
+      await this.metricsService.recordStepSaved(event);
     });
 
     this.registerHandler(DomainEvents.ANAMNESIS_SUBMITTED, async (event) => {
-      this.metricsService.recordSubmission(event);
+      await this.metricsService.recordSubmission(event);
     });
 
     this.registerHandler(DomainEvents.ANAMNESIS_AI_COMPLETED, async (event) => {
-      this.metricsService.recordAICompleted(event);
+      await this.metricsService.recordAICompleted(event);
     });
 
     this.registerHandler(DomainEvents.ANAMNESIS_PLAN_FEEDBACK_SAVED, async (event) => {
-      this.metricsService.recordPlanFeedback(event);
+      await this.metricsService.recordPlanFeedback(event);
     });
   }
 
