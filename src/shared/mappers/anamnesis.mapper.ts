@@ -11,6 +11,7 @@ import {
   TherapeuticPlanAcceptance,
   TherapeuticPlanData,
   TherapeuticPlanStatus,
+  TherapeuticPlanAccessLog,
 } from '../../domain/anamnesis/types/anamnesis.types';
 import { AnamnesisEntity } from '../../infrastructure/anamnesis/entities/anamnesis.entity';
 import { AnamnesisStepEntity } from '../../infrastructure/anamnesis/entities/anamnesis-step.entity';

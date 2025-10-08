@@ -37,6 +37,8 @@ import {
   SubmitAnamnesisInput,
   TherapeuticPlanAcceptance,
   TherapeuticPlanData,
+  TherapeuticPlanAccessLog,
+  ListPlanAccessLogsFilters,
   UpsertPatientAnamnesisRollupInput,
 } from '../../../domain/anamnesis/types/anamnesis.types';
 import { IAnamnesisRepository } from '../../../domain/anamnesis/interfaces/repositories/anamnesis.repository.interface';
@@ -60,6 +62,7 @@ import {
   mapStepTemplateEntityToDomain,
   mapTherapeuticPlanAcceptanceEntityToDomain,
   mapTherapeuticPlanEntityToDomain,
+  mapTherapeuticPlanAccessLogEntityToDomain,
 } from '../../../shared/mappers/anamnesis.mapper';
 
 const STEP_ORDER: AnamnesisStepKey[] = [
@@ -778,6 +781,38 @@ export class AnamnesisRepository implements IAnamnesisRepository {
     });
 
     await this.planAccessLogRepository.save(entity);
+  }
+
+  async listPlanAccessLogs(
+    tenantId: string,
+    filters: ListPlanAccessLogsFilters,
+  ): Promise<TherapeuticPlanAccessLog[]> {
+    const query = this.planAccessLogRepository
+      .createQueryBuilder('log')
+      .where('log.tenantId = :tenantId', { tenantId })
+      .andWhere('log.anamnesisId = :anamnesisId', { anamnesisId: filters.anamnesisId });
+
+    if (filters.planId) {
+      query.andWhere('log.planId = :planId', { planId: filters.planId });
+    }
+
+    if (filters.from) {
+      query.andWhere('log.viewedAt >= :from', { from: filters.from });
+    }
+
+    if (filters.to) {
+      query.andWhere('log.viewedAt <= :to', { to: filters.to });
+    }
+
+    const limit = filters.limit && filters.limit > 0 ? filters.limit : undefined;
+    if (limit) {
+      query.take(limit);
+    }
+
+    query.orderBy('log.viewedAt', 'DESC').addOrderBy('log.createdAt', 'DESC');
+
+    const entities = await query.getMany();
+    return entities.map(mapTherapeuticPlanAccessLogEntityToDomain);
   }
 
   async getPatientRollup(
