@@ -7,7 +7,6 @@ import { PatientRepository } from '../../infrastructure/patients/repositories/pa
 import { PatientNotificationService } from '../../infrastructure/patients/services/patient-notification.service';
 import { PatientAISuggestionsService } from '../../infrastructure/patients/services/patient-ai-suggestions.service';
 import { PatientAuditService } from '../../infrastructure/patients/services/patient-audit.service';
-import { MessageBus } from '../../shared/messaging/message-bus';
 import { SupabaseService } from '../../infrastructure/auth/services/supabase.service';
 import { PatientEventsSubscriber } from './subscribers/patient-events.subscriber';
 import { IPatientRepositoryToken } from '../../domain/patients/interfaces/repositories/patient.repository.interface';
@@ -74,7 +73,6 @@ const useCaseProviders: Provider[] = [
     PatientAISuggestionsService,
     PatientAuditService,
     SupabaseService,
-    MessageBus,
     PatientEventsSubscriber,
   ],
   exports: [

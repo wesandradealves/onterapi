@@ -46,7 +46,6 @@ import { TenantGuard } from './guards/tenant.guard';
 
 import { AuthController } from './api/controllers/auth.controller';
 import { TwoFactorController } from './api/controllers/two-factor.controller';
-import { MessageBus } from '../../shared/messaging/message-bus';
 import { AuthEventsSubscriber } from './subscribers/auth-events.subscriber';
 
 const serviceProviders: Provider[] = [
@@ -143,7 +142,6 @@ const useCaseProviders: Provider[] = [
     JwtAuthGuard,
     RolesGuard,
     TenantGuard,
-    MessageBus,
     AuthEventsSubscriber,
     AuthEmailService,
     NotificationEmailService,

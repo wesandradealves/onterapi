@@ -12,7 +12,6 @@ import { SupabaseService } from '../../infrastructure/auth/services/supabase.ser
 import { AuthModule } from '../auth/auth.module';
 import { UserRepository } from '../../infrastructure/users/repositories/user.repository';
 import { UserEntity } from '../../infrastructure/auth/entities/user.entity';
-import { MessageBus } from '../../shared/messaging/message-bus';
 import { FindUserBySlugUseCaseToken } from '../../domain/users/interfaces/use-cases/find-user-by-slug.use-case.interface';
 
 @Module({
@@ -50,7 +49,6 @@ import { FindUserBySlugUseCaseToken } from '../../domain/users/interfaces/use-ca
     DeleteUserUseCase,
     UserOwnerGuard,
     SupabaseService,
-    MessageBus,
   ],
   exports: [],
 })

@@ -7,6 +7,7 @@ import { IUserRepository } from '../../../domain/users/interfaces/repositories/u
 import { AuthErrorFactory } from '../../../shared/factories/auth-error.factory';
 import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
 import { mapRoleToDatabase } from '../../../shared/utils/role.utils';
+import { clampLimit, clampPage } from '../../../shared/utils/pagination.util';
 
 @Injectable()
 export class UserRepository implements IUserRepository {
@@ -34,8 +35,8 @@ export class UserRepository implements IUserRepository {
     tenantId?: string;
     isActive?: boolean;
   }): Promise<{ data: UserEntity[]; total: number }> {
-    const page = filters.page || 1;
-    const limit = filters.limit || 20;
+    const page = clampPage(filters.page);
+    const limit = clampLimit(filters.limit, 20, 200);
     const skip = (page - 1) * limit;
 
     const queryBuilder = this.repository.createQueryBuilder('user');

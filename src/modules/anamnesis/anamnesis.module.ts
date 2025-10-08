@@ -54,7 +54,6 @@ import { CreateAnamnesisAttachmentUseCase } from './use-cases/create-anamnesis-a
 import { RemoveAnamnesisAttachmentUseCase } from './use-cases/remove-anamnesis-attachment.use-case';
 import { ReceiveAnamnesisAIResultUseCase } from './use-cases/receive-anamnesis-ai-result.use-case';
 import { CancelAnamnesisUseCase } from './use-cases/cancel-anamnesis.use-case';
-import { MessageBus } from '../../shared/messaging/message-bus';
 import { AnamnesisAIWebhookGuard } from './guards/anamnesis-ai-webhook.guard';
 import { SupabaseAnamnesisAttachmentStorageService } from '../../infrastructure/anamnesis/services/supabase-anamnesis-attachment-storage.service';
 import { AnamnesisMetricsService } from './services/anamnesis-metrics.service';
@@ -176,7 +175,6 @@ const storageProviders: Provider[] = [
     ...repositoryProviders,
     ...useCaseProviders,
     ...storageProviders,
-    MessageBus,
     AnamnesisAIWebhookGuard,
     AnamnesisMetricsService,
 

@@ -17,6 +17,7 @@ import {
 import { SupabaseService } from '../../auth/services/supabase.service';
 import { PatientMapper, SupabasePatientRecord } from '../../../shared/mappers/patient.mapper';
 import { appendSlugSuffix, slugify } from '../../../shared/utils/slug.util';
+import { clampLimit, clampPage } from '../../../shared/utils/pagination.util';
 
 const toISODate = (value?: Date): string | null => (value ? value.toISOString() : null);
 const normaliseString = (value?: string | null): string | undefined =>
@@ -222,7 +223,9 @@ export class PatientRepository implements IPatientRepository {
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
   }): Promise<{ data: PatientListItem[]; total: number }> {
-    const { tenantId, filters, page = 1, limit = 20, sortBy, sortOrder = 'asc' } = params;
+    const { tenantId, filters, sortBy, sortOrder = 'asc' } = params;
+    const page = clampPage(params.page);
+    const limit = clampLimit(params.limit, 20, 200);
 
     const validSortColumns = new Map<string, string>([
       ['createdAt', 'created_at'],

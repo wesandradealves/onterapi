@@ -98,7 +98,7 @@ export class AnamnesisAIWorkerService implements OnModuleInit, OnModuleDestroy {
 
     if (!endpoint) {
       this.logger.warn(
-        'AI worker URL not configured (ANAMNESIS_AI_WORKER_URL). Skipping dispatch.',
+        `AI worker URL not configured (ANAMNESIS_AI_WORKER_URL). Skipping dispatch for analysis ${payload.analysisId} (tenant=${payload.tenantId}, anamnesis=${payload.anamnesisId}).`,
       );
       return;
     }
