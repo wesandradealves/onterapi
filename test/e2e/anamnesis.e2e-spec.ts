@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
 import { AnamnesisController } from '@modules/anamnesis/api/controllers/anamnesis.controller';
+import { AnamnesisMetricsController } from '@modules/anamnesis/api/controllers/anamnesis-metrics.controller';
 import { RolesEnum } from '@domain/auth/enums/roles.enum';
 import { ICurrentUser } from '@domain/auth/interfaces/current-user.interface';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
@@ -14,10 +15,20 @@ import {
   ILegalTermsRepository,
   ILegalTermsRepositoryToken,
 } from '@domain/legal/interfaces/legal-terms.repository.interface';
+import { TherapeuticPlanDomainService } from '@modules/anamnesis/services/therapeutic-plan-domain.service';
+import {
+  IAnamnesisAIWebhookRepositoryToken,
+} from '@domain/anamnesis/interfaces/repositories/anamnesis-ai-webhook.repository.interface';
+import { AnamnesisAIWebhookReplayService } from '@modules/anamnesis/services/anamnesis-ai-webhook-replay.service';
 import {
   IAnamnesisRepositoryToken as ANAMNESIS_REPOSITORY_TOKEN,
   IAnamnesisRepository,
 } from '@domain/anamnesis/interfaces/repositories/anamnesis.repository.interface';
+import {
+  IAnamnesisMetricsRepository,
+  IAnamnesisMetricsRepositoryToken,
+  MetricsAggregate,
+} from '@domain/anamnesis/interfaces/repositories/anamnesis-metrics.repository.interface';
 import {
   Anamnesis,
   AnamnesisAIAnalysis,
@@ -90,6 +101,7 @@ import { PatientAnamnesisRollupService } from '@modules/anamnesis/services/patie
 import { DomainEvent } from '@shared/events/domain-event.interface';
 import { DomainEvents } from '@shared/events/domain-events';
 import { AnamnesisErrorFactory } from '@shared/factories/anamnesis-error.factory';
+import { AnamnesisMetricsService } from '@modules/anamnesis/services/anamnesis-metrics.service';
 
 class FakeMessageBus {
   public readonly events: DomainEvent[] = [];
@@ -116,6 +128,92 @@ const clonePayload = <T>(value: T): T => {
     return value as T;
   }
 };
+
+const buildMetricsAggregate = (overrides: Partial<MetricsAggregate> = {}): MetricsAggregate => ({
+  stepsSaved: 0,
+  autoSaves: 0,
+  completedSteps: 0,
+  stepCompletionRateSum: 0,
+  stepCompletionRateCount: 0,
+  submissions: 0,
+  submissionCompletionRateSum: 0,
+  aiCompleted: 0,
+  aiFailed: 0,
+  aiConfidenceSum: 0,
+  aiConfidenceCount: 0,
+  tokensInputSum: 0,
+  tokensOutputSum: 0,
+  aiLatencySum: 0,
+  aiLatencyCount: 0,
+  aiLatencyMax: 0,
+  aiCostSum: 0,
+  feedbackTotal: 0,
+  feedbackApprovals: 0,
+  feedbackModifications: 0,
+  feedbackRejections: 0,
+  feedbackLikes: 0,
+  feedbackDislikes: 0,
+  lastUpdatedAt: null,
+  ...overrides,
+});
+
+class FakeAnamnesisMetricsRepository implements IAnamnesisMetricsRepository {
+  private readonly aggregates = new Map<string, MetricsAggregate>();
+  private readonly rangeAggregates = new Map<string, MetricsAggregate>();
+
+  setAggregate(tenantId: string | null | undefined, aggregate: MetricsAggregate): void {
+    this.aggregates.set(this.key(tenantId), { ...aggregate });
+  }
+
+  setRangeAggregate(
+    tenantId: string | null | undefined,
+    from: Date,
+    to: Date,
+    aggregate: MetricsAggregate,
+  ): void {
+    this.rangeAggregates.set(this.rangeKey(tenantId, from, to), { ...aggregate });
+  }
+
+  clear(): void {
+    this.aggregates.clear();
+    this.rangeAggregates.clear();
+  }
+
+  async incrementMetrics(): Promise<void> {
+    // no-op for e2e tests
+  }
+
+  async getAggregate(tenantId?: string | null): Promise<MetricsAggregate | null> {
+    const value = this.aggregates.get(this.key(tenantId));
+    return value ? { ...value } : null;
+  }
+
+  async getAggregateForRange(
+    tenantId: string | null | undefined,
+    from: Date,
+    to: Date,
+  ): Promise<MetricsAggregate | null> {
+    const value = this.rangeAggregates.get(this.rangeKey(tenantId, from, to));
+    if (value) {
+      return { ...value };
+    }
+    return this.getAggregate(tenantId);
+  }
+
+  private key(tenantId: string | null | undefined): string {
+    if (tenantId === null) {
+      return '__null__';
+    }
+    if (tenantId === undefined) {
+      return '__all__';
+    }
+    return tenantId;
+  }
+
+  private rangeKey(tenantId: string | null | undefined, from: Date, to: Date): string {
+    return `${this.key(tenantId)}|${from.toISOString()}|${to.toISOString()}`;
+  }
+}
 
 type RepositoryAttachment = AnamnesisAttachment & { uploadedAt: Date };
 
@@ -884,6 +982,28 @@ describe('AnamnesisModule (e2e)', () => {
     delete: jest.fn(async () => undefined),
   } as unknown as jest.Mocked<IAnamnesisAttachmentStorageService>;
 
+  const configServiceMock = {
+    get: jest.fn((key: string) => {
+      switch (key) {
+        case 'ANAMNESIS_AI_COST_TOKEN_INPUT':
+          return 0.0005;
+        case 'ANAMNESIS_AI_COST_TOKEN_OUTPUT':
+          return 0.001;
+        case 'ANAMNESIS_AI_LATENCY_ALERT_MS':
+          return 2000;
+        case 'APP_URL':
+          return 'https://app.local';
+        case 'SUPABASE_URL':
+          return 'https://supabase.local';
+        case 'SUPABASE_SERVICE_ROLE_KEY':
+          return 'service-role-key';
+        case 'ANAMNESIS_AI_WEBHOOK_SECRET':
+          return 'secret';
+        default:
+          return 'secret';
+      }
+    }),
+  };
   const patientRepositoryMock = {
     findById: jest.fn(async (tenantId: string, patientId: string) => ({
       id: patientId,
@@ -934,12 +1054,24 @@ describe('AnamnesisModule (e2e)', () => {
       context: 'therapeutic_plan',
       version: 'v1.0',
       content: 'Declaro estar ciente de que o plano terapeutico e uma assistencia de IA.',
+      status: 'published',
       isActive: true,
       publishedAt: new Date('2025-01-01T00:00:00Z'),
+      publishedBy: 'user-legal',
+      createdBy: 'user-legal',
+      retiredAt: null,
+      retiredBy: null,
       createdAt: new Date('2025-01-01T00:00:00Z'),
       updatedAt: new Date('2025-01-01T00:00:00Z'),
     })),
   } as unknown as jest.Mocked<ILegalTermsRepository>;
+
+  let metricsRepository: FakeAnamnesisMetricsRepository;
+
+  const aiWebhookRepositoryMock = {
+    recordRequest: jest.fn(async () => true),
+    pruneRequests: jest.fn(async () => 0),
+  };
 
   const currentUser: ICurrentUser = {
     id: PROFESSIONAL_ID,
@@ -952,18 +1084,25 @@ describe('AnamnesisModule (e2e)', () => {
   };
 
   beforeAll(async () => {
+    metricsRepository = new FakeAnamnesisMetricsRepository();
+
     const moduleRef: TestingModule = await Test.createTestingModule({
-      controllers: [AnamnesisController],
+      controllers: [AnamnesisMetricsController, AnamnesisController],
       providers: [
         { provide: ANAMNESIS_REPOSITORY_TOKEN, useClass: InMemoryAnamnesisRepository },
         { provide: MessageBus, useValue: messageBus },
-        { provide: ConfigService, useValue: { get: jest.fn(() => 'secret') } },
+        { provide: ConfigService, useValue: configServiceMock },
         { provide: IAnamnesisAttachmentStorageServiceToken, useValue: storageServiceMock },
         { provide: IPatientRepositoryToken, useValue: patientRepositoryMock },
         { provide: IAuthRepositoryToken, useValue: authRepositoryMock },
         { provide: ILegalTermsRepositoryToken, useValue: legalTermsRepositoryMock },
+        { provide: IAnamnesisMetricsRepositoryToken, useValue: metricsRepository },
+        AnamnesisMetricsService,
         LegalTermsService,
         PatientAnamnesisRollupService,
+        { provide: IAnamnesisAIWebhookRepositoryToken, useValue: aiWebhookRepositoryMock },
+        TherapeuticPlanDomainService,
+        AnamnesisAIWebhookReplayService,
         { provide: IStartAnamnesisUseCase, useClass: StartAnamnesisUseCase },
         { provide: IGetAnamnesisUseCase, useClass: GetAnamnesisUseCase },
         { provide: ISaveAnamnesisStepUseCase, useClass: SaveAnamnesisStepUseCase },
@@ -1295,5 +1434,112 @@ describe('AnamnesisModule (e2e)', () => {
     const draftEntry = withDrafts.body.entries.find((entry: any) => entry.id === draftAnamnesisId);
     expect(draftEntry).toBeDefined();
     expect(withDrafts.body.prefill.sourceAnamnesisId).toBe(anamnesisId);
+  });
+
+  it('retorna snapshot de metricas do tenant autenticado', async () => {
+    metricsRepository.clear();
+    metricsRepository.setAggregate(
+      TENANT_ID,
+      buildMetricsAggregate({
+        stepsSaved: 5,
+        autoSaves: 2,
+        completedSteps: 4,
+        stepCompletionRateSum: 300,
+        stepCompletionRateCount: 4,
+        submissions: 3,
+        submissionCompletionRateSum: 270,
+        aiCompleted: 2,
+        aiFailed: 1,
+        aiConfidenceSum: 1.5,
+        aiConfidenceCount: 2,
+        tokensInputSum: 1200,
+        tokensOutputSum: 800,
+        aiLatencySum: 2500,
+        aiLatencyCount: 2,
+        aiLatencyMax: 1600,
+        aiCostSum: 1.234567,
+        feedbackTotal: 2,
+        feedbackApprovals: 1,
+        feedbackModifications: 1,
+        feedbackRejections: 0,
+        feedbackLikes: 1,
+        feedbackDislikes: 0,
+        lastUpdatedAt: new Date('2025-10-01T10:00:00Z'),
+      }),
+    );
+
+    const response = await request(app.getHttpServer())
+      .get('/anamneses/metrics')
+      .set('x-tenant-id', TENANT_ID)
+      .expect(200);
+
+    expect(response.body.stepsSaved).toBe(5);
+    expect(response.body.autoSaves).toBe(2);
+    expect(response.body.averageStepCompletionRate).toBe(75);
+    expect(response.body.averageSubmissionCompletionRate).toBe(90);
+    expect(response.body.averageAIConfidence).toBe(0.75);
+    expect(response.body.averageAILatencyMs).toBe(1250);
+    expect(response.body.totalAICost).toBe(1.234567);
+    expect(response.body.feedback.total).toBe(2);
+    expect(response.body.feedback.approvals).toBe(1);
+    expect(response.body.lastUpdatedAt).toBe('2025-10-01T10:00:00.000Z');
+  });
+
+  it('permite consultar metricas agregadas por periodo para administradores', async () => {
+    metricsRepository.clear();
+
+    const from = new Date('2025-10-01T00:00:00Z');
+    const to = new Date('2025-10-07T23:59:59Z');
+
+    metricsRepository.setRangeAggregate(
+      'tenant-analytics',
+      from,
+      to,
+      buildMetricsAggregate({
+        submissions: 2,
+        submissionCompletionRateSum: 150,
+        stepsSaved: 6,
+        stepCompletionRateSum: 420,
+        stepCompletionRateCount: 6,
+        aiCompleted: 2,
+        aiFailed: 0,
+        aiConfidenceSum: 1.4,
+        aiConfidenceCount: 2,
+        tokensInputSum: 900,
+        tokensOutputSum: 600,
+        aiLatencySum: 1800,
+        aiLatencyCount: 2,
+        aiLatencyMax: 1200,
+        aiCostSum: 0.789012,
+        feedbackTotal: 1,
+        feedbackApprovals: 1,
+        feedbackModifications: 0,
+        feedbackRejections: 0,
+        feedbackLikes: 1,
+        feedbackDislikes: 0,
+        lastUpdatedAt: new Date('2025-10-07T22:00:00Z'),
+      }),
+    );
+
+    const previousRole = currentUser.role;
+    const previousTenant = currentUser.tenantId;
+    currentUser.role = RolesEnum.SUPER_ADMIN;
+    currentUser.tenantId = null;
+
+    const response = await request(app.getHttpServer())
+      .get(
+        `/anamneses/metrics?tenantId=tenant-analytics&from=${from.toISOString()}&to=${to.toISOString()}`,
+      )
+      .expect(200);
+
+    currentUser.role = previousRole;
+    currentUser.tenantId = previousTenant;
+
+    expect(response.body.submissions).toBe(2);
+    expect(response.body.averageSubmissionCompletionRate).toBe(75);
+    expect(response.body.averageAIConfidence).toBe(0.7);
+    expect(response.body.tokensInputTotal).toBe(900);
+    expect(response.body.feedback.approvals).toBe(1);
+    expect(response.body.lastUpdatedAt).toBe('2025-10-07T22:00:00.000Z');
   });
 });

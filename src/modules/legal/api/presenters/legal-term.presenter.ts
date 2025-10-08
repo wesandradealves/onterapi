@@ -9,8 +9,13 @@ export class LegalTermPresenter {
       context: term.context,
       version: term.version,
       content: term.content,
+      status: term.status,
       isActive: term.isActive,
       publishedAt: term.publishedAt ? term.publishedAt.toISOString() : null,
+      createdBy: term.createdBy ?? null,
+      publishedBy: term.publishedBy ?? null,
+      retiredAt: term.retiredAt ? term.retiredAt.toISOString() : null,
+      retiredBy: term.retiredBy ?? null,
       createdAt: term.createdAt.toISOString(),
       updatedAt: term.updatedAt.toISOString(),
     };

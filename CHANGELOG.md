@@ -4,6 +4,31 @@ Todas as mudancas notaveis neste projeto serao documentadas neste arquivo.
 
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o projeto adota [Versionamento Semantico](https://semver.org/lang/pt-BR/).
 
+## [0.17.3] - 2025-10-08
+
+### Testing
+- Adiciona testes unit�rios para `LegalTermPresenter` e amplia cobertura do `AnamnesisPresenter`, garantindo serializa��es opcionais.
+- `npm run test:cov`
+## [0.17.2] - 2025-10-02
+
+### Added
+- Tabela `anamnesis_metrics` + `AnamnesisMetricsRepository`, permitindo agregados por tenant/dia com contadores de passos, submissões, tokens, custo e feedback.
+- Serviço `AnamnesisAIWebhookReplayService` com repositório dedicado (`anamnesis_ai_webhook_requests`) para bloquear replays entre instâncias.
+- Migração `1738608000000-UpdateLegalTermsGovernance` adiciona status (`draft/published/retired`) e auditoria (`createdBy/publishedBy/retiredBy`) aos termos legais.
+- Endpoint `GET /anamneses/metrics` com controller dedicado, DTOs e testes E2E garantindo o snapshot multi-tenant.
+- Supabase Edge Function `supabase/functions/anamnesis-worker` espelha o worker Express e pode ser deployado via CLI (`--no-verify-jwt`).
+- `/legal/terms` expÃµe status e responsÃ¡veis nas respostas (`LegalTermResponseDto`) e exige o usuÃ¡rio autenticado ao publicar/desativar.
+
+### Security
+- Replays do webhook agora sÃ£o bloqueados por chave persistida (`analysisId` + assinatura) ao invÃ©s de cache volÃ¡til.
+
+### Testing
+- npm run lint
+- npx tsc --noEmit
+- npm run test -- --runInBand --silent
+- npm run test:int -- --runInBand --silent
+- npm run test:e2e -- --runInBand --silent
+
 ## [0.17.0] - 2025-10-01
 
 ### Added
@@ -14,8 +39,8 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 - Modo local do worker (ANAMNESIS_AI_WORKER_MODE=local) gera plano assistivo diretamente via regra heuristica.
 - AnamnesisMetricsService passa a registrar tokens de entrada/saida e latencia media para os planos gerados pela IA.
 - Script `npm run worker:start` sobe o worker externo de IA (Express) com suporte a OpenAI/local e retorno assinado ao webhook.
-- Endpoints `/legal/terms` permitem criar, publicar e desativar termos legais versionados por tenant, com validação de acesso multi-tenant.
-- Observabilidade reforçada: logs de acesso ao plano terapêutico, métricas de turnaround/tokens/custo e alerta de latência configurável.
+- Endpoints `/legal/terms` permitem criar, publicar e desativar termos legais versionados por tenant, com validaÃ§Ã£o de acesso multi-tenant.
+- Observabilidade reforÃ§ada: logs de acesso ao plano terapÃªutico, mÃ©tricas de turnaround/tokens/custo e alerta de latÃªncia configurÃ¡vel.
 
 ### Changed
 - Evento ANAMNESIS_AI_REQUESTED passa a publicar AnamnesisAIRequestedEventPayload tipado e o submit agrupa eventos em DomainEvent<unknown>[] reutilizando o payload sanitizado.
@@ -24,7 +49,7 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 - README e docs/AI_CONTRACT.md reforcam o pipeline completo (submit -> worker -> webhook -> aceite) e os requisitos de configuracao do worker.
 
 ### Security
-- Webhook `/anamneses/:id/ai-result` agora exige assinatura HMAC (`x-anamnesis-ai-signature` + `x-anamnesis-ai-timestamp`) com janela configurável (`ANAMNESIS_AI_WEBHOOK_MAX_SKEW_MS`).
+- Webhook `/anamneses/:id/ai-result` agora exige assinatura HMAC (`x-anamnesis-ai-signature` + `x-anamnesis-ai-timestamp`) com janela configurÃ¡vel (`ANAMNESIS_AI_WEBHOOK_MAX_SKEW_MS`).
 
 ### Testing
 - npm run lint
@@ -39,12 +64,12 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 - Interface ExecutableUseCase padronizando execute/executeOrThrow para os casos de uso.
 
 ### Changed
-- BaseUseCase e UseCaseWrapper passam a lançar exceções diretamente e expõem executeOrThrow, eliminando a dependência de unwrapResult nos controllers e garantindo propagação uniforme de erros.
-- Controllers e casos de uso de Auth, Users, Patients e Anamnesis atualizados para o novo contrato; suites unitárias, de integração e E2E ajustadas para refletir o comportamento.
-- .gitignore agora ignora a pasta payloads, evitando sujar o repositório com artefatos dos fluxos manuais de anamnese.
+- BaseUseCase e UseCaseWrapper passam a lanÃ§ar exceÃ§Ãµes diretamente e expÃµem executeOrThrow, eliminando a dependÃªncia de unwrapResult nos controllers e garantindo propagaÃ§Ã£o uniforme de erros.
+- Controllers e casos de uso de Auth, Users, Patients e Anamnesis atualizados para o novo contrato; suites unitÃ¡rias, de integraÃ§Ã£o e E2E ajustadas para refletir o comportamento.
+- .gitignore agora ignora a pasta payloads, evitando sujar o repositÃ³rio com artefatos dos fluxos manuais de anamnese.
 
 ### Documentation
-- README atualizado com as métricas da bateria manual de 29/09, novo total de 248 testes automatizados (~18 s) e referência de cobertura preservada em 100%.
+- README atualizado com as mÃ©tricas da bateria manual de 29/09, novo total de 248 testes automatizados (~18 s) e referÃªncia de cobertura preservada em 100%.
 
 ## [0.16.6] - 2025-09-26
 
@@ -898,3 +923,4 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 ---
 
 _Mantenha este arquivo atualizado a cada release_
+

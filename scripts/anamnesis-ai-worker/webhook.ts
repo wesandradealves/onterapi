@@ -1,7 +1,7 @@
-import { createHmac } from 'node:crypto';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 import { WorkerConfig } from './config';
+import { buildHmacSignature, formatSignature } from '../../src/shared/utils/hmac.util';
 import { AiWorkerRequestBody, ProviderResult } from './types';
 
 export interface WebhookOptions {
@@ -57,14 +57,16 @@ function buildWebhookHeaders(
   bodyJson: string,
 ): Record<string, string> {
   const timestamp = Date.now().toString();
-  const signature = createHmac('sha256', config.webhookSecret)
-    .update(`${timestamp}.${bodyJson}`)
-    .digest('hex');
+  const signature = buildHmacSignature({
+    secret: config.webhookSecret,
+    timestamp,
+    body: bodyJson,
+  });
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'x-anamnesis-ai-timestamp': timestamp,
-    'x-anamnesis-ai-signature': `sha256=${signature}`,
+    'x-anamnesis-ai-signature': formatSignature(signature),
   };
 
   if (config.tenantHeaderEnabled) {

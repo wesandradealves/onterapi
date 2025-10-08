@@ -1,5 +1,79 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+export class AnamnesisMetricsFeedbackDto {
+  @ApiProperty({ description: 'Total de feedbacks registrados', example: 18 })
+  total!: number;
+
+  @ApiProperty({ description: 'Feedbacks aprovando o plano', example: 10 })
+  approvals!: number;
+
+  @ApiProperty({ description: 'Feedbacks solicitando modificacoes', example: 5 })
+  modifications!: number;
+
+  @ApiProperty({ description: 'Feedbacks rejeitando o plano', example: 3 })
+  rejections!: number;
+
+  @ApiProperty({ description: 'Quantidade de curtidas registradas', example: 12 })
+  likes!: number;
+
+  @ApiProperty({ description: 'Quantidade de descurtidas registradas', example: 2 })
+  dislikes!: number;
+}
+
+export class AnamnesisMetricsSnapshotDto {
+  @ApiProperty({ description: 'Total de steps salvos', example: 120 })
+  stepsSaved!: number;
+
+  @ApiProperty({ description: 'Total de auto-saves executados', example: 45 })
+  autoSaves!: number;
+
+  @ApiProperty({ description: 'Quantidade de steps concluidos', example: 95 })
+  completedSteps!: number;
+
+  @ApiProperty({ description: 'Taxa media de conclusao por step', example: 82.5 })
+  averageStepCompletionRate!: number;
+
+  @ApiProperty({ description: 'Numero de anamneses submetidas', example: 27 })
+  submissions!: number;
+
+  @ApiProperty({ description: 'Taxa media de conclusao na submissao', example: 91.2 })
+  averageSubmissionCompletionRate!: number;
+
+  @ApiProperty({ description: 'Quantidade de geracoes de IA concluidas', example: 24 })
+  aiCompleted!: number;
+
+  @ApiProperty({ description: 'Quantidade de falhas da IA', example: 2 })
+  aiFailed!: number;
+
+  @ApiProperty({ description: 'Confianca media retornada pela IA', example: 0.78 })
+  averageAIConfidence!: number;
+
+  @ApiProperty({ description: 'Total de tokens de entrada consumidos', example: 14500 })
+  tokensInputTotal!: number;
+
+  @ApiProperty({ description: 'Total de tokens de saida gerados', example: 9800 })
+  tokensOutputTotal!: number;
+
+  @ApiProperty({ description: 'Latencia media das respostas da IA (ms)', example: 1340 })
+  averageAILatencyMs!: number;
+
+  @ApiProperty({ description: 'Maior latencia registrada da IA (ms)', example: 3120 })
+  maxAILatencyMs!: number;
+
+  @ApiProperty({ description: 'Custo total estimado das execucoes da IA', example: 5.483271 })
+  totalAICost!: number;
+
+  @ApiProperty({ description: 'Resumo dos feedbacks sobre planos gerados', type: () => AnamnesisMetricsFeedbackDto })
+  feedback!: AnamnesisMetricsFeedbackDto;
+
+  @ApiPropertyOptional({
+    description: 'Momento da ultima atualizacao (ISO)',
+    example: '2025-09-26T06:15:00Z',
+    nullable: true,
+  })
+  lastUpdatedAt?: string | null;
+}
+
 export class AnamnesisStepDto {
   @ApiProperty({
     description: 'Identificador do step',

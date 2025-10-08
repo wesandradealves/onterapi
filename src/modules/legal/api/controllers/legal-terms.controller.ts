@@ -106,7 +106,9 @@ export class LegalTermsController {
       version: body.version,
       content: body.content,
       tenantId: resolvedTenant ?? null,
+      createdBy: currentUser.id,
       publishNow: body.publishNow,
+      publishBy: body.publishNow ? currentUser.id : undefined,
     });
 
     return LegalTermPresenter.toDto(term);
@@ -123,7 +125,7 @@ export class LegalTermsController {
     const term = await this.legalTermsService.getById(termId);
     this.ensureUserCanManageTerm(currentUser, term);
 
-    const updated = await this.legalTermsService.publishTerm(termId);
+    const updated = await this.legalTermsService.publishTerm(termId, currentUser.id);
     return LegalTermPresenter.toDto(updated);
   }
 
@@ -138,7 +140,7 @@ export class LegalTermsController {
     const term = await this.legalTermsService.getById(termId);
     this.ensureUserCanManageTerm(currentUser, term);
 
-    const retired = await this.legalTermsService.retireTerm(termId);
+    const retired = await this.legalTermsService.retireTerm(termId, currentUser.id);
     return LegalTermPresenter.toDto(retired);
   }
 

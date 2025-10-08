@@ -1,3 +1,4 @@
+import { clonePlain } from '../../../shared/utils/clone.util';
 import { z } from 'zod';
 
 import { AnamnesisStepKey } from '../../../domain/anamnesis/types/anamnesis.types';
@@ -310,7 +311,7 @@ const ensureRecord = (value: unknown): Record<string, unknown> => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return {};
   }
-  const cloned = JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+  const cloned = clonePlain(value) as Record<string, unknown>;
   return pruneUndefined(cloned) as Record<string, unknown>;
 };
 
@@ -685,7 +686,7 @@ const lifestylePostProcess = (
   payload: LifestylePayload,
   options: ValidationOptions,
 ): Record<string, unknown> => {
-  const clone = JSON.parse(JSON.stringify(payload)) as Record<string, unknown>;
+  const clone = clonePlain(payload) as Record<string, unknown>;
   const smoking = clone.smoking as Record<string, unknown> | undefined;
   if (smoking) {
     const computedPackYears = computePackYears(
@@ -869,7 +870,7 @@ type PhysicalExamSchema = ReturnType<typeof physicalExamSchemaFactory>;
 type PhysicalExamPayload = z.infer<PhysicalExamSchema>;
 
 const physicalExamPostProcess = (payload: PhysicalExamPayload): Record<string, unknown> => {
-  const clone = JSON.parse(JSON.stringify(payload)) as Record<string, unknown>;
+  const clone = clonePlain(payload) as Record<string, unknown>;
   const anthropometry = clone.anthropometry as Record<string, unknown> | undefined;
   if (anthropometry) {
     const height = typeof anthropometry.height === 'number' ? anthropometry.height : undefined;

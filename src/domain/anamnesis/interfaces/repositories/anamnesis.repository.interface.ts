@@ -29,7 +29,9 @@ import {
   SubmitAnamnesisInput,
   TherapeuticPlanAcceptance,
   TherapeuticPlanData,
+  TherapeuticPlanAccessLog,
   UpsertPatientAnamnesisRollupInput,
+  ListPlanAccessLogsFilters,
 } from '../../types/anamnesis.types';
 export interface IAnamnesisRepository {
   create(data: CreateAnamnesisInput): Promise<Anamnesis>;
@@ -66,6 +68,10 @@ export interface IAnamnesisRepository {
     data: CreateTherapeuticPlanAcceptanceInput,
   ): Promise<TherapeuticPlanAcceptance>;
   createPlanAccessLog(data: CreateTherapeuticPlanAccessLogInput): Promise<void>;
+  listPlanAccessLogs(
+    tenantId: string,
+    filters: ListPlanAccessLogsFilters,
+  ): Promise<TherapeuticPlanAccessLog[]>;
 
   recordAITrainingFeedback(
     data: RecordAITrainingFeedbackInput,

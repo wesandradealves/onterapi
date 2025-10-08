@@ -1,3 +1,5 @@
+import { clonePlain } from '../../../../shared/utils/clone.util';
+
 import {
   Anamnesis,
   AnamnesisAttachment,
@@ -5,6 +7,7 @@ import {
   AnamnesisHistoryEntry,
   AnamnesisHistoryStep,
   AnamnesisListItem,
+  AnamnesisMetricsSnapshot,
   AnamnesisStep,
   AnamnesisStepTemplate,
   TherapeuticPlanData,
@@ -18,6 +21,8 @@ import {
   AnamnesisHistoryResponseDto,
   AnamnesisHistoryStepDto,
   AnamnesisListItemDto,
+  AnamnesisMetricsFeedbackDto,
+  AnamnesisMetricsSnapshotDto,
   AnamnesisStepDto,
   AnamnesisStepTemplateDto,
   TherapeuticPlanAcceptanceDto,
@@ -34,7 +39,7 @@ const cloneRecord = (value: unknown): Record<string, unknown> => {
   }
 
   try {
-    return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+    return clonePlain(value) as Record<string, unknown>;
   } catch {
     return {};
   }
@@ -355,6 +360,36 @@ export class AnamnesisPresenter {
 
   static templates(templates: AnamnesisStepTemplate[]): AnamnesisStepTemplateDto[] {
     return templates.map(mapTemplate);
+  }
+
+  static metrics(snapshot: AnamnesisMetricsSnapshot): AnamnesisMetricsSnapshotDto {
+    const feedback: AnamnesisMetricsFeedbackDto = {
+      total: snapshot.feedback.total,
+      approvals: snapshot.feedback.approvals,
+      modifications: snapshot.feedback.modifications,
+      rejections: snapshot.feedback.rejections,
+      likes: snapshot.feedback.likes,
+      dislikes: snapshot.feedback.dislikes,
+    };
+
+    return {
+      stepsSaved: snapshot.stepsSaved,
+      autoSaves: snapshot.autoSaves,
+      completedSteps: snapshot.completedSteps,
+      averageStepCompletionRate: snapshot.averageStepCompletionRate,
+      submissions: snapshot.submissions,
+      averageSubmissionCompletionRate: snapshot.averageSubmissionCompletionRate,
+      aiCompleted: snapshot.aiCompleted,
+      aiFailed: snapshot.aiFailed,
+      averageAIConfidence: snapshot.averageAIConfidence,
+      tokensInputTotal: snapshot.tokensInputTotal,
+      tokensOutputTotal: snapshot.tokensOutputTotal,
+      averageAILatencyMs: snapshot.averageAILatencyMs,
+      maxAILatencyMs: snapshot.maxAILatencyMs,
+      totalAICost: snapshot.totalAICost,
+      feedback,
+      lastUpdatedAt: snapshot.lastUpdatedAt ? snapshot.lastUpdatedAt.toISOString() : null,
+    };
   }
 
   static plan(plan: TherapeuticPlanData): TherapeuticPlanDto {

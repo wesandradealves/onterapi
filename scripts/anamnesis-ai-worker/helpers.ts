@@ -7,6 +7,10 @@ import {
   TherapeuticPlanRecommendation,
   TherapeuticPlanRiskFactor,
 } from '../../src/domain/anamnesis/types/anamnesis.types';
+import {
+  deriveRecommendationsFromPlanText,
+  deriveRiskFactorsFromEvidence,
+} from '../../src/shared/utils/therapeutic-plan.util';
 
 function coerceString(value: unknown, fallback: string): string {
   if (typeof value === 'string' && value.trim().length > 0) {
@@ -52,40 +56,11 @@ export function normalizeCompact(input: Record<string, unknown>): AnamnesisCompa
 }
 
 export function buildRecommendations(planText: string): TherapeuticPlanRecommendation[] {
-  return planText
-    .split(/\n+/)
-    .map((line) => line.replace(/^[0-9]+[).\-\s]*/, '').trim())
-    .filter((line) => line.length > 0)
-    .slice(0, 8)
-    .map((description) => ({
-      id: randomUUID(),
-      description,
-      priority: description.toLowerCase().includes('urgente') ? 'high' : 'medium',
-    }));
+  return deriveRecommendationsFromPlanText(planText);
 }
 
 export function buildRiskFactors(evidenceMap: Array<Record<string, unknown>>): TherapeuticPlanRiskFactor[] {
-  const bucket = new Map<string, TherapeuticPlanRiskFactor>();
-  evidenceMap.forEach((entry) => {
-    const evidences = Array.isArray(entry.evidence) ? (entry.evidence as unknown[]) : [];
-    evidences
-      .map((value) => String(value ?? '').trim())
-      .filter((value) => value.length > 0)
-      .slice(0, 5)
-      .forEach((value) => {
-        if (bucket.size >= 8) {
-          return;
-        }
-        if (!bucket.has(value)) {
-          bucket.set(value, {
-            id: randomUUID(),
-            description: value,
-            severity: value.toLowerCase().includes('grave') ? 'high' : 'medium',
-          });
-        }
-      });
-  });
-  return Array.from(bucket.values());
+  return deriveRiskFactorsFromEvidence(evidenceMap);
 }
 
 export function buildSummary(text: string, maxLength: number): string {

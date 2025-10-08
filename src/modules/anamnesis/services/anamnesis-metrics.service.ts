@@ -1,124 +1,74 @@
-﻿import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
+import {
+  IAnamnesisMetricsRepository,
+  IAnamnesisMetricsRepositoryToken,
+  MetricsAggregate,
+  MetricsIncrement,
+} from '../../../domain/anamnesis/interfaces/repositories/anamnesis-metrics.repository.interface';
+import { AnamnesisMetricsSnapshot } from '../../../domain/anamnesis/types/anamnesis.types';
 import { DomainEvent } from '../../../shared/events/domain-event.interface';
 
-interface InternalStats {
-  stepsSaved: number;
-  autoSaves: number;
-  completedSteps: number;
-  stepCompletionRateSum: number;
-  stepCompletionRateCount: number;
-  submissions: number;
-  submissionCompletionRateSum: number;
-  aiCompleted: number;
-  aiFailed: number;
-  aiConfidenceSum: number;
-  aiConfidenceCount: number;
-  aiTokensInputSum: number;
-  aiTokensOutputSum: number;
-  aiLatencySum: number;
-  aiLatencyCount: number;
-  aiLatencyMax: number;
-  aiCostSum: number;
-  feedbackTotal: number;
-  feedbackApprovals: number;
-  feedbackModifications: number;
-  feedbackRejections: number;
-  feedbackLikes: number;
-  feedbackDislikes: number;
-  lastUpdatedAt?: Date;
-}
-
-export interface AnamnesisMetricsSnapshot {
-  stepsSaved: number;
-  autoSaves: number;
-  completedSteps: number;
-  averageStepCompletionRate: number;
-  submissions: number;
-  averageSubmissionCompletionRate: number;
-  aiCompleted: number;
-  aiFailed: number;
-  averageAIConfidence: number;
-  tokensInputTotal: number;
-  tokensOutputTotal: number;
-  averageAILatencyMs: number;
-  maxAILatencyMs: number;
-  totalAICost: number;
-  feedback: {
-    total: number;
-    approvals: number;
-    modifications: number;
-    rejections: number;
-    likes: number;
-    dislikes: number;
-  };
-  lastUpdatedAt?: Date;
-}
-
-const createEmptyStats = (): InternalStats => ({
+const EMPTY_SNAPSHOT: AnamnesisMetricsSnapshot = {
   stepsSaved: 0,
   autoSaves: 0,
   completedSteps: 0,
-  stepCompletionRateSum: 0,
-  stepCompletionRateCount: 0,
+  averageStepCompletionRate: 0,
   submissions: 0,
-  submissionCompletionRateSum: 0,
+  averageSubmissionCompletionRate: 0,
   aiCompleted: 0,
   aiFailed: 0,
-  aiConfidenceSum: 0,
-  aiConfidenceCount: 0,
-  aiTokensInputSum: 0,
-  aiTokensOutputSum: 0,
-  aiLatencySum: 0,
-  aiLatencyCount: 0,
-  aiLatencyMax: 0,
-  aiCostSum: 0,
-  feedbackTotal: 0,
-  feedbackApprovals: 0,
-  feedbackModifications: 0,
-  feedbackRejections: 0,
-  feedbackLikes: 0,
-  feedbackDislikes: 0,
-  lastUpdatedAt: undefined,
-});
+  averageAIConfidence: 0,
+  tokensInputTotal: 0,
+  tokensOutputTotal: 0,
+  averageAILatencyMs: 0,
+  maxAILatencyMs: 0,
+  totalAICost: 0,
+  feedback: {
+    total: 0,
+    approvals: 0,
+    modifications: 0,
+    rejections: 0,
+    likes: 0,
+    dislikes: 0,
+  },
+  lastUpdatedAt: null,
+};
 
 @Injectable()
 export class AnamnesisMetricsService {
   private readonly logger = new Logger(AnamnesisMetricsService.name);
-  private readonly globalStats: InternalStats = createEmptyStats();
-  private readonly tenantStats = new Map<string, InternalStats>();
   private readonly costInputPerToken: number;
   private readonly costOutputPerToken: number;
   private readonly latencyAlertThresholdMs: number;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    @Inject(IAnamnesisMetricsRepositoryToken)
+    private readonly metricsRepository: IAnamnesisMetricsRepository,
+  ) {
     this.costInputPerToken = this.parsePositiveNumber('ANAMNESIS_AI_COST_TOKEN_INPUT');
     this.costOutputPerToken = this.parsePositiveNumber('ANAMNESIS_AI_COST_TOKEN_OUTPUT');
     this.latencyAlertThresholdMs = this.parsePositiveNumber('ANAMNESIS_AI_LATENCY_ALERT_MS');
   }
 
-  recordStepSaved(event: DomainEvent): void {
+  async recordStepSaved(event: DomainEvent): Promise<void> {
     const payload = event.payload as Record<string, unknown>;
     const tenantId = this.resolveTenantId(event);
     const completed = Boolean(payload['completed']);
     const completionRate = this.extractNumber(payload['completionRate']);
     const autoSave = Boolean(payload['autoSave']);
 
-    this.applyToStats(tenantId, (stats) => {
-      stats.stepsSaved += 1;
-      if (autoSave) {
-        stats.autoSaves += 1;
-      }
-      if (completed) {
-        stats.completedSteps += 1;
-      }
-      if (typeof completionRate === 'number') {
-        stats.stepCompletionRateSum += completionRate;
-        stats.stepCompletionRateCount += 1;
-      }
-      stats.lastUpdatedAt = new Date();
-    });
+    const increments: MetricsIncrement = {
+      stepsSaved: 1,
+      autoSaves: autoSave ? 1 : 0,
+      completedSteps: completed ? 1 : 0,
+      stepCompletionRateSum: completionRate ?? 0,
+      stepCompletionRateCount: completionRate !== undefined ? 1 : 0,
+    };
+
+    await this.persistMetrics(event.occurredOn, tenantId, increments);
 
     this.logger.debug('Metrics updated: step saved', {
       tenantId,
@@ -128,106 +78,88 @@ export class AnamnesisMetricsService {
     });
   }
 
-  recordSubmission(event: DomainEvent): void {
+  async recordSubmission(event: DomainEvent): Promise<void> {
     const payload = event.payload as Record<string, unknown>;
     const tenantId = this.resolveTenantId(event);
     const completionRate = this.extractNumber(payload['completionRate']);
 
-    this.applyToStats(tenantId, (stats) => {
-      stats.submissions += 1;
-      if (typeof completionRate === 'number') {
-        stats.submissionCompletionRateSum += completionRate;
-      }
-      stats.lastUpdatedAt = new Date();
-    });
+    const increments: MetricsIncrement = {
+      submissions: 1,
+      submissionCompletionRateSum: completionRate ?? 0,
+    };
 
-    this.logger.debug('Metrics updated: anamnesis submitted', {
-      tenantId,
-      completionRate,
-    });
+    await this.persistMetrics(event.occurredOn, tenantId, increments);
+
+    this.logger.debug('Metrics updated: anamnesis submitted', { tenantId, completionRate });
   }
 
-  recordAICompleted(event: DomainEvent): void {
+  async recordAICompleted(event: DomainEvent): Promise<void> {
     const payload = event.payload as Record<string, unknown>;
     const tenantId = this.resolveTenantId(event);
-    const status = String(payload['status'] ?? '');
+    const status = String(payload['status'] ?? 'completed');
     const confidence = this.extractNumber(payload['confidence']);
     const tokensInput = this.extractNumber(payload['tokensInput']);
     const tokensOutput = this.extractNumber(payload['tokensOutput']);
     const latencyMs = this.extractNumber(payload['latencyMs']);
+    const cost = this.calculateCost(tokensInput, tokensOutput);
 
-    this.applyToStats(tenantId, (stats) => {
-      if (status === 'completed') {
-        stats.aiCompleted += 1;
-      } else if (status === 'failed') {
-        stats.aiFailed += 1;
-      }
-      if (typeof confidence === 'number') {
-        stats.aiConfidenceSum += confidence;
-        stats.aiConfidenceCount += 1;
-      }
-      if (typeof tokensInput === 'number') {
-        stats.aiTokensInputSum += tokensInput;
-      }
-      if (typeof tokensOutput === 'number') {
-        stats.aiTokensOutputSum += tokensOutput;
-      }
-      if (typeof latencyMs === 'number') {
-        stats.aiLatencySum += latencyMs;
-        stats.aiLatencyCount += 1;
-        if (latencyMs > stats.aiLatencyMax) {
-          stats.aiLatencyMax = latencyMs;
-        }
-        if (this.latencyAlertThresholdMs > 0 && latencyMs > this.latencyAlertThresholdMs) {
-          this.logger.warn('AI latency threshold exceeded', {
-            tenantId,
-            latencyMs,
-            thresholdMs: this.latencyAlertThresholdMs,
-          });
-        }
-      }
-      const cost = this.calculateCost(tokensInput, tokensOutput);
-      if (typeof cost === 'number') {
-        stats.aiCostSum += cost;
-      }
-      stats.lastUpdatedAt = new Date();
-    });
+    const success = status === 'completed';
 
-    this.logger.debug('Metrics updated: AI analysis completed', {
-      tenantId,
-      status,
-      confidence,
-      tokensInput,
-      tokensOutput,
-      latencyMs,
-    });
+    const increments: MetricsIncrement = {
+      aiCompleted: success ? 1 : 0,
+      aiFailed: success ? 0 : 1,
+      aiConfidenceSum: confidence ?? 0,
+      aiConfidenceCount: confidence !== undefined ? 1 : 0,
+      tokensInputSum: tokensInput ?? 0,
+      tokensOutputSum: tokensOutput ?? 0,
+      aiLatencySum: latencyMs ?? 0,
+      aiLatencyCount: latencyMs !== undefined ? 1 : 0,
+      aiLatencyMax: latencyMs ?? 0,
+      aiCostSum: cost ?? 0,
+    };
+
+    await this.persistMetrics(event.occurredOn, tenantId, increments);
+
+    if (
+      typeof latencyMs === 'number' &&
+      this.latencyAlertThresholdMs > 0 &&
+      latencyMs > this.latencyAlertThresholdMs
+    ) {
+      this.logger.warn('AI latency threshold exceeded', {
+        tenantId,
+        latencyMs,
+        thresholdMs: this.latencyAlertThresholdMs,
+        analysisId: payload['analysisId'],
+      });
+    } else {
+      this.logger.debug('Metrics updated: AI result', {
+        tenantId,
+        status,
+        confidence,
+        tokensInput,
+        tokensOutput,
+        latencyMs,
+        cost,
+      });
+    }
   }
 
-  recordPlanFeedback(event: DomainEvent): void {
+  async recordPlanFeedback(event: DomainEvent): Promise<void> {
     const payload = event.payload as Record<string, unknown>;
     const tenantId = this.resolveTenantId(event);
-    const approvalStatus = String(payload['approvalStatus'] ?? '');
-    const likedValue = payload['liked'];
-    const liked = typeof likedValue === 'boolean' ? likedValue : undefined;
+    const approvalStatus = String(payload['approvalStatus'] ?? '').toLowerCase();
+    const liked = payload['liked'];
 
-    this.applyToStats(tenantId, (stats) => {
-      stats.feedbackTotal += 1;
-      if (approvalStatus === 'approved') {
-        stats.feedbackApprovals += 1;
-      } else if (approvalStatus === 'modified') {
-        stats.feedbackModifications += 1;
-      } else if (approvalStatus === 'rejected') {
-        stats.feedbackRejections += 1;
-      }
+    const increments: MetricsIncrement = {
+      feedbackTotal: 1,
+      feedbackApprovals: approvalStatus === 'approved' ? 1 : 0,
+      feedbackModifications: approvalStatus === 'modified' ? 1 : 0,
+      feedbackRejections: approvalStatus === 'rejected' ? 1 : 0,
+      feedbackLikes: liked === true ? 1 : 0,
+      feedbackDislikes: liked === false ? 1 : 0,
+    };
 
-      if (liked === true) {
-        stats.feedbackLikes += 1;
-      } else if (liked === false) {
-        stats.feedbackDislikes += 1;
-      }
-
-      stats.lastUpdatedAt = new Date();
-    });
+    await this.persistMetrics(event.occurredOn, tenantId, increments);
 
     this.logger.debug('Metrics updated: plan feedback', {
       tenantId,
@@ -236,71 +168,102 @@ export class AnamnesisMetricsService {
     });
   }
 
-  getSnapshot(tenantId?: string): AnamnesisMetricsSnapshot {
-    const stats = tenantId ? this.getOrCreateTenantStats(tenantId) : this.globalStats;
+  async getSnapshot(tenantId?: string | null): Promise<AnamnesisMetricsSnapshot> {
+    const aggregate = await this.metricsRepository.getAggregate(tenantId);
+    if (!aggregate) {
+      return { ...EMPTY_SNAPSHOT };
+    }
 
+    return this.transformAggregateToSnapshot(aggregate);
+  }
+
+  async getSnapshotForRange(
+    tenantId: string | null | undefined,
+    from: Date,
+    to: Date,
+  ): Promise<AnamnesisMetricsSnapshot> {
+    const aggregate = await this.metricsRepository.getAggregateForRange(tenantId, from, to);
+    if (!aggregate) {
+      return { ...EMPTY_SNAPSHOT };
+    }
+
+    return this.transformAggregateToSnapshot(aggregate);
+  }
+
+  async reset(): Promise<void> {
+    this.logger.warn(
+      'AnamnesisMetricsService.reset() foi invocado; nenhuma ação executada porque os dados agora são persistentes.',
+    );
+  }
+
+  private async persistMetrics(
+    occurredOn: Date,
+    tenantId: string | undefined,
+    increments: MetricsIncrement,
+  ): Promise<void> {
+    await this.metricsRepository.incrementMetrics({
+      tenantId: tenantId ?? null,
+      occurredOn,
+      increments,
+    });
+  }
+
+  private transformAggregateToSnapshot(aggregate: MetricsAggregate): AnamnesisMetricsSnapshot {
     return {
-      stepsSaved: stats.stepsSaved,
-      autoSaves: stats.autoSaves,
-      completedSteps: stats.completedSteps,
+      stepsSaved: aggregate.stepsSaved,
+      autoSaves: aggregate.autoSaves,
+      completedSteps: aggregate.completedSteps,
       averageStepCompletionRate: this.calculateAverage(
-        stats.stepCompletionRateSum,
-        stats.stepCompletionRateCount,
+        aggregate.stepCompletionRateSum,
+        aggregate.stepCompletionRateCount,
       ),
-      submissions: stats.submissions,
+      submissions: aggregate.submissions,
       averageSubmissionCompletionRate: this.calculateAverage(
-        stats.submissionCompletionRateSum,
-        stats.submissions,
+        aggregate.submissionCompletionRateSum,
+        aggregate.submissions,
       ),
-      aiCompleted: stats.aiCompleted,
-      aiFailed: stats.aiFailed,
-      averageAIConfidence: this.calculateAverage(stats.aiConfidenceSum, stats.aiConfidenceCount),
-      tokensInputTotal: stats.aiTokensInputSum,
-      tokensOutputTotal: stats.aiTokensOutputSum,
-      averageAILatencyMs: this.calculateAverage(stats.aiLatencySum, stats.aiLatencyCount),
-      maxAILatencyMs: stats.aiLatencyMax,
-      totalAICost: Number(stats.aiCostSum.toFixed(6)),
+      aiCompleted: aggregate.aiCompleted,
+      aiFailed: aggregate.aiFailed,
+      averageAIConfidence: this.calculateAverage(
+        aggregate.aiConfidenceSum,
+        aggregate.aiConfidenceCount,
+      ),
+      tokensInputTotal: aggregate.tokensInputSum,
+      tokensOutputTotal: aggregate.tokensOutputSum,
+      averageAILatencyMs: this.calculateAverage(aggregate.aiLatencySum, aggregate.aiLatencyCount),
+      maxAILatencyMs: aggregate.aiLatencyMax,
+      totalAICost: this.roundCost(aggregate.aiCostSum),
       feedback: {
-        total: stats.feedbackTotal,
-        approvals: stats.feedbackApprovals,
-        modifications: stats.feedbackModifications,
-        rejections: stats.feedbackRejections,
-        likes: stats.feedbackLikes,
-        dislikes: stats.feedbackDislikes,
+        total: aggregate.feedbackTotal,
+        approvals: aggregate.feedbackApprovals,
+        modifications: aggregate.feedbackModifications,
+        rejections: aggregate.feedbackRejections,
+        likes: aggregate.feedbackLikes,
+        dislikes: aggregate.feedbackDislikes,
       },
-      lastUpdatedAt: stats.lastUpdatedAt,
+      lastUpdatedAt: aggregate.lastUpdatedAt ?? null,
     };
   }
 
-  reset(): void {
-    this.resetStats(this.globalStats);
-    this.tenantStats.forEach((stats) => this.resetStats(stats));
-  }
-
-  private applyToStats(tenantId: string | undefined, mutate: (stats: InternalStats) => void): void {
-    mutate(this.globalStats);
-    if (tenantId) {
-      mutate(this.getOrCreateTenantStats(tenantId));
-    }
-  }
-
-  private getOrCreateTenantStats(tenantId: string): InternalStats {
-    let stats = this.tenantStats.get(tenantId);
-    if (!stats) {
-      stats = createEmptyStats();
-      this.tenantStats.set(tenantId, stats);
-    }
-    return stats;
-  }
-
   private calculateAverage(sum: number, count: number): number {
-    return count > 0 ? Number((sum / count).toFixed(2)) : 0;
+    if (!count || count <= 0) {
+      return 0;
+    }
+    return Number((sum / count).toFixed(2));
+  }
+
+  private roundCost(value: number): number {
+    if (!value || Number.isNaN(value)) {
+      return 0;
+    }
+    return Math.round(value * 1_000_000) / 1_000_000;
   }
 
   private calculateCost(tokensInput?: number, tokensOutput?: number): number | undefined {
     if (tokensInput === undefined && tokensOutput === undefined) {
       return undefined;
     }
+
     const inputCost = tokensInput ? tokensInput * this.costInputPerToken : 0;
     const outputCost = tokensOutput ? tokensOutput * this.costOutputPerToken : 0;
     const total = inputCost + outputCost;
@@ -310,17 +273,10 @@ export class AnamnesisMetricsService {
     return total;
   }
 
-  private resetStats(stats: InternalStats): void {
-    const fresh = createEmptyStats();
-    Object.assign(stats, fresh);
-  }
-
   private resolveTenantId(event: DomainEvent): string | undefined {
     const fromMetadata = event.metadata?.tenantId;
-    const fromPayload =
-      event.payload && typeof event.payload === 'object'
-        ? (event.payload as Record<string, unknown>)['tenantId']
-        : undefined;
+    const payload = event.payload as Record<string, unknown>;
+    const fromPayload = payload ? (payload['tenantId'] as string | undefined) : undefined;
 
     if (typeof fromMetadata === 'string' && fromMetadata.length > 0) {
       return fromMetadata;

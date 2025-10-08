@@ -1,3 +1,5 @@
+import { clonePlain } from '../utils/clone.util';
+
 import {
   Anamnesis,
   AnamnesisAIAnalysis,
@@ -18,6 +20,7 @@ import { AnamnesisStepTemplateEntity } from '../../infrastructure/anamnesis/enti
 import { AnamnesisAIAnalysisEntity } from '../../infrastructure/anamnesis/entities/anamnesis-ai-analysis.entity';
 import { TherapeuticPlanAcceptanceEntity } from '../../infrastructure/anamnesis/entities/therapeutic-plan-acceptance.entity';
 import { PatientAnamnesisRollupEntity } from '../../infrastructure/anamnesis/entities/patient-anamnesis-rollup.entity';
+import { TherapeuticPlanAccessLogEntity } from '../../infrastructure/anamnesis/entities/therapeutic-plan-access-log.entity';
 const toDate = (value?: Date | string | null): Date | undefined => {
   if (!value) {
     return undefined;
@@ -29,7 +32,7 @@ const normalisePayload = (payload?: unknown): Record<string, unknown> => {
     return {};
   }
   try {
-    return JSON.parse(JSON.stringify(payload)) as Record<string, unknown>;
+    return clonePlain(payload as Record<string, unknown>);
   } catch {
     return {};
   }
@@ -180,6 +183,21 @@ export const mapTherapeuticPlanEntityToDomain = (
     acceptances,
   };
 };
+
+export const mapTherapeuticPlanAccessLogEntityToDomain = (
+  entity: TherapeuticPlanAccessLogEntity,
+): TherapeuticPlanAccessLog => ({
+  id: entity.id,
+  tenantId: entity.tenantId,
+  anamnesisId: entity.anamnesisId,
+  planId: entity.planId,
+  professionalId: entity.professionalId,
+  viewerRole: entity.viewerRole,
+  viewedAt: toDate(entity.viewedAt) ?? new Date(),
+  ipAddress: entity.ipAddress ?? undefined,
+  userAgent: entity.userAgent ?? undefined,
+  createdAt: toDate(entity.createdAt) ?? new Date(),
+});
 
 export const mapAnamnesisEntityToDomain = (
   entity: AnamnesisEntity,

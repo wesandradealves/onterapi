@@ -1,3 +1,4 @@
+import { clonePlain } from '../../../shared/utils/clone.util';
 import {
   Anamnesis,
   AnamnesisAIRequestPayload,
@@ -30,7 +31,7 @@ const cloneRecord = (value: unknown): Record<string, unknown> => {
   }
 
   try {
-    return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+    return clonePlain(value) as Record<string, unknown>;
   } catch {
     return {};
   }

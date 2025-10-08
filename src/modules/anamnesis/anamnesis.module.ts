@@ -6,6 +6,7 @@ import { AuthModule } from '../auth/auth.module';
 import { PatientsModule } from '../patients/patients.module';
 import { LegalModule } from '../legal/legal.module';
 import { AnamnesisController } from './api/controllers/anamnesis.controller';
+import { AnamnesisMetricsController } from './api/controllers/anamnesis-metrics.controller';
 import { AnamnesisEntity } from '../../infrastructure/anamnesis/entities/anamnesis.entity';
 import { AnamnesisStepEntity } from '../../infrastructure/anamnesis/entities/anamnesis-step.entity';
 import { AnamnesisTherapeuticPlanEntity } from '../../infrastructure/anamnesis/entities/anamnesis-therapeutic-plan.entity';
@@ -18,8 +19,12 @@ import { PatientAnamnesisRollupEntity } from '../../infrastructure/anamnesis/ent
 import { TherapeuticPlanAccessLogEntity } from '../../infrastructure/anamnesis/entities/therapeutic-plan-access-log.entity';
 import { LegalTermEntity } from '../../infrastructure/legal/entities/legal-term.entity';
 import { AnamnesisRepository } from '../../infrastructure/anamnesis/repositories/anamnesis.repository';
+import { AnamnesisMetricsRepository } from '../../infrastructure/anamnesis/repositories/anamnesis-metrics.repository';
+import { AnamnesisAIWebhookRepository } from '../../infrastructure/anamnesis/repositories/anamnesis-ai-webhook.repository';
 import { SupabaseService } from '../../infrastructure/auth/services/supabase.service';
 import { IAnamnesisRepositoryToken } from '../../domain/anamnesis/interfaces/repositories/anamnesis.repository.interface';
+import { IAnamnesisMetricsRepositoryToken } from '../../domain/anamnesis/interfaces/repositories/anamnesis-metrics.repository.interface';
+import { IAnamnesisAIWebhookRepositoryToken } from '../../domain/anamnesis/interfaces/repositories/anamnesis-ai-webhook.repository.interface';
 import { IStartAnamnesisUseCase } from '../../domain/anamnesis/interfaces/use-cases/start-anamnesis.use-case.interface';
 import { IGetAnamnesisUseCase } from '../../domain/anamnesis/interfaces/use-cases/get-anamnesis.use-case.interface';
 import { ISaveAnamnesisStepUseCase } from '../../domain/anamnesis/interfaces/use-cases/save-anamnesis-step.use-case.interface';
@@ -54,14 +59,26 @@ import { AnamnesisAIWebhookGuard } from './guards/anamnesis-ai-webhook.guard';
 import { SupabaseAnamnesisAttachmentStorageService } from '../../infrastructure/anamnesis/services/supabase-anamnesis-attachment-storage.service';
 import { AnamnesisMetricsService } from './services/anamnesis-metrics.service';
 import { PatientAnamnesisRollupService } from './services/patient-anamnesis-rollup.service';
+import { TherapeuticPlanDomainService } from './services/therapeutic-plan-domain.service';
 import { AnamnesisAIWorkerService } from './services/anamnesis-ai-worker.service';
 import { LocalAIPlanGeneratorService } from './services/local-ai-plan-generator.service';
 import { AnamnesisEventsSubscriber } from './subscribers/anamnesis-events.subscriber';
+import { AnamnesisMetricEntity } from '../../infrastructure/anamnesis/entities/anamnesis-metric.entity';
+import { AnamnesisAIWebhookRequestEntity } from '../../infrastructure/anamnesis/entities/anamnesis-ai-webhook-request.entity';
+import { AnamnesisAIWebhookReplayService } from './services/anamnesis-ai-webhook-replay.service';
 
 const repositoryProviders: Provider[] = [
   {
     provide: IAnamnesisRepositoryToken,
     useClass: AnamnesisRepository,
+  },
+  {
+    provide: IAnamnesisMetricsRepositoryToken,
+    useClass: AnamnesisMetricsRepository,
+  },
+  {
+    provide: IAnamnesisAIWebhookRepositoryToken,
+    useClass: AnamnesisAIWebhookRepository,
   },
 ];
 
@@ -147,12 +164,14 @@ const storageProviders: Provider[] = [
       TherapeuticPlanAcceptanceEntity,
       PatientAnamnesisRollupEntity,
       TherapeuticPlanAccessLogEntity,
+      AnamnesisMetricEntity,
+      AnamnesisAIWebhookRequestEntity,
     ]),
     forwardRef(() => AuthModule),
     forwardRef(() => PatientsModule),
     LegalModule,
   ],
-  controllers: [AnamnesisController],
+  controllers: [AnamnesisMetricsController, AnamnesisController],
   providers: [
     ...repositoryProviders,
     ...useCaseProviders,
@@ -162,8 +181,10 @@ const storageProviders: Provider[] = [
     AnamnesisMetricsService,
 
     PatientAnamnesisRollupService,
+    TherapeuticPlanDomainService,
     LocalAIPlanGeneratorService,
     AnamnesisAIWorkerService,
+    AnamnesisAIWebhookReplayService,
     AnamnesisEventsSubscriber,
   ],
   exports: [
@@ -182,6 +203,8 @@ const storageProviders: Provider[] = [
     ICancelAnamnesisUseCase,
     IListAnamnesisStepTemplatesUseCase,
     IAnamnesisRepositoryToken,
+    IAnamnesisMetricsRepositoryToken,
+    IAnamnesisAIWebhookRepositoryToken,
     IAnamnesisAttachmentStorageServiceToken,
   ],
 })

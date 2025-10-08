@@ -1,0 +1,115 @@
+﻿{
+  "analysisId": "5ae32e3a-42b3-454c-8e60-5099024cf5d7",
+  "anamnesisId": "3224cc69-1030-489e-b0cc-5ab7ba3f52d0",
+  "tenantId": "645d883f-535a-4c3e-9d93-4f1204bd489d",
+  "promptVersion": "v1.0",
+  "systemPrompt": "",
+  "userPrompt": "",
+  "payload": {
+    "tenantId": "645d883f-535a-4c3e-9d93-4f1204bd489d",
+    "anamnesisId": "3224cc69-1030-489e-b0cc-5ab7ba3f52d0",
+    "consultationId": "e1d3b663-8f6b-4204-ae5d-986f420999b0",
+    "professionalId": "1a031c19-4d66-47fc-b34d-187efb454883",
+    "patientId": "d64f3768-19b3-4fdf-a031-ee2370cb85da",
+    "status": "submitted",
+    "submittedAt": "2025-10-08T16:37:28.167Z",
+    "steps": {
+      "identification": {
+        "personalInfo": {
+          "fullName": "Paciente Fluxo API",
+          "birthDate": "1990-05-12T00:00:00.000Z",
+          "gender": "male"
+        },
+        "contactInfo": {
+          "phone": "+5511987654321"
+        }
+      },
+      "chiefComplaint": {
+        "complaint": {
+          "history": "Dor lombar com irradiacao",
+          "duration": "2 semanas"
+        }
+      }
+    },
+    "attachments": [],
+    "patientProfile": {
+      "id": "d64f3768-19b3-4fdf-a031-ee2370cb85da",
+      "fullName": "Paciente Fluxo API",
+      "birthDate": "1992-07-12T00:00:00.000Z",
+      "gender": "female",
+      "age": 33,
+      "contact": {
+        "email": "paciente.fluxo.api@example.com",
+        "phone": "+5511987654321"
+      },
+      "medical": {
+        "preExistingConditions": ["hipertensao"],
+        "continuousMedications": [
+          {
+            "name": "Losartana",
+            "dosage": "50mg",
+            "condition": "Hipertensao",
+            "frequency": "1x ao dia"
+          }
+        ],
+        "heightCm": 172,
+        "weightKg": 78.5
+      },
+      "riskLevel": "medium",
+      "bmi": 26.53
+    },
+    "professionalProfile": {
+      "id": "1a031c19-4d66-47fc-b34d-187efb454883",
+      "name": "Wesley Alves",
+      "email": "wesandradealves@gmail.com",
+      "role": "SUPER_ADMIN"
+    },
+    "patientRollup": {
+      "summaryText": "Resumo consolidado anterior",
+      "summaryVersion": 1
+    }
+  },
+  "compact": {
+    "id": "3224cc69-1030-489e-b0cc-5ab7ba3f52d0",
+    "tenantId": "645d883f-535a-4c3e-9d93-4f1204bd489d",
+    "consultationId": "e1d3b663-8f6b-4204-ae5d-986f420999b0",
+    "patientId": "d64f3768-19b3-4fdf-a031-ee2370cb85da",
+    "professionalId": "1a031c19-4d66-47fc-b34d-187efb454883",
+    "status": "submitted",
+    "completionRate": 10,
+    "submittedAt": "2025-10-08T16:37:28.167Z",
+    "steps": [
+      {
+        "stepNumber": 1,
+        "key": "identification",
+        "payload": {
+          "personalInfo": {
+            "fullName": "Paciente Fluxo API",
+            "birthDate": "1990-05-12T00:00:00.000Z",
+            "gender": "male"
+          },
+          "contactInfo": {
+            "phone": "+5511987654321"
+          }
+        },
+        "completed": true
+      },
+      {
+        "stepNumber": 2,
+        "key": "chiefComplaint",
+        "payload": {
+          "complaint": {
+            "history": "Dor lombar com irradiacao",
+            "duration": "2 semanas"
+          }
+        },
+        "completed": false
+      }
+    ],
+    "attachments": []
+  },
+  "rollupSummary": "Paciente relata dor lombar recorrente.",
+  "metadata": {
+    "requestedAt": "2025-10-08T16:37:28.167Z"
+  }
+}

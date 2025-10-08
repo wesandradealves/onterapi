@@ -398,6 +398,14 @@ export interface TherapeuticPlanAccessLog {
   createdAt: Date;
 }
 
+export interface ListPlanAccessLogsFilters {
+  anamnesisId: string;
+  planId?: string;
+  from?: Date;
+  to?: Date;
+  limit?: number;
+}
+
 export interface CreateTherapeuticPlanAccessLogInput {
   tenantId: string;
   anamnesisId: string;
@@ -419,6 +427,34 @@ export interface PatientAnamnesisRollup {
   updatedBy?: string | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface AnamnesisMetricsFeedback {
+  total: number;
+  approvals: number;
+  modifications: number;
+  rejections: number;
+  likes: number;
+  dislikes: number;
+}
+
+export interface AnamnesisMetricsSnapshot {
+  stepsSaved: number;
+  autoSaves: number;
+  completedSteps: number;
+  averageStepCompletionRate: number;
+  submissions: number;
+  averageSubmissionCompletionRate: number;
+  aiCompleted: number;
+  aiFailed: number;
+  averageAIConfidence: number;
+  tokensInputTotal: number;
+  tokensOutputTotal: number;
+  averageAILatencyMs: number;
+  maxAILatencyMs: number;
+  totalAICost: number;
+  feedback: AnamnesisMetricsFeedback;
+  lastUpdatedAt?: Date | null;
 }
 
 export interface CreateTherapeuticPlanAcceptanceInput {

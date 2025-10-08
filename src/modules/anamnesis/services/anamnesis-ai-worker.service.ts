@@ -11,6 +11,7 @@ import {
   AnamnesisStepKey,
 } from '../../../domain/anamnesis/types/anamnesis.types';
 import { buildAnamnesisAIPrompt } from '../utils/anamnesis-ai-prompt.util';
+import { clonePlain } from '../../../shared/utils/clone.util';
 import { LocalAIPlanGeneratorService } from './local-ai-plan-generator.service';
 import { IReceiveAnamnesisAIResultUseCase } from '../../../domain/anamnesis/interfaces/use-cases/receive-anamnesis-ai-result.use-case.interface';
 
@@ -34,6 +35,8 @@ const ENDPOINT_ENV_KEY = 'ANAMNESIS_AI_WORKER_URL';
 const TOKEN_ENV_KEY = 'ANAMNESIS_AI_WORKER_TOKEN';
 const PROMPT_VERSION_ENV_KEY = 'ANAMNESIS_AI_PROMPT_VERSION';
 const MODE_ENV_KEY = 'ANAMNESIS_AI_WORKER_MODE';
+const WEBHOOK_BASE_ENV_KEY = 'ANAMNESIS_AI_WEBHOOK_BASE_URL';
+const WEBHOOK_SECRET_ENV_KEY = 'ANAMNESIS_AI_WEBHOOK_SECRET';
 
 @Injectable()
 export class AnamnesisAIWorkerService implements OnModuleInit, OnModuleDestroy {
@@ -100,6 +103,9 @@ export class AnamnesisAIWorkerService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
+    const webhookBaseUrl = this.configService.get<string>(WEBHOOK_BASE_ENV_KEY);
+    const webhookSecret = this.configService.get<string>(WEBHOOK_SECRET_ENV_KEY);
+
     const body: AiWorkerRequestBody = {
       analysisId: payload.analysisId,
       anamnesisId: payload.anamnesisId,
@@ -113,6 +119,8 @@ export class AnamnesisAIWorkerService implements OnModuleInit, OnModuleDestroy {
       metadata: {
         ...payload.metadata,
         requestedAt: event.occurredOn.toISOString(),
+        ...(webhookBaseUrl ? { webhookBaseUrl } : {}),
+        ...(webhookSecret ? { webhookSecret } : {}),
       },
     };
 
@@ -237,7 +245,7 @@ export class AnamnesisAIWorkerService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+      return clonePlain(value) as Record<string, unknown>;
     } catch {
       return {};
     }
@@ -274,7 +282,20 @@ export class AnamnesisAIWorkerService implements OnModuleInit, OnModuleDestroy {
       'Content-Type': 'application/json',
     };
 
-    if (token) {
+    const isSupabaseFunction = endpoint.includes('.functions.supabase.co');
+    const supabaseKey =
+      this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY') ??
+      this.configService.get<string>('SUPABASE_ANON_KEY');
+
+    if (isSupabaseFunction) {
+      if (supabaseKey) {
+        headers.Authorization = `Bearer ${supabaseKey}`;
+        headers.apikey = supabaseKey;
+      }
+      if (token) {
+        headers['x-worker-token'] = token;
+      }
+    } else if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
 

@@ -1,10 +1,12 @@
 import { AnamnesisPresenter } from '@modules/anamnesis/api/presenters/anamnesis.presenter';
+import * as cloneUtils from '@shared/utils/clone.util';
 import {
   Anamnesis,
   AnamnesisAttachment,
   AnamnesisHistoryData,
   AnamnesisHistoryStep,
   AnamnesisListItem,
+  AnamnesisMetricsSnapshot,
   AnamnesisStep,
   TherapeuticPlanData,
 } from '@domain/anamnesis/types/anamnesis.types';
@@ -106,6 +108,19 @@ describe('AnamnesisPresenter', () => {
     expect(detail.attachments?.[0].fileName).toBe('exame.pdf');
   });
 
+  it('retorna payload vazio quando clonePlain falha ao clonar o passo', () => {
+    const spy = jest.spyOn(cloneUtils, 'clonePlain').mockImplementation(() => {
+      throw new Error('forced-clone-error');
+    });
+
+    try {
+      const detail = AnamnesisPresenter.detail(buildAnamnesis());
+      expect(detail.steps?.[0].payload).toEqual({});
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it('normaliza plano terapeutico com arrays e valores padrao', () => {
     const dto = AnamnesisPresenter.plan(buildPlan());
 
@@ -122,6 +137,68 @@ describe('AnamnesisPresenter', () => {
     });
     expect(dto.reviewRequired).toBe(false);
     expect(dto.therapeuticPlan).toEqual({ goals: ['Dormir melhor'] });
+  });
+
+  it('inclui acceptances e evidencia quando presentes no plano', () => {
+    const dto = AnamnesisPresenter.plan(
+      buildPlan({
+        evidenceMap: [{ source: 'study-1' }],
+        acceptances: [
+          {
+            id: 'acc-1',
+            tenantId: 'tenant-1',
+            therapeuticPlanId: 'plan-1',
+            professionalId: 'professional-1',
+            accepted: true,
+            termsVersion: 'v2',
+            termsTextSnapshot: 'Termo v2',
+            acceptedAt: baseDate,
+            acceptedIp: '127.0.0.1',
+            acceptedUserAgent: 'jest',
+            createdAt: baseDate,
+            updatedAt: baseDate,
+          },
+        ],
+      }),
+    );
+
+    expect(dto.evidenceMap).toEqual([{ source: 'study-1' }]);
+    expect(dto.acceptances).toEqual([
+      {
+        id: 'acc-1',
+        professionalId: 'professional-1',
+        acceptedAt: baseDate.toISOString(),
+        termsVersion: 'v2',
+        termsTextSnapshot: 'Termo v2',
+        acceptedIp: '127.0.0.1',
+        acceptedUserAgent: 'jest',
+      },
+    ]);
+  });
+
+  it('preenche acceptedAt quando ausencia no registro de aceite', () => {
+    const dto = AnamnesisPresenter.plan(
+      buildPlan({
+        acceptances: [
+          {
+            id: 'acc-void',
+            tenantId: 'tenant-1',
+            therapeuticPlanId: 'plan-1',
+            professionalId: 'professional-4',
+            accepted: true,
+            termsVersion: 'v5',
+            termsTextSnapshot: 'Termo v5',
+            acceptedAt: undefined as unknown as Date,
+            acceptedIp: null,
+            acceptedUserAgent: null,
+            createdAt: baseDate,
+            updatedAt: baseDate,
+          },
+        ],
+      }),
+    );
+
+    expect(dto.acceptances?.[0].acceptedAt).toMatch(/T/);
   });
 
   it('retorna objeto vazio quando therapeuticPlan nao e serializavel e preserva ausencia de listas', () => {
@@ -333,4 +410,145 @@ describe('AnamnesisPresenter', () => {
     expect(dto[0].createdAt).toMatch(/T/);
     expect(dto[0].updatedAt).toMatch(/T/);
   });
+
+  it('converte snapshot de metricas preservando feedback e datas', () => {
+    const snapshot: AnamnesisMetricsSnapshot = {
+      stepsSaved: 12,
+      autoSaves: 4,
+      completedSteps: 9,
+      averageStepCompletionRate: 75.5,
+      submissions: 3,
+      averageSubmissionCompletionRate: 88.9,
+      aiCompleted: 2,
+      aiFailed: 1,
+      averageAIConfidence: 0.67,
+      tokensInputTotal: 1500,
+      tokensOutputTotal: 1200,
+      averageAILatencyMs: 1350,
+      maxAILatencyMs: 2500,
+      totalAICost: 3.456789,
+      feedback: {
+        total: 3,
+        approvals: 1,
+        modifications: 1,
+        rejections: 1,
+        likes: 2,
+        dislikes: 1,
+      },
+      lastUpdatedAt: new Date('2025-10-01T10:00:00Z'),
+    };
+
+    const dto = AnamnesisPresenter.metrics(snapshot);
+
+    expect(dto.feedback).toEqual({
+      total: 3,
+      approvals: 1,
+      modifications: 1,
+      rejections: 1,
+      likes: 2,
+      dislikes: 1,
+    });
+    expect(dto.lastUpdatedAt).toBe('2025-10-01T10:00:00.000Z');
+    expect(dto.totalAICost).toBe(3.456789);
+  });
+  it('retorna undefined para acceptances vazias', () => {
+    const dto = AnamnesisPresenter.plan(
+      buildPlan({
+        acceptances: [],
+      }),
+    );
+
+    expect(dto.acceptances).toBeUndefined();
+  });
+
+  it('aplica defaults quando campos opcionais do plano ausentes', () => {
+    const dto = AnamnesisPresenter.plan(
+      buildPlan({
+        analysisId: null,
+        planText: 'Plano textual',
+        reasoningText: 'Raciocinio textual',
+        status: undefined,
+        reviewRequired: true,
+        termsAccepted: undefined,
+        feedbackGivenAt: baseDate,
+        acceptedAt: baseDate,
+        acceptedBy: 'professional-1',
+        termsVersion: 'v3',
+        generatedAt: undefined as unknown as Date,
+        createdAt: undefined as unknown as Date,
+        updatedAt: undefined as unknown as Date,
+      }),
+    );
+
+    expect(dto.analysisId).toBeUndefined();
+    expect(dto.planText).toBe('Plano textual');
+    expect(dto.reasoningText).toBe('Raciocinio textual');
+    expect(dto.status).toBe('generated');
+    expect(dto.reviewRequired).toBe(true);
+    expect(dto.termsAccepted).toBe(false);
+    expect(dto.feedbackGivenAt).toBe(baseDate.toISOString());
+    expect(dto.acceptedAt).toBe(baseDate.toISOString());
+    expect(dto.acceptedBy).toBe('professional-1');
+    expect(dto.termsVersion).toBe('v3');
+    expect(dto.generatedAt).toMatch(/T/);
+    expect(dto.createdAt).toMatch(/T/);
+    expect(dto.updatedAt).toMatch(/T/);
+  });
+
+  it('usa timestamp atual quando data de upload nao esta definida', () => {
+    const dto = AnamnesisPresenter.attachment({
+      ...buildAttachment(),
+      uploadedAt: undefined as unknown as Date,
+    });
+
+    expect(dto.uploadedAt).toMatch(/T/);
+  });
+
+  it('atribui datas padrao para passos sem timestamps', () => {
+    const detail = AnamnesisPresenter.detail({
+      ...buildAnamnesis(),
+      steps: [
+        {
+          ...buildStep({ note: 'Teste' }),
+          updatedAt: undefined as unknown as Date,
+          createdAt: undefined as unknown as Date,
+        },
+      ],
+    });
+
+    expect(detail.steps?.[0].updatedAt).toMatch(/T/);
+    expect(detail.steps?.[0].createdAt).toMatch(/T/);
+  });
+
+  it('retorna null quando metricas nao possuem lastUpdatedAt', () => {
+    const dto = AnamnesisPresenter.metrics({
+      stepsSaved: 1,
+      autoSaves: 0,
+      completedSteps: 1,
+      averageStepCompletionRate: 100,
+      submissions: 1,
+      averageSubmissionCompletionRate: 100,
+      aiCompleted: 0,
+      aiFailed: 0,
+      averageAIConfidence: 0.5,
+      tokensInputTotal: 10,
+      tokensOutputTotal: 5,
+      averageAILatencyMs: 100,
+      maxAILatencyMs: 150,
+      totalAICost: 0.01,
+      feedback: {
+        total: 0,
+        approvals: 0,
+        modifications: 0,
+        rejections: 0,
+        likes: 0,
+        dislikes: 0,
+      },
+      lastUpdatedAt: undefined,
+    });
+
+    expect(dto.lastUpdatedAt).toBeNull();
+  });
 });
+
+
