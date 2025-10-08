@@ -742,16 +742,16 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 
 ## Linha de Base de Qualidade
 
-- Data: 2025-09-28
-- Commit analisado: feature/anamnesis (worktree)
-- Ambiente: desenvolvimento local (Node 22.18.0 - suite completa validada)
+- Data: 2025-10-08
+- Commit analisado: HEAD local (onterarapi-v4) apos ajustes de README
+- Ambiente: desenvolvimento local (Node 22.18.0 - suites unit, int, e2e e cobertura executadas)
 
 ## Pontuacao Atual
 
 | Criterio | Nota atual (0-10) | Meta | Evidencias chave |
 | --- | --- | --- | --- |
 | DRY / Reuso de codigo | 9.7 | >= 9.0 | Controllers de Auth, Patients, Users e Anamnesis continuam delegando normalizacao a mappers/presenters; selecao de templates por especialidade usa helpers reutilizaveis (`TemplateSelectionContext`, `getTemplatePriority`, `shouldReplaceTemplate`) e evita condicionais duplicadas. |
-| Automacao de qualidade | 8.9 | >= 8.5 | Sequencia manual revalidada em 30/09 (10:06h) com Node 22.18.0: npm run lint -> npx tsc --noEmit -> npm run test:unit -> npm run test:int -> npm run test:e2e -> npm run test:cov -> npm run build. |
+| Automacao de qualidade | 8.9 | >= 8.5 | Sequencia manual revalidada em 08/10 (14:35h) com Node 22.18.0: npm run lint -> npx tsc --noEmit -> npm run test:unit -> npm run test:int -> npm run test:e2e -> npm run test:cov -> npm run build. |
 | Testes automatizados | 10.0 | >= 9.5 | 219 testes unitarios (23.5 s), 35 de integracao (12.7 s) e 27 e2e (18.5 s) executados na sequencia atual; suite com cobertura completa (test:cov) confirmou 255 testes em 15.9 s mantendo 100%. |
 | Validacoes e contratos | 9.5 | >= 9.0 | Controllers de Anamnesis aplicam Zod para filtros e usam o util `validateAnamnesisStepPayload` (calculo de BMI/pack-years) em save/auto-save/submit, garantindo payload sanitizado antes de publicar eventos de IA. |
 | Governanca de dominio / RBAC | 9.0 | >= 9.0 | Casos de uso de Anamnesis reforcam ensureCanModifyAnamnesis e publicam eventos com tenantId; rotas de anexos, historico, templates e webhook usam TenantGuard + RolesGuard dedicados para cada perfil. |
