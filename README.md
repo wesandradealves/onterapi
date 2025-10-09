@@ -397,6 +397,17 @@ Use `AnamnesisMetricsService.getSnapshot([tenantId])` ou o endpoint `GET /anamne
 - Pipeline recomendado: `npm run lint` -> `npx tsc --noEmit` -> `npm run test:unit` -> `npm run test:int` -> `npm run test:e2e` -> `npm run test:cov` -> `npm run build`.
 
 
+## Modulo de Agendamento
+- `POST /scheduling/holds` reserva horários após validar conflitos e antecedência, emitindo `scheduling.hold.created`.
+- `POST /scheduling/bookings` converte holds em agendamentos e publica `scheduling.booking.created`.
+- `POST /scheduling/bookings/:bookingId/confirm` confirma o atendimento com pagamento aprovado e emite `scheduling.booking.confirmed`.
+- `POST /scheduling/bookings/:bookingId/reschedule` aplica novo intervalo e publica `scheduling.booking.rescheduled`.
+- `POST /scheduling/bookings/:bookingId/cancel` registra motivo/versão e gera `scheduling.booking.cancelled`.
+- `POST /scheduling/bookings/:bookingId/no-show` marca ausência após validar tolerância e emite `scheduling.booking.no_show`.
+- `PATCH /scheduling/bookings/:bookingId/payment-status` atualiza o status financeiro e propaga `scheduling.payment.status_changed`.
+- Casos de uso disponíveis: criação/cancelamento de booking, criação de hold, confirmação, reagendamento, marcação de no-show e atualização de pagamento — todos baseados em `BaseUseCase` e integrados ao `MessageBus`.
+- Testes unitários dedicados em `test/unit/modules.scheduling` cobrem os fluxos principais (create, cancel, confirm, create-hold, reschedule, mark-booking-no-show, record-payment-status).
+
 ## Exportacao de Pacientes
 - `POST /patients/export` enfileira solicitacao na tabela `patient_exports`.
 - Filtros enviados sao persistidos em JSONB (`status`, `tags`, `assignedProfessionalIds`, etc.).

@@ -16,6 +16,8 @@ module.exports = {
     'src/modules/**/presenters/**/*.ts',
     'src/modules/patients/use-cases/**/*.ts',
     'src/modules/patients/api/mappers/**/*.ts',
+    'src/modules/scheduling/use-cases/**/*.ts',
+    'src/modules/scheduling/api/mappers/**/*.ts',
     'src/modules/auth/api/mappers/**/*.ts',
     'src/modules/users/api/mappers/**/*.ts',
     'src/shared/use-cases/**/*.ts',

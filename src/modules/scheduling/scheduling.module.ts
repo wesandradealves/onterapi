@@ -29,6 +29,9 @@ import { ConfirmBookingUseCase } from './use-cases/confirm-booking.use-case';
 import { IConfirmBookingUseCase } from '../../domain/scheduling/interfaces/use-cases/confirm-booking.use-case.interface';
 import { RescheduleBookingUseCase } from './use-cases/reschedule-booking.use-case';
 import { IRescheduleBookingUseCase } from '../../domain/scheduling/interfaces/use-cases/reschedule-booking.use-case.interface';
+import { RecordPaymentStatusUseCase } from './use-cases/record-payment-status.use-case';
+import { IRecordPaymentStatusUseCase } from '../../domain/scheduling/interfaces/use-cases/record-payment-status.use-case.interface';
+import { SchedulingController } from './api/controllers/scheduling.controller';
 
 @Module({
   imports: [
@@ -86,7 +89,12 @@ import { IRescheduleBookingUseCase } from '../../domain/scheduling/interfaces/us
       provide: IRescheduleBookingUseCase,
       useClass: RescheduleBookingUseCase,
     },
+    {
+      provide: IRecordPaymentStatusUseCase,
+      useClass: RecordPaymentStatusUseCase,
+    },
   ],
+  controllers: [SchedulingController],
   exports: [
     IMarkBookingNoShowUseCase,
     ICancelBookingUseCase,
@@ -94,6 +102,7 @@ import { IRescheduleBookingUseCase } from '../../domain/scheduling/interfaces/us
     ICreateHoldUseCase,
     IConfirmBookingUseCase,
     IRescheduleBookingUseCase,
+    IRecordPaymentStatusUseCase,
     IBookingRepositoryToken,
     IBookingHoldRepositoryToken,
     IClinicInvitationPolicyRepositoryToken,

@@ -7,15 +7,15 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 ## [Unreleased]
 
 ### Added
-- Casos de uso `CreateBookingUseCase`, `CancelBookingUseCase` e `RecordPaymentStatusUseCase`, com respectivos DTOs, interfaces e publicação dos eventos `scheduling.booking.created`, `scheduling.booking.cancelled` e `scheduling.payment.status_changed`.
-- Endpoints HTTP `POST /scheduling/bookings`, `POST /scheduling/bookings/:bookingId/cancel` e `PATCH /scheduling/bookings/:bookingId/payment-status` no `SchedulingController`, reaproveitando presenters/mappers padronizados.
+- Casos de uso `CreateHoldUseCase`, `CreateBookingUseCase`, `ConfirmBookingUseCase`, `RescheduleBookingUseCase`, `CancelBookingUseCase`, `MarkBookingNoShowUseCase` e `RecordPaymentStatusUseCase`, com respectivos DTOs/interfaces e publicação dos eventos `scheduling.hold.created`, `scheduling.booking.created`, `scheduling.booking.confirmed`, `scheduling.booking.rescheduled`, `scheduling.booking.cancelled`, `scheduling.booking.no_show` e `scheduling.payment.status_changed`.
+- Endpoints HTTP `POST /scheduling/holds`, `POST /scheduling/bookings`, `POST /scheduling/bookings/:bookingId/confirm`, `POST /scheduling/bookings/:bookingId/reschedule`, `POST /scheduling/bookings/:bookingId/cancel`, `POST /scheduling/bookings/:bookingId/no-show` e `PATCH /scheduling/bookings/:bookingId/payment-status` no `SchedulingController`, com mappers/presenters dedicados.
 
 ### Changed
-- `BookingValidationService` foi expandido com validações de criação, confirmação de pagamento, cálculo de expiração de holds e marcação de no-show; repositórios/mapeadores `scheduling` suportam lookup por hold, campos financeiros e aliases `@shared/*`; `SchedulingModule` agora exporta os novos tokens.
+- `SchedulingModule` agora expõe o `SchedulingController`, registra o `RecordPaymentStatusUseCase` e mantém os repositórios alinhados aos novos fluxos; o `jest.config.js` passou a coletar cobertura do módulo de agendamento.
 - `DomainEvents` registra os novos eventos de agendamento e o Jest foi configurado para ignorar `onterarapi-v4/` e limitar coletor de cobertura ao módulo.
 
 ### Testing
-- Suites unitárias adicionadas para criação, cancelamento, atualização de pagamento, hold, recorrência e validações do módulo de scheduling (`npm run test:unit -- --runTestsByPath ...`).
+- Suites unitárias adicionadas para criação, cancelamento, atualização de pagamento, hold, confirmação, reagendamento e marcação de no-show no módulo de scheduling (`npm run test:unit -- --runTestsByPath ...`).
 
 ### Documentation
 - README aponta para o módulo de agendamento e `docs/app/agendamento.md` documenta o comportamento consolidado.
