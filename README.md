@@ -9,6 +9,7 @@ Plataforma SaaS multi-tenant para gestao de clinicas e terapeutas, com Supabase 
 - [Modulo de Pacientes](#modulo-de-pacientes)
 - [Modulo de Usuarios](#modulo-de-usuarios)
 - [Modulo de Anamnese](#modulo-de-anamnese)
+- [Modulo de Agendamento](#modulo-de-agendamento)
 - [Exportacao de Pacientes](#exportacao-de-pacientes)
 - [Documentacao Swagger](#documentacao-swagger)
 - [Como Rodar Localmente](#como-rodar-localmente)

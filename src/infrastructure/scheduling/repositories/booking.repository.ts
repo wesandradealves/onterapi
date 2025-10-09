@@ -1,6 +1,6 @@
 ﻿import { ConflictException, Injectable, Logger } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
-import { Between, DataSource, Repository } from "typeorm";
+import { Between, DataSource, DeepPartial, Repository } from "typeorm";
 import { QueryDeepPartialEntity } from "typeorm/query-builder/QueryPartialEntity";
 
 import {
@@ -25,7 +25,7 @@ export class BookingRepository implements IBookingRepository {
   }
 
   async create(data: NewBooking): Promise<Booking> {
-    const entity = this.repository.create({
+    const entityData = {
       tenantId: data.tenantId,
       clinicId: data.clinicId,
       professionalId: data.professionalId,
@@ -46,7 +46,9 @@ export class BookingRepository implements IBookingRepository {
       anamneseRequired: data.anamneseRequired,
       anamneseOverrideReason: data.anamneseOverrideReason ?? null,
       noShowMarkedAtUtc: data.noShowMarkedAtUtc ?? null,
-    });
+    } satisfies DeepPartial<BookingEntity>;
+
+    const entity = this.repository.create(entityData);
 
     const saved = await this.repository.save(entity);
     return mapBookingEntityToDomain(saved);

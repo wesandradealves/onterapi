@@ -148,6 +148,7 @@ export interface RecurrenceSeries {
 
 export interface RecurrenceOccurrence {
   id: string;
+  tenantId: string;
   seriesId: string;
   bookingId: string;
   startAtUtc: Date;

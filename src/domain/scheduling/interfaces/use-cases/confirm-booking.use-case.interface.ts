@@ -8,6 +8,7 @@ export interface ConfirmBookingUseCaseInput {
   paymentStatus: 'approved';
   requesterId: string;
   requesterRole: string;
+  confirmationAtUtc?: Date;
 }
 
 export interface IConfirmBookingUseCase {

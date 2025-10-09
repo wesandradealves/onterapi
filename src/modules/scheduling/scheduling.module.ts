@@ -19,6 +19,10 @@ import { ExternalCalendarEventEntity } from '../../infrastructure/scheduling/ent
 import { IExternalCalendarEventsRepositoryToken } from '../../domain/scheduling/interfaces/repositories/external-calendar-events.repository.interface';
 import { MarkBookingNoShowUseCase } from './use-cases/mark-booking-no-show.use-case';
 import { IMarkBookingNoShowUseCase } from '../../domain/scheduling/interfaces/use-cases/mark-booking-no-show.use-case.interface';
+import { CancelBookingUseCase } from './use-cases/cancel-booking.use-case';
+import { ICancelBookingUseCase } from '../../domain/scheduling/interfaces/use-cases/cancel-booking.use-case.interface';
+import { CreateBookingUseCase } from './use-cases/create-booking.use-case';
+import { ICreateBookingUseCase } from '../../domain/scheduling/interfaces/use-cases/create-booking.use-case.interface';
 import { CreateHoldUseCase } from './use-cases/create-hold.use-case';
 import { ICreateHoldUseCase } from '../../domain/scheduling/interfaces/use-cases/create-hold.use-case.interface';
 import { ConfirmBookingUseCase } from './use-cases/confirm-booking.use-case';
@@ -63,6 +67,14 @@ import { IRescheduleBookingUseCase } from '../../domain/scheduling/interfaces/us
       useClass: MarkBookingNoShowUseCase,
     },
     {
+      provide: ICancelBookingUseCase,
+      useClass: CancelBookingUseCase,
+    },
+    {
+      provide: ICreateBookingUseCase,
+      useClass: CreateBookingUseCase,
+    },
+    {
       provide: ICreateHoldUseCase,
       useClass: CreateHoldUseCase,
     },
@@ -77,6 +89,8 @@ import { IRescheduleBookingUseCase } from '../../domain/scheduling/interfaces/us
   ],
   exports: [
     IMarkBookingNoShowUseCase,
+    ICancelBookingUseCase,
+    ICreateBookingUseCase,
     ICreateHoldUseCase,
     IConfirmBookingUseCase,
     IRescheduleBookingUseCase,

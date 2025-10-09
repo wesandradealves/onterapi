@@ -1,6 +1,12 @@
 ﻿import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn, VersionColumn } from "typeorm";
 
-import { BookingSource, BookingStatus, CancellationReason, PaymentStatus } from "../../../domain/scheduling/types/scheduling.types";
+import {
+  BookingSource,
+  BookingStatus,
+  CancellationReason,
+  PaymentStatus,
+  PricingSplit,
+} from "../../../domain/scheduling/types/scheduling.types";
 
 @Entity("scheduling_bookings")
 @Index(["tenantId", "professionalId", "startAtUtc"])
@@ -57,7 +63,7 @@ export class BookingEntity {
   cancellationReason?: CancellationReason | null;
 
   @Column({ name: "pricing_split", type: "jsonb", nullable: true })
-  pricingSplit?: Record<string, unknown> | null;
+  pricingSplit?: PricingSplit | null;
 
   @Column({ name: "preconditions_passed", type: "boolean", default: false })
   preconditionsPassed!: boolean;

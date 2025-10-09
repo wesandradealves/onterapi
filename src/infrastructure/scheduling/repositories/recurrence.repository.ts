@@ -40,9 +40,10 @@ export class RecurrenceRepository implements IRecurrenceRepository {
       startDateUtc: data.startDateUtc,
       endDateUtc: data.endDateUtc ?? null,
       skipHolidays: data.skipHolidays,
-      holiday_policy: data.holidayPolicy,
+      holidayPolicy: data.holidayPolicy,
       maxReschedulesPerOccurrence: data.limits.maxReschedulesPerOccurrence,
-      maxReschedulesPerSeries: data.limits.maxReschedulesPerSeries,\n    });
+      maxReschedulesPerSeries: data.limits.maxReschedulesPerSeries,
+    });
 
     const saved = await this.seriesRepository.save(entity);
     return mapRecurrenceSeriesEntityToDomain(saved);

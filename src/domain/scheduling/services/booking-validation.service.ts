@@ -15,7 +15,7 @@ interface AdvanceValidationInput {
   context: 'hold_creation' | 'confirmation';
 }
 
-interface HoldConfirmationValidationInput {
+interface HoldUsageValidationInput {
   hold: BookingHold | null;
   nowUtc: Date;
 }
@@ -66,31 +66,48 @@ export class BookingValidationService {
     return success(undefined);
   }
 
-  static validateHoldForConfirmation(input: HoldConfirmationValidationInput): Result<void> {
+  static validateHoldForConfirmation(input: HoldUsageValidationInput): Result<void> {
+    return this.validateHoldUsage(input, 'confirmation');
+  }
+
+  static validateHoldForBookingCreation(input: HoldUsageValidationInput): Result<void> {
+    return this.validateHoldUsage(input, 'booking_creation');
+  }
+
+  private static validateHoldUsage(
+    input: HoldUsageValidationInput,
+    context: 'confirmation' | 'booking_creation',
+  ): Result<void> {
     const { hold, nowUtc } = input;
+    const messages = this.holdValidationMessages[context];
 
     if (!hold) {
-      return failure(
-        SchedulingErrorFactory.holdNotFound(
-          'Nao ha reserva ativa para confirmar o agendamento',
-        ),
-      );
+      return failure(SchedulingErrorFactory.holdNotFound(messages.notFound));
     }
 
     if (hold.status !== 'active') {
-      return failure(
-        SchedulingErrorFactory.holdInvalidState('Hold nao esta mais ativo para confirmacao'),
-      );
+      return failure(SchedulingErrorFactory.holdInvalidState(messages.inactive));
     }
 
     if (hold.ttlExpiresAtUtc.getTime() <= nowUtc.getTime()) {
-      return failure(
-        SchedulingErrorFactory.holdExpired('Hold expirou antes da confirmacao'),
-      );
+      return failure(SchedulingErrorFactory.holdExpired(messages.expired));
     }
 
     return success(undefined);
   }
+
+  private static readonly holdValidationMessages = {
+    confirmation: {
+      notFound: 'Nao ha reserva ativa para confirmar o agendamento',
+      inactive: 'Hold nao esta mais ativo para confirmacao',
+      expired: 'Hold expirou antes da confirmacao',
+    },
+    booking_creation: {
+      notFound: 'Nao ha reserva ativa para criar o agendamento',
+      inactive: 'Hold nao esta mais ativo para criacao do agendamento',
+      expired: 'Hold expirou antes da criacao do agendamento',
+    },
+  } as const;
 
   static validatePaymentForConfirmation(input: PaymentValidationInput): Result<void> {
     const { booking, paymentStatus } = input;

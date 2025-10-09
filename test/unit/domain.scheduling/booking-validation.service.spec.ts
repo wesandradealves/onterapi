@@ -167,6 +167,29 @@ describe('BookingValidationService', () => {
     });
   });
 
+  describe('validateHoldForBookingCreation', () => {
+    it('rejects creation when hold is inactive', () => {
+      const hold = createHold({ status: 'cancelled' });
+      const result = BookingValidationService.validateHoldForBookingCreation({
+        hold,
+        nowUtc: new Date('2025-10-08T09:30:00Z'),
+      });
+
+      expect(isFailure(result)).toBe(true);
+      expect(result.error).toBeInstanceOf(ConflictException);
+    });
+
+    it('accepts creation when hold is active', () => {
+      const hold = createHold();
+      const result = BookingValidationService.validateHoldForBookingCreation({
+        hold,
+        nowUtc: new Date('2025-10-08T09:30:00Z'),
+      });
+
+      expect(isSuccess(result)).toBe(true);
+    });
+  });
+
   describe('computeHoldExpiry', () => {
     it('returns now when candidate expiry is in the past', () => {
       const startAtUtc = new Date(Date.now() + 30 * MS_IN_MINUTE);

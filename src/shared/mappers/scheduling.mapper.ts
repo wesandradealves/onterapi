@@ -9,7 +9,6 @@ import {
   BookingHold,
   ClinicInvitationPolicy,
   ExternalCalendarEvent,
-  PricingSplit,
   RecurrenceOccurrence,
   RecurrenceSeries,
 } from "../../domain/scheduling/types/scheduling.types";
@@ -31,7 +30,7 @@ export const mapBookingEntityToDomain = (entity: BookingEntity): Booking => ({
   lateToleranceMinutes: entity.lateToleranceMinutes,
   recurrenceSeriesId: entity.recurrenceSeriesId ?? null,
   cancellationReason: entity.cancellationReason ?? null,
-  pricingSplit: (entity.pricingSplit as PricingSplit | null) ?? null,
+  pricingSplit: entity.pricingSplit ?? null,
   preconditionsPassed: entity.preconditionsPassed,
   anamneseRequired: entity.anamneseRequired,
   anamneseOverrideReason: entity.anamneseOverrideReason ?? null,
@@ -100,6 +99,7 @@ export const mapRecurrenceOccurrenceEntityToDomain = (
   entity: RecurrenceOccurrenceEntity,
 ): RecurrenceOccurrence => ({
   id: entity.id,
+  tenantId: entity.tenantId,
   seriesId: entity.seriesId,
   bookingId: entity.bookingId,
   startAtUtc: entity.startAtUtc,

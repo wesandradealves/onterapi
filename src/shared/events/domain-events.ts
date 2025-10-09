@@ -35,6 +35,7 @@ export class DomainEvents {
   static ANAMNESIS_ATTACHMENT_REMOVED = 'anamnesis.attachment.removed';
   static SCHEDULING_HOLD_CREATED = 'scheduling.hold.created';
   static SCHEDULING_HOLD_EXPIRED = 'scheduling.hold.expired';
+  static SCHEDULING_BOOKING_CREATED = 'scheduling.booking.created';
   static SCHEDULING_BOOKING_CONFIRMED = 'scheduling.booking.confirmed';
   static SCHEDULING_BOOKING_RESCHEDULED = 'scheduling.booking.rescheduled';
   static SCHEDULING_BOOKING_CANCELLED = 'scheduling.booking.cancelled';
@@ -419,6 +420,28 @@ export class DomainEvents {
       this.SCHEDULING_HOLD_CREATED,
       holdId,
       { holdId, ...data },
+      metadata,
+    );
+  }
+
+  static schedulingBookingCreated(
+    bookingId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      startAtUtc: Date;
+      endAtUtc: Date;
+      source: string;
+      timezone: string;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.SCHEDULING_BOOKING_CREATED,
+      bookingId,
+      { bookingId, ...data, createdAt: new Date() },
       metadata,
     );
   }
