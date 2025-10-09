@@ -33,6 +33,13 @@ export class DomainEvents {
   static ANAMNESIS_AI_COMPLETED = 'anamnesis.ai.completed';
   static ANAMNESIS_ATTACHMENT_CREATED = 'anamnesis.attachment.created';
   static ANAMNESIS_ATTACHMENT_REMOVED = 'anamnesis.attachment.removed';
+  static SCHEDULING_HOLD_CREATED = 'scheduling.hold.created';
+  static SCHEDULING_HOLD_EXPIRED = 'scheduling.hold.expired';
+  static SCHEDULING_BOOKING_CONFIRMED = 'scheduling.booking.confirmed';
+  static SCHEDULING_BOOKING_RESCHEDULED = 'scheduling.booking.rescheduled';
+  static SCHEDULING_BOOKING_CANCELLED = 'scheduling.booking.cancelled';
+  static SCHEDULING_BOOKING_NO_SHOW = 'scheduling.booking.no_show';
+  static SCHEDULING_PAYMENT_STATUS_CHANGED = 'scheduling.payment.status_changed';
 
   static createEvent<
     TPayload = Record<string, unknown>,
@@ -391,6 +398,136 @@ export class DomainEvents {
       this.ANAMNESIS_ATTACHMENT_REMOVED,
       anamnesisId,
       { anamnesisId, ...attachmentData },
+      metadata,
+    );
+  }
+
+  static schedulingHoldCreated(
+    holdId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      startAtUtc: Date;
+      endAtUtc: Date;
+      ttlExpiresAtUtc: Date;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.SCHEDULING_HOLD_CREATED,
+      holdId,
+      { holdId, ...data },
+      metadata,
+    );
+  }
+
+  static schedulingHoldExpired(
+    holdId: string,
+    data: { tenantId: string; professionalId: string; clinicId: string },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.SCHEDULING_HOLD_EXPIRED,
+      holdId,
+      { holdId, ...data, expiredAt: new Date() },
+      metadata,
+    );
+  }
+
+  static schedulingBookingConfirmed(
+    bookingId: string,
+    data: {
+      tenantId: string;
+      professionalId: string;
+      clinicId: string;
+      patientId: string;
+      startAtUtc: Date;
+      endAtUtc: Date;
+      source: string;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.SCHEDULING_BOOKING_CONFIRMED,
+      bookingId,
+      { bookingId, ...data, confirmedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static schedulingBookingRescheduled(
+    bookingId: string,
+    data: {
+      tenantId: string;
+      professionalId: string;
+      clinicId: string;
+      patientId: string;
+      previousStartAtUtc: Date;
+      previousEndAtUtc: Date;
+      newStartAtUtc: Date;
+      newEndAtUtc: Date;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.SCHEDULING_BOOKING_RESCHEDULED,
+      bookingId,
+      { bookingId, ...data, rescheduledAt: new Date() },
+      metadata,
+    );
+  }
+
+  static schedulingBookingCancelled(
+    bookingId: string,
+    data: {
+      tenantId: string;
+      professionalId: string;
+      clinicId: string;
+      patientId: string;
+      cancelledBy: string;
+      reason?: string;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.SCHEDULING_BOOKING_CANCELLED,
+      bookingId,
+      { bookingId, ...data, cancelledAt: new Date() },
+      metadata,
+    );
+  }
+
+  static schedulingBookingNoShow(
+    bookingId: string,
+    data: { tenantId: string; professionalId: string; clinicId: string; patientId: string },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.SCHEDULING_BOOKING_NO_SHOW,
+      bookingId,
+      { bookingId, ...data, markedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static schedulingPaymentStatusChanged(
+    bookingId: string,
+    data: {
+      tenantId: string;
+      professionalId: string;
+      clinicId: string;
+      patientId: string;
+      previousStatus: string;
+      newStatus: string;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.SCHEDULING_PAYMENT_STATUS_CHANGED,
+      bookingId,
+      { bookingId, ...data, changedAt: new Date() },
       metadata,
     );
   }

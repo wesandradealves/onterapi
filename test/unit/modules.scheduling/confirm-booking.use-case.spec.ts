@@ -1,0 +1,190 @@
+﻿import { ForbiddenException, GoneException, NotFoundException } from '@nestjs/common';
+
+import { ConfirmBookingUseCase } from '../../../src/modules/scheduling/use-cases/confirm-booking.use-case';
+import { IBookingRepository } from '../../../src/domain/scheduling/interfaces/repositories/booking.repository.interface';
+import { IBookingHoldRepository } from '../../../src/domain/scheduling/interfaces/repositories/booking-hold.repository.interface';
+import { MessageBus } from '../../../src/shared/messaging/message-bus';
+import { DomainEvents } from '../../../src/shared/events/domain-events';
+
+const createBooking = (overrides: Partial<ReturnType<typeof baseBooking>> = {}) => ({
+  ...baseBooking(),
+  ...overrides,
+});
+
+function baseBooking() {
+  return {
+    id: 'booking-1',
+    tenantId: 'tenant-1',
+    professionalId: 'prof-1',
+    clinicId: 'clinic-1',
+    patientId: 'patient-1',
+    source: 'clinic_portal',
+    status: 'scheduled',
+    paymentStatus: 'pending',
+    holdId: 'hold-1',
+    holdExpiresAtUtc: new Date('2025-10-08T09:50:00Z'),
+    startAtUtc: new Date('2025-10-10T10:00:00Z'),
+    endAtUtc: new Date('2025-10-10T11:00:00Z'),
+    timezone: 'America/Sao_Paulo',
+    lateToleranceMinutes: 15,
+    recurrenceSeriesId: null,
+    cancellationReason: null,
+    pricingSplit: null,
+    preconditionsPassed: true,
+    anamneseRequired: false,
+    anamneseOverrideReason: null,
+    noShowMarkedAtUtc: null,
+    createdAt: new Date('2025-10-01T10:00:00Z'),
+    updatedAt: new Date('2025-10-01T10:00:00Z'),
+    version: 1,
+  };
+}
+
+const createInput = () => ({
+  tenantId: 'tenant-1',
+  bookingId: 'booking-1',
+  holdId: 'hold-1',
+  paymentStatus: 'approved' as const,
+  requesterId: 'user-1',
+  requesterRole: 'PROFESSIONAL',
+  confirmationAtUtc: new Date('2025-10-08T09:40:00Z'),
+});
+
+describe('ConfirmBookingUseCase', () => {
+  let bookingRepository: jest.Mocked<IBookingRepository>;
+  let holdRepository: jest.Mocked<IBookingHoldRepository>;
+  let messageBus: jest.Mocked<MessageBus>;
+  let useCase: ConfirmBookingUseCase;
+
+  beforeEach(() => {
+    jest.useFakeTimers({ now: new Date('2025-10-08T09:30:00Z') });
+
+    bookingRepository = {
+      findById: jest.fn(),
+      updateStatus: jest.fn(),
+    } as unknown as jest.Mocked<IBookingRepository>;
+
+    holdRepository = {
+      findById: jest.fn(),
+      updateStatus: jest.fn(),
+    } as unknown as jest.Mocked<IBookingHoldRepository>;
+
+    messageBus = {
+      publish: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<MessageBus>;
+
+    useCase = new ConfirmBookingUseCase(bookingRepository, holdRepository, messageBus);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('confirma o agendamento quando hold ativo e pagamento aprovado', async () => {
+    const booking = createBooking();
+    const hold = {
+      id: 'hold-1',
+      tenantId: 'tenant-1',
+      clinicId: 'clinic-1',
+      professionalId: 'prof-1',
+      patientId: 'patient-1',
+      startAtUtc: booking.startAtUtc,
+      endAtUtc: booking.endAtUtc,
+      ttlExpiresAtUtc: new Date('2025-10-08T09:55:00Z'),
+      status: 'active',
+      createdAt: new Date('2025-10-08T09:00:00Z'),
+      updatedAt: new Date('2025-10-08T09:00:00Z'),
+      version: 1,
+    };
+
+    bookingRepository.findById.mockResolvedValue(booking);
+    holdRepository.findById.mockResolvedValue(hold);
+    bookingRepository.updateStatus.mockImplementation(async () => ({
+      ...booking,
+      status: 'confirmed',
+      paymentStatus: 'approved',
+      version: booking.version + 1,
+      updatedAt: new Date('2025-10-08T10:00:00Z'),
+    }));
+    holdRepository.updateStatus.mockImplementation(async () => ({
+      ...hold,
+      status: 'confirmed',
+      version: hold.version + 1,
+      updatedAt: new Date('2025-10-08T10:00:00Z'),
+    } as any));
+
+    const result = await useCase.executeOrThrow(createInput());
+
+    expect(result.status).toBe('confirmed');
+    expect(holdRepository.updateStatus).toHaveBeenCalledWith({
+      tenantId: 'tenant-1',
+      holdId: 'hold-1',
+      expectedVersion: hold.version,
+      status: 'confirmed',
+    });
+    expect(messageBus.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventName: DomainEvents.SCHEDULING_BOOKING_CONFIRMED,
+        aggregateId: 'booking-1',
+      }),
+    );
+  });
+
+  it('lança not found quando o agendamento não existe', async () => {
+    bookingRepository.findById.mockResolvedValue(null);
+
+    await expect(useCase.executeOrThrow(createInput())).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('lança gone quando o hold expirou', async () => {
+    const booking = createBooking();
+    bookingRepository.findById.mockResolvedValue(booking);
+    holdRepository.findById.mockResolvedValue({
+      id: 'hold-1',
+      tenantId: 'tenant-1',
+      clinicId: 'clinic-1',
+      professionalId: 'prof-1',
+      patientId: 'patient-1',
+      startAtUtc: booking.startAtUtc,
+      endAtUtc: booking.endAtUtc,
+      ttlExpiresAtUtc: new Date('2025-10-08T09:00:00Z'),
+      status: 'active',
+      createdAt: new Date('2025-10-08T09:00:00Z'),
+      updatedAt: new Date('2025-10-08T09:00:00Z'),
+      version: 1,
+    });
+
+    await expect(
+      useCase.executeOrThrow({
+        ...createInput(),
+        confirmationAtUtc: new Date('2025-10-08T10:15:00Z'),
+      }),
+    ).rejects.toBeInstanceOf(GoneException);
+  });
+
+  it('lança erro de pagamento quando o status informado não é aprovado', async () => {
+    const booking = createBooking({ paymentStatus: 'pending' });
+    bookingRepository.findById.mockResolvedValue(booking);
+    holdRepository.findById.mockResolvedValue({
+      id: 'hold-1',
+      tenantId: 'tenant-1',
+      clinicId: 'clinic-1',
+      professionalId: 'prof-1',
+      patientId: 'patient-1',
+      startAtUtc: booking.startAtUtc,
+      endAtUtc: booking.endAtUtc,
+      ttlExpiresAtUtc: new Date('2025-10-08T09:55:00Z'),
+      status: 'active',
+      createdAt: new Date('2025-10-08T09:00:00Z'),
+      updatedAt: new Date('2025-10-08T09:00:00Z'),
+      version: 1,
+    });
+
+    await expect(
+      useCase.executeOrThrow({
+        ...createInput(),
+        paymentStatus: 'pending',
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+});
