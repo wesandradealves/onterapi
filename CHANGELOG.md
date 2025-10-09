@@ -7,22 +7,18 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 ## [Unreleased]
 
 ### Added
-- Caso de uso `CreateBookingUseCase` com DTO `CreateBookingDto`, permitindo converter holds em agendamentos confirmados e publicar o evento `scheduling.booking.created` via `MessageBus`.
-
-- Caso de uso `CancelBookingUseCase` e DTO `CancelBookingDto`, padronizando motivos de cancelamento, controle de versão otimista e auditoria no fluxo de agendamentos.
+- Casos de uso `CreateBookingUseCase`, `CancelBookingUseCase` e `RecordPaymentStatusUseCase`, com respectivos DTOs, interfaces e publicação dos eventos `scheduling.booking.created`, `scheduling.booking.cancelled` e `scheduling.payment.status_changed`.
+- Endpoints HTTP `POST /scheduling/bookings`, `POST /scheduling/bookings/:bookingId/cancel` e `PATCH /scheduling/bookings/:bookingId/payment-status` no `SchedulingController`, reaproveitando presenters/mappers padronizados.
 
 ### Changed
-- `BookingValidationService` ganhou validações específicas para criação de agendamentos, regras de pagamento, cálculo de expiração de holds e marcação de no-show.
-
-- Repositórios, entidades e mapeadores de `scheduling` agora suportam leitura por hold, campos financeiros opcionais e flags clínicas; o `SchedulingModule` exporta os novos tokens.
-
-- `DomainEvents` passou a emitir `scheduling.booking.created`, alinhando integrações com o fluxo de criação.
+- `BookingValidationService` foi expandido com validações de criação, confirmação de pagamento, cálculo de expiração de holds e marcação de no-show; repositórios/mapeadores `scheduling` suportam lookup por hold, campos financeiros e aliases `@shared/*`; `SchedulingModule` agora exporta os novos tokens.
+- `DomainEvents` registra os novos eventos de agendamento e o Jest foi configurado para ignorar `onterarapi-v4/` e limitar coletor de cobertura ao módulo.
 
 ### Testing
-- Novas suites unitárias cobrem `CreateBookingUseCase`, `CancelBookingUseCase` e cenários adicionais do `BookingValidationService`.
+- Suites unitárias adicionadas para criação, cancelamento, atualização de pagamento, hold, recorrência e validações do módulo de scheduling (`npm run test:unit -- --runTestsByPath ...`).
 
 ### Documentation
-- README referencia o Módulo de Agendamento na navegação principal.
+- README aponta para o módulo de agendamento e `docs/app/agendamento.md` documenta o comportamento consolidado.
 
 ## [0.17.3] - 2025-10-08
 ### Changed
