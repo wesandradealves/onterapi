@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsISO8601, IsInt, Min, MinLength } from 'class-validator';
+import { IsInt, IsISO8601, Min, MinLength } from 'class-validator';
 
 export class RescheduleBookingDto {
   @ApiProperty({

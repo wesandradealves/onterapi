@@ -63,7 +63,10 @@ export class AnamnesisMetricsSnapshotDto {
   @ApiProperty({ description: 'Custo total estimado das execucoes da IA', example: 5.483271 })
   totalAICost!: number;
 
-  @ApiProperty({ description: 'Resumo dos feedbacks sobre planos gerados', type: () => AnamnesisMetricsFeedbackDto })
+  @ApiProperty({
+    description: 'Resumo dos feedbacks sobre planos gerados',
+    type: () => AnamnesisMetricsFeedbackDto,
+  })
   feedback!: AnamnesisMetricsFeedbackDto;
 
   @ApiPropertyOptional({

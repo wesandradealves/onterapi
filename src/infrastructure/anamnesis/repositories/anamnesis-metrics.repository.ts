@@ -72,12 +72,19 @@ export class AnamnesisMetricsRepository implements IAnamnesisMetricsRepository {
     private readonly dataSource: DataSource,
   ) {}
 
-  async incrementMetrics({ tenantId, occurredOn, increments }: IncrementMetricsInput): Promise<void> {
+  async incrementMetrics({
+    tenantId,
+    occurredOn,
+    increments,
+  }: IncrementMetricsInput): Promise<void> {
     const metricDate = this.toDateOnly(occurredOn);
     const payload = this.buildPayload(increments);
 
     const baseColumns = ['tenant_id', 'metric_date', 'last_updated_at'];
-    const insertColumns = [...baseColumns, ...ALL_COLUMNS.map((column) => this.toColumnName(column))];
+    const insertColumns = [
+      ...baseColumns,
+      ...ALL_COLUMNS.map((column) => this.toColumnName(column)),
+    ];
     const insertValues = [
       tenantId ?? null,
       metricDate,
@@ -178,7 +185,10 @@ export class AnamnesisMetricsRepository implements IAnamnesisMetricsRepository {
     return payload;
   }
 
-  private resolveIncrementValue(column: ColumnKey, increments: IncrementMetricsInput['increments']): number {
+  private resolveIncrementValue(
+    column: ColumnKey,
+    increments: IncrementMetricsInput['increments'],
+  ): number {
     const value = (increments as Record<string, number | undefined>)[column];
     if (value === undefined || Number.isNaN(value)) {
       return 0;

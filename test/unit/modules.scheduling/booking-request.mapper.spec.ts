@@ -1,13 +1,13 @@
 import { RolesEnum } from '@domain/auth/enums/roles.enum';
 import {
+  SchedulingRequestContext,
   toCancelBookingInput,
+  toConfirmBookingInput,
   toCreateBookingInput,
   toCreateHoldInput,
-  toConfirmBookingInput,
+  toMarkBookingNoShowInput,
   toRecordPaymentStatusInput,
   toRescheduleBookingInput,
-  toMarkBookingNoShowInput,
-  SchedulingRequestContext,
 } from '@modules/scheduling/api/mappers/booking-request.mapper';
 
 const context: SchedulingRequestContext = {

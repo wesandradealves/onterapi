@@ -1,17 +1,15 @@
-﻿import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+﻿import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
-import {
-  ExternalCalendarEvent,
-} from "../../../domain/scheduling/types/scheduling.types";
+import { ExternalCalendarEvent } from '../../../domain/scheduling/types/scheduling.types';
 import {
   IExternalCalendarEventsRepository,
   UpdateExternalCalendarEventStatusInput,
   UpsertExternalCalendarEventInput,
-} from "../../../domain/scheduling/interfaces/repositories/external-calendar-events.repository.interface";
-import { ExternalCalendarEventEntity } from "../entities/external-calendar-event.entity";
-import { mapExternalCalendarEventEntityToDomain } from "../../../shared/mappers/scheduling.mapper";
+} from '../../../domain/scheduling/interfaces/repositories/external-calendar-events.repository.interface';
+import { ExternalCalendarEventEntity } from '../entities/external-calendar-event.entity';
+import { mapExternalCalendarEventEntityToDomain } from '../../../shared/mappers/scheduling.mapper';
 
 @Injectable()
 export class ExternalCalendarEventsRepository implements IExternalCalendarEventsRepository {
@@ -44,7 +42,9 @@ export class ExternalCalendarEventsRepository implements IExternalCalendarEvents
     professionalId: string,
     externalId: string,
   ): Promise<ExternalCalendarEvent | null> {
-    const entity = await this.repository.findOne({ where: { tenantId, professionalId, externalId } });
+    const entity = await this.repository.findOne({
+      where: { tenantId, professionalId, externalId },
+    });
     return entity ? mapExternalCalendarEventEntityToDomain(entity) : null;
   }
 
@@ -60,9 +60,7 @@ export class ExternalCalendarEventsRepository implements IExternalCalendarEvents
     return entities.map(mapExternalCalendarEventEntityToDomain);
   }
 
-  async updateStatus(
-    data: UpdateExternalCalendarEventStatusInput,
-  ): Promise<ExternalCalendarEvent> {
+  async updateStatus(data: UpdateExternalCalendarEventStatusInput): Promise<ExternalCalendarEvent> {
     const { tenantId, eventId, status, validationErrors } = data;
 
     const result = await this.repository

@@ -104,7 +104,10 @@ describe('RescheduleBookingUseCase', () => {
       updatedAt: new Date('2025-10-01T00:00:00Z'),
     });
     recurrenceRepository.findOccurrenceByBooking.mockResolvedValue(occurrence);
-    recurrenceRepository.getRescheduleUsage.mockResolvedValue({ occurrenceReschedules: 0, seriesReschedules: 0 });
+    recurrenceRepository.getRescheduleUsage.mockResolvedValue({
+      occurrenceReschedules: 0,
+      seriesReschedules: 0,
+    });
     bookingRepository.reschedule.mockImplementation(async () => ({
       ...booking,
       startAtUtc: input.newStartAtUtc,
@@ -161,7 +164,10 @@ describe('RescheduleBookingUseCase', () => {
       createdAt: new Date('2025-10-01T10:00:00Z'),
       updatedAt: new Date('2025-10-01T10:00:00Z'),
     });
-    recurrenceRepository.getRescheduleUsage.mockResolvedValue({ occurrenceReschedules: 1, seriesReschedules: 3 });
+    recurrenceRepository.getRescheduleUsage.mockResolvedValue({
+      occurrenceReschedules: 1,
+      seriesReschedules: 3,
+    });
 
     await expect(useCase.executeOrThrow(input)).rejects.toBeInstanceOf(ConflictException);
   });

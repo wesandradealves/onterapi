@@ -1,7 +1,4 @@
-﻿import {
-  RecurrenceOccurrence,
-  RecurrenceSeries,
-} from '../../types/scheduling.types';
+﻿import { RecurrenceOccurrence, RecurrenceSeries } from '../../types/scheduling.types';
 
 export interface CreateRecurrenceSeriesInput
   extends Omit<RecurrenceSeries, 'id' | 'createdAt' | 'updatedAt'> {}
@@ -31,18 +28,13 @@ export interface IRecurrenceRepository {
   createSeries(data: CreateRecurrenceSeriesInput): Promise<RecurrenceSeries>;
   updateSeriesLimits(data: UpdateRecurrenceSeriesLimitsInput): Promise<RecurrenceSeries>;
   findSeriesById(tenantId: string, seriesId: string): Promise<RecurrenceSeries | null>;
-  listSeriesForProfessional(
-    tenantId: string,
-    professionalId: string,
-  ): Promise<RecurrenceSeries[]>;
+  listSeriesForProfessional(tenantId: string, professionalId: string): Promise<RecurrenceSeries[]>;
   createOccurrence(data: CreateRecurrenceOccurrenceInput): Promise<RecurrenceOccurrence>;
   findOccurrenceByBooking(
     tenantId: string,
     bookingId: string,
   ): Promise<RecurrenceOccurrence | null>;
-  recordOccurrenceReschedule(
-    data: RecordOccurrenceRescheduleInput,
-  ): Promise<RecurrenceOccurrence>;
+  recordOccurrenceReschedule(data: RecordOccurrenceRescheduleInput): Promise<RecurrenceOccurrence>;
   getRescheduleUsage(
     tenantId: string,
     seriesId: string,

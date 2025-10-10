@@ -2,10 +2,11 @@
   AvailabilityOptions,
   Booking,
   BookingHold,
+  HoldStatus,
   PaymentStatus,
   RecurrenceLimits,
 } from '../types/scheduling.types';
-import { Result, failure, success } from '@shared/types/result.type';
+import { failure, Result, success } from '@shared/types/result.type';
 import { SchedulingErrorFactory } from '@shared/factories/scheduling-error.factory';
 
 interface AdvanceValidationInput {
@@ -67,25 +68,34 @@ export class BookingValidationService {
   }
 
   static validateHoldForConfirmation(input: HoldUsageValidationInput): Result<void> {
-    return this.validateHoldUsage(input, 'confirmation');
+    return this.validateHoldUsage(input, {
+      context: 'confirmation',
+      allowedStatuses: ['active', 'confirmed'],
+    });
   }
 
   static validateHoldForBookingCreation(input: HoldUsageValidationInput): Result<void> {
-    return this.validateHoldUsage(input, 'booking_creation');
+    return this.validateHoldUsage(input, {
+      context: 'booking_creation',
+      allowedStatuses: ['active'],
+    });
   }
 
   private static validateHoldUsage(
     input: HoldUsageValidationInput,
-    context: 'confirmation' | 'booking_creation',
+    options: {
+      context: 'confirmation' | 'booking_creation';
+      allowedStatuses: HoldStatus[];
+    },
   ): Result<void> {
     const { hold, nowUtc } = input;
-    const messages = this.holdValidationMessages[context];
+    const messages = this.holdValidationMessages[options.context];
 
     if (!hold) {
       return failure(SchedulingErrorFactory.holdNotFound(messages.notFound));
     }
 
-    if (hold.status !== 'active') {
+    if (!options.allowedStatuses.includes(hold.status)) {
       return failure(SchedulingErrorFactory.holdInvalidState(messages.inactive));
     }
 
@@ -151,7 +161,11 @@ export class BookingValidationService {
     return success(undefined);
   }
 
-  static computeHoldExpiry(startAtUtc: Date, availability: AvailabilityOptions, nowUtc = new Date()): Date {
+  static computeHoldExpiry(
+    startAtUtc: Date,
+    availability: AvailabilityOptions,
+    nowUtc = new Date(),
+  ): Date {
     const ttlMilliseconds = availability.minAdvanceMinutes * MS_IN_MINUTE;
     const candidate = new Date(startAtUtc.getTime() - ttlMilliseconds);
 
@@ -175,9 +189,7 @@ export class BookingValidationService {
 
     if (seriesReschedules >= limits.maxReschedulesPerSeries) {
       return failure(
-        SchedulingErrorFactory.recurrenceLimitReached(
-          'Limite de reagendamentos na serie atingido',
-        ),
+        SchedulingErrorFactory.recurrenceLimitReached('Limite de reagendamentos na serie atingido'),
       );
     }
 

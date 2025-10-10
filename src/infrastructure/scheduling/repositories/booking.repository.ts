@@ -1,7 +1,7 @@
-﻿import { ConflictException, Injectable, Logger } from "@nestjs/common";
-import { InjectDataSource } from "@nestjs/typeorm";
-import { Between, DataSource, DeepPartial, Repository } from "typeorm";
-import { QueryDeepPartialEntity } from "typeorm/query-builder/QueryPartialEntity";
+﻿import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
+import { Between, DataSource, DeepPartial, Repository } from 'typeorm';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 
 import {
   Booking,
@@ -10,10 +10,10 @@ import {
   RecordPaymentStatusInput,
   RescheduleBookingInput,
   UpdateBookingStatusInput,
-} from "../../../domain/scheduling/types/scheduling.types";
-import { IBookingRepository } from "../../../domain/scheduling/interfaces/repositories/booking.repository.interface";
-import { BookingEntity } from "../entities/booking.entity";
-import { mapBookingEntityToDomain } from "../../../shared/mappers/scheduling.mapper";
+} from '../../../domain/scheduling/types/scheduling.types';
+import { IBookingRepository } from '../../../domain/scheduling/interfaces/repositories/booking.repository.interface';
+import { BookingEntity } from '../entities/booking.entity';
+import { mapBookingEntityToDomain } from '../../../shared/mappers/scheduling.mapper';
 
 @Injectable()
 export class BookingRepository implements IBookingRepository {
@@ -82,7 +82,7 @@ export class BookingRepository implements IBookingRepository {
         professionalId,
         startAtUtc: Between(rangeStartUtc, rangeEndUtc),
       },
-      order: { startAtUtc: "ASC" },
+      order: { startAtUtc: 'ASC' },
     });
 
     return entities.map(mapBookingEntityToDomain);
@@ -100,17 +100,19 @@ export class BookingRepository implements IBookingRepository {
         clinicId,
         startAtUtc: Between(rangeStartUtc, rangeEndUtc),
       },
-      order: { startAtUtc: "ASC" },
+      order: { startAtUtc: 'ASC' },
     });
 
     return entities.map(mapBookingEntityToDomain);
   }
 
   async updateStatus(data: UpdateBookingStatusInput): Promise<Booking> {
-    const { bookingId, tenantId, expectedVersion, status, paymentStatus, cancellationReason } = data;
+    const { bookingId, tenantId, expectedVersion, status, paymentStatus, cancellationReason } =
+      data;
 
     const updates: QueryDeepPartialEntity<BookingEntity> = {
       status,
+      updatedAt: () => 'CURRENT_TIMESTAMP',
     };
 
     if (paymentStatus !== undefined) {
@@ -125,10 +127,10 @@ export class BookingRepository implements IBookingRepository {
       .createQueryBuilder()
       .update(BookingEntity)
       .set(updates)
-      .where("id = :bookingId", { bookingId })
-      .andWhere("tenant_id = :tenantId", { tenantId })
-      .andWhere("version = :version", { version: expectedVersion })
-      .returning("*")
+      .where('id = :bookingId', { bookingId })
+      .andWhere('tenant_id = :tenantId', { tenantId })
+      .andWhere('version = :version', { version: expectedVersion })
+      .returning('*')
       .execute();
 
     if (!result.affected) {
@@ -136,7 +138,7 @@ export class BookingRepository implements IBookingRepository {
       throw new ConflictException('Nao foi possivel atualizar o status do agendamento');
     }
 
-    return mapBookingEntityToDomain(result.raw[0] as BookingEntity);
+    return this.loadBookingDomainOrThrow(tenantId, bookingId);
   }
 
   async reschedule(data: RescheduleBookingInput): Promise<Booking> {
@@ -148,11 +150,12 @@ export class BookingRepository implements IBookingRepository {
       .set({
         startAtUtc: newStartAtUtc,
         endAtUtc: newEndAtUtc,
+        updatedAt: () => 'CURRENT_TIMESTAMP',
       })
-      .where("id = :bookingId", { bookingId })
-      .andWhere("tenant_id = :tenantId", { tenantId })
-      .andWhere("version = :version", { version: expectedVersion })
-      .returning("*")
+      .where('id = :bookingId', { bookingId })
+      .andWhere('tenant_id = :tenantId', { tenantId })
+      .andWhere('version = :version', { version: expectedVersion })
+      .returning('*')
       .execute();
 
     if (!result.affected) {
@@ -160,7 +163,7 @@ export class BookingRepository implements IBookingRepository {
       throw new ConflictException('Nao foi possivel reagendar o compromisso');
     }
 
-    return mapBookingEntityToDomain(result.raw[0] as BookingEntity);
+    return this.loadBookingDomainOrThrow(tenantId, bookingId);
   }
 
   async recordPaymentStatus(data: RecordPaymentStatusInput): Promise<Booking> {
@@ -169,18 +172,21 @@ export class BookingRepository implements IBookingRepository {
     const result = await this.repository
       .createQueryBuilder()
       .update(BookingEntity)
-      .set({ paymentStatus })
-      .where("id = :bookingId", { bookingId })
-      .andWhere("tenant_id = :tenantId", { tenantId })
-      .andWhere("version = :version", { version: expectedVersion })
-      .returning("*")
+      .set({
+        paymentStatus,
+        updatedAt: () => 'CURRENT_TIMESTAMP',
+      })
+      .where('id = :bookingId', { bookingId })
+      .andWhere('tenant_id = :tenantId', { tenantId })
+      .andWhere('version = :version', { version: expectedVersion })
+      .returning('*')
       .execute();
 
     if (!result.affected) {
       throw new ConflictException('Nao foi possivel atualizar status de pagamento');
     }
 
-    return mapBookingEntityToDomain(result.raw[0] as BookingEntity);
+    return this.loadBookingDomainOrThrow(tenantId, bookingId);
   }
 
   async markNoShow(data: MarkNoShowInput): Promise<Booking> {
@@ -192,17 +198,29 @@ export class BookingRepository implements IBookingRepository {
       .set({
         status: 'no_show',
         noShowMarkedAtUtc: markedAtUtc,
+        updatedAt: () => 'CURRENT_TIMESTAMP',
       })
-      .where("id = :bookingId", { bookingId })
-      .andWhere("tenant_id = :tenantId", { tenantId })
-      .andWhere("version = :version", { version: expectedVersion })
-      .returning("*")
+      .where('id = :bookingId', { bookingId })
+      .andWhere('tenant_id = :tenantId', { tenantId })
+      .andWhere('version = :version', { version: expectedVersion })
+      .returning('*')
       .execute();
 
     if (!result.affected) {
       throw new ConflictException('Nao foi possivel marcar no-show do agendamento');
     }
 
-    return mapBookingEntityToDomain(result.raw[0] as BookingEntity);
+    return this.loadBookingDomainOrThrow(tenantId, bookingId);
+  }
+
+  private async loadBookingDomainOrThrow(tenantId: string, bookingId: string): Promise<Booking> {
+    const entity = await this.repository.findOne({ where: { tenantId, id: bookingId } });
+
+    if (!entity) {
+      this.logger.error(`Booking ${bookingId} nao encontrado apos atualizacao persistente`);
+      throw new ConflictException('Nao foi possivel recuperar o agendamento atualizado');
+    }
+
+    return mapBookingEntityToDomain(entity);
   }
 }

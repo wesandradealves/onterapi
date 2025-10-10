@@ -1,7 +1,4 @@
-﻿import {
-  ClinicInvitationPolicy,
-  InvitationChannel,
-} from '../../types/scheduling.types';
+﻿import { ClinicInvitationPolicy, InvitationChannel } from '../../types/scheduling.types';
 
 export interface UpsertClinicInvitationPolicyInput
   extends Omit<ClinicInvitationPolicy, 'id' | 'createdAt' | 'updatedAt'> {
@@ -17,10 +14,7 @@ export interface IClinicInvitationPolicyRepository {
     channel: InvitationChannel,
     atUtc: Date,
   ): Promise<ClinicInvitationPolicy | null>;
-  listByProfessional(
-    tenantId: string,
-    professionalId: string,
-  ): Promise<ClinicInvitationPolicy[]>;
+  listByProfessional(tenantId: string, professionalId: string): Promise<ClinicInvitationPolicy[]>;
   remove(tenantId: string, policyId: string): Promise<void>;
 }
 

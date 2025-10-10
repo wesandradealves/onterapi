@@ -65,7 +65,7 @@ export class CreateBookingDto {
 
   @ApiProperty({ description: 'Origem do agendamento', enum: BOOKING_SOURCES })
   @IsIn(BOOKING_SOURCES as readonly string[])
-  source!: typeof BOOKING_SOURCES[number];
+  source!: (typeof BOOKING_SOURCES)[number];
 
   @ApiProperty({
     description: 'Fuso horário IANA do atendimento',
@@ -77,7 +77,7 @@ export class CreateBookingDto {
   @ApiPropertyOptional({ description: 'Status financeiro inicial', enum: PAYMENT_STATUSES })
   @IsOptional()
   @IsIn(PAYMENT_STATUSES as readonly string[])
-  paymentStatus?: typeof PAYMENT_STATUSES[number];
+  paymentStatus?: (typeof PAYMENT_STATUSES)[number];
 
   @ApiPropertyOptional({
     description: 'Minutos de tolerância para atraso do paciente',

@@ -23,7 +23,14 @@ export default class Swagger {
 
     const document = SwaggerModule.createDocument(app, options, {
       deepScanRoutes: true,
-      include: [AuthModule, UsersModule, PatientsModule, AnamnesisModule, HealthModule, SchedulingModule],
+      include: [
+        AuthModule,
+        UsersModule,
+        PatientsModule,
+        AnamnesisModule,
+        HealthModule,
+        SchedulingModule,
+      ],
       operationIdFactory: (controllerKey: string, methodKey: string) => methodKey,
     });
 

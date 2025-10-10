@@ -106,12 +106,15 @@ describe('ConfirmBookingUseCase', () => {
       version: booking.version + 1,
       updatedAt: new Date('2025-10-08T10:00:00Z'),
     }));
-    holdRepository.updateStatus.mockImplementation(async () => ({
-      ...hold,
-      status: 'confirmed',
-      version: hold.version + 1,
-      updatedAt: new Date('2025-10-08T10:00:00Z'),
-    } as any));
+    holdRepository.updateStatus.mockImplementation(
+      async () =>
+        ({
+          ...hold,
+          status: 'confirmed',
+          version: hold.version + 1,
+          updatedAt: new Date('2025-10-08T10:00:00Z'),
+        }) as any,
+    );
 
     const result = await useCase.executeOrThrow(createInput());
 

@@ -1,6 +1,6 @@
-﻿import { ConflictException, Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+﻿import { ConflictException, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
 import {
   CreateRecurrenceOccurrenceInput,
@@ -9,17 +9,17 @@ import {
   RecordOccurrenceRescheduleInput,
   RescheduleUsage,
   UpdateRecurrenceSeriesLimitsInput,
-} from "../../../domain/scheduling/interfaces/repositories/recurrence.repository.interface";
+} from '../../../domain/scheduling/interfaces/repositories/recurrence.repository.interface';
 import {
   RecurrenceOccurrence,
   RecurrenceSeries,
-} from "../../../domain/scheduling/types/scheduling.types";
+} from '../../../domain/scheduling/types/scheduling.types';
 import {
   mapRecurrenceOccurrenceEntityToDomain,
   mapRecurrenceSeriesEntityToDomain,
-} from "../../../shared/mappers/scheduling.mapper";
-import { RecurrenceSeriesEntity } from "../entities/recurrence-series.entity";
-import { RecurrenceOccurrenceEntity } from "../entities/recurrence-occurrence.entity";
+} from '../../../shared/mappers/scheduling.mapper';
+import { RecurrenceSeriesEntity } from '../entities/recurrence-series.entity';
+import { RecurrenceOccurrenceEntity } from '../entities/recurrence-occurrence.entity';
 
 @Injectable()
 export class RecurrenceRepository implements IRecurrenceRepository {
@@ -76,7 +76,10 @@ export class RecurrenceRepository implements IRecurrenceRepository {
     return entity ? mapRecurrenceSeriesEntityToDomain(entity) : null;
   }
 
-  async listSeriesForProfessional(tenantId: string, professionalId: string): Promise<RecurrenceSeries[]> {
+  async listSeriesForProfessional(
+    tenantId: string,
+    professionalId: string,
+  ): Promise<RecurrenceSeries[]> {
     const entities = await this.seriesRepository.find({
       where: { tenantId, professionalId },
       order: { createdAt: 'DESC' },
@@ -154,4 +157,3 @@ export class RecurrenceRepository implements IRecurrenceRepository {
     };
   }
 }
-

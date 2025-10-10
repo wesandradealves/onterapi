@@ -24,5 +24,5 @@ export class UpdatePaymentStatusDto {
     example: 'approved',
   })
   @IsIn(PAYMENT_STATUSES as readonly string[])
-  paymentStatus!: typeof PAYMENT_STATUSES[number];
+  paymentStatus!: (typeof PAYMENT_STATUSES)[number];
 }

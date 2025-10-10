@@ -14,7 +14,7 @@ export class ConfirmBookingDto {
     example: 'approved',
   })
   @IsIn(CONFIRM_PAYMENT_STATUS as readonly string[])
-  paymentStatus!: typeof CONFIRM_PAYMENT_STATUS[number];
+  paymentStatus!: (typeof CONFIRM_PAYMENT_STATUS)[number];
 
   @ApiPropertyOptional({
     description: 'Momento da confirmação em UTC (ISO 8601)',

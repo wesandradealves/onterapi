@@ -1,17 +1,17 @@
-﻿import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+﻿import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
 import {
   ClinicInvitationPolicy,
   InvitationChannel,
-} from "../../../domain/scheduling/types/scheduling.types";
+} from '../../../domain/scheduling/types/scheduling.types';
 import {
   IClinicInvitationPolicyRepository,
   UpsertClinicInvitationPolicyInput,
-} from "../../../domain/scheduling/interfaces/repositories/clinic-invitation-policy.repository.interface";
-import { ClinicInvitationPolicyEntity } from "../entities/clinic-invitation-policy.entity";
-import { mapClinicInvitationPolicyEntityToDomain } from "../../../shared/mappers/scheduling.mapper";
+} from '../../../domain/scheduling/interfaces/repositories/clinic-invitation-policy.repository.interface';
+import { ClinicInvitationPolicyEntity } from '../entities/clinic-invitation-policy.entity';
+import { mapClinicInvitationPolicyEntityToDomain } from '../../../shared/mappers/scheduling.mapper';
 
 @Injectable()
 export class ClinicInvitationPolicyRepository implements IClinicInvitationPolicyRepository {
@@ -62,7 +62,10 @@ export class ClinicInvitationPolicyRepository implements IClinicInvitationPolicy
     return entity ? mapClinicInvitationPolicyEntityToDomain(entity) : null;
   }
 
-  async listByProfessional(tenantId: string, professionalId: string): Promise<ClinicInvitationPolicy[]> {
+  async listByProfessional(
+    tenantId: string,
+    professionalId: string,
+  ): Promise<ClinicInvitationPolicy[]> {
     const entities = await this.repository.find({
       where: { tenantId, professionalId },
       order: { priority: 'DESC', validFrom: 'DESC' },

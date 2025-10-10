@@ -107,9 +107,7 @@ describe('CreateHoldUseCase', () => {
       },
     ]);
 
-    await expect(useCase.executeOrThrow(createInput())).rejects.toBeInstanceOf(
-      ConflictException,
-    );
+    await expect(useCase.executeOrThrow(createInput())).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('throws conflict when overlapping hold exists', async () => {
@@ -131,8 +129,6 @@ describe('CreateHoldUseCase', () => {
       },
     ]);
 
-    await expect(useCase.executeOrThrow(createInput())).rejects.toBeInstanceOf(
-      ConflictException,
-    );
+    await expect(useCase.executeOrThrow(createInput())).rejects.toBeInstanceOf(ConflictException);
   });
 });

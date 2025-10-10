@@ -48,7 +48,8 @@ export class DomainEvents {
   static NOTIFICATION_SCHEDULING_HOLD_CREATED = 'notifications.scheduling.hold.created';
   static NOTIFICATION_SCHEDULING_BOOKING_CREATED = 'notifications.scheduling.booking.created';
   static NOTIFICATION_SCHEDULING_BOOKING_CONFIRMED = 'notifications.scheduling.booking.confirmed';
-  static NOTIFICATION_SCHEDULING_BOOKING_RESCHEDULED = 'notifications.scheduling.booking.rescheduled';
+  static NOTIFICATION_SCHEDULING_BOOKING_RESCHEDULED =
+    'notifications.scheduling.booking.rescheduled';
   static NOTIFICATION_SCHEDULING_BOOKING_CANCELLED = 'notifications.scheduling.booking.cancelled';
   static NOTIFICATION_SCHEDULING_BOOKING_NO_SHOW = 'notifications.scheduling.booking.no_show';
   static NOTIFICATION_SCHEDULING_PAYMENT_STATUS_CHANGED =
@@ -428,12 +429,7 @@ export class DomainEvents {
     },
     metadata?: DomainEventMetadata,
   ): DomainEvent {
-    return this.createEvent(
-      this.SCHEDULING_HOLD_CREATED,
-      holdId,
-      { holdId, ...data },
-      metadata,
-    );
+    return this.createEvent(this.SCHEDULING_HOLD_CREATED, holdId, { holdId, ...data }, metadata);
   }
 
   static schedulingBookingCreated(

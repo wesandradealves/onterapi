@@ -20,6 +20,7 @@ import {
   CreateTherapeuticPlanAcceptanceInput,
   CreateTherapeuticPlanAccessLogInput,
   GetStepTemplatesFilters,
+  ListPlanAccessLogsFilters,
   PatientAnamnesisRollup,
   RecordAITrainingFeedbackInput,
   RemoveAnamnesisAttachmentInput,
@@ -28,10 +29,9 @@ import {
   SaveTherapeuticPlanInput,
   SubmitAnamnesisInput,
   TherapeuticPlanAcceptance,
-  TherapeuticPlanData,
   TherapeuticPlanAccessLog,
+  TherapeuticPlanData,
   UpsertPatientAnamnesisRollupInput,
-  ListPlanAccessLogsFilters,
 } from '../../types/anamnesis.types';
 export interface IAnamnesisRepository {
   create(data: CreateAnamnesisInput): Promise<Anamnesis>;

@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsISO8601, IsInt, IsOptional, Min } from 'class-validator';
+import { IsInt, IsISO8601, IsOptional, Min } from 'class-validator';
 
 export class MarkBookingNoShowDto {
   @ApiProperty({

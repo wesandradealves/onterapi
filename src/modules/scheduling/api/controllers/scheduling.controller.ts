@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Headers,
   HttpCode,
   HttpStatus,
@@ -11,7 +12,6 @@ import {
   Patch,
   Post,
   UseGuards,
-  ForbiddenException,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -30,20 +30,20 @@ import { ICurrentUser } from '@domain/auth/interfaces/current-user.interface';
 import { RolesEnum } from '@domain/auth/enums/roles.enum';
 import { ZodValidationPipe } from '@shared/pipes/zod-validation.pipe';
 import {
-  ICreateBookingUseCase,
   CreateBookingUseCaseInput,
+  ICreateBookingUseCase,
 } from '@domain/scheduling/interfaces/use-cases/create-booking.use-case.interface';
 import {
-  ICancelBookingUseCase,
   CancelBookingUseCaseInput,
+  ICancelBookingUseCase,
 } from '@domain/scheduling/interfaces/use-cases/cancel-booking.use-case.interface';
 import {
-  ICreateHoldUseCase,
   CreateHoldUseCaseInput,
+  ICreateHoldUseCase,
 } from '@domain/scheduling/interfaces/use-cases/create-hold.use-case.interface';
 import {
-  IConfirmBookingUseCase,
   ConfirmBookingUseCaseInput,
+  IConfirmBookingUseCase,
 } from '@domain/scheduling/interfaces/use-cases/confirm-booking.use-case.interface';
 import {
   IRescheduleBookingUseCase,
@@ -68,14 +68,8 @@ import { ConfirmBookingDto } from '../dtos/confirm-booking.dto';
 import { RescheduleBookingDto } from '../dtos/reschedule-booking.dto';
 import { MarkBookingNoShowDto } from '../dtos/mark-booking-no-show.dto';
 import { UpdatePaymentStatusDto } from '../dtos/update-payment-status.dto';
-import {
-  CreateBookingSchema,
-  createBookingSchema,
-} from '../schemas/create-booking.schema';
-import {
-  CancelBookingSchema,
-  cancelBookingSchema,
-} from '../schemas/cancel-booking.schema';
+import { CreateBookingSchema, createBookingSchema } from '../schemas/create-booking.schema';
+import { CancelBookingSchema, cancelBookingSchema } from '../schemas/cancel-booking.schema';
 import { CreateHoldSchema, createHoldSchema } from '../schemas/create-hold.schema';
 import { ConfirmBookingSchema, confirmBookingSchema } from '../schemas/confirm-booking.schema';
 import {
@@ -93,9 +87,9 @@ import {
 import {
   SchedulingRequestContext,
   toCancelBookingInput,
+  toConfirmBookingInput,
   toCreateBookingInput,
   toCreateHoldInput,
-  toConfirmBookingInput,
   toMarkBookingNoShowInput,
   toRecordPaymentStatusInput,
   toRescheduleBookingInput,
@@ -469,4 +463,3 @@ export class SchedulingController {
     return trimmed.length ? trimmed : undefined;
   }
 }
-

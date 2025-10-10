@@ -87,4 +87,5 @@ export type SchedulingBookingConfirmedEvent = DomainEvent<SchedulingBookingConfi
 export type SchedulingBookingRescheduledEvent = DomainEvent<SchedulingBookingRescheduledPayload>;
 export type SchedulingBookingCancelledEvent = DomainEvent<SchedulingBookingCancelledPayload>;
 export type SchedulingBookingNoShowEvent = DomainEvent<SchedulingBookingNoShowPayload>;
-export type SchedulingPaymentStatusChangedEvent = DomainEvent<SchedulingPaymentStatusChangedPayload>;
+export type SchedulingPaymentStatusChangedEvent =
+  DomainEvent<SchedulingPaymentStatusChangedPayload>;

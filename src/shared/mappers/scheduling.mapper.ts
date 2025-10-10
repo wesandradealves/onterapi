@@ -1,17 +1,17 @@
-﻿import { Booking } from "../../domain/scheduling/types/scheduling.types";
-import { BookingEntity } from "../../infrastructure/scheduling/entities/booking.entity";
-import { BookingHoldEntity } from "../../infrastructure/scheduling/entities/booking-hold.entity";
-import { ClinicInvitationPolicyEntity } from "../../infrastructure/scheduling/entities/clinic-invitation-policy.entity";
-import { RecurrenceSeriesEntity } from "../../infrastructure/scheduling/entities/recurrence-series.entity";
-import { RecurrenceOccurrenceEntity } from "../../infrastructure/scheduling/entities/recurrence-occurrence.entity";
-import { ExternalCalendarEventEntity } from "../../infrastructure/scheduling/entities/external-calendar-event.entity";
-import {
+﻿import {
+  Booking,
   BookingHold,
   ClinicInvitationPolicy,
   ExternalCalendarEvent,
   RecurrenceOccurrence,
   RecurrenceSeries,
-} from "../../domain/scheduling/types/scheduling.types";
+} from '../../domain/scheduling/types/scheduling.types';
+import { BookingEntity } from '../../infrastructure/scheduling/entities/booking.entity';
+import { BookingHoldEntity } from '../../infrastructure/scheduling/entities/booking-hold.entity';
+import { ClinicInvitationPolicyEntity } from '../../infrastructure/scheduling/entities/clinic-invitation-policy.entity';
+import { RecurrenceSeriesEntity } from '../../infrastructure/scheduling/entities/recurrence-series.entity';
+import { RecurrenceOccurrenceEntity } from '../../infrastructure/scheduling/entities/recurrence-occurrence.entity';
+import { ExternalCalendarEventEntity } from '../../infrastructure/scheduling/entities/external-calendar-event.entity';
 
 export const mapBookingEntityToDomain = (entity: BookingEntity): Booking => ({
   id: entity.id,
@@ -65,7 +65,7 @@ export const mapClinicInvitationPolicyEntityToDomain = (
   pricingMode: entity.pricingMode,
   repasseMode: entity.repasseMode,
   channel: entity.channel,
-  roundingPolicy: entity.roundingPolicy as "half_even",
+  roundingPolicy: entity.roundingPolicy as 'half_even',
   validFrom: entity.validFrom,
   validTo: entity.validTo ?? null,
   priority: entity.priority,
@@ -115,15 +115,14 @@ export const mapExternalCalendarEventEntityToDomain = (
   id: entity.id,
   tenantId: entity.tenantId,
   professionalId: entity.professionalId,
-  source: entity.source as "google_calendar",
+  source: entity.source as 'google_calendar',
   externalId: entity.externalId,
   startAtUtc: entity.startAtUtc,
   endAtUtc: entity.endAtUtc,
   timezone: entity.timezone,
   status: entity.status,
-  validationErrors: entity.validationErrors as string[] | null ?? null,
+  validationErrors: (entity.validationErrors as string[] | null) ?? null,
   resourceId: entity.resourceId ?? null,
   createdAt: entity.createdAt,
   updatedAt: entity.updatedAt,
 });
-

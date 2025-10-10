@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, ForbiddenException, GoneException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  GoneException,
+} from '@nestjs/common';
 
 import { BookingValidationService } from '../../../src/domain/scheduling/services/booking-validation.service';
 import {
@@ -272,7 +277,9 @@ describe('BookingValidationService', () => {
 
     it('accepts when past tolerance', () => {
       const booking = createBooking({ status: 'confirmed' });
-      const nowUtc = new Date(booking.startAtUtc.getTime() + (booking.lateToleranceMinutes + 5) * MS_IN_MINUTE);
+      const nowUtc = new Date(
+        booking.startAtUtc.getTime() + (booking.lateToleranceMinutes + 5) * MS_IN_MINUTE,
+      );
 
       const result = BookingValidationService.validateNoShowMarking({
         booking,

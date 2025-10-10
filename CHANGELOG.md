@@ -6,6 +6,18 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [Unreleased]
 
+## [0.18.1] - 2025-10-10
+
+### Changed
+
+- Ajusta `BookingValidationService` para aceitar holds nos estados `active` e `confirmed` durante a confirmaÃ§Ã£o, evitando conflitos 409 indevidos.
+- RepositÃ³rio de booking passa a atualizar `updatedAt` e recarregar os registros apÃ³s cada mutaÃ§Ã£o, retornando sempre `startAtUtc`, `endAtUtc` e `version` sincronizados nas rotas de reagendamento/cancelamento.
+- Remove import duplicado em `scheduling.mapper` sinalizado pelo lint.
+
+### Testing
+
+- `npm run lint`
+
 ## [0.18.0] - 2025-10-09
 
 ### Added

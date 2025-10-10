@@ -25,7 +25,7 @@ export class CancelBookingDto {
   })
   @IsOptional()
   @IsIn(CANCELLATION_REASONS as readonly string[])
-  reason?: typeof CANCELLATION_REASONS[number];
+  reason?: (typeof CANCELLATION_REASONS)[number];
 
   @ApiPropertyOptional({
     description: 'Momento do cancelamento em UTC (ISO 8601)',

@@ -1,7 +1,4 @@
-﻿import {
-  ExternalCalendarEvent,
-  ExternalCalendarEventStatus,
-} from '../../types/scheduling.types';
+﻿import { ExternalCalendarEvent, ExternalCalendarEventStatus } from '../../types/scheduling.types';
 
 export interface UpsertExternalCalendarEventInput
   extends Omit<ExternalCalendarEvent, 'id' | 'createdAt' | 'updatedAt'> {
@@ -26,9 +23,7 @@ export interface IExternalCalendarEventsRepository {
     tenantId: string,
     professionalId: string,
   ): Promise<ExternalCalendarEvent[]>;
-  updateStatus(
-    data: UpdateExternalCalendarEventStatusInput,
-  ): Promise<ExternalCalendarEvent>;
+  updateStatus(data: UpdateExternalCalendarEventStatusInput): Promise<ExternalCalendarEvent>;
 }
 
 export const IExternalCalendarEventsRepositoryToken = Symbol('IExternalCalendarEventsRepository');

@@ -1,25 +1,12 @@
-import {
-  BadRequestException,
-  Controller,
-  Get,
-  Headers,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiQuery,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { BadRequestException, Controller, Get, Headers, Query, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../auth/guards/roles.guard';
 import { TenantGuard } from '../../../auth/guards/tenant.guard';
 import { Roles } from '../../../auth/decorators/roles.decorator';
 import { CurrentUser, ICurrentUser } from '../../../auth/decorators/current-user.decorator';
-import { RolesEnum, INTERNAL_ROLES } from '../../../../domain/auth/enums/roles.enum';
+import { INTERNAL_ROLES, RolesEnum } from '../../../../domain/auth/enums/roles.enum';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
 import { AnamnesisMetricsService } from '../../services/anamnesis-metrics.service';
 import { AnamnesisMetricsSnapshotDto } from '../dtos/anamnesis-response.dto';

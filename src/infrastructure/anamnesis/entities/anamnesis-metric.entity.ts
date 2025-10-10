@@ -28,7 +28,13 @@ export class AnamnesisMetricEntity {
   @Column({ name: 'completed_steps', type: 'integer', default: 0 })
   completedSteps!: number;
 
-  @Column({ name: 'step_completion_rate_sum', type: 'numeric', precision: 14, scale: 6, default: 0 })
+  @Column({
+    name: 'step_completion_rate_sum',
+    type: 'numeric',
+    precision: 14,
+    scale: 6,
+    default: 0,
+  })
   stepCompletionRateSum!: string;
 
   @Column({ name: 'step_completion_rate_count', type: 'integer', default: 0 })
