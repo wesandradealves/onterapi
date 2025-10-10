@@ -33,6 +33,27 @@ export class DomainEvents {
   static ANAMNESIS_AI_COMPLETED = 'anamnesis.ai.completed';
   static ANAMNESIS_ATTACHMENT_CREATED = 'anamnesis.attachment.created';
   static ANAMNESIS_ATTACHMENT_REMOVED = 'anamnesis.attachment.removed';
+  static SCHEDULING_HOLD_CREATED = 'scheduling.hold.created';
+  static SCHEDULING_HOLD_EXPIRED = 'scheduling.hold.expired';
+  static SCHEDULING_BOOKING_CREATED = 'scheduling.booking.created';
+  static SCHEDULING_BOOKING_CONFIRMED = 'scheduling.booking.confirmed';
+  static SCHEDULING_BOOKING_RESCHEDULED = 'scheduling.booking.rescheduled';
+  static SCHEDULING_BOOKING_CANCELLED = 'scheduling.booking.cancelled';
+  static SCHEDULING_BOOKING_NO_SHOW = 'scheduling.booking.no_show';
+  static SCHEDULING_PAYMENT_STATUS_CHANGED = 'scheduling.payment.status_changed';
+  static BILLING_INVOICE_REQUESTED = 'billing.invoice.requested';
+  static BILLING_INVOICE_CANCELLATION_REQUESTED = 'billing.invoice.cancellation_requested';
+  static BILLING_PAYMENT_STATUS_SYNC_REQUESTED = 'billing.payment.status_sync_requested';
+  static ANALYTICS_SCHEDULING_METRIC_INCREMENTED = 'analytics.scheduling.metric.incremented';
+  static NOTIFICATION_SCHEDULING_HOLD_CREATED = 'notifications.scheduling.hold.created';
+  static NOTIFICATION_SCHEDULING_BOOKING_CREATED = 'notifications.scheduling.booking.created';
+  static NOTIFICATION_SCHEDULING_BOOKING_CONFIRMED = 'notifications.scheduling.booking.confirmed';
+  static NOTIFICATION_SCHEDULING_BOOKING_RESCHEDULED =
+    'notifications.scheduling.booking.rescheduled';
+  static NOTIFICATION_SCHEDULING_BOOKING_CANCELLED = 'notifications.scheduling.booking.cancelled';
+  static NOTIFICATION_SCHEDULING_BOOKING_NO_SHOW = 'notifications.scheduling.booking.no_show';
+  static NOTIFICATION_SCHEDULING_PAYMENT_STATUS_CHANGED =
+    'notifications.scheduling.payment.status_changed';
 
   static createEvent<
     TPayload = Record<string, unknown>,
@@ -391,6 +412,379 @@ export class DomainEvents {
       this.ANAMNESIS_ATTACHMENT_REMOVED,
       anamnesisId,
       { anamnesisId, ...attachmentData },
+      metadata,
+    );
+  }
+
+  static schedulingHoldCreated(
+    holdId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      startAtUtc: Date;
+      endAtUtc: Date;
+      ttlExpiresAtUtc: Date;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(this.SCHEDULING_HOLD_CREATED, holdId, { holdId, ...data }, metadata);
+  }
+
+  static schedulingBookingCreated(
+    bookingId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      startAtUtc: Date;
+      endAtUtc: Date;
+      source: string;
+      timezone: string;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.SCHEDULING_BOOKING_CREATED,
+      bookingId,
+      { bookingId, ...data, createdAt: new Date() },
+      metadata,
+    );
+  }
+
+  static schedulingHoldExpired(
+    holdId: string,
+    data: { tenantId: string; professionalId: string; clinicId: string },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.SCHEDULING_HOLD_EXPIRED,
+      holdId,
+      { holdId, ...data, expiredAt: new Date() },
+      metadata,
+    );
+  }
+
+  static schedulingBookingConfirmed(
+    bookingId: string,
+    data: {
+      tenantId: string;
+      professionalId: string;
+      clinicId: string;
+      patientId: string;
+      startAtUtc: Date;
+      endAtUtc: Date;
+      source: string;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.SCHEDULING_BOOKING_CONFIRMED,
+      bookingId,
+      { bookingId, ...data, confirmedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static schedulingBookingRescheduled(
+    bookingId: string,
+    data: {
+      tenantId: string;
+      professionalId: string;
+      clinicId: string;
+      patientId: string;
+      previousStartAtUtc: Date;
+      previousEndAtUtc: Date;
+      newStartAtUtc: Date;
+      newEndAtUtc: Date;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.SCHEDULING_BOOKING_RESCHEDULED,
+      bookingId,
+      { bookingId, ...data, rescheduledAt: new Date() },
+      metadata,
+    );
+  }
+
+  static schedulingBookingCancelled(
+    bookingId: string,
+    data: {
+      tenantId: string;
+      professionalId: string;
+      clinicId: string;
+      patientId: string;
+      cancelledBy: string;
+      reason?: string;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.SCHEDULING_BOOKING_CANCELLED,
+      bookingId,
+      { bookingId, ...data, cancelledAt: new Date() },
+      metadata,
+    );
+  }
+
+  static schedulingBookingNoShow(
+    bookingId: string,
+    data: { tenantId: string; professionalId: string; clinicId: string; patientId: string },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.SCHEDULING_BOOKING_NO_SHOW,
+      bookingId,
+      { bookingId, ...data, markedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static schedulingPaymentStatusChanged(
+    bookingId: string,
+    data: {
+      tenantId: string;
+      professionalId: string;
+      clinicId: string;
+      patientId: string;
+      previousStatus: string;
+      newStatus: string;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.SCHEDULING_PAYMENT_STATUS_CHANGED,
+      bookingId,
+      { bookingId, ...data, changedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static billingInvoiceRequested(
+    bookingId: string,
+    data: {
+      tenantId: string;
+      professionalId: string;
+      clinicId: string;
+      patientId: string;
+      source: string;
+      confirmedAt: Date;
+      startAtUtc: Date;
+      endAtUtc: Date;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.BILLING_INVOICE_REQUESTED,
+      bookingId,
+      { bookingId, ...data, requestedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static billingInvoiceCancellationRequested(
+    bookingId: string,
+    data: {
+      tenantId: string;
+      professionalId: string;
+      clinicId: string;
+      patientId: string;
+      cancelledAt: Date;
+      reason?: string | null;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.BILLING_INVOICE_CANCELLATION_REQUESTED,
+      bookingId,
+      { bookingId, ...data, requestedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static billingPaymentStatusSyncRequested(
+    bookingId: string,
+    data: {
+      tenantId: string;
+      professionalId: string;
+      clinicId: string;
+      patientId: string;
+      previousStatus: string;
+      newStatus: string;
+      changedAt: Date;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.BILLING_PAYMENT_STATUS_SYNC_REQUESTED,
+      bookingId,
+      { bookingId, ...data, requestedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static analyticsSchedulingMetricIncremented(
+    metric: string,
+    data: {
+      tenantId: string;
+      clinicId?: string;
+      professionalId?: string;
+      patientId?: string;
+      value?: number;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    const { value = 1, ...context } = data;
+
+    return this.createEvent(
+      this.ANALYTICS_SCHEDULING_METRIC_INCREMENTED,
+      metric,
+      { metric, value, ...context, recordedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static notificationsSchedulingHoldCreated(
+    holdId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      startAtUtc: Date;
+      endAtUtc: Date;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_SCHEDULING_HOLD_CREATED,
+      holdId,
+      { holdId, ...data, queuedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static notificationsSchedulingBookingCreated(
+    bookingId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      startAtUtc: Date;
+      endAtUtc: Date;
+      source: string;
+      timezone: string;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_SCHEDULING_BOOKING_CREATED,
+      bookingId,
+      { bookingId, ...data, queuedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static notificationsSchedulingBookingConfirmed(
+    bookingId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      confirmedAt: Date;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_SCHEDULING_BOOKING_CONFIRMED,
+      bookingId,
+      { bookingId, ...data, queuedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static notificationsSchedulingBookingRescheduled(
+    bookingId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      previousStartAtUtc: Date;
+      newStartAtUtc: Date;
+      newEndAtUtc: Date;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_SCHEDULING_BOOKING_RESCHEDULED,
+      bookingId,
+      { bookingId, ...data, queuedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static notificationsSchedulingBookingCancelled(
+    bookingId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      cancelledAt: Date;
+      reason?: string | null;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_SCHEDULING_BOOKING_CANCELLED,
+      bookingId,
+      { bookingId, ...data, queuedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static notificationsSchedulingBookingNoShow(
+    bookingId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      markedAt: Date;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_SCHEDULING_BOOKING_NO_SHOW,
+      bookingId,
+      { bookingId, ...data, queuedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static notificationsSchedulingPaymentStatusChanged(
+    bookingId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      previousStatus: string;
+      newStatus: string;
+      changedAt: Date;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_SCHEDULING_PAYMENT_STATUS_CHANGED,
+      bookingId,
+      { bookingId, ...data, queuedAt: new Date() },
       metadata,
     );
   }

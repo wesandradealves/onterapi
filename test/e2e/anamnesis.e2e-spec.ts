@@ -16,9 +16,7 @@ import {
   ILegalTermsRepositoryToken,
 } from '@domain/legal/interfaces/legal-terms.repository.interface';
 import { TherapeuticPlanDomainService } from '@modules/anamnesis/services/therapeutic-plan-domain.service';
-import {
-  IAnamnesisAIWebhookRepositoryToken,
-} from '@domain/anamnesis/interfaces/repositories/anamnesis-ai-webhook.repository.interface';
+import { IAnamnesisAIWebhookRepositoryToken } from '@domain/anamnesis/interfaces/repositories/anamnesis-ai-webhook.repository.interface';
 import { AnamnesisAIWebhookReplayService } from '@modules/anamnesis/services/anamnesis-ai-webhook-replay.service';
 import {
   IAnamnesisRepositoryToken as ANAMNESIS_REPOSITORY_TOKEN,

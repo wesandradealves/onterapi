@@ -28,6 +28,7 @@ import {
   CreateTherapeuticPlanAcceptanceInput,
   CreateTherapeuticPlanAccessLogInput,
   GetStepTemplatesFilters,
+  ListPlanAccessLogsFilters,
   PatientAnamnesisRollup,
   RecordAITrainingFeedbackInput,
   RemoveAnamnesisAttachmentInput,
@@ -36,9 +37,8 @@ import {
   SaveTherapeuticPlanInput,
   SubmitAnamnesisInput,
   TherapeuticPlanAcceptance,
-  TherapeuticPlanData,
   TherapeuticPlanAccessLog,
-  ListPlanAccessLogsFilters,
+  TherapeuticPlanData,
   UpsertPatientAnamnesisRollupInput,
 } from '../../../domain/anamnesis/types/anamnesis.types';
 import { IAnamnesisRepository } from '../../../domain/anamnesis/interfaces/repositories/anamnesis.repository.interface';
@@ -61,8 +61,8 @@ import {
   mapPatientRollupEntityToDomain,
   mapStepTemplateEntityToDomain,
   mapTherapeuticPlanAcceptanceEntityToDomain,
-  mapTherapeuticPlanEntityToDomain,
   mapTherapeuticPlanAccessLogEntityToDomain,
+  mapTherapeuticPlanEntityToDomain,
 } from '../../../shared/mappers/anamnesis.mapper';
 
 const STEP_ORDER: AnamnesisStepKey[] = [

@@ -9,6 +9,7 @@ Plataforma SaaS multi-tenant para gestao de clinicas e terapeutas, com Supabase 
 - [Modulo de Pacientes](#modulo-de-pacientes)
 - [Modulo de Usuarios](#modulo-de-usuarios)
 - [Modulo de Anamnese](#modulo-de-anamnese)
+- [Modulo de Agendamento](#modulo-de-agendamento)
 - [Exportacao de Pacientes](#exportacao-de-pacientes)
 - [Documentacao Swagger](#documentacao-swagger)
 - [Como Rodar Localmente](#como-rodar-localmente)
@@ -395,6 +396,19 @@ Use `AnamnesisMetricsService.getSnapshot([tenantId])` ou o endpoint `GET /anamne
 - Suites unitarias/integracao/E2E: `test/unit/modules.anamnesis/**`, `test/integration/anamnesis.controller.integration.spec.ts`, `test/e2e/anamnesis.e2e-spec.ts`.
 - Pipeline recomendado: `npm run lint` -> `npx tsc --noEmit` -> `npm run test:unit` -> `npm run test:int` -> `npm run test:e2e` -> `npm run test:cov` -> `npm run build`.
 
+
+## Modulo de Agendamento
+- `POST /scheduling/holds` reserva horários após validar conflitos e antecedência, emitindo `scheduling.hold.created`.
+- `POST /scheduling/bookings` converte holds em agendamentos e publica `scheduling.booking.created`.
+- `POST /scheduling/bookings/:bookingId/confirm` confirma o atendimento com pagamento aprovado e emite `scheduling.booking.confirmed`.
+- `POST /scheduling/bookings/:bookingId/reschedule` aplica novo intervalo e publica `scheduling.booking.rescheduled`.
+- `POST /scheduling/bookings/:bookingId/cancel` registra motivo/versão e gera `scheduling.booking.cancelled`.
+- `POST /scheduling/bookings/:bookingId/no-show` marca ausência após validar tolerância e emite `scheduling.booking.no_show`.
+- `PATCH /scheduling/bookings/:bookingId/payment-status` atualiza o status financeiro e propaga `scheduling.payment.status_changed`.
+- Casos de uso disponíveis: criação/cancelamento de booking, criação de hold, confirmação, reagendamento, marcação de no-show e atualização de pagamento — todos baseados em `BaseUseCase` e integrados ao `MessageBus`.
+- Eventos de agendamento agora alimentam consumidores especializados (`SchedulingEventsSubscriber`) que disparam integrações de billing (`billing.*`), métricas (`analytics.scheduling.*`) e notificações (`notifications.scheduling.*`) via `MessageBus`.
+- Testes unitários cobrem casos de uso, presenters, serviços de billing/métricas/notificações e o subscriber (`test/unit/modules.scheduling/**`), enquanto a suíte de integração `test/integration/scheduling.controller.integration.spec.ts` valida a camada HTTP ponta a ponta.
+- **Provisionamento obrigatório:** executar as migrations após atualizar o código (`npm run typeorm migration:run -- -d src/infrastructure/database/data-source.ts`) para criar as tabelas `scheduling_*` utilizadas pelos fluxos de hold/booking.
 
 ## Exportacao de Pacientes
 - `POST /patients/export` enfileira solicitacao na tabela `patient_exports`.

@@ -550,5 +550,3 @@ describe('AnamnesisPresenter', () => {
     expect(dto.lastUpdatedAt).toBeNull();
   });
 });
-
-
