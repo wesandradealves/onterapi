@@ -1,4 +1,4 @@
-import { Result } from '@shared/types/result.type';
+import { Result } from '../../../../shared/types/result.type';
 
 export interface IVerifyEmailUseCase {
   execute(input: VerifyEmailInput): Promise<Result<VerifyEmailOutput>>;

@@ -1,5 +1,5 @@
 import { QueryRunner } from 'typeorm';
-import { DeviceInfo } from '@shared/types/device.types';
+import { DeviceInfo } from '../../../../shared/types/device.types';
 import { TwoFactorCodeEntity } from '@infrastructure/auth/entities/two-factor-code.entity';
 import { UserEntity } from '../../../../infrastructure/auth/entities/user.entity';
 
