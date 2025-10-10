@@ -1,4 +1,4 @@
-import { Booking, PricingSplit } from '../../../../domain/scheduling/types/scheduling.types';
+import { Booking, PricingSplit } from '@domain/scheduling/types/scheduling.types';
 import { BookingResponseDto } from '../dtos/booking-response.dto';
 
 const toIso = (value: Date | null | undefined): string | null => {

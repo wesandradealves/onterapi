@@ -22,41 +22,41 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
-import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../../auth/guards/roles.guard';
-import { Roles } from '../../../auth/decorators/roles.decorator';
-import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
-import { ICurrentUser } from '../../../../domain/auth/interfaces/current-user.interface';
-import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
-import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
+import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
+import { RolesGuard } from '@modules/auth/guards/roles.guard';
+import { Roles } from '@modules/auth/decorators/roles.decorator';
+import { CurrentUser } from '@modules/auth/decorators/current-user.decorator';
+import { ICurrentUser } from '@domain/auth/interfaces/current-user.interface';
+import { RolesEnum } from '@domain/auth/enums/roles.enum';
+import { ZodValidationPipe } from '@shared/pipes/zod-validation.pipe';
 import {
   ICreateBookingUseCase,
   CreateBookingUseCaseInput,
-} from '../../../../domain/scheduling/interfaces/use-cases/create-booking.use-case.interface';
+} from '@domain/scheduling/interfaces/use-cases/create-booking.use-case.interface';
 import {
   ICancelBookingUseCase,
   CancelBookingUseCaseInput,
-} from '../../../../domain/scheduling/interfaces/use-cases/cancel-booking.use-case.interface';
+} from '@domain/scheduling/interfaces/use-cases/cancel-booking.use-case.interface';
 import {
   ICreateHoldUseCase,
   CreateHoldUseCaseInput,
-} from '../../../../domain/scheduling/interfaces/use-cases/create-hold.use-case.interface';
+} from '@domain/scheduling/interfaces/use-cases/create-hold.use-case.interface';
 import {
   IConfirmBookingUseCase,
   ConfirmBookingUseCaseInput,
-} from '../../../../domain/scheduling/interfaces/use-cases/confirm-booking.use-case.interface';
+} from '@domain/scheduling/interfaces/use-cases/confirm-booking.use-case.interface';
 import {
   IRescheduleBookingUseCase,
   RescheduleBookingUseCaseInput,
-} from '../../../../domain/scheduling/interfaces/use-cases/reschedule-booking.use-case.interface';
+} from '@domain/scheduling/interfaces/use-cases/reschedule-booking.use-case.interface';
 import {
   IMarkBookingNoShowUseCase,
   MarkBookingNoShowUseCaseInput,
-} from '../../../../domain/scheduling/interfaces/use-cases/mark-booking-no-show.use-case.interface';
+} from '@domain/scheduling/interfaces/use-cases/mark-booking-no-show.use-case.interface';
 import {
   IRecordPaymentStatusUseCase,
   RecordPaymentStatusUseCaseInput,
-} from '../../../../domain/scheduling/interfaces/use-cases/record-payment-status.use-case.interface';
+} from '@domain/scheduling/interfaces/use-cases/record-payment-status.use-case.interface';
 import { BookingPresenter } from '../presenters/booking.presenter';
 import { BookingHoldPresenter } from '../presenters/booking-hold.presenter';
 import { BookingResponseDto } from '../dtos/booking-response.dto';
@@ -469,3 +469,4 @@ export class SchedulingController {
     return trimmed.length ? trimmed : undefined;
   }
 }
+

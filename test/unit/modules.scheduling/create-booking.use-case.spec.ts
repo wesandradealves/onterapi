@@ -1,11 +1,11 @@
 import { ConflictException, GoneException, NotFoundException } from '@nestjs/common';
 
-import { CreateBookingUseCase } from '../../../src/modules/scheduling/use-cases/create-booking.use-case';
-import { IBookingRepository } from '../../../src/domain/scheduling/interfaces/repositories/booking.repository.interface';
-import { IBookingHoldRepository } from '../../../src/domain/scheduling/interfaces/repositories/booking-hold.repository.interface';
-import { MessageBus } from '../../../src/shared/messaging/message-bus';
-import { DomainEvents } from '../../../src/shared/events/domain-events';
-import { Booking } from '../../../src/domain/scheduling/types/scheduling.types';
+import { CreateBookingUseCase } from '@modules/scheduling/use-cases/create-booking.use-case';
+import { IBookingRepository } from '@domain/scheduling/interfaces/repositories/booking.repository.interface';
+import { IBookingHoldRepository } from '@domain/scheduling/interfaces/repositories/booking-hold.repository.interface';
+import { MessageBus } from '@shared/messaging/message-bus';
+import { DomainEvents } from '@shared/events/domain-events';
+import { Booking } from '@domain/scheduling/types/scheduling.types';
 
 const baseHold = () => ({
   id: 'hold-1',
@@ -145,10 +145,26 @@ describe('CreateBookingUseCase', () => {
     await expect(useCase.executeOrThrow(createInput())).rejects.toBeInstanceOf(ConflictException);
     expect(holdRepository.updateStatus).not.toHaveBeenCalled();
   });
-});
+
+  it('atualiza o hold para confirmado ao criar o agendamento', async () => {
+    const hold = baseHold();
+
+    holdRepository.findById.mockResolvedValue(hold);
+    bookingRepository.findByHold.mockResolvedValue(null);
+    holdRepository.updateStatus.mockResolvedValue({
+      ...hold,
+      status: 'confirmed',
+      version: hold.version + 1,
+    } as any);
+    bookingRepository.create.mockResolvedValue(baseBooking());
+
+    await useCase.executeOrThrow(createInput());
+
     expect(holdRepository.updateStatus).toHaveBeenCalledWith({
       tenantId: hold.tenantId,
       holdId: hold.id,
       expectedVersion: hold.version,
       status: 'confirmed',
     });
+  });
+});

@@ -5,8 +5,8 @@
   PaymentStatus,
   RecurrenceLimits,
 } from '../types/scheduling.types';
-import { Result, failure, success } from '../../../shared/types/result.type';
-import { SchedulingErrorFactory } from '../../../shared/factories/scheduling-error.factory';
+import { Result, failure, success } from '@shared/types/result.type';
+import { SchedulingErrorFactory } from '@shared/factories/scheduling-error.factory';
 
 interface AdvanceValidationInput {
   startAtUtc: Date;

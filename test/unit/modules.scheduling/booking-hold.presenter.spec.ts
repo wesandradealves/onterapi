@@ -1,5 +1,5 @@
-import { BookingHold } from '../../../src/domain/scheduling/types/scheduling.types';
-import { BookingHoldPresenter } from '../../../src/modules/scheduling/api/presenters/booking-hold.presenter';
+import { BookingHold } from '@domain/scheduling/types/scheduling.types';
+import { BookingHoldPresenter } from '@modules/scheduling/api/presenters/booking-hold.presenter';
 
 const baseHold = (overrides: Partial<BookingHold> = {}): BookingHold => ({
   id: 'hold-1',

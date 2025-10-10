@@ -1,10 +1,10 @@
 ﻿import { ForbiddenException, GoneException, NotFoundException } from '@nestjs/common';
 
-import { ConfirmBookingUseCase } from '../../../src/modules/scheduling/use-cases/confirm-booking.use-case';
-import { IBookingRepository } from '../../../src/domain/scheduling/interfaces/repositories/booking.repository.interface';
-import { IBookingHoldRepository } from '../../../src/domain/scheduling/interfaces/repositories/booking-hold.repository.interface';
-import { MessageBus } from '../../../src/shared/messaging/message-bus';
-import { DomainEvents } from '../../../src/shared/events/domain-events';
+import { ConfirmBookingUseCase } from '@modules/scheduling/use-cases/confirm-booking.use-case';
+import { IBookingRepository } from '@domain/scheduling/interfaces/repositories/booking.repository.interface';
+import { IBookingHoldRepository } from '@domain/scheduling/interfaces/repositories/booking-hold.repository.interface';
+import { MessageBus } from '@shared/messaging/message-bus';
+import { DomainEvents } from '@shared/events/domain-events';
 
 const createBooking = (overrides: Partial<ReturnType<typeof baseBooking>> = {}) => ({
   ...baseBooking(),

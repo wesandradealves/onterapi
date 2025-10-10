@@ -1,4 +1,4 @@
-import { Result } from '../../../../shared/types/result.type';
+import { Result } from '@shared/types/result.type';
 import { BookingHold } from '../../../scheduling/types/scheduling.types';
 
 export interface CreateHoldUseCaseInput {

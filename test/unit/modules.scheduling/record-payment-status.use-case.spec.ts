@@ -1,10 +1,10 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 
-import { RecordPaymentStatusUseCase } from '../../../src/modules/scheduling/use-cases/record-payment-status.use-case';
-import { IBookingRepository } from '../../../src/domain/scheduling/interfaces/repositories/booking.repository.interface';
-import { MessageBus } from '../../../src/shared/messaging/message-bus';
-import { DomainEvents } from '../../../src/shared/events/domain-events';
-import { Booking } from '../../../src/domain/scheduling/types/scheduling.types';
+import { RecordPaymentStatusUseCase } from '@modules/scheduling/use-cases/record-payment-status.use-case';
+import { IBookingRepository } from '@domain/scheduling/interfaces/repositories/booking.repository.interface';
+import { MessageBus } from '@shared/messaging/message-bus';
+import { DomainEvents } from '@shared/events/domain-events';
+import { Booking } from '@domain/scheduling/types/scheduling.types';
 
 const baseBooking = (overrides: Partial<Booking> = {}): Booking => ({
   id: 'booking-1',
@@ -122,21 +122,24 @@ describe('RecordPaymentStatusUseCase', () => {
     expect(bookingRepository.recordPaymentStatus).not.toHaveBeenCalled();
   });
 
-  it('lança erro de estado inválido quando o agendamento já está cancelado ou no-show', async () => {
-    const cancelledBooking = baseBooking({ status: 'cancelled', paymentStatus: 'pending' });
-    bookingRepository.findById.mockResolvedValue(cancelledBooking);
+  it.each(['cancelled', 'no_show', 'completed'])(
+    'lança erro de estado inválido quando o agendamento está %s',
+    async (status) => {
+      const bookingWithBlockedStatus = baseBooking({ status, paymentStatus: 'pending' });
+      bookingRepository.findById.mockResolvedValue(bookingWithBlockedStatus);
 
-    await expect(
-      useCase.executeOrThrow({
-        tenantId: cancelledBooking.tenantId,
-        bookingId: cancelledBooking.id,
-        expectedVersion: cancelledBooking.version,
-        paymentStatus: 'approved',
-        requesterId: 'user-1',
-        requesterRole: 'CLINIC_OWNER',
-      }),
-    ).rejects.toBeInstanceOf(ConflictException);
+      await expect(
+        useCase.executeOrThrow({
+          tenantId: bookingWithBlockedStatus.tenantId,
+          bookingId: bookingWithBlockedStatus.id,
+          expectedVersion: bookingWithBlockedStatus.version,
+          paymentStatus: 'approved',
+          requesterId: 'user-1',
+          requesterRole: 'CLINIC_OWNER',
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
 
-    expect(bookingRepository.recordPaymentStatus).not.toHaveBeenCalled();
-  });
+      expect(bookingRepository.recordPaymentStatus).not.toHaveBeenCalled();
+    },
+  );
 });

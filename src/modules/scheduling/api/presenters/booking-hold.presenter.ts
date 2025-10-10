@@ -1,4 +1,4 @@
-import { BookingHold } from '../../../../domain/scheduling/types/scheduling.types';
+import { BookingHold } from '@domain/scheduling/types/scheduling.types';
 import { BookingHoldResponseDto } from '../dtos/booking-hold-response.dto';
 
 export class BookingHoldPresenter {

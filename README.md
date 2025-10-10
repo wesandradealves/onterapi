@@ -406,7 +406,9 @@ Use `AnamnesisMetricsService.getSnapshot([tenantId])` ou o endpoint `GET /anamne
 - `POST /scheduling/bookings/:bookingId/no-show` marca ausência após validar tolerância e emite `scheduling.booking.no_show`.
 - `PATCH /scheduling/bookings/:bookingId/payment-status` atualiza o status financeiro e propaga `scheduling.payment.status_changed`.
 - Casos de uso disponíveis: criação/cancelamento de booking, criação de hold, confirmação, reagendamento, marcação de no-show e atualização de pagamento — todos baseados em `BaseUseCase` e integrados ao `MessageBus`.
-- Testes unitários dedicados em `test/unit/modules.scheduling` cobrem os fluxos principais (create, cancel, confirm, create-hold, reschedule, mark-booking-no-show, record-payment-status).
+- Eventos de agendamento agora alimentam consumidores especializados (`SchedulingEventsSubscriber`) que disparam integrações de billing (`billing.*`), métricas (`analytics.scheduling.*`) e notificações (`notifications.scheduling.*`) via `MessageBus`.
+- Testes unitários cobrem casos de uso, presenters, serviços de billing/métricas/notificações e o subscriber (`test/unit/modules.scheduling/**`), enquanto a suíte de integração `test/integration/scheduling.controller.integration.spec.ts` valida a camada HTTP ponta a ponta.
+- **Provisionamento obrigatório:** executar as migrations após atualizar o código (`npm run typeorm migration:run -- -d src/infrastructure/database/data-source.ts`) para criar as tabelas `scheduling_*` utilizadas pelos fluxos de hold/booking.
 
 ## Exportacao de Pacientes
 - `POST /patients/export` enfileira solicitacao na tabela `patient_exports`.

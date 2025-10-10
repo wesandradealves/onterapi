@@ -1,10 +1,10 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 
-import { CancelBookingUseCase } from '../../../src/modules/scheduling/use-cases/cancel-booking.use-case';
-import { IBookingRepository } from '../../../src/domain/scheduling/interfaces/repositories/booking.repository.interface';
-import { MessageBus } from '../../../src/shared/messaging/message-bus';
-import { DomainEvents } from '../../../src/shared/events/domain-events';
-import { Booking } from '../../../src/domain/scheduling/types/scheduling.types';
+import { CancelBookingUseCase } from '@modules/scheduling/use-cases/cancel-booking.use-case';
+import { IBookingRepository } from '@domain/scheduling/interfaces/repositories/booking.repository.interface';
+import { MessageBus } from '@shared/messaging/message-bus';
+import { DomainEvents } from '@shared/events/domain-events';
+import { Booking } from '@domain/scheduling/types/scheduling.types';
 
 const baseBooking = (overrides: Partial<Booking> = {}): Booking => ({
   id: 'booking-1',

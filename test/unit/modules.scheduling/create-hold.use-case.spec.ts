@@ -1,10 +1,10 @@
 ﻿import { ConflictException } from '@nestjs/common';
 
-import { CreateHoldUseCase } from '../../../src/modules/scheduling/use-cases/create-hold.use-case';
-import { IBookingRepository } from '../../../src/domain/scheduling/interfaces/repositories/booking.repository.interface';
-import { IBookingHoldRepository } from '../../../src/domain/scheduling/interfaces/repositories/booking-hold.repository.interface';
-import { MessageBus } from '../../../src/shared/messaging/message-bus';
-import { DomainEvents } from '../../../src/shared/events/domain-events';
+import { CreateHoldUseCase } from '@modules/scheduling/use-cases/create-hold.use-case';
+import { IBookingRepository } from '@domain/scheduling/interfaces/repositories/booking.repository.interface';
+import { IBookingHoldRepository } from '@domain/scheduling/interfaces/repositories/booking-hold.repository.interface';
+import { MessageBus } from '@shared/messaging/message-bus';
+import { DomainEvents } from '@shared/events/domain-events';
 
 const createInput = () => ({
   tenantId: 'tenant-1',
@@ -24,6 +24,8 @@ describe('CreateHoldUseCase', () => {
   let useCase: CreateHoldUseCase;
 
   beforeEach(() => {
+    jest.useFakeTimers().setSystemTime(new Date('2025-10-08T08:00:00Z'));
+
     bookingRepository = {
       listByProfessionalAndRange: jest.fn(),
     } as unknown as jest.Mocked<IBookingRepository>;
@@ -38,6 +40,10 @@ describe('CreateHoldUseCase', () => {
     } as unknown as jest.Mocked<MessageBus>;
 
     useCase = new CreateHoldUseCase(holdRepository, bookingRepository, messageBus);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it('creates hold when no conflicts exist', async () => {

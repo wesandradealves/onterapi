@@ -1,27 +1,27 @@
-﻿import { Inject, Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 
-import { BaseUseCase } from "../../../shared/use-cases/base.use-case";
+import { BaseUseCase } from "@shared/use-cases/base.use-case";
 import {
   Booking,
   RecurrenceOccurrence,
-} from "../../../domain/scheduling/types/scheduling.types";
-import { BookingValidationService } from "../../../domain/scheduling/services/booking-validation.service";
+} from "@domain/scheduling/types/scheduling.types";
+import { BookingValidationService } from "@domain/scheduling/services/booking-validation.service";
 import {
   IBookingRepository,
   IBookingRepositoryToken,
-} from "../../../domain/scheduling/interfaces/repositories/booking.repository.interface";
+} from "@domain/scheduling/interfaces/repositories/booking.repository.interface";
 import {
   IRecurrenceRepository,
   IRecurrenceRepositoryToken,
-} from "../../../domain/scheduling/interfaces/repositories/recurrence.repository.interface";
+} from "@domain/scheduling/interfaces/repositories/recurrence.repository.interface";
 import {
   IRescheduleBookingUseCase,
   RescheduleBookingUseCaseInput,
-} from "../../../domain/scheduling/interfaces/use-cases/reschedule-booking.use-case.interface";
-import { SchedulingErrorFactory } from "../../../shared/factories/scheduling-error.factory";
-import { MessageBus } from "../../../shared/messaging/message-bus";
-import { DomainEvents } from "../../../shared/events/domain-events";
-import { isFailure } from "../../../shared/types/result.type";
+} from "@domain/scheduling/interfaces/use-cases/reschedule-booking.use-case.interface";
+import { SchedulingErrorFactory } from "@shared/factories/scheduling-error.factory";
+import { MessageBus } from "@shared/messaging/message-bus";
+import { DomainEvents } from "@shared/events/domain-events";
+import { isFailure } from "@shared/types/result.type";
 
 @Injectable()
 export class RescheduleBookingUseCase

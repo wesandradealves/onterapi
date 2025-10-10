@@ -1,24 +1,24 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 
-import { BaseUseCase } from "../../../shared/use-cases/base.use-case";
+import { BaseUseCase } from "@shared/use-cases/base.use-case";
 import {
   CreateBookingUseCaseInput,
   ICreateBookingUseCase,
-} from "../../../domain/scheduling/interfaces/use-cases/create-booking.use-case.interface";
+} from "@domain/scheduling/interfaces/use-cases/create-booking.use-case.interface";
 import {
   IBookingRepository,
   IBookingRepositoryToken,
-} from "../../../domain/scheduling/interfaces/repositories/booking.repository.interface";
+} from "@domain/scheduling/interfaces/repositories/booking.repository.interface";
 import {
   IBookingHoldRepository,
   IBookingHoldRepositoryToken,
-} from "../../../domain/scheduling/interfaces/repositories/booking-hold.repository.interface";
-import { Booking, NewBooking } from "../../../domain/scheduling/types/scheduling.types";
-import { BookingValidationService } from "../../../domain/scheduling/services/booking-validation.service";
-import { SchedulingErrorFactory } from "../../../shared/factories/scheduling-error.factory";
-import { isFailure } from "../../../shared/types/result.type";
-import { MessageBus } from "../../../shared/messaging/message-bus";
-import { DomainEvents } from "../../../shared/events/domain-events";
+} from "@domain/scheduling/interfaces/repositories/booking-hold.repository.interface";
+import { Booking, NewBooking } from "@domain/scheduling/types/scheduling.types";
+import { BookingValidationService } from "@domain/scheduling/services/booking-validation.service";
+import { SchedulingErrorFactory } from "@shared/factories/scheduling-error.factory";
+import { isFailure } from "@shared/types/result.type";
+import { MessageBus } from "@shared/messaging/message-bus";
+import { DomainEvents } from "@shared/events/domain-events";
 
 @Injectable()
 export class CreateBookingUseCase

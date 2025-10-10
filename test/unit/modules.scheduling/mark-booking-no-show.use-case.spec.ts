@@ -1,9 +1,9 @@
-﻿import { ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 
-import { MarkBookingNoShowUseCase } from '../../../src/modules/scheduling/use-cases/mark-booking-no-show.use-case';
-import { IBookingRepository } from '../../../src/domain/scheduling/interfaces/repositories/booking.repository.interface';
-import { MessageBus } from '../../../src/shared/messaging/message-bus';
-import { Booking } from '../../../src/domain/scheduling/types/scheduling.types';
+import { MarkBookingNoShowUseCase } from '@modules/scheduling/use-cases/mark-booking-no-show.use-case';
+import { IBookingRepository } from '@domain/scheduling/interfaces/repositories/booking.repository.interface';
+import { MessageBus } from '@shared/messaging/message-bus';
+import { Booking } from '@domain/scheduling/types/scheduling.types';
 
 const baseBooking = (overrides: Partial<Booking> = {}): Booking => ({
   id: 'booking-1',
@@ -133,7 +133,7 @@ describe('MarkBookingNoShowUseCase', () => {
         requesterId: 'user-1',
         requesterRole: 'CLINIC_OWNER',
       }),
-    ).rejects.toBeInstanceOf(ConflictException);
+    ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(bookingRepository.markNoShow).not.toHaveBeenCalled();
   });

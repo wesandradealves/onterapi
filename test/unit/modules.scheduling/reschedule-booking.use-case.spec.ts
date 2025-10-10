@@ -1,10 +1,10 @@
 ﻿import { ConflictException } from '@nestjs/common';
 
-import { RescheduleBookingUseCase } from '../../../src/modules/scheduling/use-cases/reschedule-booking.use-case';
-import { IBookingRepository } from '../../../src/domain/scheduling/interfaces/repositories/booking.repository.interface';
-import { IRecurrenceRepository } from '../../../src/domain/scheduling/interfaces/repositories/recurrence.repository.interface';
-import { MessageBus } from '../../../src/shared/messaging/message-bus';
-import { DomainEvents } from '../../../src/shared/events/domain-events';
+import { RescheduleBookingUseCase } from '@modules/scheduling/use-cases/reschedule-booking.use-case';
+import { IBookingRepository } from '@domain/scheduling/interfaces/repositories/booking.repository.interface';
+import { IRecurrenceRepository } from '@domain/scheduling/interfaces/repositories/recurrence.repository.interface';
+import { MessageBus } from '@shared/messaging/message-bus';
+import { DomainEvents } from '@shared/events/domain-events';
 
 const baseBooking = () => ({
   id: 'booking-1',

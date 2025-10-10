@@ -6,6 +6,7 @@ import { UsersModule } from '../../../modules/users/users.module';
 import { PatientsModule } from '../../../modules/patients/patients.module';
 import { AnamnesisModule } from '../../../modules/anamnesis/anamnesis.module';
 import { HealthModule } from '../../../modules/health/health.module';
+import { SchedulingModule } from '../../../modules/scheduling/scheduling.module';
 
 export default class Swagger {
   static logger = new Logger(Swagger.name);
@@ -22,7 +23,7 @@ export default class Swagger {
 
     const document = SwaggerModule.createDocument(app, options, {
       deepScanRoutes: true,
-      include: [AuthModule, UsersModule, PatientsModule, AnamnesisModule, HealthModule],
+      include: [AuthModule, UsersModule, PatientsModule, AnamnesisModule, HealthModule, SchedulingModule],
       operationIdFactory: (controllerKey: string, methodKey: string) => methodKey,
     });
 
