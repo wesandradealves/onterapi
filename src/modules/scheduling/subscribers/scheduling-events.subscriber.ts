@@ -1,8 +1,8 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
-import { DomainEvent } from '@shared/events/domain-event.interface';
-import { DomainEvents } from '@shared/events/domain-events';
-import { MessageBus } from '@shared/messaging/message-bus';
+import { DomainEvent } from '../../../shared/events/domain-event.interface';
+import { DomainEvents } from '../../../shared/events/domain-events';
+import { MessageBus } from '../../../shared/messaging/message-bus';
 import { SchedulingBillingService } from '../services/scheduling-billing.service';
 import { SchedulingMetricsService } from '../services/scheduling-metrics.service';
 import { SchedulingNotificationService } from '../services/scheduling-notification.service';

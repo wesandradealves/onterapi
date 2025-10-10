@@ -1,4 +1,4 @@
-import { DomainEvent } from '@shared/events/domain-event.interface';
+import { DomainEvent } from '../../../shared/events/domain-event.interface';
 
 export interface SchedulingHoldCreatedPayload {
   holdId: string;

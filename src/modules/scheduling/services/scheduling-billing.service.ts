@@ -5,8 +5,8 @@ import {
   SchedulingBookingConfirmedEvent,
   SchedulingPaymentStatusChangedEvent,
 } from './scheduling-event.types';
-import { MessageBus } from '@shared/messaging/message-bus';
-import { DomainEvents } from '@shared/events/domain-events';
+import { MessageBus } from '../../../shared/messaging/message-bus';
+import { DomainEvents } from '../../../shared/events/domain-events';
 
 @Injectable()
 export class SchedulingBillingService {

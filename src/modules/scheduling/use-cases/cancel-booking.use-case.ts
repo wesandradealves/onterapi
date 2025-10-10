@@ -1,18 +1,18 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
-import { BaseUseCase } from '@shared/use-cases/base.use-case';
-import { Booking } from '@domain/scheduling/types/scheduling.types';
+import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
+import { Booking } from '../../../domain/scheduling/types/scheduling.types';
 import {
   CancelBookingUseCaseInput,
   ICancelBookingUseCase,
-} from '@domain/scheduling/interfaces/use-cases/cancel-booking.use-case.interface';
+} from '../../../domain/scheduling/interfaces/use-cases/cancel-booking.use-case.interface';
 import {
   IBookingRepository,
   IBookingRepositoryToken,
-} from '@domain/scheduling/interfaces/repositories/booking.repository.interface';
-import { SchedulingErrorFactory } from '@shared/factories/scheduling-error.factory';
-import { MessageBus } from '@shared/messaging/message-bus';
-import { DomainEvents } from '@shared/events/domain-events';
+} from '../../../domain/scheduling/interfaces/repositories/booking.repository.interface';
+import { SchedulingErrorFactory } from '../../../shared/factories/scheduling-error.factory';
+import { MessageBus } from '../../../shared/messaging/message-bus';
+import { DomainEvents } from '../../../shared/events/domain-events';
 
 const CANCELABLE_STATUSES = new Set<Booking['status']>(['scheduled', 'confirmed']);
 
