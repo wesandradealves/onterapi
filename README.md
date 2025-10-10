@@ -540,7 +540,7 @@ npm run migration:run -- -d src/infrastructure/database/data-source.ts
 | E2E | `npm run test:e2e` | Fluxos HTTP completos via supertest | Requer Supabase configurado; usa fixtures em `test/e2e`. |
 | Cobertura | `npm run test:cov` | Agrega suites unit e integracao com cobertura 100% | Mantem thresholds globais em 100% para statements/branches/functions/lines. |
 
-Resultados recentes: `npm run test:cov` reportou 255 testes (unit + integracao) com cobertura global 100%. As suites dedicadas registraram 219 unit, 35 integracao e 27 e2e.
+Resultados recentes: `npm run test:cov` reportou 266 testes (unit + integracao) com cobertura global 100%. As suites dedicadas registraram 226 unit, 40 integracao e 27 e2e.
 
 ## Fluxo Completo de Teste via cURL
 > Observacoes:
@@ -638,7 +638,75 @@ Resultados recentes: `npm run test:cov` reportou 255 testes (unit + integracao) 
 
    ```
 
-7. **Fluxo completo de ANAMNESES (incluindo anexos)**
+7. **Fluxo completo de SCHEDULING (hold -> booking -> confirm -> reschedule -> cancel)**
+   ```powershell
+   $clinicId = $tenantId
+   $professionalId = $tokens.user.id
+   $patientId = $createdPatient.id
+   $initialStart = (Get-Date).ToUniversalTime().AddHours(6)
+   $initialEnd = $initialStart.AddHours(1)
+
+   @{
+     clinicId       = $clinicId
+     professionalId = $professionalId
+     patientId      = $patientId
+     startAtUtc     = $initialStart.ToString('o')
+     endAtUtc       = $initialEnd.ToString('o')
+   } | ConvertTo-Json -Depth 3 |
+     Set-Content -NoNewline -Path payloads/scheduling-hold-create.json
+
+   $hold = curl.exe -s -X POST "$BASE_URL/scheduling/holds" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" \
+     -H "Content-Type: application/json" --data @payloads/scheduling-hold-create.json | ConvertFrom-Json
+
+   @{
+     holdId              = $hold.id
+     source              = 'clinic_portal'
+     timezone            = 'America/Sao_Paulo'
+     paymentStatus       = 'pending'
+     preconditionsPassed = $true
+   } | ConvertTo-Json -Depth 3 |
+     Set-Content -NoNewline -Path payloads/scheduling-booking-create.json
+
+   $booking = curl.exe -s -X POST "$BASE_URL/scheduling/bookings" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" \
+     -H "Content-Type: application/json" --data @payloads/scheduling-booking-create.json | ConvertFrom-Json
+
+   @{
+     holdId        = $hold.id
+     paymentStatus = 'approved'
+   } | ConvertTo-Json -Depth 3 |
+     Set-Content -NoNewline -Path payloads/scheduling-booking-confirm.json
+
+   $booking = curl.exe -s -X POST "$BASE_URL/scheduling/bookings/$($booking.id)/confirm" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" \
+     -H "Content-Type: application/json" --data @payloads/scheduling-booking-confirm.json | ConvertFrom-Json
+
+   $rescheduleStart = $initialStart.AddHours(4)
+   $rescheduleEnd = $rescheduleStart.AddHours(1)
+
+   @{
+     expectedVersion = $booking.version
+     newStartAtUtc   = $rescheduleStart.ToString('o')
+     newEndAtUtc     = $rescheduleEnd.ToString('o')
+     reason          = 'Paciente solicitou ajuste de horario'
+   } | ConvertTo-Json -Depth 3 |
+     Set-Content -NoNewline -Path payloads/scheduling-booking-reschedule.json
+
+   $booking = curl.exe -s -X POST "$BASE_URL/scheduling/bookings/$($booking.id)/reschedule" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" \
+     -H "Content-Type: application/json" --data @payloads/scheduling-booking-reschedule.json | ConvertFrom-Json
+
+   @{
+     expectedVersion = $booking.version
+     reason          = 'patient_request'
+     cancelledAtUtc  = (Get-Date).ToUniversalTime().ToString('o')
+   } | ConvertTo-Json -Depth 3 |
+     Set-Content -NoNewline -Path payloads/scheduling-booking-cancel.json
+
+   $booking = curl.exe -s -X POST "$BASE_URL/scheduling/bookings/$($booking.id)/cancel" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" \
+     -H "Content-Type: application/json" --data @payloads/scheduling-booking-cancel.json | ConvertFrom-Json
+   ```
+
+   > Reaproveite sempre o campo `version` retornado nas respostas para manter o lock otimista nas chamadas seguintes.
+
+8. **Fluxo completo de ANAMNESES (incluindo anexos)**
    > Requer que o bucket configurado em `ANAMNESIS_STORAGE_BUCKET` exista no Supabase Storage.
 
    Inicie o rascunho:
@@ -734,12 +802,12 @@ Resultados recentes: `npm run test:cov` reportou 255 testes (unit + integracao) 
 
    > Para anexar novos arquivos, repita o `POST /attachments` com outro nome; o storage não permite sobrescrita (upsert=false).
 
-8. **Remover o paciente de teste no Supabase (opcional)**
+9. **Remover o paciente de teste no Supabase (opcional)**
    ```powershell
    curl.exe -s -X DELETE "$SUPABASE_URL/rest/v1/patients?id=eq.$($createdPatient.id)" -H "apikey: $SERVICE_ROLE_KEY" -H "Authorization: Bearer $SERVICE_ROLE_KEY" | Out-Null
    ```
 
-9. **Logout**
+10. **Logout**
    ```powershell
    '{"allDevices":true,"refreshToken":"' + $refreshToken + '"}' |
      Set-Content -NoNewline -Path payloads/auth-sign-out.json
@@ -747,7 +815,7 @@ Resultados recentes: `npm run test:cov` reportou 255 testes (unit + integracao) 
      -H "Content-Type: application/json" --data @payloads/auth-sign-out.json | Out-Null
    ```
 
-10. **Limpeza**
+11. **Limpeza**
    ```powershell
    Remove-Item -Recurse -Force payloads
    ```
@@ -764,11 +832,11 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 
 | Criterio | Nota atual (0-10) | Meta | Evidencias chave |
 | --- | --- | --- | --- |
-| DRY / Reuso de codigo | 9.7 | >= 9.0 | Controllers de Auth, Patients, Users e Anamnesis continuam delegando normalizacao a mappers/presenters; selecao de templates por especialidade usa helpers reutilizaveis (`TemplateSelectionContext`, `getTemplatePriority`, `shouldReplaceTemplate`) e evita condicionais duplicadas. |
-| Automacao de qualidade | 8.9 | >= 8.5 | Sequencia manual revalidada em 08/10 (14:35h) com Node 22.18.0: npm run lint -> npx tsc --noEmit -> npm run test:unit -> npm run test:int -> npm run test:e2e -> npm run test:cov -> npm run build. |
-| Testes automatizados | 10.0 | >= 9.5 | 219 testes unitarios (23.5 s), 35 de integracao (12.7 s) e 27 e2e (18.5 s) executados na sequencia atual; suite com cobertura completa (test:cov) confirmou 255 testes em 15.9 s mantendo 100%. |
-| Validacoes e contratos | 9.5 | >= 9.0 | Controllers de Anamnesis aplicam Zod para filtros e usam o util `validateAnamnesisStepPayload` (calculo de BMI/pack-years) em save/auto-save/submit, garantindo payload sanitizado antes de publicar eventos de IA. |
-| Governanca de dominio / RBAC | 9.0 | >= 9.0 | Casos de uso de Anamnesis reforcam ensureCanModifyAnamnesis e publicam eventos com tenantId; rotas de anexos, historico, templates e webhook usam TenantGuard + RolesGuard dedicados para cada perfil. |
+| DRY / Reuso de codigo | 9.7 | >= 9.0 | Controllers de Auth, Patients, Scheduling e Anamnesis continuam delegando normalizacao a mappers/presenters; casos de uso de scheduling reutilizam `BookingValidationService`/`SchedulingRequestContext` evitando condicionais duplicadas e repeticao de logs. |
+| Automacao de qualidade | 9.0 | >= 8.5 | Sequencia manual revalidada em 10/10 (14:28h) com Node 22.18.0: npm run lint -> npx tsc --noEmit -> npm run test:unit -> npm run test:int -> npm run test:e2e -> npm run test:cov -> npm run build (incluso controlador de scheduling). |
+| Testes automatizados | 10.0 | >= 9.5 | 226 testes unitarios (24.4 s), 40 de integracao (13.6 s) e 27 e2e (19.0 s) executados na sequencia atual; suite com cobertura completa (test:cov) consolidou 266 testes em 16.2 s mantendo 100%. |
+| Validacoes e contratos | 9.6 | >= 9.0 | Controllers de Anamnesis e Scheduling aplicam Zod (`rescheduleBookingSchema`, `createHoldSchema`, etc.) antes de chamar os casos de uso, disparando erros traduzidos via `SchedulingErrorFactory`/`AuthErrorFactory` e garantindo payload sanitizado. |
+| Governanca de dominio / RBAC | 9.1 | >= 9.0 | Casos de uso de Anamnesis e Scheduling reforcam ensureCanModifyAnamnesis/resolveContext; rotas de anexos, historico, scheduling e webhook usam TenantGuard + RolesGuard dedicados para cada perfil. |
 
 ## Observacoes Detalhadas
 
