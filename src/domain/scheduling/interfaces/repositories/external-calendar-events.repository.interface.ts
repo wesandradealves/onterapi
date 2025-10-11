@@ -1,4 +1,4 @@
-﻿import { ExternalCalendarEvent, ExternalCalendarEventStatus } from '../../types/scheduling.types';
+import { ExternalCalendarEvent, ExternalCalendarEventStatus } from '../../types/scheduling.types';
 
 export interface UpsertExternalCalendarEventInput
   extends Omit<ExternalCalendarEvent, 'id' | 'createdAt' | 'updatedAt'> {

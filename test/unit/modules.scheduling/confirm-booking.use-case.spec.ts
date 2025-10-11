@@ -1,4 +1,4 @@
-﻿import { ForbiddenException, GoneException, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, GoneException, NotFoundException } from '@nestjs/common';
 
 import { ConfirmBookingUseCase } from '@modules/scheduling/use-cases/confirm-booking.use-case';
 import { IBookingRepository } from '@domain/scheduling/interfaces/repositories/booking.repository.interface';

@@ -1,4 +1,4 @@
-﻿import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { CPFValidator } from '../validators/cpf.validator';
 import { EmailValidator } from '../validators/email.validator';
 import { PhoneValidator } from '../validators/phone.validator';

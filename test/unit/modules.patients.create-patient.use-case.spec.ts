@@ -1,4 +1,4 @@
-﻿import { CreatePatientUseCase } from '@modules/patients/use-cases/create-patient.use-case';
+import { CreatePatientUseCase } from '@modules/patients/use-cases/create-patient.use-case';
 import { IPatientRepository } from '@domain/patients/interfaces/repositories/patient.repository.interface';
 import { PatientNotificationService } from '@infrastructure/patients/services/patient-notification.service';
 import { PatientAuditService } from '@infrastructure/patients/services/patient-audit.service';

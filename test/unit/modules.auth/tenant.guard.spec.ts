@@ -1,4 +1,4 @@
-﻿import { TenantGuard } from '@modules/auth/guards/tenant.guard';
+import { TenantGuard } from '@modules/auth/guards/tenant.guard';
 import { RolesEnum } from '@domain/auth/enums/roles.enum';
 
 describe('TenantGuard', () => {

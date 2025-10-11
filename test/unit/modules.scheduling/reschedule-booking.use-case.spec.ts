@@ -1,4 +1,4 @@
-﻿import { ConflictException } from '@nestjs/common';
+import { ConflictException } from '@nestjs/common';
 
 import { RescheduleBookingUseCase } from '@modules/scheduling/use-cases/reschedule-booking.use-case';
 import { IBookingRepository } from '@domain/scheduling/interfaces/repositories/booking.repository.interface';

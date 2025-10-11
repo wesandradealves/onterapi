@@ -1,4 +1,4 @@
-﻿import { Result } from '../types/result.type';
+import { Result } from '../types/result.type';
 
 export interface ExecutableUseCase<TInput, TOutput> {
   execute(input: TInput): Promise<Result<TOutput>>;

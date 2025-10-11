@@ -1,4 +1,4 @@
-﻿export type PricingMode = 'fixed' | 'percentage' | 'tiered';
+export type PricingMode = 'fixed' | 'percentage' | 'tiered';
 
 export type RepasseMode = 'fixed' | 'percentage';
 

@@ -1,4 +1,4 @@
-﻿import { ExecutionContext, INestApplication, UnauthorizedException } from '@nestjs/common';
+import { ExecutionContext, INestApplication, UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 

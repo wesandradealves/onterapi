@@ -1,4 +1,4 @@
-﻿import { SignInInputDTO } from '../schemas/sign-in.schema';
+import { SignInInputDTO } from '../schemas/sign-in.schema';
 import { ResendVerificationEmailSchemaType } from '../schemas/resend-verification.schema';
 import { RequestPasswordResetSchemaType } from '../schemas/request-password-reset.schema';
 import { ConfirmPasswordResetSchemaType } from '../schemas/confirm-password-reset.schema';

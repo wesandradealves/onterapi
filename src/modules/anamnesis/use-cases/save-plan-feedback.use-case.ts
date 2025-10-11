@@ -1,4 +1,4 @@
-﻿import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import { ISavePlanFeedbackUseCase } from '../../../domain/anamnesis/interfaces/use-cases/save-plan-feedback.use-case.interface';

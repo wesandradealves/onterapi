@@ -1,4 +1,4 @@
-﻿import { BadRequestException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 
 import { validateAnamnesisStepPayload } from '@modules/anamnesis/utils/anamnesis-step-validation.util';
 

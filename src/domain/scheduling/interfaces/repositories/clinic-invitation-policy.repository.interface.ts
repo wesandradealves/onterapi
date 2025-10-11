@@ -1,4 +1,4 @@
-﻿import { ClinicInvitationPolicy, InvitationChannel } from '../../types/scheduling.types';
+import { ClinicInvitationPolicy, InvitationChannel } from '../../types/scheduling.types';
 
 export interface UpsertClinicInvitationPolicyInput
   extends Omit<ClinicInvitationPolicy, 'id' | 'createdAt' | 'updatedAt'> {

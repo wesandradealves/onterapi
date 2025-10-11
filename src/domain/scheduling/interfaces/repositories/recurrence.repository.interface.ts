@@ -1,4 +1,4 @@
-﻿import { RecurrenceOccurrence, RecurrenceSeries } from '../../types/scheduling.types';
+import { RecurrenceOccurrence, RecurrenceSeries } from '../../types/scheduling.types';
 
 export interface CreateRecurrenceSeriesInput
   extends Omit<RecurrenceSeries, 'id' | 'createdAt' | 'updatedAt'> {}

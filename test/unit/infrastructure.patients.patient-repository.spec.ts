@@ -1,4 +1,4 @@
-﻿import { PatientRepository } from '@infrastructure/patients/repositories/patient.repository';
+import { PatientRepository } from '@infrastructure/patients/repositories/patient.repository';
 import { SupabaseService } from '@infrastructure/auth/services/supabase.service';
 import { TransferPatientInput } from '@domain/patients/types/patient.types';
 

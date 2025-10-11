@@ -1,4 +1,4 @@
-﻿import { performance } from "node:perf_hooks";
+import { performance } from "node:perf_hooks";
 
 import { randomUUID } from "node:crypto";
 

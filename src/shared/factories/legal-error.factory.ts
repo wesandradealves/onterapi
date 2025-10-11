@@ -1,4 +1,4 @@
-﻿import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 
 export class LegalErrorFactory {
   static notFound(): NotFoundException {

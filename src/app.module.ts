@@ -1,4 +1,4 @@
-﻿import { Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { CoreModule } from './core/core.module';
 import { DatabaseModule } from './infrastructure/database.module';

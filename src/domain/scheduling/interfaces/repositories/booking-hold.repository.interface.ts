@@ -1,4 +1,4 @@
-﻿import { BookingHold, CreateHoldInput, UpdateHoldStatusInput } from '../../types/scheduling.types';
+import { BookingHold, CreateHoldInput, UpdateHoldStatusInput } from '../../types/scheduling.types';
 
 export interface IBookingHoldRepository {
   create(data: CreateHoldInput): Promise<BookingHold>;

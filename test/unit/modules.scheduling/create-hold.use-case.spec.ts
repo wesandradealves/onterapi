@@ -1,4 +1,4 @@
-﻿import { ConflictException } from '@nestjs/common';
+import { ConflictException } from '@nestjs/common';
 
 import { CreateHoldUseCase } from '@modules/scheduling/use-cases/create-hold.use-case';
 import { IBookingRepository } from '@domain/scheduling/interfaces/repositories/booking.repository.interface';

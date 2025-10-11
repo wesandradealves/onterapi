@@ -1,4 +1,4 @@
-﻿import { z } from 'zod';
+import { z } from 'zod';
 import { passwordSchema } from '../../../../shared/validators/auth.validators';
 
 export const confirmPasswordResetSchema = z.object({
