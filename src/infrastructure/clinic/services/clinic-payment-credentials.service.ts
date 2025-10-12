@@ -98,4 +98,3 @@ export class ClinicPaymentCredentialsService implements IClinicPaymentCredential
     return undefined;
   }
 }
-

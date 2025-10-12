@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
-import { ClinicPaymentSettings } from '../../../domain/clinic/types/clinic.types';
+import {
+  ClinicInadimplencyAction,
+  ClinicPaymentSettings,
+} from '../../../domain/clinic/types/clinic.types';
 
 const splitRuleSchema = z.object({
   recipient: z.enum(['taxes', 'gateway', 'clinic', 'professional', 'platform']),
@@ -78,7 +81,7 @@ export function parseClinicPaymentSettings(payload: unknown): ClinicPaymentSetti
       penaltyPercentage: result.inadimplencyRule.penaltyPercentage,
       dailyInterestPercentage: result.inadimplencyRule.dailyInterestPercentage,
       maxRetries: result.inadimplencyRule.maxRetries,
-      actions: result.inadimplencyRule.actions,
+      actions: (result.inadimplencyRule.actions ?? []).filter(isClinicInadimplencyAction),
     },
     refundPolicy: {
       type: result.refundPolicy.type,
@@ -94,4 +97,15 @@ export function parseClinicPaymentSettings(payload: unknown): ClinicPaymentSetti
     })),
     bankAccountId: result.bankAccountId,
   };
+}
+
+const allowedInadimplencyActions: readonly ClinicInadimplencyAction[] = [
+  'retry',
+  'notify',
+  'suspend',
+  'escalate',
+];
+
+function isClinicInadimplencyAction(value: string): value is ClinicInadimplencyAction {
+  return allowedInadimplencyActions.includes(value as ClinicInadimplencyAction);
 }

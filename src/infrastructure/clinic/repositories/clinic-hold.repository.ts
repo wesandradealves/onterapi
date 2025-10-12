@@ -6,6 +6,7 @@ import {
   ClinicHold,
   ClinicHoldConfirmationInput,
   ClinicHoldRequestInput,
+  ClinicPaymentStatus,
 } from '../../../domain/clinic/types/clinic.types';
 import { IClinicHoldRepository } from '../../../domain/clinic/interfaces/repositories/clinic-hold.repository.interface';
 import { ClinicHoldEntity } from '../entities/clinic-hold.entity';
@@ -73,6 +74,8 @@ export class ClinicHoldRepository implements IClinicHoldRepository {
       confirmedAt: Date;
       status: 'confirmed' | 'expired';
       appointmentId?: string;
+      paymentStatus?: ClinicPaymentStatus;
+      gatewayStatus?: string;
     },
   ): Promise<ClinicHold> {
     const entity = await this.repository.findOneOrFail({
@@ -178,6 +181,58 @@ export class ClinicHoldRepository implements IClinicHoldRepository {
     const entities = await query.getMany();
     return entities.map(ClinicMapper.toHold);
   }
+
+  async updatePaymentStatus(params: {
+    holdId: string;
+    clinicId: string;
+    tenantId: string;
+    paymentStatus: ClinicPaymentStatus;
+    gatewayStatus?: string;
+    paidAt?: Date;
+  }): Promise<ClinicHold> {
+    const entity = await this.repository.findOneOrFail({
+      where: {
+        id: params.holdId,
+        clinicId: params.clinicId,
+        tenantId: params.tenantId,
+      },
+    });
+
+    const metadata: Record<string, unknown> = { ...(entity.metadata ?? {}) };
+    const confirmationMetadata =
+      typeof metadata.confirmation === 'object' && metadata.confirmation !== null
+        ? (metadata.confirmation as Record<string, unknown>)
+        : {};
+
+    confirmationMetadata.paymentStatus = params.paymentStatus;
+    if (params.gatewayStatus) {
+      confirmationMetadata.gatewayStatus = params.gatewayStatus;
+    }
+    if (params.paidAt) {
+      confirmationMetadata.paidAt = params.paidAt.toISOString();
+    }
+
+    const events = Array.isArray(metadata.paymentEvents)
+      ? [...(metadata.paymentEvents as unknown[])]
+      : [];
+
+    events.push({
+      status: params.paymentStatus,
+      gatewayStatus: params.gatewayStatus,
+      paidAt: params.paidAt?.toISOString(),
+      recordedAt: new Date().toISOString(),
+    });
+
+    metadata.paymentStatus = params.paymentStatus;
+    if (params.gatewayStatus) {
+      metadata.gatewayStatus = params.gatewayStatus;
+    }
+    metadata.paymentEvents = events;
+    metadata.confirmation = confirmationMetadata;
+
+    entity.metadata = metadata;
+
+    const saved = await this.repository.save(entity);
+    return ClinicMapper.toHold(saved);
+  }
 }
-
-

@@ -11,9 +11,11 @@ import { RolesGuard } from '@modules/auth/guards/roles.guard';
 import { RolesEnum } from '@domain/auth/enums/roles.enum';
 import { ICurrentUser } from '@domain/auth/interfaces/current-user.interface';
 import {
+  ClinicAppointmentConfirmationResult,
   ClinicAuditLog,
   ClinicConfigurationVersion,
   ClinicHold,
+  ClinicHoldConfirmationInput,
   ClinicInvitation,
   ClinicInvitationEconomicSummary,
 } from '@domain/clinic/types/clinic.types';
@@ -99,6 +101,9 @@ import {
   ClinicHoldRequestInput,
   ICreateClinicHoldUseCase as ICreateClinicHoldUseCaseToken,
 } from '@domain/clinic/interfaces/use-cases/create-clinic-hold.use-case.interface';
+import {
+  IConfirmClinicAppointmentUseCase as IConfirmClinicAppointmentUseCaseToken,
+} from '@domain/clinic/interfaces/use-cases/confirm-clinic-appointment.use-case.interface';
 import {
   IListClinicAuditLogsUseCase as IListClinicAuditLogsUseCaseToken,
   ListClinicAuditLogsUseCaseInput,
@@ -542,12 +547,19 @@ describe('ClinicInvitationController (integration)', () => {
 
 describe('ClinicHoldController (integration)', () => {
   let app: INestApplication;
-  const useCase = createUseCaseMock<ClinicHoldRequestInput, ClinicHold>();
+  const createHoldUseCase = createUseCaseMock<ClinicHoldRequestInput, ClinicHold>();
+  const confirmHoldUseCase = createUseCaseMock<
+    ClinicHoldConfirmationInput,
+    ClinicAppointmentConfirmationResult
+  >();
 
   beforeAll(async () => {
     const moduleRef: TestingModule = await Test.createTestingModule({
       controllers: [ClinicHoldController],
-      providers: [{ provide: ICreateClinicHoldUseCaseToken, useValue: useCase }],
+      providers: [
+        { provide: ICreateClinicHoldUseCaseToken, useValue: createHoldUseCase },
+        { provide: IConfirmClinicAppointmentUseCaseToken, useValue: confirmHoldUseCase },
+      ],
     })
       .overrideGuard(JwtAuthGuard)
       .useClass(guards.JwtAuthGuard as new () => JwtAuthGuard)
@@ -560,8 +572,10 @@ describe('ClinicHoldController (integration)', () => {
   });
 
   beforeEach(() => {
-    useCase.execute.mockReset();
-    useCase.executeOrThrow.mockReset();
+    createHoldUseCase.execute.mockReset();
+    createHoldUseCase.executeOrThrow.mockReset();
+    confirmHoldUseCase.execute.mockReset();
+    confirmHoldUseCase.executeOrThrow.mockReset();
   });
 
   afterAll(async () => {
@@ -600,7 +614,7 @@ describe('ClinicHoldController (integration)', () => {
       updatedAt: new Date('2025-11-30T12:00:00.000Z'),
       metadata: payload.metadata,
     };
-    useCase.executeOrThrow.mockResolvedValue(hold);
+    createHoldUseCase.executeOrThrow.mockResolvedValue(hold);
 
     const response = await request(app.getHttpServer())
       .post(`/clinics/${FIXTURES.clinic}/holds`)
@@ -608,7 +622,7 @@ describe('ClinicHoldController (integration)', () => {
       .send(payload)
       .expect(201);
 
-    expect(useCase.executeOrThrow).toHaveBeenCalledWith({
+    expect(createHoldUseCase.executeOrThrow).toHaveBeenCalledWith({
       clinicId: FIXTURES.clinic,
       tenantId: FIXTURES.tenant,
       requestedBy: currentUser.id,

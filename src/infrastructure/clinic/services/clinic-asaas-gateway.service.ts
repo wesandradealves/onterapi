@@ -6,8 +6,8 @@ import {
   VerifyClinicPaymentInput,
   VerifyClinicPaymentResult,
 } from '../../../domain/clinic/interfaces/services/clinic-payment-gateway.service.interface';
-import { ClinicPaymentStatus } from '../../../domain/clinic/types/clinic.types';
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
+import { mapAsaasPaymentStatus } from '../../../modules/clinic/utils/asaas-payment-status.mapper';
 
 interface AsaasPaymentResponse {
   id?: string;
@@ -33,7 +33,7 @@ export class ClinicAsaasGatewayService implements IClinicPaymentGatewayService {
     }
 
     const apiKey = input.sandboxMode
-      ? input.credentials.sandboxApiKey ?? input.credentials.productionApiKey
+      ? (input.credentials.sandboxApiKey ?? input.credentials.productionApiKey)
       : input.credentials.productionApiKey;
 
     if (!apiKey) {
@@ -43,8 +43,8 @@ export class ClinicAsaasGatewayService implements IClinicPaymentGatewayService {
     }
 
     const baseUrl = input.sandboxMode
-      ? this.configService.get<string>('ASAAS_SANDBOX_BASE_URL') ?? this.defaultSandboxUrl
-      : this.configService.get<string>('ASAAS_BASE_URL') ?? this.defaultBaseUrl;
+      ? (this.configService.get<string>('ASAAS_SANDBOX_BASE_URL') ?? this.defaultSandboxUrl)
+      : (this.configService.get<string>('ASAAS_BASE_URL') ?? this.defaultBaseUrl);
 
     const url = `${baseUrl.replace(/\/$/, '')}/payments/${encodeURIComponent(input.paymentId)}`;
     const controller = new AbortController();
@@ -71,7 +71,7 @@ export class ClinicAsaasGatewayService implements IClinicPaymentGatewayService {
       }
 
       const payload = (await response.json()) as AsaasPaymentResponse;
-      const status = this.mapStatus(payload.status);
+      const status = mapAsaasPaymentStatus(payload.status);
 
       if (!status) {
         throw ClinicErrorFactory.paymentVerificationFailed(
@@ -111,44 +111,4 @@ export class ClinicAsaasGatewayService implements IClinicPaymentGatewayService {
       clearTimeout(timeout);
     }
   }
-
-  private mapStatus(status?: string): ClinicPaymentStatus | null {
-    if (!status) {
-      return null;
-    }
-
-    const normalized = status.toUpperCase();
-
-    switch (normalized) {
-      case 'RECEIVED':
-      case 'RECEIVED_IN_CASH':
-      case 'CONFIRMED':
-      case 'RECEIVED_PARTIAL':
-      case 'DUNNING_RECEIVED':
-      case 'DUNNING_REQUESTED':
-      case 'PAID_OVER':
-        return 'approved';
-      case 'REFUNDED':
-        return 'refunded';
-      case 'CHARGEBACK_REQUESTED':
-      case 'CHARGEBACK_DISPUTE':
-      case 'AWAITING_CHARGEBACK_REVERSAL':
-        return 'chargeback';
-      case 'RECEIVED_IN_ADVANCE':
-      case 'ANTECIPATED':
-        return 'settled';
-      case 'PENDING':
-      case 'PENDING_CUSTOMER':
-      case 'AWAITING_RISK_ANALYSIS':
-      case 'AWAITING_DOCUMENTS':
-      case 'OVERDUE':
-      case 'CANCELED':
-      case 'EXPIRED':
-      case 'DELETED':
-      default:
-        return normalized === 'SETTLED' ? 'settled' : 'failed';
-    }
-  }
 }
-
-

@@ -102,4 +102,12 @@ export class ClinicErrorFactory {
   static paymentProviderNotSupported(message: string): BadRequestException {
     return new BadRequestException(message);
   }
+
+  static paymentWebhookInvalid(message: string): BadRequestException {
+    return new BadRequestException(message);
+  }
+
+  static paymentRecordNotFound(message: string): NotFoundException {
+    return new NotFoundException(message);
+  }
 }

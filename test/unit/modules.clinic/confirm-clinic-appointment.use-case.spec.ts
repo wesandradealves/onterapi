@@ -198,7 +198,9 @@ describe('ConfirmClinicAppointmentUseCase', () => {
     clinicHoldRepository.findActiveOverlapByProfessional.mockResolvedValue([]);
     clinicAppointmentRepository.findActiveOverlap.mockResolvedValue([]);
     clinicAppointmentRepository.findByHoldId.mockResolvedValue(null);
-    clinicConfigurationRepository.findLatestAppliedVersion.mockResolvedValue(paymentVersion as never);
+    clinicConfigurationRepository.findLatestAppliedVersion.mockResolvedValue(
+      paymentVersion as never,
+    );
     clinicPaymentCredentialsService.resolveCredentials.mockResolvedValue({
       provider: 'asaas',
       productionApiKey: 'api-key',

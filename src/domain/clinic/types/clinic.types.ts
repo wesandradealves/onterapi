@@ -252,6 +252,29 @@ export interface ClinicPaymentCredentials {
   sandboxApiKey?: string;
 }
 
+export interface ClinicPaymentWebhookPayload {
+  event: string;
+  sandbox?: boolean;
+  payment: {
+    id: string;
+    status?: string;
+    dueDate?: string;
+    paymentDate?: string;
+    customer?: string;
+    billingType?: string;
+    netValue?: number;
+    value?: number;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+export interface ProcessClinicPaymentWebhookInput {
+  provider: 'asaas';
+  payload: ClinicPaymentWebhookPayload;
+  receivedAt: Date;
+}
+
 export interface ClinicWhatsappSettings {
   provider: 'evolution' | 'meta';
   instanceId: string;

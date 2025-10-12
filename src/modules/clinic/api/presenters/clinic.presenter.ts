@@ -1,9 +1,9 @@
 import {
   Clinic,
+  ClinicAppointmentConfirmationResult,
   ClinicConfigurationVersion,
   ClinicDashboardSnapshot,
   ClinicEconomicAgreement,
-  ClinicAppointmentConfirmationResult,
   ClinicHold,
   ClinicInvitation,
   ClinicMember,

@@ -2,6 +2,7 @@ import {
   ClinicHold,
   ClinicHoldConfirmationInput,
   ClinicHoldRequestInput,
+  ClinicPaymentStatus,
 } from '../../types/clinic.types';
 
 export interface IClinicHoldRepository {
@@ -18,7 +19,7 @@ export interface IClinicHoldRepository {
       confirmedAt: Date;
       status: 'confirmed' | 'expired';
       appointmentId?: string;
-      paymentStatus?: string;
+      paymentStatus?: ClinicPaymentStatus;
       gatewayStatus?: string;
     },
   ): Promise<ClinicHold>;
@@ -30,6 +31,14 @@ export interface IClinicHoldRepository {
   }): Promise<ClinicHold>;
   expireHold(holdId: string, expiredAt: Date): Promise<ClinicHold>;
   expireHoldsBefore(referenceDate: Date): Promise<number>;
+  updatePaymentStatus(params: {
+    holdId: string;
+    clinicId: string;
+    tenantId: string;
+    paymentStatus: ClinicPaymentStatus;
+    gatewayStatus?: string;
+    paidAt?: Date;
+  }): Promise<ClinicHold>;
   findActiveOverlapByProfessional(params: {
     tenantId: string;
     professionalId: string;

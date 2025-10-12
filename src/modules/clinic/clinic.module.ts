@@ -10,6 +10,7 @@ import { ClinicInvitationController } from './api/controllers/clinic-invitation.
 import { ClinicMemberController } from './api/controllers/clinic-member.controller';
 import { ClinicsController } from './api/controllers/clinics.controller';
 import { ClinicAuditController } from './api/controllers/clinic-audit.controller';
+import { ClinicPaymentWebhookController } from './api/controllers/clinic-payment-webhook.controller';
 import { ClinicEntity } from '../../infrastructure/clinic/entities/clinic.entity';
 import { ClinicConfigurationVersionEntity } from '../../infrastructure/clinic/entities/clinic-configuration-version.entity';
 import { ClinicMemberEntity } from '../../infrastructure/clinic/entities/clinic-member.entity';
@@ -33,6 +34,7 @@ import { ClinicAuditLogRepository } from '../../infrastructure/clinic/repositori
 import { ClinicAuditService } from '../../infrastructure/clinic/services/clinic-audit.service';
 import { ClinicPaymentCredentialsService } from '../../infrastructure/clinic/services/clinic-payment-credentials.service';
 import { ClinicAsaasGatewayService } from '../../infrastructure/clinic/services/clinic-asaas-gateway.service';
+import { ClinicAsaasWebhookGuard } from './guards/clinic-asaas-webhook.guard';
 import { UpdateClinicGeneralSettingsUseCase } from './use-cases/update-clinic-general-settings.use-case';
 import { UpdateClinicHoldSettingsUseCase } from './use-cases/update-clinic-hold-settings.use-case';
 import { UpdateClinicServiceSettingsUseCase } from './use-cases/update-clinic-service-settings.use-case';
@@ -45,6 +47,7 @@ import { CreateClinicUseCase } from './use-cases/create-clinic.use-case';
 import { CreateClinicHoldUseCase } from './use-cases/create-clinic-hold.use-case';
 import { ConfirmClinicAppointmentUseCase } from './use-cases/confirm-clinic-appointment.use-case';
 import { GetClinicDashboardUseCase } from './use-cases/get-clinic-dashboard.use-case';
+import { ProcessClinicPaymentWebhookUseCase } from './use-cases/process-clinic-payment-webhook.use-case';
 import { UpsertClinicServiceTypeUseCase } from './use-cases/upsert-clinic-service-type.use-case';
 import { RemoveClinicServiceTypeUseCase } from './use-cases/remove-clinic-service-type.use-case';
 import { ListClinicServiceTypesUseCase } from './use-cases/list-clinic-service-types.use-case';
@@ -96,6 +99,7 @@ import { IGetClinicBrandingSettingsUseCase as IGetClinicBrandingSettingsUseCaseT
 import { ICreateClinicUseCase as ICreateClinicUseCaseToken } from '../../domain/clinic/interfaces/use-cases/create-clinic.use-case.interface';
 import { ICreateClinicHoldUseCase as ICreateClinicHoldUseCaseToken } from '../../domain/clinic/interfaces/use-cases/create-clinic-hold.use-case.interface';
 import { IConfirmClinicAppointmentUseCase as IConfirmClinicAppointmentUseCaseToken } from '../../domain/clinic/interfaces/use-cases/confirm-clinic-appointment.use-case.interface';
+import { IProcessClinicPaymentWebhookUseCase as IProcessClinicPaymentWebhookUseCaseToken } from '../../domain/clinic/interfaces/use-cases/process-clinic-payment-webhook.use-case.interface';
 import { IGetClinicDashboardUseCase as IGetClinicDashboardUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic-dashboard.use-case.interface';
 import { IUpsertClinicServiceTypeUseCase as IUpsertClinicServiceTypeUseCaseToken } from '../../domain/clinic/interfaces/use-cases/upsert-clinic-service-type.use-case.interface';
 import { IRemoveClinicServiceTypeUseCase as IRemoveClinicServiceTypeUseCaseToken } from '../../domain/clinic/interfaces/use-cases/remove-clinic-service-type.use-case.interface';
@@ -159,6 +163,7 @@ const serviceProviders: Provider[] = [
     provide: IClinicPaymentGatewayServiceToken,
     useClass: ClinicAsaasGatewayService,
   },
+  ClinicAsaasWebhookGuard,
 ];
 
 const useCaseProviders: Provider[] = [
@@ -237,6 +242,10 @@ const useCaseProviders: Provider[] = [
   {
     provide: IConfirmClinicAppointmentUseCaseToken,
     useClass: ConfirmClinicAppointmentUseCase,
+  },
+  {
+    provide: IProcessClinicPaymentWebhookUseCaseToken,
+    useClass: ProcessClinicPaymentWebhookUseCase,
   },
   {
     provide: IGetClinicDashboardUseCaseToken,
@@ -322,6 +331,7 @@ const useCaseProviders: Provider[] = [
     ClinicMemberController,
     ClinicsController,
     ClinicAuditController,
+    ClinicPaymentWebhookController,
   ],
   providers: [ClinicAuditService, ...repositoryProviders, ...serviceProviders, ...useCaseProviders],
   exports: [...serviceProviders, ...useCaseProviders],
