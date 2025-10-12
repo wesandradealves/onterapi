@@ -19,6 +19,7 @@ import {
   ICreateClinicHoldUseCase as ICreateClinicHoldUseCaseToken,
 } from '../../../domain/clinic/interfaces/use-cases/create-clinic-hold.use-case.interface';
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
+import { ClinicAuditService } from '../../../infrastructure/clinic/services/clinic-audit.service';
 
 @Injectable()
 export class CreateClinicHoldUseCase
@@ -34,6 +35,7 @@ export class CreateClinicHoldUseCase
     private readonly clinicHoldRepository: IClinicHoldRepository,
     @Inject(IClinicServiceTypeRepositoryToken)
     private readonly clinicServiceTypeRepository: IClinicServiceTypeRepository,
+    private readonly auditService: ClinicAuditService,
   ) {
     super();
   }
@@ -113,12 +115,29 @@ export class CreateClinicHoldUseCase
       throw ClinicErrorFactory.holdAlreadyExists('Já existe um hold ativo para este período');
     }
 
-    return this.clinicHoldRepository.create({
+    const hold = await this.clinicHoldRepository.create({
       ...input,
       start,
       end,
       ttlExpiresAt,
     });
+
+    await this.auditService.register({
+      event: 'clinic.hold.created',
+      clinicId: input.clinicId,
+      tenantId: input.tenantId,
+      performedBy: input.requestedBy,
+      detail: {
+        professionalId: input.professionalId,
+        patientId: input.patientId,
+        serviceTypeId: input.serviceTypeId,
+        start,
+        end,
+        ttlExpiresAt,
+      },
+    });
+
+    return hold;
   }
 }
 

@@ -24,6 +24,7 @@ import {
 } from '../../../domain/clinic/types/clinic.types';
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
 import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
+import { ClinicAuditService } from '../../../infrastructure/clinic/services/clinic-audit.service';
 
 @Injectable()
 export class AcceptClinicInvitationUseCase
@@ -39,6 +40,7 @@ export class AcceptClinicInvitationUseCase
     private readonly clinicRepository: IClinicRepository,
     @Inject(IClinicMemberRepositoryToken)
     private readonly memberRepository: IClinicMemberRepository,
+    private readonly auditService: ClinicAuditService,
   ) {
     super();
   }
@@ -92,7 +94,19 @@ export class AcceptClinicInvitationUseCase
       joinedAt: new Date(),
     });
 
-    return this.invitationRepository.markAccepted(input);
+    const accepted = await this.invitationRepository.markAccepted(input);
+
+    await this.auditService.register({
+      event: 'clinic.invitation.accepted',
+      clinicId: invitation.clinicId,
+      tenantId: invitation.tenantId,
+      performedBy: input.acceptedBy,
+      detail: {
+        invitationId: invitation.id,
+      },
+    });
+
+    return accepted;
   }
 }
 

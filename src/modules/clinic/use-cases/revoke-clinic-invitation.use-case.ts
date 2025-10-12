@@ -18,6 +18,7 @@ import {
   ClinicInvitation,
   RevokeClinicInvitationInput,
 } from '../../../domain/clinic/types/clinic.types';
+import { ClinicAuditService } from '../../../infrastructure/clinic/services/clinic-audit.service';
 
 @Injectable()
 export class RevokeClinicInvitationUseCase
@@ -31,6 +32,7 @@ export class RevokeClinicInvitationUseCase
     private readonly invitationRepository: IClinicInvitationRepository,
     @Inject(IClinicRepositoryToken)
     private readonly clinicRepository: IClinicRepository,
+    private readonly auditService: ClinicAuditService,
   ) {
     super();
   }
@@ -51,7 +53,20 @@ export class RevokeClinicInvitationUseCase
       throw ClinicErrorFactory.clinicNotFound('Clínica não encontrada');
     }
 
-    return this.invitationRepository.markRevoked(input);
+    const revoked = await this.invitationRepository.markRevoked(input);
+
+    await this.auditService.register({
+      event: 'clinic.invitation.revoked',
+      clinicId: invitation.clinicId,
+      tenantId: invitation.tenantId,
+      performedBy: input.revokedBy,
+      detail: {
+        invitationId: invitation.id,
+        reason: input.reason,
+      },
+    });
+
+    return revoked;
   }
 }
 

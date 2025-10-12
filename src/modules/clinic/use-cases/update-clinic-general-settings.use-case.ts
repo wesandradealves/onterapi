@@ -18,6 +18,7 @@ import {
   IUpdateClinicGeneralSettingsUseCase as IUpdateClinicGeneralSettingsUseCaseToken,
 } from '../../../domain/clinic/interfaces/use-cases/update-clinic-general-settings.use-case.interface';
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
+import { ClinicAuditService } from '../../../infrastructure/clinic/services/clinic-audit.service';
 
 @Injectable()
 export class UpdateClinicGeneralSettingsUseCase
@@ -31,6 +32,7 @@ export class UpdateClinicGeneralSettingsUseCase
     private readonly clinicRepository: IClinicRepository,
     @Inject(IClinicConfigurationRepositoryToken)
     private readonly configurationRepository: IClinicConfigurationRepository,
+    private readonly auditService: ClinicAuditService,
   ) {
     super();
   }
@@ -69,6 +71,16 @@ export class UpdateClinicGeneralSettingsUseCase
       section: 'general',
       versionId: version.id,
       updatedBy: input.requestedBy,
+    });
+
+    await this.auditService.register({
+      event: 'clinic.general_settings.updated',
+      clinicId: input.clinicId,
+      tenantId: input.tenantId,
+      performedBy: input.requestedBy,
+      detail: {
+        versionId: version.id,
+      },
     });
 
     return version;

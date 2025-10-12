@@ -656,6 +656,32 @@ export interface CreateClinicInput {
   metadata?: Record<string, unknown>;
 }
 
+export interface ClinicAuditLog {
+  id: string;
+  tenantId: string;
+  clinicId?: string;
+  event: string;
+  performedBy?: string;
+  detail: Record<string, unknown>;
+  createdAt: Date;
+}
+
+export interface CreateClinicAuditLogInput {
+  tenantId: string;
+  clinicId?: string;
+  event: string;
+  performedBy?: string;
+  detail: Record<string, unknown>;
+}
+
+export interface ListClinicAuditLogsInput {
+  tenantId: string;
+  clinicId?: string;
+  events?: string[];
+  page?: number;
+  limit?: number;
+}
+
 export interface UpdateClinicGeneralSettingsInput {
   clinicId: string;
   tenantId: string;

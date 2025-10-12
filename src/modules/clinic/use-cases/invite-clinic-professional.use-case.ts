@@ -23,6 +23,7 @@ import {
   ClinicInvitation,
   InviteClinicProfessionalInput,
 } from '../../../domain/clinic/types/clinic.types';
+import { ClinicAuditService } from '../../../infrastructure/clinic/services/clinic-audit.service';
 
 @Injectable()
 export class InviteClinicProfessionalUseCase
@@ -38,6 +39,7 @@ export class InviteClinicProfessionalUseCase
     private readonly invitationRepository: IClinicInvitationRepository,
     @Inject(IClinicMemberRepositoryToken)
     private readonly memberRepository: IClinicMemberRepository,
+    private readonly auditService: ClinicAuditService,
   ) {
     super();
   }
@@ -86,13 +88,28 @@ export class InviteClinicProfessionalUseCase
       tokenHash,
     });
 
-    return {
+    const result = {
       ...invitation,
       metadata: {
         ...(invitation.metadata ?? {}),
         rawToken,
       },
     };
+
+    await this.auditService.register({
+      event: 'clinic.invitation.issued',
+      clinicId: input.clinicId,
+      tenantId: input.tenantId,
+      performedBy: input.issuedBy,
+      detail: {
+        invitationId: invitation.id,
+        professionalId: input.professionalId,
+        channel: input.channel,
+        expiresAt: input.expiresAt,
+      },
+    });
+
+    return result;
   }
 }
 

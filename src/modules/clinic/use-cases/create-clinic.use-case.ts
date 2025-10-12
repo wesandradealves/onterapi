@@ -15,6 +15,7 @@ import {
   CreateClinicInput,
 } from '../../../domain/clinic/types/clinic.types';
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
+import { ClinicAuditService } from '../../../infrastructure/clinic/services/clinic-audit.service';
 
 @Injectable()
 export class CreateClinicUseCase
@@ -26,6 +27,7 @@ export class CreateClinicUseCase
   constructor(
     @Inject(IClinicRepositoryToken)
     private readonly clinicRepository: IClinicRepository,
+    private readonly auditService: ClinicAuditService,
   ) {
     super();
   }
@@ -50,11 +52,25 @@ export class CreateClinicUseCase
 
     const holdSettings = this.validateHoldSettings(input.holdSettings);
 
-    return this.clinicRepository.create({
+    const clinic = await this.clinicRepository.create({
       ...input,
       slug: normalizedSlug,
       holdSettings,
     });
+
+    await this.auditService.register({
+      event: 'clinic.created',
+      tenantId: clinic.tenantId,
+      clinicId: clinic.id,
+      performedBy: clinic.primaryOwnerId,
+      detail: {
+        slug: clinic.slug,
+        document: clinic.document ?? undefined,
+        metadata: clinic.metadata ?? undefined,
+      },
+    });
+
+    return clinic;
   }
 
   private validateHoldSettings(

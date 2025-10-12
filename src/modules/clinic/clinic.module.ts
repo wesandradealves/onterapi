@@ -9,6 +9,7 @@ import { ClinicServiceTypeController } from './api/controllers/clinic-service-ty
 import { ClinicInvitationController } from './api/controllers/clinic-invitation.controller';
 import { ClinicMemberController } from './api/controllers/clinic-member.controller';
 import { ClinicsController } from './api/controllers/clinics.controller';
+import { ClinicAuditController } from './api/controllers/clinic-audit.controller';
 import { ClinicEntity } from '../../infrastructure/clinic/entities/clinic.entity';
 import { ClinicConfigurationVersionEntity } from '../../infrastructure/clinic/entities/clinic-configuration-version.entity';
 import { ClinicMemberEntity } from '../../infrastructure/clinic/entities/clinic-member.entity';
@@ -18,6 +19,7 @@ import { ClinicAlertEntity } from '../../infrastructure/clinic/entities/clinic-a
 import { ClinicDashboardMetricEntity } from '../../infrastructure/clinic/entities/clinic-dashboard-metric.entity';
 import { ClinicForecastProjectionEntity } from '../../infrastructure/clinic/entities/clinic-forecast-projection.entity';
 import { ClinicHoldEntity } from '../../infrastructure/clinic/entities/clinic-hold.entity';
+import { ClinicAuditLogEntity } from '../../infrastructure/clinic/entities/clinic-audit-log.entity';
 import { ClinicRepository } from '../../infrastructure/clinic/repositories/clinic.repository';
 import { ClinicConfigurationRepository } from '../../infrastructure/clinic/repositories/clinic-configuration.repository';
 import { ClinicServiceTypeRepository } from '../../infrastructure/clinic/repositories/clinic-service-type.repository';
@@ -25,6 +27,8 @@ import { ClinicHoldRepository } from '../../infrastructure/clinic/repositories/c
 import { ClinicMetricsRepository } from '../../infrastructure/clinic/repositories/clinic-metrics.repository';
 import { ClinicInvitationRepository } from '../../infrastructure/clinic/repositories/clinic-invitation.repository';
 import { ClinicMemberRepository } from '../../infrastructure/clinic/repositories/clinic-member.repository';
+import { ClinicAuditLogRepository } from '../../infrastructure/clinic/repositories/clinic-audit-log.repository';
+import { ClinicAuditService } from '../../infrastructure/clinic/services/clinic-audit.service';
 import { UpdateClinicGeneralSettingsUseCase } from './use-cases/update-clinic-general-settings.use-case';
 import { UpdateClinicHoldSettingsUseCase } from './use-cases/update-clinic-hold-settings.use-case';
 import { UpdateClinicServiceSettingsUseCase } from './use-cases/update-clinic-service-settings.use-case';
@@ -56,6 +60,7 @@ import { GetClinicPaymentSettingsUseCase } from './use-cases/get-clinic-payment-
 import { GetClinicIntegrationSettingsUseCase } from './use-cases/get-clinic-integration-settings.use-case';
 import { GetClinicNotificationSettingsUseCase } from './use-cases/get-clinic-notification-settings.use-case';
 import { GetClinicBrandingSettingsUseCase } from './use-cases/get-clinic-branding-settings.use-case';
+import { ListClinicAuditLogsUseCase } from './use-cases/list-clinic-audit-logs.use-case';
 import { IClinicRepository as IClinicRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic.repository.interface';
 import { IClinicConfigurationRepository as IClinicConfigurationRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
 import { IClinicServiceTypeRepository as IClinicServiceTypeRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-service-type.repository.interface';
@@ -63,6 +68,7 @@ import { IClinicHoldRepository as IClinicHoldRepositoryToken } from '../../domai
 import { IClinicMetricsRepository as IClinicMetricsRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-metrics.repository.interface';
 import { IClinicInvitationRepository as IClinicInvitationRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-invitation.repository.interface';
 import { IClinicMemberRepository as IClinicMemberRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-member.repository.interface';
+import { IClinicAuditLogRepository as IClinicAuditLogRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-audit-log.repository.interface';
 import { IUpdateClinicGeneralSettingsUseCase as IUpdateClinicGeneralSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/update-clinic-general-settings.use-case.interface';
 import { IUpdateClinicHoldSettingsUseCase as IUpdateClinicHoldSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/update-clinic-hold-settings.use-case.interface';
 import { IUpdateClinicServiceSettingsUseCase as IUpdateClinicServiceSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/update-clinic-service-settings.use-case.interface';
@@ -94,6 +100,7 @@ import { IManageClinicMemberUseCase as IManageClinicMemberUseCaseToken } from '.
 import { IListClinicsUseCase as IListClinicsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/list-clinics.use-case.interface';
 import { IGetClinicUseCase as IGetClinicUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic.use-case.interface';
 import { IUpdateClinicStatusUseCase as IUpdateClinicStatusUseCaseToken } from '../../domain/clinic/interfaces/use-cases/update-clinic-status.use-case.interface';
+import { IListClinicAuditLogsUseCase as IListClinicAuditLogsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/list-clinic-audit-logs.use-case.interface';
 
 const repositoryProviders: Provider[] = [
   {
@@ -123,6 +130,10 @@ const repositoryProviders: Provider[] = [
   {
     provide: IClinicMemberRepositoryToken,
     useClass: ClinicMemberRepository,
+  },
+  {
+    provide: IClinicAuditLogRepositoryToken,
+    useClass: ClinicAuditLogRepository,
   },
 ];
 
@@ -251,6 +262,10 @@ const useCaseProviders: Provider[] = [
     provide: IUpdateClinicStatusUseCaseToken,
     useClass: UpdateClinicStatusUseCase,
   },
+  {
+    provide: IListClinicAuditLogsUseCaseToken,
+    useClass: ListClinicAuditLogsUseCase,
+  },
 ];
 
 @Module({
@@ -266,6 +281,7 @@ const useCaseProviders: Provider[] = [
       ClinicDashboardMetricEntity,
       ClinicForecastProjectionEntity,
       ClinicHoldEntity,
+      ClinicAuditLogEntity,
     ]),
   ],
   controllers: [
@@ -276,8 +292,9 @@ const useCaseProviders: Provider[] = [
     ClinicInvitationController,
     ClinicMemberController,
     ClinicsController,
+    ClinicAuditController,
   ],
-  providers: [...repositoryProviders, ...useCaseProviders],
+  providers: [ClinicAuditService, ...repositoryProviders, ...useCaseProviders],
   exports: [...useCaseProviders],
 })
 export class ClinicModule {}
