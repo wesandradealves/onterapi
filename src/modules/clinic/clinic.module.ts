@@ -41,6 +41,7 @@ import { ListClinicMembersUseCase } from './use-cases/list-clinic-members.use-ca
 import { ManageClinicMemberUseCase } from './use-cases/manage-clinic-member.use-case';
 import { ListClinicsUseCase } from './use-cases/list-clinics.use-case';
 import { GetClinicUseCase } from './use-cases/get-clinic.use-case';
+import { UpdateClinicStatusUseCase } from './use-cases/update-clinic-status.use-case';
 import { IClinicRepository as IClinicRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic.repository.interface';
 import { IClinicConfigurationRepository as IClinicConfigurationRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
 import { IClinicServiceTypeRepository as IClinicServiceTypeRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-service-type.repository.interface';
@@ -64,6 +65,7 @@ import { IListClinicMembersUseCase as IListClinicMembersUseCaseToken } from '../
 import { IManageClinicMemberUseCase as IManageClinicMemberUseCaseToken } from '../../domain/clinic/interfaces/use-cases/manage-clinic-member.use-case.interface';
 import { IListClinicsUseCase as IListClinicsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/list-clinics.use-case.interface';
 import { IGetClinicUseCase as IGetClinicUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic.use-case.interface';
+import { IUpdateClinicStatusUseCase as IUpdateClinicStatusUseCaseToken } from '../../domain/clinic/interfaces/use-cases/update-clinic-status.use-case.interface';
 
 const repositoryProviders: Provider[] = [
   {
@@ -160,6 +162,10 @@ const useCaseProviders: Provider[] = [
   {
     provide: IGetClinicUseCaseToken,
     useClass: GetClinicUseCase,
+  },
+  {
+    provide: IUpdateClinicStatusUseCaseToken,
+    useClass: UpdateClinicStatusUseCase,
   },
 ];
 

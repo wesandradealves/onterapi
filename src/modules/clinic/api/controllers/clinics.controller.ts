@@ -23,12 +23,15 @@ import { ClinicPresenter } from '../presenters/clinic.presenter';
 import { ClinicSummaryDto } from '../dtos/clinic-summary.dto';
 import { listClinicsSchema, ListClinicsSchema } from '../schemas/list-clinics.schema';
 import { createClinicSchema, CreateClinicSchema } from '../schemas/create-clinic.schema';
+import { updateClinicStatusSchema, UpdateClinicStatusSchema } from '../schemas/update-clinic-status.schema';
 import type { IListClinicsUseCase } from '../../../../domain/clinic/interfaces/use-cases/list-clinics.use-case.interface';
 import { IListClinicsUseCase as IListClinicsUseCaseToken } from '../../../../domain/clinic/interfaces/use-cases/list-clinics.use-case.interface';
 import type { IGetClinicUseCase } from '../../../../domain/clinic/interfaces/use-cases/get-clinic.use-case.interface';
 import { IGetClinicUseCase as IGetClinicUseCaseToken } from '../../../../domain/clinic/interfaces/use-cases/get-clinic.use-case.interface';
 import type { ICreateClinicUseCase } from '../../../../domain/clinic/interfaces/use-cases/create-clinic.use-case.interface';
 import { ICreateClinicUseCase as ICreateClinicUseCaseToken } from '../../../../domain/clinic/interfaces/use-cases/create-clinic.use-case.interface';
+import type { IUpdateClinicStatusUseCase } from '../../../../domain/clinic/interfaces/use-cases/update-clinic-status.use-case.interface';
+import { IUpdateClinicStatusUseCase as IUpdateClinicStatusUseCaseToken } from '../../../../domain/clinic/interfaces/use-cases/update-clinic-status.use-case.interface';
 
 @ApiTags('Clinics')
 @ApiBearerAuth()
@@ -42,6 +45,8 @@ export class ClinicsController {
     private readonly getClinicUseCase: IGetClinicUseCase,
     @Inject(ICreateClinicUseCaseToken)
     private readonly createClinicUseCase: ICreateClinicUseCase,
+    @Inject(IUpdateClinicStatusUseCaseToken)
+    private readonly updateClinicStatusUseCase: IUpdateClinicStatusUseCase,
   ) {}
 
   @Post()
@@ -126,6 +131,32 @@ export class ClinicsController {
     }
 
     const clinic = await this.getClinicUseCase.executeOrThrow({ clinicId, tenantId });
+    return ClinicPresenter.summary(clinic);
+  }
+
+  @Patch(':clinicId/status')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Atualizar status da clínica' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiResponse({ status: 200, type: ClinicSummaryDto })
+  async updateStatus(
+    @Param('clinicId') clinicId: string,
+    @Body(new ZodValidationPipe(updateClinicStatusSchema)) body: UpdateClinicStatusSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicSummaryDto> {
+    const tenantId = tenantHeader ?? body.tenantId ?? currentUser.tenantId;
+    if (!tenantId) {
+      throw new BadRequestException('Tenant não informado');
+    }
+
+    const clinic = await this.updateClinicStatusUseCase.executeOrThrow({
+      clinicId,
+      tenantId,
+      status: body.status,
+      updatedBy: currentUser.id,
+    });
+
     return ClinicPresenter.summary(clinic);
   }
 }
