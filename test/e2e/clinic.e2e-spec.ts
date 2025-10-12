@@ -6,12 +6,14 @@ import { ClinicsController } from '@modules/clinic/api/controllers/clinics.contr
 import { ClinicConfigurationController } from '@modules/clinic/api/controllers/clinic-configuration.controller';
 import { ClinicInvitationController } from '@modules/clinic/api/controllers/clinic-invitation.controller';
 import { ClinicHoldController } from '@modules/clinic/api/controllers/clinic-hold.controller';
+import { ClinicAuditController } from '@modules/clinic/api/controllers/clinic-audit.controller';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@modules/auth/guards/roles.guard';
 import { RolesEnum } from '@domain/auth/enums/roles.enum';
 import { ICurrentUser } from '@domain/auth/interfaces/current-user.interface';
 import {
   Clinic,
+  ClinicAuditLog,
   ClinicConfigurationVersion,
   ClinicHold,
   ClinicHoldSettings,
@@ -80,6 +82,10 @@ import {
   ClinicHoldRequestInput,
   ICreateClinicHoldUseCase as ICreateClinicHoldUseCaseToken,
 } from '@domain/clinic/interfaces/use-cases/create-clinic-hold.use-case.interface';
+import {
+  IListClinicAuditLogsUseCase as IListClinicAuditLogsUseCaseToken,
+  ListClinicAuditLogsUseCaseInput,
+} from '@domain/clinic/interfaces/use-cases/list-clinic-audit-logs.use-case.interface';
 
 type UseCaseMock<TInput, TOutput> = {
   execute: jest.Mock;
@@ -133,11 +139,13 @@ describe('Clinic module (e2e)', () => {
     generalVersion: ClinicConfigurationVersion | null;
     invitation: ClinicInvitation | null;
     hold: ClinicHold | null;
+    auditLogs: ClinicAuditLog[];
   } = {
     clinic: null,
     generalVersion: null,
     invitation: null,
     hold: null,
+    auditLogs: [],
   };
 
   type ListClinicsInputShape = {
@@ -237,6 +245,10 @@ describe('Clinic module (e2e)', () => {
   >();
 
   const createHoldUseCase = createUseCaseMock<ClinicHoldRequestInput, ClinicHold>();
+  const listAuditLogsUseCase = createUseCaseMock<
+    ListClinicAuditLogsUseCaseInput,
+    { data: ClinicAuditLog[]; total: number }
+  >();
 
   beforeAll(async () => {
     const moduleRef: TestingModule = await Test.createTestingModule({
@@ -245,6 +257,7 @@ describe('Clinic module (e2e)', () => {
         ClinicConfigurationController,
         ClinicInvitationController,
         ClinicHoldController,
+        ClinicAuditController,
       ],
       providers: [
         { provide: IListClinicsUseCaseToken, useValue: listClinicsUseCase },
@@ -287,6 +300,7 @@ describe('Clinic module (e2e)', () => {
         { provide: IAcceptClinicInvitationUseCaseToken, useValue: acceptInvitationUseCase },
         { provide: IRevokeClinicInvitationUseCaseToken, useValue: revokeInvitationUseCase },
         { provide: ICreateClinicHoldUseCaseToken, useValue: createHoldUseCase },
+        { provide: IListClinicAuditLogsUseCaseToken, useValue: listAuditLogsUseCase },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -304,6 +318,7 @@ describe('Clinic module (e2e)', () => {
     state.generalVersion = null;
     state.invitation = null;
     state.hold = null;
+    state.auditLogs = [];
 
     [
       createClinicUseCase,
@@ -331,6 +346,7 @@ describe('Clinic module (e2e)', () => {
       acceptInvitationUseCase,
       revokeInvitationUseCase,
       createHoldUseCase,
+      listAuditLogsUseCase,
     ].forEach((mock) => {
       mock.execute.mockReset();
       mock.executeOrThrow.mockReset();
@@ -589,5 +605,33 @@ describe('Clinic module (e2e)', () => {
       new Date(holdPayload.start).getTime(),
     );
     expect(holdResponse.body.status).toBe('pending');
+
+    // 5) Listagem de auditoria
+    const auditLog: ClinicAuditLog = {
+      id: 'log-1',
+      tenantId: FIXTURES.tenant,
+      clinicId: FIXTURES.clinic,
+      event: 'clinic.created',
+      performedBy: currentUser.id,
+      detail: { field: 'value' },
+      createdAt: new Date('2025-10-11T12:00:00.000Z'),
+    };
+    listAuditLogsUseCase.executeOrThrow.mockResolvedValueOnce({ data: [auditLog], total: 1 });
+
+    const auditResponse = await request(app.getHttpServer())
+      .get(`/clinics/${FIXTURES.clinic}/audit-logs`)
+      .set('x-tenant-id', FIXTURES.tenant)
+      .query({ events: 'clinic.created', page: 1, limit: 10 })
+      .expect(200);
+
+    expect(listAuditLogsUseCase.executeOrThrow).toHaveBeenCalledWith({
+      tenantId: FIXTURES.tenant,
+      clinicId: FIXTURES.clinic,
+      events: ['clinic.created'],
+      page: 1,
+      limit: 10,
+    });
+    expect(auditResponse.body.total).toBe(1);
+    expect(auditResponse.body.data[0].id).toBe(auditLog.id);
   });
 });
