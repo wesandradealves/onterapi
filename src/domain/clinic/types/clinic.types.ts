@@ -177,6 +177,35 @@ export interface ClinicServiceTypeDefinition {
   updatedAt: Date;
 }
 
+export interface ClinicServiceSettingsItem {
+  serviceTypeId: string;
+  name: string;
+  slug: string;
+  durationMinutes: number;
+  price: number;
+  currency: ClinicCurrency;
+  isActive: boolean;
+  requiresAnamnesis: boolean;
+  enableOnlineScheduling: boolean;
+  minAdvanceMinutes: number;
+  maxAdvanceMinutes?: number;
+  cancellationPolicyType?: ClinicCancellationPolicyType;
+  cancellationPolicyWindowMinutes?: number;
+  cancellationPolicyPercentage?: number;
+  allowNewPatients: boolean;
+  allowExistingPatients: boolean;
+  minimumAge?: number;
+  maximumAge?: number;
+  allowedTags?: string[];
+  color?: string;
+  instructions?: string;
+  requiredDocuments?: string[];
+}
+
+export interface ClinicServiceSettings {
+  services: ClinicServiceSettingsItem[];
+}
+
 export interface ClinicSplitRule {
   recipient: ClinicSplitRecipient;
   percentage: number;
@@ -258,6 +287,62 @@ export interface ClinicIntegrationSettings {
   externalAnalyticsIds?: string[];
 }
 
+export interface ClinicIntegrationWhatsAppTemplateConfig {
+  name: string;
+  status: string;
+  category?: string;
+  lastUpdatedAt?: string;
+}
+
+export interface ClinicIntegrationWhatsAppQuietHoursConfig {
+  start: string;
+  end: string;
+  timezone?: string;
+}
+
+export interface ClinicIntegrationWhatsAppConfig {
+  enabled: boolean;
+  provider?: 'evolution' | 'meta';
+  businessNumber?: string;
+  instanceStatus?: string;
+  qrCodeUrl?: string;
+  templates?: ClinicIntegrationWhatsAppTemplateConfig[];
+  quietHours?: ClinicIntegrationWhatsAppQuietHoursConfig;
+  webhookUrl?: string;
+}
+
+export interface ClinicIntegrationGoogleCalendarConfig {
+  enabled: boolean;
+  syncMode: 'one_way' | 'two_way';
+  conflictPolicy: 'onterapi_wins' | 'google_wins' | 'ask_user';
+  requireValidationForExternalEvents: boolean;
+  defaultCalendarId?: string;
+  hidePatientName?: boolean;
+  prefix?: string;
+}
+
+export interface ClinicIntegrationEmailConfig {
+  enabled: boolean;
+  provider?: string;
+  fromName?: string;
+  fromEmail?: string;
+  replyTo?: string;
+  tracking?: {
+    open: boolean;
+    click: boolean;
+    bounce: boolean;
+  };
+  templates?: string[];
+}
+
+export interface ClinicIntegrationSettingsConfig {
+  whatsapp?: ClinicIntegrationWhatsAppConfig;
+  googleCalendar?: ClinicIntegrationGoogleCalendarConfig;
+  email?: ClinicIntegrationEmailConfig;
+  webhooks?: { event: string; url: string; active: boolean }[];
+  metadata?: Record<string, unknown>;
+}
+
 export interface ClinicNotificationTemplateVariable {
   name: string;
   required: boolean;
@@ -300,6 +385,52 @@ export interface ClinicNotificationSettings {
   channelOverrides?: Record<string, ClinicNotificationChannel[]>;
 }
 
+export interface ClinicNotificationChannelConfig {
+  type: string;
+  enabled: boolean;
+  defaultEnabled: boolean;
+  quietHours?: {
+    start: string;
+    end: string;
+    timezone?: string;
+  };
+}
+
+export interface ClinicNotificationTemplateVariableConfig {
+  name: string;
+  required: boolean;
+}
+
+export interface ClinicNotificationTemplateConfig {
+  id: string;
+  event: string;
+  channel: string;
+  version: string;
+  active: boolean;
+  language?: string;
+  abGroup?: string;
+  variables: ClinicNotificationTemplateVariableConfig[];
+}
+
+export interface ClinicNotificationRuleConfig {
+  event: string;
+  channels: string[];
+  enabled: boolean;
+}
+
+export interface ClinicNotificationSettingsConfig {
+  channels: ClinicNotificationChannelConfig[];
+  templates: ClinicNotificationTemplateConfig[];
+  rules: ClinicNotificationRuleConfig[];
+  quietHours?: {
+    start: string;
+    end: string;
+    timezone?: string;
+  };
+  events?: string[];
+  metadata?: Record<string, unknown>;
+}
+
 export interface ClinicBrandingSettings {
   logoUrl?: string;
   lightLogoUrl?: string;
@@ -310,6 +441,40 @@ export interface ClinicBrandingSettings {
   fontFamily?: string;
   customCss?: string;
   previewUrl?: string;
+}
+
+export interface ClinicBrandingPaletteConfig {
+  primary?: string;
+  secondary?: string;
+  accent?: string;
+  background?: string;
+  surface?: string;
+  text?: string;
+}
+
+export interface ClinicBrandingTypographyConfig {
+  primaryFont?: string;
+  secondaryFont?: string;
+  headingWeight?: number;
+  bodyWeight?: number;
+}
+
+export interface ClinicBrandingPreviewConfig {
+  mode: string;
+  generatedAt?: string;
+  previewUrl?: string;
+}
+
+export interface ClinicBrandingSettingsConfig {
+  logoUrl?: string;
+  darkLogoUrl?: string;
+  palette?: ClinicBrandingPaletteConfig;
+  typography?: ClinicBrandingTypographyConfig;
+  customCss?: string;
+  applyMode: string;
+  preview?: ClinicBrandingPreviewConfig;
+  versionLabel?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ClinicHoldSettings {
@@ -512,6 +677,13 @@ export interface UpdateClinicScheduleSettingsInput {
   scheduleSettings: ClinicScheduleSettings;
 }
 
+export interface UpdateClinicServiceSettingsInput {
+  clinicId: string;
+  tenantId: string;
+  requestedBy: string;
+  serviceSettings: ClinicServiceSettings;
+}
+
 export interface UpsertClinicServiceTypeInput {
   clinicId: string;
   tenantId: string;
@@ -539,21 +711,21 @@ export interface UpdateClinicIntegrationSettingsInput {
   clinicId: string;
   tenantId: string;
   requestedBy: string;
-  integrationSettings: ClinicIntegrationSettings;
+  integrationSettings: ClinicIntegrationSettingsConfig;
 }
 
 export interface UpdateClinicNotificationSettingsInput {
   clinicId: string;
   tenantId: string;
   requestedBy: string;
-  notificationSettings: ClinicNotificationSettings;
+  notificationSettings: ClinicNotificationSettingsConfig;
 }
 
 export interface UpdateClinicBrandingSettingsInput {
   clinicId: string;
   tenantId: string;
   requestedBy: string;
-  brandingSettings: ClinicBrandingSettings;
+  brandingSettings: ClinicBrandingSettingsConfig;
 }
 
 export interface UpdateClinicHoldSettingsInput {

@@ -24,6 +24,12 @@ import { ClinicConfigurationVersionResponseDto } from '../dtos/clinic-configurat
 import { ClinicGeneralSettingsResponseDto } from '../dtos/clinic-general-settings-response.dto';
 import { ClinicHoldSettingsResponseDto } from '../dtos/clinic-hold-settings-response.dto';
 import { ClinicTeamSettingsResponseDto } from '../dtos/clinic-team-settings-response.dto';
+import { ClinicScheduleSettingsResponseDto } from '../dtos/clinic-schedule-settings-response.dto';
+import { ClinicPaymentSettingsResponseDto } from '../dtos/clinic-payment-settings-response.dto';
+import { ClinicServiceSettingsResponseDto } from '../dtos/clinic-service-settings-response.dto';
+import { ClinicIntegrationSettingsResponseDto } from '../dtos/clinic-integration-settings-response.dto';
+import { ClinicNotificationSettingsResponseDto } from '../dtos/clinic-notification-settings-response.dto';
+import { ClinicBrandingSettingsResponseDto } from '../dtos/clinic-branding-settings-response.dto';
 import { ClinicSummaryDto } from '../dtos/clinic-summary.dto';
 import {
   updateClinicGeneralSettingsSchema,
@@ -34,9 +40,39 @@ import {
   UpdateClinicHoldSettingsSchema,
 } from '../schemas/update-clinic-hold-settings.schema';
 import {
+  updateClinicScheduleSettingsSchema,
+  UpdateClinicScheduleSettingsSchema,
+} from '../schemas/update-clinic-schedule-settings.schema';
+import {
+  updateClinicServiceSettingsSchema,
+  UpdateClinicServiceSettingsSchema,
+} from '../schemas/update-clinic-service-settings.schema';
+import {
+  updateClinicPaymentSettingsSchema,
+  UpdateClinicPaymentSettingsSchema,
+} from '../schemas/update-clinic-payment-settings.schema';
+import {
+  updateClinicIntegrationSettingsSchema,
+  UpdateClinicIntegrationSettingsSchema,
+} from '../schemas/update-clinic-integration-settings.schema';
+import {
+  updateClinicNotificationSettingsSchema,
+  UpdateClinicNotificationSettingsSchema,
+} from '../schemas/update-clinic-notification-settings.schema';
+import {
+  updateClinicBrandingSettingsSchema,
+  UpdateClinicBrandingSettingsSchema,
+} from '../schemas/update-clinic-branding-settings.schema';
+import {
   ClinicRequestContext,
+  toUpdateClinicBrandingSettingsInput,
   toUpdateClinicGeneralSettingsInput,
   toUpdateClinicHoldSettingsInput,
+  toUpdateClinicIntegrationSettingsInput,
+  toUpdateClinicNotificationSettingsInput,
+  toUpdateClinicPaymentSettingsInput,
+  toUpdateClinicScheduleSettingsInput,
+  toUpdateClinicServiceSettingsInput,
 } from '../mappers/clinic-request.mapper';
 import {
   type IUpdateClinicGeneralSettingsUseCase,
@@ -46,6 +82,30 @@ import {
   type IUpdateClinicHoldSettingsUseCase,
   IUpdateClinicHoldSettingsUseCase as IUpdateClinicHoldSettingsUseCaseToken,
 } from '../../../../domain/clinic/interfaces/use-cases/update-clinic-hold-settings.use-case.interface';
+import {
+  type IUpdateClinicServiceSettingsUseCase,
+  IUpdateClinicServiceSettingsUseCase as IUpdateClinicServiceSettingsUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/update-clinic-service-settings.use-case.interface';
+import {
+  type IUpdateClinicPaymentSettingsUseCase,
+  IUpdateClinicPaymentSettingsUseCase as IUpdateClinicPaymentSettingsUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/update-clinic-payment-settings.use-case.interface';
+import {
+  type IUpdateClinicIntegrationSettingsUseCase,
+  IUpdateClinicIntegrationSettingsUseCase as IUpdateClinicIntegrationSettingsUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/update-clinic-integration-settings.use-case.interface';
+import {
+  type IUpdateClinicNotificationSettingsUseCase,
+  IUpdateClinicNotificationSettingsUseCase as IUpdateClinicNotificationSettingsUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/update-clinic-notification-settings.use-case.interface';
+import {
+  type IUpdateClinicBrandingSettingsUseCase,
+  IUpdateClinicBrandingSettingsUseCase as IUpdateClinicBrandingSettingsUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/update-clinic-branding-settings.use-case.interface';
+import {
+  type IUpdateClinicScheduleSettingsUseCase,
+  IUpdateClinicScheduleSettingsUseCase as IUpdateClinicScheduleSettingsUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/update-clinic-schedule-settings.use-case.interface';
 import {
   type IGetClinicGeneralSettingsUseCase,
   IGetClinicGeneralSettingsUseCase as IGetClinicGeneralSettingsUseCaseToken,
@@ -58,6 +118,30 @@ import {
   type IGetClinicTeamSettingsUseCase,
   IGetClinicTeamSettingsUseCase as IGetClinicTeamSettingsUseCaseToken,
 } from '../../../../domain/clinic/interfaces/use-cases/get-clinic-team-settings.use-case.interface';
+import {
+  type IGetClinicScheduleSettingsUseCase,
+  IGetClinicScheduleSettingsUseCase as IGetClinicScheduleSettingsUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/get-clinic-schedule-settings.use-case.interface';
+import {
+  type IGetClinicServiceSettingsUseCase,
+  IGetClinicServiceSettingsUseCase as IGetClinicServiceSettingsUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/get-clinic-service-settings.use-case.interface';
+import {
+  type IGetClinicPaymentSettingsUseCase,
+  IGetClinicPaymentSettingsUseCase as IGetClinicPaymentSettingsUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/get-clinic-payment-settings.use-case.interface';
+import {
+  type IGetClinicIntegrationSettingsUseCase,
+  IGetClinicIntegrationSettingsUseCase as IGetClinicIntegrationSettingsUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/get-clinic-integration-settings.use-case.interface';
+import {
+  type IGetClinicNotificationSettingsUseCase,
+  IGetClinicNotificationSettingsUseCase as IGetClinicNotificationSettingsUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/get-clinic-notification-settings.use-case.interface';
+import {
+  type IGetClinicBrandingSettingsUseCase,
+  IGetClinicBrandingSettingsUseCase as IGetClinicBrandingSettingsUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/get-clinic-branding-settings.use-case.interface';
 
 @ApiTags('Clinics')
 @ApiBearerAuth()
@@ -69,10 +153,34 @@ export class ClinicConfigurationController {
     private readonly updateClinicGeneralSettingsUseCase: IUpdateClinicGeneralSettingsUseCase,
     @Inject(IUpdateClinicHoldSettingsUseCaseToken)
     private readonly updateClinicHoldSettingsUseCase: IUpdateClinicHoldSettingsUseCase,
+    @Inject(IUpdateClinicServiceSettingsUseCaseToken)
+    private readonly updateClinicServiceSettingsUseCase: IUpdateClinicServiceSettingsUseCase,
+    @Inject(IUpdateClinicPaymentSettingsUseCaseToken)
+    private readonly updateClinicPaymentSettingsUseCase: IUpdateClinicPaymentSettingsUseCase,
+    @Inject(IUpdateClinicIntegrationSettingsUseCaseToken)
+    private readonly updateClinicIntegrationSettingsUseCase: IUpdateClinicIntegrationSettingsUseCase,
+    @Inject(IUpdateClinicNotificationSettingsUseCaseToken)
+    private readonly updateClinicNotificationSettingsUseCase: IUpdateClinicNotificationSettingsUseCase,
+    @Inject(IUpdateClinicBrandingSettingsUseCaseToken)
+    private readonly updateClinicBrandingSettingsUseCase: IUpdateClinicBrandingSettingsUseCase,
+    @Inject(IUpdateClinicScheduleSettingsUseCaseToken)
+    private readonly updateClinicScheduleSettingsUseCase: IUpdateClinicScheduleSettingsUseCase,
     @Inject(IGetClinicGeneralSettingsUseCaseToken)
     private readonly getClinicGeneralSettingsUseCase: IGetClinicGeneralSettingsUseCase,
     @Inject(IGetClinicTeamSettingsUseCaseToken)
     private readonly getClinicTeamSettingsUseCase: IGetClinicTeamSettingsUseCase,
+    @Inject(IGetClinicScheduleSettingsUseCaseToken)
+    private readonly getClinicScheduleSettingsUseCase: IGetClinicScheduleSettingsUseCase,
+    @Inject(IGetClinicServiceSettingsUseCaseToken)
+    private readonly getClinicServiceSettingsUseCase: IGetClinicServiceSettingsUseCase,
+    @Inject(IGetClinicPaymentSettingsUseCaseToken)
+    private readonly getClinicPaymentSettingsUseCase: IGetClinicPaymentSettingsUseCase,
+    @Inject(IGetClinicIntegrationSettingsUseCaseToken)
+    private readonly getClinicIntegrationSettingsUseCase: IGetClinicIntegrationSettingsUseCase,
+    @Inject(IGetClinicNotificationSettingsUseCaseToken)
+    private readonly getClinicNotificationSettingsUseCase: IGetClinicNotificationSettingsUseCase,
+    @Inject(IGetClinicBrandingSettingsUseCaseToken)
+    private readonly getClinicBrandingSettingsUseCase: IGetClinicBrandingSettingsUseCase,
     @Inject(IGetClinicUseCaseToken)
     private readonly getClinicUseCase: IGetClinicUseCase,
   ) {}
@@ -95,6 +203,111 @@ export class ClinicConfigurationController {
     });
 
     return ClinicPresenter.generalSettings(version);
+  }
+
+  @Patch('services')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Atualizar configurações de serviços da clínica' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiResponse({ status: 200, type: ClinicServiceSettingsResponseDto })
+  @ZodApiBody({ schema: updateClinicServiceSettingsSchema })
+  async updateServiceSettings(
+    @Param('clinicId') clinicId: string,
+    @Body(new ZodValidationPipe(updateClinicServiceSettingsSchema))
+    body: UpdateClinicServiceSettingsSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicServiceSettingsResponseDto> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
+
+    const input = toUpdateClinicServiceSettingsInput(clinicId, body, context);
+    const version = await this.updateClinicServiceSettingsUseCase.executeOrThrow(input);
+
+    return ClinicPresenter.serviceSettings(version);
+  }
+
+  @Patch('payments')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Atualizar configurações financeiras da clínica' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiResponse({ status: 200, type: ClinicPaymentSettingsResponseDto })
+  @ZodApiBody({ schema: updateClinicPaymentSettingsSchema })
+  async updatePaymentSettings(
+    @Param('clinicId') clinicId: string,
+    @Body(new ZodValidationPipe(updateClinicPaymentSettingsSchema))
+    body: UpdateClinicPaymentSettingsSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicPaymentSettingsResponseDto> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
+
+    const input = toUpdateClinicPaymentSettingsInput(clinicId, body, context);
+    const version = await this.updateClinicPaymentSettingsUseCase.executeOrThrow(input);
+
+    return ClinicPresenter.paymentSettings(version);
+  }
+
+  @Patch('integrations')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Atualizar configurações de integrações da clínica' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiResponse({ status: 200, type: ClinicIntegrationSettingsResponseDto })
+  @ZodApiBody({ schema: updateClinicIntegrationSettingsSchema })
+  async updateIntegrationSettings(
+    @Param('clinicId') clinicId: string,
+    @Body(new ZodValidationPipe(updateClinicIntegrationSettingsSchema))
+    body: UpdateClinicIntegrationSettingsSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicIntegrationSettingsResponseDto> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
+
+    const input = toUpdateClinicIntegrationSettingsInput(clinicId, body, context);
+    const version = await this.updateClinicIntegrationSettingsUseCase.executeOrThrow(input);
+
+    return ClinicPresenter.integrationSettings(version);
+  }
+
+  @Patch('notifications')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Atualizar configurações de notificações da clínica' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiResponse({ status: 200, type: ClinicNotificationSettingsResponseDto })
+  @ZodApiBody({ schema: updateClinicNotificationSettingsSchema })
+  async updateNotificationSettings(
+    @Param('clinicId') clinicId: string,
+    @Body(new ZodValidationPipe(updateClinicNotificationSettingsSchema))
+    body: UpdateClinicNotificationSettingsSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicNotificationSettingsResponseDto> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
+
+    const input = toUpdateClinicNotificationSettingsInput(clinicId, body, context);
+    const version = await this.updateClinicNotificationSettingsUseCase.executeOrThrow(input);
+
+    return ClinicPresenter.notificationSettings(version);
+  }
+
+  @Patch('branding')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Atualizar identidade visual da clínica' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiResponse({ status: 200, type: ClinicBrandingSettingsResponseDto })
+  @ZodApiBody({ schema: updateClinicBrandingSettingsSchema })
+  async updateBrandingSettings(
+    @Param('clinicId') clinicId: string,
+    @Body(new ZodValidationPipe(updateClinicBrandingSettingsSchema))
+    body: UpdateClinicBrandingSettingsSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicBrandingSettingsResponseDto> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
+
+    const input = toUpdateClinicBrandingSettingsInput(clinicId, body, context);
+    const version = await this.updateClinicBrandingSettingsUseCase.executeOrThrow(input);
+
+    return ClinicPresenter.brandingSettings(version);
   }
 
   @Get('hold')
@@ -137,6 +350,126 @@ export class ClinicConfigurationController {
     return ClinicPresenter.teamSettings(version);
   }
 
+  @Get('schedule')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Obter configurações de agenda da clínica' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiResponse({ status: 200, type: ClinicScheduleSettingsResponseDto })
+  async getScheduleSettings(
+    @Param('clinicId') clinicId: string,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicScheduleSettingsResponseDto> {
+    const context = this.resolveContext(currentUser, tenantHeader);
+
+    const version = await this.getClinicScheduleSettingsUseCase.executeOrThrow({
+      clinicId,
+      tenantId: context.tenantId,
+    });
+
+    return ClinicPresenter.scheduleSettings(version);
+  }
+
+  @Get('services')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Obter configurações de serviços da clínica' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiResponse({ status: 200, type: ClinicServiceSettingsResponseDto })
+  async getServiceSettings(
+    @Param('clinicId') clinicId: string,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicServiceSettingsResponseDto> {
+    const context = this.resolveContext(currentUser, tenantHeader);
+
+    const version = await this.getClinicServiceSettingsUseCase.executeOrThrow({
+      clinicId,
+      tenantId: context.tenantId,
+    });
+
+    return ClinicPresenter.serviceSettings(version);
+  }
+
+  @Get('payments')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Obter configurações financeiras da clínica' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiResponse({ status: 200, type: ClinicPaymentSettingsResponseDto })
+  async getPaymentSettings(
+    @Param('clinicId') clinicId: string,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicPaymentSettingsResponseDto> {
+    const context = this.resolveContext(currentUser, tenantHeader);
+
+    const version = await this.getClinicPaymentSettingsUseCase.executeOrThrow({
+      clinicId,
+      tenantId: context.tenantId,
+    });
+
+    return ClinicPresenter.paymentSettings(version);
+  }
+
+  @Get('integrations')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Obter configurações de integrações da clínica' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiResponse({ status: 200, type: ClinicIntegrationSettingsResponseDto })
+  async getIntegrationSettings(
+    @Param('clinicId') clinicId: string,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicIntegrationSettingsResponseDto> {
+    const context = this.resolveContext(currentUser, tenantHeader);
+
+    const version = await this.getClinicIntegrationSettingsUseCase.executeOrThrow({
+      clinicId,
+      tenantId: context.tenantId,
+    });
+
+    return ClinicPresenter.integrationSettings(version);
+  }
+
+  @Get('notifications')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Obter configurações de notificações da clínica' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiResponse({ status: 200, type: ClinicNotificationSettingsResponseDto })
+  async getNotificationSettings(
+    @Param('clinicId') clinicId: string,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicNotificationSettingsResponseDto> {
+    const context = this.resolveContext(currentUser, tenantHeader);
+
+    const version = await this.getClinicNotificationSettingsUseCase.executeOrThrow({
+      clinicId,
+      tenantId: context.tenantId,
+    });
+
+    return ClinicPresenter.notificationSettings(version);
+  }
+
+  @Get('branding')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Obter configurações de identidade visual da clínica' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiResponse({ status: 200, type: ClinicBrandingSettingsResponseDto })
+  async getBrandingSettings(
+    @Param('clinicId') clinicId: string,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicBrandingSettingsResponseDto> {
+    const context = this.resolveContext(currentUser, tenantHeader);
+
+    const version = await this.getClinicBrandingSettingsUseCase.executeOrThrow({
+      clinicId,
+      tenantId: context.tenantId,
+    });
+
+    return ClinicPresenter.brandingSettings(version);
+  }
+
   @Patch('general')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
   @ApiOperation({ summary: 'Atualizar configurações gerais da clínica' })
@@ -177,6 +510,27 @@ export class ClinicConfigurationController {
     const clinic = await this.updateClinicHoldSettingsUseCase.executeOrThrow(input);
 
     return ClinicPresenter.summary(clinic);
+  }
+
+  @Patch('schedule')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Atualizar configurações de agenda da clínica' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiResponse({ status: 200, type: ClinicConfigurationVersionResponseDto })
+  @ZodApiBody({ schema: updateClinicScheduleSettingsSchema })
+  async updateScheduleSettings(
+    @Param('clinicId') clinicId: string,
+    @Body(new ZodValidationPipe(updateClinicScheduleSettingsSchema))
+    body: UpdateClinicScheduleSettingsSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicConfigurationVersionResponseDto> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
+
+    const input = toUpdateClinicScheduleSettingsInput(clinicId, body, context);
+    const version = await this.updateClinicScheduleSettingsUseCase.executeOrThrow(input);
+
+    return ClinicPresenter.configuration(version);
   }
 
   private resolveContext(currentUser: ICurrentUser, tenantId?: string): ClinicRequestContext {
