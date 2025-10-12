@@ -82,4 +82,24 @@ export class ClinicErrorFactory {
   static invalidClinicData(message: string): BadRequestException {
     return new BadRequestException(message);
   }
+
+  static paymentConfigurationNotFound(message: string): NotFoundException {
+    return new NotFoundException(message);
+  }
+
+  static paymentCredentialsNotFound(message: string): NotFoundException {
+    return new NotFoundException(message);
+  }
+
+  static paymentCredentialsInvalid(message: string): BadRequestException {
+    return new BadRequestException(message);
+  }
+
+  static paymentVerificationFailed(message: string): BadRequestException {
+    return new BadRequestException(message);
+  }
+
+  static paymentProviderNotSupported(message: string): BadRequestException {
+    return new BadRequestException(message);
+  }
 }

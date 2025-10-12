@@ -94,11 +94,21 @@ export class ClinicHoldRepository implements IClinicHoldRepository {
         ...existingConfirmation,
         appointmentId: input.appointmentId ?? existingConfirmation.appointmentId,
         idempotencyKey: input.idempotencyKey,
+        paymentStatus: input.paymentStatus ?? existingConfirmation.paymentStatus,
+        gatewayStatus: input.gatewayStatus ?? existingConfirmation.gatewayStatus,
       };
+      if (input.paymentStatus) {
+        metadata.paymentStatus = input.paymentStatus;
+      }
+      if (input.gatewayStatus) {
+        metadata.gatewayStatus = input.gatewayStatus;
+      }
     } else {
       entity.confirmedAt = null;
       entity.confirmedBy = null;
       metadata.expiredAt = input.confirmedAt;
+      delete metadata.paymentStatus;
+      delete metadata.gatewayStatus;
     }
 
     entity.metadata = metadata;
@@ -169,3 +179,5 @@ export class ClinicHoldRepository implements IClinicHoldRepository {
     return entities.map(ClinicMapper.toHold);
   }
 }
+
+

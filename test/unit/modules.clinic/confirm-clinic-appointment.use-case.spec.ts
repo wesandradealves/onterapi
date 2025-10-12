@@ -5,11 +5,14 @@ import { IClinicRepository } from '../../../src/domain/clinic/interfaces/reposit
 import { IClinicHoldRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-hold.repository.interface';
 import { IClinicServiceTypeRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-service-type.repository.interface';
 import { IClinicAppointmentRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-appointment.repository.interface';
+import { IClinicConfigurationRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
+import { IClinicPaymentCredentialsService } from '../../../src/domain/clinic/interfaces/services/clinic-payment-credentials.service.interface';
+import { IClinicPaymentGatewayService } from '../../../src/domain/clinic/interfaces/services/clinic-payment-gateway.service.interface';
 import { ClinicAuditService } from '../../../src/infrastructure/clinic/services/clinic-audit.service';
 import {
+  Clinic,
   ClinicAppointment,
   ClinicAppointmentConfirmationResult,
-  Clinic,
   ClinicHold,
   ClinicServiceTypeDefinition,
 } from '../../../src/domain/clinic/types/clinic.types';
@@ -19,7 +22,7 @@ type Mocked<T> = jest.Mocked<T>;
 const createClinic = (): Clinic => ({
   id: 'clinic-1',
   tenantId: 'tenant-1',
-  name: 'Clínica Alpha',
+  name: 'Clinica Alpha',
   slug: 'clinica-alpha',
   status: 'active',
   primaryOwnerId: 'owner-1',
@@ -57,7 +60,7 @@ const createHold = (): ClinicHold => ({
 const createServiceType = (): ClinicServiceTypeDefinition => ({
   id: 'service-1',
   clinicId: 'clinic-1',
-  name: 'Sessão Individual',
+  name: 'Sessao Individual',
   slug: 'sessao-individual',
   durationMinutes: 60,
   price: 200,
@@ -96,6 +99,9 @@ describe('ConfirmClinicAppointmentUseCase', () => {
   let clinicHoldRepository: Mocked<IClinicHoldRepository>;
   let clinicServiceTypeRepository: Mocked<IClinicServiceTypeRepository>;
   let clinicAppointmentRepository: Mocked<IClinicAppointmentRepository>;
+  let clinicConfigurationRepository: Mocked<IClinicConfigurationRepository>;
+  let clinicPaymentCredentialsService: Mocked<IClinicPaymentCredentialsService>;
+  let clinicPaymentGatewayService: Mocked<IClinicPaymentGatewayService>;
   let auditService: ClinicAuditService;
   let useCase: ConfirmClinicAppointmentUseCase;
 
@@ -121,6 +127,18 @@ describe('ConfirmClinicAppointmentUseCase', () => {
       create: jest.fn(),
     } as unknown as Mocked<IClinicAppointmentRepository>;
 
+    clinicConfigurationRepository = {
+      findLatestAppliedVersion: jest.fn(),
+    } as unknown as Mocked<IClinicConfigurationRepository>;
+
+    clinicPaymentCredentialsService = {
+      resolveCredentials: jest.fn(),
+    } as unknown as Mocked<IClinicPaymentCredentialsService>;
+
+    clinicPaymentGatewayService = {
+      verifyPayment: jest.fn(),
+    } as unknown as Mocked<IClinicPaymentGatewayService>;
+
     auditService = {
       register: jest.fn().mockResolvedValue(undefined),
     } as unknown as ClinicAuditService;
@@ -130,6 +148,9 @@ describe('ConfirmClinicAppointmentUseCase', () => {
       clinicHoldRepository,
       clinicServiceTypeRepository,
       clinicAppointmentRepository,
+      clinicConfigurationRepository,
+      clinicPaymentCredentialsService,
+      clinicPaymentGatewayService,
       auditService,
     );
   });
@@ -141,12 +162,54 @@ describe('ConfirmClinicAppointmentUseCase', () => {
     const appointment = createAppointment();
     const confirmedAt = appointment.confirmedAt;
 
+    const paymentVersion = {
+      id: 'version-1',
+      clinicId: clinic.id,
+      tenantId: clinic.tenantId,
+      section: 'payments' as const,
+      version: 1,
+      payload: {
+        paymentSettings: {
+          provider: 'asaas',
+          credentialsId: 'cred-1',
+          sandboxMode: false,
+          splitRules: [],
+          roundingStrategy: 'half_even',
+          antifraud: { enabled: false },
+          inadimplencyRule: { gracePeriodDays: 0, actions: [] },
+          refundPolicy: {
+            type: 'manual',
+            processingTimeHours: 0,
+            allowPartialRefund: false,
+          },
+          cancellationPolicies: [],
+        },
+      },
+      createdBy: 'user-config',
+      createdAt: new Date('2098-01-01T00:00:00Z'),
+      appliedAt: new Date('2098-01-02T00:00:00Z'),
+      notes: null,
+      autoApply: true,
+    };
+
     clinicRepository.findByTenant.mockResolvedValue(clinic);
     clinicHoldRepository.findById.mockResolvedValue(hold);
     clinicServiceTypeRepository.findById.mockResolvedValue(serviceType);
     clinicHoldRepository.findActiveOverlapByProfessional.mockResolvedValue([]);
     clinicAppointmentRepository.findActiveOverlap.mockResolvedValue([]);
     clinicAppointmentRepository.findByHoldId.mockResolvedValue(null);
+    clinicConfigurationRepository.findLatestAppliedVersion.mockResolvedValue(paymentVersion as never);
+    clinicPaymentCredentialsService.resolveCredentials.mockResolvedValue({
+      provider: 'asaas',
+      productionApiKey: 'api-key',
+      sandboxApiKey: 'sandbox-key',
+    });
+    clinicPaymentGatewayService.verifyPayment.mockResolvedValue({
+      status: 'approved',
+      providerStatus: 'RECEIVED',
+      paidAt: confirmedAt,
+      metadata: { provider: 'asaas' },
+    });
     clinicAppointmentRepository.create.mockResolvedValue(appointment);
     clinicHoldRepository.confirmHold.mockResolvedValue({
       ...hold,
@@ -154,8 +217,15 @@ describe('ConfirmClinicAppointmentUseCase', () => {
       confirmedAt,
       confirmedBy: 'user-hold',
       metadata: {
-        confirmation: { appointmentId: appointment.id, idempotencyKey: 'idem-123' },
+        confirmation: {
+          appointmentId: appointment.id,
+          idempotencyKey: 'idem-123',
+          paymentStatus: 'approved',
+          gatewayStatus: 'RECEIVED',
+        },
         paymentTransactionId: 'trx-123',
+        paymentStatus: 'approved',
+        gatewayStatus: 'RECEIVED',
       },
     });
 
@@ -170,6 +240,26 @@ describe('ConfirmClinicAppointmentUseCase', () => {
 
     const result = await useCase.executeOrThrow(input);
 
+    expect(clinicConfigurationRepository.findLatestAppliedVersion).toHaveBeenCalledWith(
+      clinic.id,
+      'payments',
+    );
+    expect(clinicPaymentCredentialsService.resolveCredentials).toHaveBeenCalledWith({
+      credentialsId: 'cred-1',
+      clinicId: clinic.id,
+      tenantId: clinic.tenantId,
+    });
+    expect(clinicPaymentGatewayService.verifyPayment).toHaveBeenCalledWith({
+      provider: 'asaas',
+      credentials: {
+        provider: 'asaas',
+        productionApiKey: 'api-key',
+        sandboxApiKey: 'sandbox-key',
+      },
+      sandboxMode: false,
+      paymentId: input.paymentTransactionId,
+    });
+
     expect(clinicAppointmentRepository.create).toHaveBeenCalledWith({
       clinicId: hold.clinicId,
       tenantId: hold.tenantId,
@@ -182,7 +272,11 @@ describe('ConfirmClinicAppointmentUseCase', () => {
       paymentTransactionId: input.paymentTransactionId,
       paymentStatus: 'approved',
       confirmedAt: expect.any(Date),
-      metadata: { confirmationIdempotencyKey: input.idempotencyKey },
+      metadata: {
+        confirmationIdempotencyKey: input.idempotencyKey,
+        gatewayStatus: 'RECEIVED',
+        sandboxMode: false,
+      },
     });
 
     expect(clinicHoldRepository.confirmHold).toHaveBeenCalledWith({
@@ -190,6 +284,8 @@ describe('ConfirmClinicAppointmentUseCase', () => {
       confirmedAt: expect.any(Date),
       status: 'confirmed',
       appointmentId: appointment.id,
+      paymentStatus: 'approved',
+      gatewayStatus: 'RECEIVED',
     });
 
     expect(result).toEqual<ClinicAppointmentConfirmationResult>({
@@ -210,6 +306,8 @@ describe('ConfirmClinicAppointmentUseCase', () => {
         holdId: hold.id,
         appointmentId: appointment.id,
         paymentTransactionId: input.paymentTransactionId,
+        paymentStatus: 'approved',
+        gatewayStatus: 'RECEIVED',
       },
     });
   });
@@ -241,6 +339,9 @@ describe('ConfirmClinicAppointmentUseCase', () => {
     expect(clinicAppointmentRepository.create).not.toHaveBeenCalled();
     expect(clinicHoldRepository.confirmHold).not.toHaveBeenCalled();
     expect(result.appointmentId).toBe(appointment.id);
+    expect(clinicConfigurationRepository.findLatestAppliedVersion).not.toHaveBeenCalled();
+    expect(clinicPaymentCredentialsService.resolveCredentials).not.toHaveBeenCalled();
+    expect(clinicPaymentGatewayService.verifyPayment).not.toHaveBeenCalled();
   });
 
   it('should expire hold and throw when TTL already elapsed', async () => {
@@ -267,5 +368,8 @@ describe('ConfirmClinicAppointmentUseCase', () => {
     expect(clinicHoldRepository.expireHold).toHaveBeenCalledWith(hold.id, expect.any(Date));
     expect(clinicAppointmentRepository.create).not.toHaveBeenCalled();
     expect(clinicHoldRepository.confirmHold).not.toHaveBeenCalled();
+    expect(clinicConfigurationRepository.findLatestAppliedVersion).not.toHaveBeenCalled();
+    expect(clinicPaymentCredentialsService.resolveCredentials).not.toHaveBeenCalled();
+    expect(clinicPaymentGatewayService.verifyPayment).not.toHaveBeenCalled();
   });
 });

@@ -18,6 +18,8 @@ export interface IClinicHoldRepository {
       confirmedAt: Date;
       status: 'confirmed' | 'expired';
       appointmentId?: string;
+      paymentStatus?: string;
+      gatewayStatus?: string;
     },
   ): Promise<ClinicHold>;
   cancelHold(params: {

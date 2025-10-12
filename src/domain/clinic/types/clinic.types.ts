@@ -246,6 +246,12 @@ export interface ClinicPaymentSettings {
   bankAccountId?: string;
 }
 
+export interface ClinicPaymentCredentials {
+  provider: 'asaas';
+  productionApiKey: string;
+  sandboxApiKey?: string;
+}
+
 export interface ClinicWhatsappSettings {
   provider: 'evolution' | 'meta';
   instanceId: string;

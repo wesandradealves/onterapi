@@ -31,6 +31,8 @@ import { ClinicInvitationRepository } from '../../infrastructure/clinic/reposito
 import { ClinicMemberRepository } from '../../infrastructure/clinic/repositories/clinic-member.repository';
 import { ClinicAuditLogRepository } from '../../infrastructure/clinic/repositories/clinic-audit-log.repository';
 import { ClinicAuditService } from '../../infrastructure/clinic/services/clinic-audit.service';
+import { ClinicPaymentCredentialsService } from '../../infrastructure/clinic/services/clinic-payment-credentials.service';
+import { ClinicAsaasGatewayService } from '../../infrastructure/clinic/services/clinic-asaas-gateway.service';
 import { UpdateClinicGeneralSettingsUseCase } from './use-cases/update-clinic-general-settings.use-case';
 import { UpdateClinicHoldSettingsUseCase } from './use-cases/update-clinic-hold-settings.use-case';
 import { UpdateClinicServiceSettingsUseCase } from './use-cases/update-clinic-service-settings.use-case';
@@ -73,6 +75,8 @@ import { IClinicMetricsRepository as IClinicMetricsRepositoryToken } from '../..
 import { IClinicInvitationRepository as IClinicInvitationRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-invitation.repository.interface';
 import { IClinicMemberRepository as IClinicMemberRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-member.repository.interface';
 import { IClinicAuditLogRepository as IClinicAuditLogRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-audit-log.repository.interface';
+import { IClinicPaymentCredentialsService as IClinicPaymentCredentialsServiceToken } from '../../domain/clinic/interfaces/services/clinic-payment-credentials.service.interface';
+import { IClinicPaymentGatewayService as IClinicPaymentGatewayServiceToken } from '../../domain/clinic/interfaces/services/clinic-payment-gateway.service.interface';
 import { IUpdateClinicGeneralSettingsUseCase as IUpdateClinicGeneralSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/update-clinic-general-settings.use-case.interface';
 import { IUpdateClinicHoldSettingsUseCase as IUpdateClinicHoldSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/update-clinic-hold-settings.use-case.interface';
 import { IUpdateClinicServiceSettingsUseCase as IUpdateClinicServiceSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/update-clinic-service-settings.use-case.interface';
@@ -143,6 +147,17 @@ const repositoryProviders: Provider[] = [
   {
     provide: IClinicAuditLogRepositoryToken,
     useClass: ClinicAuditLogRepository,
+  },
+];
+
+const serviceProviders: Provider[] = [
+  {
+    provide: IClinicPaymentCredentialsServiceToken,
+    useClass: ClinicPaymentCredentialsService,
+  },
+  {
+    provide: IClinicPaymentGatewayServiceToken,
+    useClass: ClinicAsaasGatewayService,
   },
 ];
 
@@ -308,7 +323,7 @@ const useCaseProviders: Provider[] = [
     ClinicsController,
     ClinicAuditController,
   ],
-  providers: [ClinicAuditService, ...repositoryProviders, ...useCaseProviders],
-  exports: [...useCaseProviders],
+  providers: [ClinicAuditService, ...repositoryProviders, ...serviceProviders, ...useCaseProviders],
+  exports: [...serviceProviders, ...useCaseProviders],
 })
 export class ClinicModule {}

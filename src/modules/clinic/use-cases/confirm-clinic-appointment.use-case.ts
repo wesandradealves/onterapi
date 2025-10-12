@@ -18,6 +18,18 @@ import {
   IClinicAppointmentRepository as IClinicAppointmentRepositoryToken,
 } from '../../../domain/clinic/interfaces/repositories/clinic-appointment.repository.interface';
 import {
+  type IClinicConfigurationRepository,
+  IClinicConfigurationRepository as IClinicConfigurationRepositoryToken,
+} from '../../../domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
+import {
+  type IClinicPaymentCredentialsService,
+  IClinicPaymentCredentialsService as IClinicPaymentCredentialsServiceToken,
+} from '../../../domain/clinic/interfaces/services/clinic-payment-credentials.service.interface';
+import {
+  type IClinicPaymentGatewayService,
+  IClinicPaymentGatewayService as IClinicPaymentGatewayServiceToken,
+} from '../../../domain/clinic/interfaces/services/clinic-payment-gateway.service.interface';
+import {
   type IConfirmClinicAppointmentUseCase,
   IConfirmClinicAppointmentUseCase as IConfirmClinicAppointmentUseCaseToken,
 } from '../../../domain/clinic/interfaces/use-cases/confirm-clinic-appointment.use-case.interface';
@@ -25,9 +37,12 @@ import {
   ClinicAppointment,
   ClinicAppointmentConfirmationResult,
   ClinicHoldConfirmationInput,
+  ClinicPaymentSettings,
+  ClinicPaymentStatus,
 } from '../../../domain/clinic/types/clinic.types';
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
 import { ClinicAuditService } from '../../../infrastructure/clinic/services/clinic-audit.service';
+import { parseClinicPaymentSettings } from '../utils/payment-settings.parser';
 
 @Injectable()
 export class ConfirmClinicAppointmentUseCase
@@ -45,6 +60,12 @@ export class ConfirmClinicAppointmentUseCase
     private readonly clinicServiceTypeRepository: IClinicServiceTypeRepository,
     @Inject(IClinicAppointmentRepositoryToken)
     private readonly clinicAppointmentRepository: IClinicAppointmentRepository,
+    @Inject(IClinicConfigurationRepositoryToken)
+    private readonly clinicConfigurationRepository: IClinicConfigurationRepository,
+    @Inject(IClinicPaymentCredentialsServiceToken)
+    private readonly clinicPaymentCredentialsService: IClinicPaymentCredentialsService,
+    @Inject(IClinicPaymentGatewayServiceToken)
+    private readonly clinicPaymentGatewayService: IClinicPaymentGatewayService,
     private readonly auditService: ClinicAuditService,
   ) {
     super();
@@ -56,13 +77,13 @@ export class ConfirmClinicAppointmentUseCase
     const clinic = await this.clinicRepository.findByTenant(input.tenantId, input.clinicId);
 
     if (!clinic) {
-      throw ClinicErrorFactory.clinicNotFound('Clínica não encontrada');
+      throw ClinicErrorFactory.clinicNotFound('Clinica nao encontrada');
     }
 
     const hold = await this.clinicHoldRepository.findById(input.holdId);
 
     if (!hold || hold.clinicId !== input.clinicId || hold.tenantId !== input.tenantId) {
-      throw ClinicErrorFactory.holdNotFound('Hold não encontrado para confirmação');
+      throw ClinicErrorFactory.holdNotFound('Hold nao encontrado para confirmacao');
     }
 
     const existingAppointment = await this.clinicAppointmentRepository.findByHoldId(hold.id);
@@ -83,22 +104,22 @@ export class ConfirmClinicAppointmentUseCase
 
         if (!appointment) {
           throw ClinicErrorFactory.holdConfirmationNotAllowed(
-            'Registro de confirmação inconsistente para este hold',
+            'Registro de confirmacao inconsistente para este hold',
           );
         }
 
         return this.toConfirmationResult(appointment);
       }
 
-      throw ClinicErrorFactory.holdConfirmationNotAllowed('Hold já confirmado previamente');
+      throw ClinicErrorFactory.holdConfirmationNotAllowed('Hold ja confirmado previamente');
     }
 
     if (hold.status === 'cancelled') {
-      throw ClinicErrorFactory.holdConfirmationNotAllowed('Hold cancelado não pode ser confirmado');
+      throw ClinicErrorFactory.holdConfirmationNotAllowed('Hold cancelado nao pode ser confirmado');
     }
 
     if (hold.status === 'expired') {
-      throw ClinicErrorFactory.holdConfirmationNotAllowed('Hold expirado não pode ser confirmado');
+      throw ClinicErrorFactory.holdConfirmationNotAllowed('Hold expirado nao pode ser confirmado');
     }
 
     if (existingAppointment) {
@@ -121,7 +142,7 @@ export class ConfirmClinicAppointmentUseCase
       }
 
       throw ClinicErrorFactory.holdConfirmationNotAllowed(
-        'Hold já convertido em agendamento por outro processo',
+        'Hold ja convertido em agendamento por outro processo',
       );
     }
 
@@ -129,7 +150,7 @@ export class ConfirmClinicAppointmentUseCase
 
     if (hold.ttlExpiresAt <= now || hold.start <= now) {
       await this.clinicHoldRepository.expireHold(hold.id, now);
-      throw ClinicErrorFactory.holdConfirmationNotAllowed('Hold expirado ou horário indisponível');
+      throw ClinicErrorFactory.holdConfirmationNotAllowed('Hold expirado ou horario indisponivel');
     }
 
     const serviceType = await this.clinicServiceTypeRepository.findById(
@@ -139,7 +160,7 @@ export class ConfirmClinicAppointmentUseCase
 
     if (!serviceType) {
       throw ClinicErrorFactory.serviceTypeNotFound(
-        'Tipo de serviço associado ao hold não encontrado',
+        'Tipo de servico associado ao hold nao encontrado',
       );
     }
 
@@ -152,7 +173,7 @@ export class ConfirmClinicAppointmentUseCase
 
     if (diffMinutes < minAdvanceMinutes) {
       throw ClinicErrorFactory.holdConfirmationNotAllowed(
-        'Antecedência mínima para confirmação não respeitada',
+        'Antecedencia minima para confirmacao nao respeitada',
       );
     }
 
@@ -168,7 +189,7 @@ export class ConfirmClinicAppointmentUseCase
 
     if (hasConfirmedOverlap) {
       throw ClinicErrorFactory.holdAlreadyExists(
-        'Profissional já possui atendimento confirmado neste período',
+        'Profissional ja possui atendimento confirmado neste periodo',
       );
     }
 
@@ -177,7 +198,7 @@ export class ConfirmClinicAppointmentUseCase
 
     if (!allowOverbooking && hasPendingOverlap) {
       throw ClinicErrorFactory.holdAlreadyExists(
-        'Existe outro hold pendente para este profissional no período selecionado',
+        'Existe outro hold pendente para este profissional no periodo selecionado',
       );
     }
 
@@ -190,16 +211,38 @@ export class ConfirmClinicAppointmentUseCase
 
     if (overlappingAppointments.length > 0) {
       throw ClinicErrorFactory.holdAlreadyExists(
-        'Profissional já possui agendamento confirmado em outra clínica no período',
+        'Profissional ja possui agendamento confirmado em outra clinica no periodo',
       );
     }
 
     if (!input.paymentTransactionId || input.paymentTransactionId.trim().length === 0) {
       throw ClinicErrorFactory.holdConfirmationNotAllowed(
-        'Transação de pagamento inválida para confirmação',
+        'Transacao de pagamento invalida para confirmacao',
       );
     }
 
+    const paymentSettings = await this.resolvePaymentSettings(clinic.id);
+    const credentials = await this.clinicPaymentCredentialsService.resolveCredentials({
+      credentialsId: paymentSettings.credentialsId,
+      clinicId: clinic.id,
+      tenantId: clinic.tenantId,
+    });
+    const verification = await this.clinicPaymentGatewayService.verifyPayment({
+      provider: paymentSettings.provider,
+      credentials,
+      sandboxMode: paymentSettings.sandboxMode,
+      paymentId: input.paymentTransactionId,
+    });
+
+    const acceptedStatuses: ClinicPaymentStatus[] = ['approved', 'settled'];
+
+    if (!acceptedStatuses.includes(verification.status)) {
+      throw ClinicErrorFactory.holdConfirmationNotAllowed(
+        'Pagamento nao esta aprovado no gateway ASAAS',
+      );
+    }
+
+    const finalPaymentStatus = verification.status;
     const confirmedAt = now;
 
     const appointment = await this.clinicAppointmentRepository.create({
@@ -212,10 +255,12 @@ export class ConfirmClinicAppointmentUseCase
       start: hold.start,
       end: hold.end,
       paymentTransactionId: input.paymentTransactionId,
-      paymentStatus: 'approved',
+      paymentStatus: finalPaymentStatus,
       confirmedAt,
       metadata: {
         confirmationIdempotencyKey: input.idempotencyKey,
+        gatewayStatus: verification.providerStatus,
+        sandboxMode: paymentSettings.sandboxMode,
       },
     });
 
@@ -224,6 +269,8 @@ export class ConfirmClinicAppointmentUseCase
       confirmedAt,
       status: 'confirmed',
       appointmentId: appointment.id,
+      paymentStatus: finalPaymentStatus,
+      gatewayStatus: verification.providerStatus,
     });
 
     await this.auditService.register({
@@ -235,6 +282,8 @@ export class ConfirmClinicAppointmentUseCase
         holdId: hold.id,
         appointmentId: appointment.id,
         paymentTransactionId: input.paymentTransactionId,
+        paymentStatus: finalPaymentStatus,
+        gatewayStatus: verification.providerStatus,
       },
     });
 
@@ -252,6 +301,37 @@ export class ConfirmClinicAppointmentUseCase
       confirmedAt: appointment.confirmedAt,
       paymentStatus: appointment.paymentStatus,
     };
+  }
+
+  private async resolvePaymentSettings(clinicId: string): Promise<ClinicPaymentSettings> {
+    const version = await this.clinicConfigurationRepository.findLatestAppliedVersion(
+      clinicId,
+      'payments',
+    );
+
+    if (!version) {
+      throw ClinicErrorFactory.paymentConfigurationNotFound(
+        'Configuracoes financeiras nao encontradas para a clinica',
+      );
+    }
+
+    try {
+      const rawPayload = version.payload ?? {};
+      const source =
+        typeof rawPayload === 'object' && rawPayload !== null && 'paymentSettings' in rawPayload
+          ? (rawPayload as Record<string, unknown>).paymentSettings
+          : rawPayload;
+
+      return parseClinicPaymentSettings(source);
+    } catch (error) {
+      this.logger.error(
+        `Falha ao interpretar configuracoes de pagamento da clinica ${clinicId}`,
+        error as Error,
+      );
+      throw ClinicErrorFactory.paymentCredentialsInvalid(
+        'Configuracoes financeiras invalidas para a clinica',
+      );
+    }
   }
 }
 
