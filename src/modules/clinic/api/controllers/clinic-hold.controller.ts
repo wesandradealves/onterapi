@@ -21,16 +21,29 @@ import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
 import { ZodApiBody } from '../../../../shared/decorators/zod-api-body.decorator';
 import { ClinicHoldResponseDto } from '../dtos/clinic-hold-response.dto';
+import { ClinicAppointmentConfirmationResponseDto } from '../dtos/clinic-appointment-confirmation-response.dto';
 import { ClinicPresenter } from '../presenters/clinic.presenter';
 import {
   createClinicHoldSchema,
   CreateClinicHoldSchema,
 } from '../schemas/create-clinic-hold.schema';
-import { ClinicRequestContext, toCreateClinicHoldInput } from '../mappers/clinic-request.mapper';
+import {
+  confirmClinicHoldSchema,
+  ConfirmClinicHoldSchema,
+} from '../schemas/confirm-clinic-hold.schema';
+import {
+  ClinicRequestContext,
+  toConfirmClinicHoldInput,
+  toCreateClinicHoldInput,
+} from '../mappers/clinic-request.mapper';
 import {
   type ICreateClinicHoldUseCase,
   ICreateClinicHoldUseCase as ICreateClinicHoldUseCaseToken,
 } from '../../../../domain/clinic/interfaces/use-cases/create-clinic-hold.use-case.interface';
+import {
+  type IConfirmClinicAppointmentUseCase,
+  IConfirmClinicAppointmentUseCase as IConfirmClinicAppointmentUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/confirm-clinic-appointment.use-case.interface';
 
 @ApiTags('Clinics')
 @ApiBearerAuth()
@@ -40,6 +53,8 @@ export class ClinicHoldController {
   constructor(
     @Inject(ICreateClinicHoldUseCaseToken)
     private readonly createClinicHoldUseCase: ICreateClinicHoldUseCase,
+    @Inject(IConfirmClinicAppointmentUseCaseToken)
+    private readonly confirmClinicAppointmentUseCase: IConfirmClinicAppointmentUseCase,
   ) {}
 
   @Post()
@@ -66,6 +81,35 @@ export class ClinicHoldController {
 
     const hold = await this.createClinicHoldUseCase.executeOrThrow(input);
     return ClinicPresenter.hold(hold);
+  }
+
+  @Post(':holdId/confirm')
+  @HttpCode(HttpStatus.OK)
+  @Roles(
+    RolesEnum.CLINIC_OWNER,
+    RolesEnum.MANAGER,
+    RolesEnum.SECRETARY,
+    RolesEnum.PROFESSIONAL,
+    RolesEnum.SUPER_ADMIN,
+  )
+  @ApiOperation({ summary: 'Confirmar hold clÃ­nico' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiParam({ name: 'holdId', type: String })
+  @ApiResponse({ status: 200, type: ClinicAppointmentConfirmationResponseDto })
+  @ZodApiBody({ schema: confirmClinicHoldSchema })
+  async confirmHold(
+    @Param('clinicId') clinicId: string,
+    @Param('holdId') holdId: string,
+    @Body(new ZodValidationPipe(confirmClinicHoldSchema)) body: ConfirmClinicHoldSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicAppointmentConfirmationResponseDto> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
+    const input = toConfirmClinicHoldInput(clinicId, holdId, body, context);
+
+    const confirmation = await this.confirmClinicAppointmentUseCase.executeOrThrow(input);
+
+    return ClinicPresenter.holdConfirmation(confirmation);
   }
 
   private resolveContext(currentUser: ICurrentUser, tenantId?: string): ClinicRequestContext {

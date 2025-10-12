@@ -14,7 +14,11 @@ export interface IClinicHoldRepository {
   ): Promise<ClinicHold | null>;
   listActiveByClinic(clinicId: string): Promise<ClinicHold[]>;
   confirmHold(
-    input: ClinicHoldConfirmationInput & { confirmedAt: Date; status: 'confirmed' | 'expired' },
+    input: ClinicHoldConfirmationInput & {
+      confirmedAt: Date;
+      status: 'confirmed' | 'expired';
+      appointmentId?: string;
+    },
   ): Promise<ClinicHold>;
   cancelHold(params: {
     holdId: string;
@@ -24,6 +28,13 @@ export interface IClinicHoldRepository {
   }): Promise<ClinicHold>;
   expireHold(holdId: string, expiredAt: Date): Promise<ClinicHold>;
   expireHoldsBefore(referenceDate: Date): Promise<number>;
+  findActiveOverlapByProfessional(params: {
+    tenantId: string;
+    professionalId: string;
+    start: Date;
+    end: Date;
+    excludeHoldId?: string;
+  }): Promise<ClinicHold[]>;
 }
 
 export const IClinicHoldRepository = Symbol('IClinicHoldRepository');

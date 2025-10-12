@@ -1,5 +1,8 @@
 import { ClinicPresenter } from '../../../src/modules/clinic/api/presenters/clinic.presenter';
-import { ClinicInvitation } from '../../../src/domain/clinic/types/clinic.types';
+import {
+  ClinicAppointmentConfirmationResult,
+  ClinicInvitation,
+} from '../../../src/domain/clinic/types/clinic.types';
 
 describe('ClinicPresenter.invitation', () => {
   const baseInvitation: ClinicInvitation = {
@@ -75,5 +78,29 @@ describe('ClinicPresenter.invitation', () => {
     expect(dto.targetEmail).toBe('pro@example.com');
     expect(dto.metadata).toEqual({ reference: 'source-system' });
     expect(dto.token).toBeUndefined();
+  });
+});
+
+describe('ClinicPresenter.holdConfirmation', () => {
+  it('should map confirmation result into response dto', () => {
+    const confirmation: ClinicAppointmentConfirmationResult = {
+      appointmentId: 'appointment-1',
+      clinicId: 'clinic-1',
+      holdId: 'hold-1',
+      paymentTransactionId: 'trx-123',
+      confirmedAt: new Date('2025-12-05T09:00:00Z'),
+      paymentStatus: 'approved',
+    };
+
+    const dto = ClinicPresenter.holdConfirmation(confirmation);
+
+    expect(dto).toEqual({
+      appointmentId: 'appointment-1',
+      clinicId: 'clinic-1',
+      holdId: 'hold-1',
+      paymentTransactionId: 'trx-123',
+      confirmedAt: confirmation.confirmedAt,
+      paymentStatus: 'approved',
+    });
   });
 });

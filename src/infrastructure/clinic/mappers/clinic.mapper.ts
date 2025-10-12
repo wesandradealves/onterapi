@@ -1,6 +1,7 @@
 import {
   Clinic,
   ClinicAlert,
+  ClinicAppointment,
   ClinicConfigurationVersion,
   ClinicDashboardMetric,
   ClinicDocumentType,
@@ -12,6 +13,7 @@ import {
 } from '../../../domain/clinic/types/clinic.types';
 import { ClinicEntity } from '../entities/clinic.entity';
 import { ClinicHoldEntity } from '../entities/clinic-hold.entity';
+import { ClinicAppointmentEntity } from '../entities/clinic-appointment.entity';
 import { ClinicDashboardMetricEntity } from '../entities/clinic-dashboard-metric.entity';
 import { ClinicForecastProjectionEntity } from '../entities/clinic-forecast-projection.entity';
 import { ClinicAlertEntity } from '../entities/clinic-alert.entity';
@@ -158,6 +160,28 @@ export class ClinicMapper {
       cancelledAt: entity.cancelledAt ?? undefined,
       cancelledBy: entity.cancelledBy ?? undefined,
       cancellationReason: entity.cancellationReason ?? undefined,
+      createdAt: entity.createdAt,
+      updatedAt: entity.updatedAt,
+      metadata:
+        entity.metadata && Object.keys(entity.metadata).length > 0 ? entity.metadata : undefined,
+    };
+  }
+
+  static toAppointment(entity: ClinicAppointmentEntity): ClinicAppointment {
+    return {
+      id: entity.id,
+      clinicId: entity.clinicId,
+      tenantId: entity.tenantId,
+      holdId: entity.holdId,
+      professionalId: entity.professionalId,
+      patientId: entity.patientId,
+      serviceTypeId: entity.serviceTypeId,
+      start: entity.startAt,
+      end: entity.endAt,
+      status: entity.status,
+      paymentStatus: entity.paymentStatus,
+      paymentTransactionId: entity.paymentTransactionId,
+      confirmedAt: entity.confirmedAt,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
       metadata:

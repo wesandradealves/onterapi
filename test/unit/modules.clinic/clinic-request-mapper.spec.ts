@@ -1,4 +1,6 @@
 import {
+  toConfirmClinicHoldInput,
+  toCreateClinicHoldInput,
   toUpdateClinicBrandingSettingsInput,
   toUpdateClinicIntegrationSettingsInput,
   toUpdateClinicNotificationSettingsInput,
@@ -12,6 +14,8 @@ import { UpdateClinicPaymentSettingsSchema } from '../../../src/modules/clinic/a
 import { UpdateClinicIntegrationSettingsSchema } from '../../../src/modules/clinic/api/schemas/update-clinic-integration-settings.schema';
 import { UpdateClinicNotificationSettingsSchema } from '../../../src/modules/clinic/api/schemas/update-clinic-notification-settings.schema';
 import { UpdateClinicBrandingSettingsSchema } from '../../../src/modules/clinic/api/schemas/update-clinic-branding-settings.schema';
+import { CreateClinicHoldSchema } from '../../../src/modules/clinic/api/schemas/create-clinic-hold.schema';
+import { ConfirmClinicHoldSchema } from '../../../src/modules/clinic/api/schemas/confirm-clinic-hold.schema';
 
 describe('ClinicRequestMapper - schedule settings', () => {
   const baseContext = {
@@ -369,5 +373,65 @@ describe('ClinicRequestMapper - payment settings', () => {
     expect(input.paymentSettings.inadimplencyRule.gracePeriodDays).toBe(0);
     expect(input.paymentSettings.inadimplencyRule.actions).toEqual([]);
     expect(input.paymentSettings.cancellationPolicies).toEqual([]);
+  });
+});
+
+describe('ClinicRequestMapper - hold flows', () => {
+  const baseContext = {
+    tenantId: 'tenant-hold',
+    userId: 'user-hold',
+  };
+
+  it('should map create hold payload into domain input', () => {
+    const body: CreateClinicHoldSchema = {
+      tenantId: 'tenant-body',
+      professionalId: '11111111-1111-1111-1111-111111111111',
+      patientId: '22222222-2222-2222-2222-222222222222',
+      serviceTypeId: '33333333-3333-3333-3333-333333333333',
+      start: '2025-12-10T10:00:00.000Z',
+      end: '2025-12-10T10:30:00.000Z',
+      locationId: '44444444-4444-4444-4444-444444444444',
+      resources: ['room-1', 'equipment-2'],
+      idempotencyKey: 'create-hold-123456',
+      metadata: { priority: 'high' },
+    };
+
+    const input = toCreateClinicHoldInput('clinic-123', body, baseContext);
+
+    expect(input.clinicId).toBe('clinic-123');
+    expect(input.tenantId).toBe('tenant-body');
+    expect(input.requestedBy).toBe(baseContext.userId);
+    expect(input.start).toBeInstanceOf(Date);
+    expect(input.end).toBeInstanceOf(Date);
+    expect(input.resources).toEqual(['room-1', 'equipment-2']);
+    expect(input.metadata).toEqual({ priority: 'high' });
+  });
+
+  it('should map confirm hold payload into domain input', () => {
+    const body: ConfirmClinicHoldSchema = {
+      tenantId: 'tenant-body',
+      paymentTransactionId: 'trx-987',
+      idempotencyKey: 'confirm-hold-456',
+    };
+
+    const input = toConfirmClinicHoldInput('clinic-123', 'hold-456', body, baseContext);
+
+    expect(input.clinicId).toBe('clinic-123');
+    expect(input.holdId).toBe('hold-456');
+    expect(input.tenantId).toBe('tenant-body');
+    expect(input.confirmedBy).toBe(baseContext.userId);
+    expect(input.paymentTransactionId).toBe('trx-987');
+    expect(input.idempotencyKey).toBe('confirm-hold-456');
+  });
+
+  it('should fallback tenant from context when not provided in confirm payload', () => {
+    const body: ConfirmClinicHoldSchema = {
+      paymentTransactionId: 'trx-000',
+      idempotencyKey: 'idem-000',
+    };
+
+    const input = toConfirmClinicHoldInput('clinic-zz', 'hold-yy', body, baseContext);
+
+    expect(input.tenantId).toBe(baseContext.tenantId);
   });
 });

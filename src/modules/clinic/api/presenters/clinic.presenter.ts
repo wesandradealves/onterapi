@@ -3,6 +3,7 @@ import {
   ClinicConfigurationVersion,
   ClinicDashboardSnapshot,
   ClinicEconomicAgreement,
+  ClinicAppointmentConfirmationResult,
   ClinicHold,
   ClinicInvitation,
   ClinicMember,
@@ -11,6 +12,7 @@ import {
 } from '../../../../domain/clinic/types/clinic.types';
 import { ClinicConfigurationVersionResponseDto } from '../dtos/clinic-configuration-response.dto';
 import { ClinicHoldResponseDto } from '../dtos/clinic-hold-response.dto';
+import { ClinicAppointmentConfirmationResponseDto } from '../dtos/clinic-appointment-confirmation-response.dto';
 import { ClinicSummaryDto } from '../dtos/clinic-summary.dto';
 import {
   ClinicGeneralSettingsPayloadDto,
@@ -266,6 +268,19 @@ export class ClinicPresenter {
       createdAt: hold.createdAt,
       updatedAt: hold.updatedAt,
       metadata: hold.metadata,
+    };
+  }
+
+  static holdConfirmation(
+    confirmation: ClinicAppointmentConfirmationResult,
+  ): ClinicAppointmentConfirmationResponseDto {
+    return {
+      appointmentId: confirmation.appointmentId,
+      clinicId: confirmation.clinicId,
+      holdId: confirmation.holdId,
+      paymentTransactionId: confirmation.paymentTransactionId,
+      confirmedAt: confirmation.confirmedAt,
+      paymentStatus: confirmation.paymentStatus,
     };
   }
 

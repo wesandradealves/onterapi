@@ -2,6 +2,7 @@ import {
   ClinicBrandingSettingsConfig,
   ClinicDashboardQuery,
   ClinicGeneralSettings,
+  ClinicHoldConfirmationInput,
   ClinicHoldRequestInput,
   ClinicHoldSettings,
   ClinicInadimplencyAction,
@@ -29,6 +30,7 @@ import { UpdateClinicNotificationSettingsSchema } from '../schemas/update-clinic
 import { UpdateClinicBrandingSettingsSchema } from '../schemas/update-clinic-branding-settings.schema';
 import { CreateClinicHoldSchema } from '../schemas/create-clinic-hold.schema';
 import { GetClinicDashboardSchema } from '../schemas/get-clinic-dashboard.schema';
+import { ConfirmClinicHoldSchema } from '../schemas/confirm-clinic-hold.schema';
 
 export interface ClinicRequestContext {
   tenantId: string;
@@ -335,6 +337,20 @@ export const toCreateClinicHoldInput = (
   resources: body.resources,
   idempotencyKey: body.idempotencyKey,
   metadata: body.metadata,
+});
+
+export const toConfirmClinicHoldInput = (
+  clinicId: string,
+  holdId: string,
+  body: ConfirmClinicHoldSchema,
+  context: ClinicRequestContext,
+): ClinicHoldConfirmationInput => ({
+  clinicId,
+  holdId,
+  tenantId: body.tenantId ?? context.tenantId,
+  confirmedBy: context.userId,
+  paymentTransactionId: body.paymentTransactionId,
+  idempotencyKey: body.idempotencyKey,
 });
 
 export const toClinicDashboardQuery = (

@@ -69,19 +69,39 @@ export class ClinicHoldRepository implements IClinicHoldRepository {
   }
 
   async confirmHold(
-    input: ClinicHoldConfirmationInput & { confirmedAt: Date; status: 'confirmed' | 'expired' },
+    input: ClinicHoldConfirmationInput & {
+      confirmedAt: Date;
+      status: 'confirmed' | 'expired';
+      appointmentId?: string;
+    },
   ): Promise<ClinicHold> {
     const entity = await this.repository.findOneOrFail({
       where: { id: input.holdId, clinicId: input.clinicId, tenantId: input.tenantId },
     });
 
     entity.status = input.status;
-    entity.confirmedAt = input.status === 'confirmed' ? input.confirmedAt : null;
-    entity.confirmedBy = input.status === 'confirmed' ? input.confirmedBy : null;
-    entity.metadata = {
-      ...(entity.metadata ?? {}),
-      paymentTransactionId: input.paymentTransactionId,
-    };
+    const metadata: Record<string, unknown> = { ...(entity.metadata ?? {}) };
+
+    if (input.status === 'confirmed') {
+      entity.confirmedAt = input.confirmedAt;
+      entity.confirmedBy = input.confirmedBy;
+      metadata.paymentTransactionId = input.paymentTransactionId;
+      const existingConfirmation =
+        typeof metadata.confirmation === 'object' && metadata.confirmation !== null
+          ? (metadata.confirmation as Record<string, unknown>)
+          : {};
+      metadata.confirmation = {
+        ...existingConfirmation,
+        appointmentId: input.appointmentId ?? existingConfirmation.appointmentId,
+        idempotencyKey: input.idempotencyKey,
+      };
+    } else {
+      entity.confirmedAt = null;
+      entity.confirmedBy = null;
+      metadata.expiredAt = input.confirmedAt;
+    }
+
+    entity.metadata = metadata;
 
     const saved = await this.repository.save(entity);
     return ClinicMapper.toHold(saved);
@@ -122,5 +142,30 @@ export class ClinicHoldRepository implements IClinicHoldRepository {
       .execute();
 
     return result.affected ?? 0;
+  }
+
+  async findActiveOverlapByProfessional(params: {
+    tenantId: string;
+    professionalId: string;
+    start: Date;
+    end: Date;
+    excludeHoldId?: string;
+  }): Promise<ClinicHold[]> {
+    const query = this.repository
+      .createQueryBuilder('hold')
+      .where('hold.tenant_id = :tenantId', { tenantId: params.tenantId })
+      .andWhere('hold.professional_id = :professionalId', {
+        professionalId: params.professionalId,
+      })
+      .andWhere('hold.status IN (:...statuses)', { statuses: ['pending', 'confirmed'] })
+      .andWhere('hold.start_at < :end', { end: params.end })
+      .andWhere('hold.end_at > :start', { start: params.start });
+
+    if (params.excludeHoldId) {
+      query.andWhere('hold.id <> :excludeHoldId', { excludeHoldId: params.excludeHoldId });
+    }
+
+    const entities = await query.getMany();
+    return entities.map(ClinicMapper.toHold);
   }
 }

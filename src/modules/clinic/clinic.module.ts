@@ -19,11 +19,13 @@ import { ClinicAlertEntity } from '../../infrastructure/clinic/entities/clinic-a
 import { ClinicDashboardMetricEntity } from '../../infrastructure/clinic/entities/clinic-dashboard-metric.entity';
 import { ClinicForecastProjectionEntity } from '../../infrastructure/clinic/entities/clinic-forecast-projection.entity';
 import { ClinicHoldEntity } from '../../infrastructure/clinic/entities/clinic-hold.entity';
+import { ClinicAppointmentEntity } from '../../infrastructure/clinic/entities/clinic-appointment.entity';
 import { ClinicAuditLogEntity } from '../../infrastructure/clinic/entities/clinic-audit-log.entity';
 import { ClinicRepository } from '../../infrastructure/clinic/repositories/clinic.repository';
 import { ClinicConfigurationRepository } from '../../infrastructure/clinic/repositories/clinic-configuration.repository';
 import { ClinicServiceTypeRepository } from '../../infrastructure/clinic/repositories/clinic-service-type.repository';
 import { ClinicHoldRepository } from '../../infrastructure/clinic/repositories/clinic-hold.repository';
+import { ClinicAppointmentRepository } from '../../infrastructure/clinic/repositories/clinic-appointment.repository';
 import { ClinicMetricsRepository } from '../../infrastructure/clinic/repositories/clinic-metrics.repository';
 import { ClinicInvitationRepository } from '../../infrastructure/clinic/repositories/clinic-invitation.repository';
 import { ClinicMemberRepository } from '../../infrastructure/clinic/repositories/clinic-member.repository';
@@ -39,6 +41,7 @@ import { UpdateClinicBrandingSettingsUseCase } from './use-cases/update-clinic-b
 import { UpdateClinicScheduleSettingsUseCase } from './use-cases/update-clinic-schedule-settings.use-case';
 import { CreateClinicUseCase } from './use-cases/create-clinic.use-case';
 import { CreateClinicHoldUseCase } from './use-cases/create-clinic-hold.use-case';
+import { ConfirmClinicAppointmentUseCase } from './use-cases/confirm-clinic-appointment.use-case';
 import { GetClinicDashboardUseCase } from './use-cases/get-clinic-dashboard.use-case';
 import { UpsertClinicServiceTypeUseCase } from './use-cases/upsert-clinic-service-type.use-case';
 import { RemoveClinicServiceTypeUseCase } from './use-cases/remove-clinic-service-type.use-case';
@@ -65,6 +68,7 @@ import { IClinicRepository as IClinicRepositoryToken } from '../../domain/clinic
 import { IClinicConfigurationRepository as IClinicConfigurationRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
 import { IClinicServiceTypeRepository as IClinicServiceTypeRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-service-type.repository.interface';
 import { IClinicHoldRepository as IClinicHoldRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-hold.repository.interface';
+import { IClinicAppointmentRepository as IClinicAppointmentRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-appointment.repository.interface';
 import { IClinicMetricsRepository as IClinicMetricsRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-metrics.repository.interface';
 import { IClinicInvitationRepository as IClinicInvitationRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-invitation.repository.interface';
 import { IClinicMemberRepository as IClinicMemberRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-member.repository.interface';
@@ -87,6 +91,7 @@ import { IGetClinicNotificationSettingsUseCase as IGetClinicNotificationSettings
 import { IGetClinicBrandingSettingsUseCase as IGetClinicBrandingSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic-branding-settings.use-case.interface';
 import { ICreateClinicUseCase as ICreateClinicUseCaseToken } from '../../domain/clinic/interfaces/use-cases/create-clinic.use-case.interface';
 import { ICreateClinicHoldUseCase as ICreateClinicHoldUseCaseToken } from '../../domain/clinic/interfaces/use-cases/create-clinic-hold.use-case.interface';
+import { IConfirmClinicAppointmentUseCase as IConfirmClinicAppointmentUseCaseToken } from '../../domain/clinic/interfaces/use-cases/confirm-clinic-appointment.use-case.interface';
 import { IGetClinicDashboardUseCase as IGetClinicDashboardUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic-dashboard.use-case.interface';
 import { IUpsertClinicServiceTypeUseCase as IUpsertClinicServiceTypeUseCaseToken } from '../../domain/clinic/interfaces/use-cases/upsert-clinic-service-type.use-case.interface';
 import { IRemoveClinicServiceTypeUseCase as IRemoveClinicServiceTypeUseCaseToken } from '../../domain/clinic/interfaces/use-cases/remove-clinic-service-type.use-case.interface';
@@ -118,6 +123,10 @@ const repositoryProviders: Provider[] = [
   {
     provide: IClinicHoldRepositoryToken,
     useClass: ClinicHoldRepository,
+  },
+  {
+    provide: IClinicAppointmentRepositoryToken,
+    useClass: ClinicAppointmentRepository,
   },
   {
     provide: IClinicMetricsRepositoryToken,
@@ -211,6 +220,10 @@ const useCaseProviders: Provider[] = [
     useClass: CreateClinicHoldUseCase,
   },
   {
+    provide: IConfirmClinicAppointmentUseCaseToken,
+    useClass: ConfirmClinicAppointmentUseCase,
+  },
+  {
     provide: IGetClinicDashboardUseCaseToken,
     useClass: GetClinicDashboardUseCase,
   },
@@ -281,6 +294,7 @@ const useCaseProviders: Provider[] = [
       ClinicDashboardMetricEntity,
       ClinicForecastProjectionEntity,
       ClinicHoldEntity,
+      ClinicAppointmentEntity,
       ClinicAuditLogEntity,
     ]),
   ],

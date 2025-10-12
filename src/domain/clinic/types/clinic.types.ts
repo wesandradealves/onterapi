@@ -593,6 +593,29 @@ export interface ClinicHold {
   metadata?: Record<string, unknown>;
 }
 
+export type ClinicAppointmentStatus = 'scheduled' | 'completed' | 'cancelled';
+
+export type ClinicPaymentStatus = 'approved' | 'settled' | 'refunded' | 'chargeback' | 'failed';
+
+export interface ClinicAppointment {
+  id: string;
+  clinicId: string;
+  tenantId: string;
+  holdId: string;
+  professionalId: string;
+  patientId: string;
+  serviceTypeId: string;
+  start: Date;
+  end: Date;
+  status: ClinicAppointmentStatus;
+  paymentStatus: ClinicPaymentStatus;
+  paymentTransactionId: string;
+  confirmedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  metadata?: Record<string, unknown>;
+}
+
 export interface ClinicDashboardMetric {
   clinicId: string;
   month: string;
@@ -848,7 +871,7 @@ export interface ClinicAppointmentConfirmationResult {
   holdId: string;
   paymentTransactionId: string;
   confirmedAt: Date;
-  paymentStatus: 'approved' | 'failed';
+  paymentStatus: ClinicPaymentStatus;
 }
 
 export interface ClinicOverbookingReviewInput {

@@ -101,18 +101,27 @@ export class CreateClinicHoldUseCase
       ttlExpiresAt.setTime(start.getTime() - 60 * 1000);
     }
 
-    const activeHolds = await this.clinicHoldRepository.listActiveByClinic(input.clinicId);
-
-    const overlap = activeHolds.some((hold) => {
-      if (hold.professionalId !== input.professionalId) {
-        return false;
-      }
-
-      return hold.start < end && hold.end > start && hold.status === 'pending';
+    const overlappingHolds = await this.clinicHoldRepository.findActiveOverlapByProfessional({
+      tenantId: input.tenantId,
+      professionalId: input.professionalId,
+      start,
+      end,
     });
 
-    if (overlap) {
-      throw ClinicErrorFactory.holdAlreadyExists('Já existe um hold ativo para este período');
+    const allowOverbooking = clinic.holdSettings?.allowOverbooking ?? false;
+
+    const hasConfirmedOverlap = overlappingHolds.some((hold) => hold.status === 'confirmed');
+
+    if (hasConfirmedOverlap) {
+      throw ClinicErrorFactory.holdAlreadyExists(
+        'Profissional já possui atendimento confirmado para este período',
+      );
+    }
+
+    if (!allowOverbooking && overlappingHolds.length > 0) {
+      throw ClinicErrorFactory.holdAlreadyExists(
+        'Já existe um compromisso ativo para este profissional no período solicitado',
+      );
     }
 
     const hold = await this.clinicHoldRepository.create({
