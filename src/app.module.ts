@@ -9,6 +9,7 @@ import { PatientsModule } from './modules/patients/patients.module';
 import { AnamnesisModule } from './modules/anamnesis/anamnesis.module';
 import { LegalModule } from './modules/legal/legal.module';
 import { SchedulingModule } from './modules/scheduling/scheduling.module';
+import { ClinicModule } from './modules/clinic/clinic.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { SchedulingModule } from './modules/scheduling/scheduling.module';
     LegalModule,
     AnamnesisModule,
     SchedulingModule,
+    ClinicModule,
   ],
 })
 export class AppModule {}

@@ -1,0 +1,158 @@
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { In, Repository } from 'typeorm';
+
+import {
+  AddClinicMemberInput,
+  ClinicMember,
+  ClinicMemberStatus,
+  ClinicStaffRole,
+  ManageClinicMemberInput,
+  RemoveClinicMemberInput,
+} from '../../../domain/clinic/types/clinic.types';
+import { IClinicMemberRepository } from '../../../domain/clinic/interfaces/repositories/clinic-member.repository.interface';
+import { ClinicMemberEntity } from '../entities/clinic-member.entity';
+import { ClinicMapper } from '../mappers/clinic.mapper';
+
+@Injectable()
+export class ClinicMemberRepository implements IClinicMemberRepository {
+  constructor(
+    @InjectRepository(ClinicMemberEntity)
+    private readonly repository: Repository<ClinicMemberEntity>,
+  ) {}
+
+  async addMember(input: AddClinicMemberInput): Promise<ClinicMember> {
+    const entity = this.repository.create({
+      clinicId: input.clinicId,
+      tenantId: input.tenantId,
+      userId: input.userId,
+      role: input.role,
+      status: input.status,
+      scope: input.scope ?? [],
+      preferences: {},
+      joinedAt: input.joinedAt ?? new Date(),
+    });
+
+    const saved = await this.repository.save(entity);
+    return ClinicMapper.toMember(saved);
+  }
+
+  async updateMember(input: ManageClinicMemberInput): Promise<ClinicMember> {
+    const entity = await this.repository.findOneOrFail({ where: { id: input.memberId } });
+
+    if (input.status) {
+      entity.status = input.status;
+    }
+
+    if (input.scope) {
+      entity.scope = input.scope;
+    }
+
+    if (input.role) {
+      entity.role = input.role;
+    }
+
+    if (input.status === 'suspended') {
+      entity.suspendedAt = new Date();
+    } else if (input.status !== 'suspended') {
+      entity.suspendedAt = null;
+    }
+
+    const saved = await this.repository.save(entity);
+    return ClinicMapper.toMember(saved);
+  }
+
+  async removeMember(input: RemoveClinicMemberInput): Promise<void> {
+    const entity = await this.repository.findOneOrFail({
+      where: { id: input.memberId, clinicId: input.clinicId, tenantId: input.tenantId },
+    });
+
+    entity.status = 'inactive';
+    entity.endedAt = input.effectiveDate ?? new Date();
+
+    await this.repository.save(entity);
+  }
+
+  async findById(memberId: string): Promise<ClinicMember | null> {
+    const entity = await this.repository.findOne({ where: { id: memberId } });
+    return entity ? ClinicMapper.toMember(entity) : null;
+  }
+
+  async findByUser(clinicId: string, userId: string): Promise<ClinicMember | null> {
+    const entity = await this.repository.findOne({
+      where: { clinicId, userId, endedAt: null },
+    });
+
+    return entity ? ClinicMapper.toMember(entity) : null;
+  }
+
+  async listMembers(params: {
+    clinicId: string;
+    tenantId: string;
+    status?: ClinicMemberStatus[];
+    roles?: ClinicStaffRole[];
+    page?: number;
+    limit?: number;
+  }): Promise<{ data: ClinicMember[]; total: number }> {
+    const page = params.page && params.page > 0 ? params.page : 1;
+    const limit = params.limit && params.limit > 0 ? params.limit : 25;
+    const offset = (page - 1) * limit;
+
+    const query = this.repository
+      .createQueryBuilder('member')
+      .where('member.clinic_id = :clinicId', { clinicId: params.clinicId })
+      .andWhere('member.tenant_id = :tenantId', { tenantId: params.tenantId });
+
+    if (params.status && params.status.length > 0) {
+      query.andWhere('member.status IN (:...status)', { status: params.status });
+    }
+
+    if (params.roles && params.roles.length > 0) {
+      query.andWhere('member.role IN (:...roles)', { roles: params.roles });
+    }
+
+    const [entities, total] = await query
+      .orderBy('member.created_at', 'DESC')
+      .skip(offset)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      data: entities.map(ClinicMapper.toMember),
+      total,
+    };
+  }
+
+  async countByRole(clinicId: string): Promise<Record<ClinicStaffRole, number>> {
+    const rows = await this.repository
+      .createQueryBuilder('member')
+      .select('member.role', 'role')
+      .addSelect('COUNT(*)', 'count')
+      .where('member.clinic_id = :clinicId', { clinicId })
+      .andWhere('member.ended_at IS NULL')
+      .groupBy('member.role')
+      .getRawMany<{ role: ClinicStaffRole; count: string }>();
+
+    return rows.reduce<Record<ClinicStaffRole, number>>((acc, row) => {
+      acc[row.role] = Number(row.count);
+      return acc;
+    }, {} as Record<ClinicStaffRole, number>);
+  }
+
+  async hasQuotaAvailable(params: {
+    clinicId: string;
+    role: ClinicStaffRole;
+    limit: number;
+  }): Promise<boolean> {
+    const activeCount = await this.repository.count({
+      where: {
+        clinicId: params.clinicId,
+        role: params.role,
+        status: In(['active', 'pending_invitation']),
+        endedAt: null,
+      },
+    });
+
+    return activeCount < params.limit;
+  }
+}

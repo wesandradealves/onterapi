@@ -77,6 +77,7 @@ export class ClinicHoldRepository implements IClinicHoldRepository {
 
     entity.status = input.status;
     entity.confirmedAt = input.status === 'confirmed' ? input.confirmedAt : null;
+    entity.confirmedBy = input.status === 'confirmed' ? input.confirmedBy : null;
     entity.metadata = {
       ...(entity.metadata ?? {}),
       paymentTransactionId: input.paymentTransactionId,

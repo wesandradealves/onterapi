@@ -347,8 +347,12 @@ export interface ClinicInvitation {
   channel: ClinicInvitationChannel;
   expiresAt: Date;
   acceptedAt?: Date;
+  acceptedBy?: string;
   revokedAt?: Date;
+  revokedBy?: string;
+  revocationReason?: string | null;
   declinedAt?: Date;
+  declinedBy?: string;
   economicSummary: ClinicInvitationEconomicSummary;
   createdAt: Date;
   updatedAt: Date;
@@ -364,6 +368,7 @@ export interface ClinicMember {
   status: ClinicMemberStatus;
   joinedAt?: Date;
   suspendedAt?: Date;
+  endedAt?: Date;
   scope: string[];
   preferences?: Record<string, unknown>;
   createdAt: Date;
@@ -413,6 +418,11 @@ export interface ClinicHold {
   resources?: string[];
   idempotencyKey: string;
   createdBy: string;
+  confirmedAt?: Date;
+  confirmedBy?: string;
+  cancelledAt?: Date;
+  cancelledBy?: string;
+  cancellationReason?: string | null;
   createdAt: Date;
   updatedAt: Date;
   metadata?: Record<string, unknown>;
