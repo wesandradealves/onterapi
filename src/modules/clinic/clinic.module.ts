@@ -27,6 +27,7 @@ import { ClinicInvitationRepository } from '../../infrastructure/clinic/reposito
 import { ClinicMemberRepository } from '../../infrastructure/clinic/repositories/clinic-member.repository';
 import { UpdateClinicGeneralSettingsUseCase } from './use-cases/update-clinic-general-settings.use-case';
 import { UpdateClinicHoldSettingsUseCase } from './use-cases/update-clinic-hold-settings.use-case';
+import { CreateClinicUseCase } from './use-cases/create-clinic.use-case';
 import { CreateClinicHoldUseCase } from './use-cases/create-clinic-hold.use-case';
 import { GetClinicDashboardUseCase } from './use-cases/get-clinic-dashboard.use-case';
 import { UpsertClinicServiceTypeUseCase } from './use-cases/upsert-clinic-service-type.use-case';
@@ -49,6 +50,7 @@ import { IClinicInvitationRepository as IClinicInvitationRepositoryToken } from 
 import { IClinicMemberRepository as IClinicMemberRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-member.repository.interface';
 import { IUpdateClinicGeneralSettingsUseCase as IUpdateClinicGeneralSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/update-clinic-general-settings.use-case.interface';
 import { IUpdateClinicHoldSettingsUseCase as IUpdateClinicHoldSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/update-clinic-hold-settings.use-case.interface';
+import { ICreateClinicUseCase as ICreateClinicUseCaseToken } from '../../domain/clinic/interfaces/use-cases/create-clinic.use-case.interface';
 import { ICreateClinicHoldUseCase as ICreateClinicHoldUseCaseToken } from '../../domain/clinic/interfaces/use-cases/create-clinic-hold.use-case.interface';
 import { IGetClinicDashboardUseCase as IGetClinicDashboardUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic-dashboard.use-case.interface';
 import { IUpsertClinicServiceTypeUseCase as IUpsertClinicServiceTypeUseCaseToken } from '../../domain/clinic/interfaces/use-cases/upsert-clinic-service-type.use-case.interface';
@@ -102,6 +104,10 @@ const useCaseProviders: Provider[] = [
   {
     provide: IUpdateClinicHoldSettingsUseCaseToken,
     useClass: UpdateClinicHoldSettingsUseCase,
+  },
+  {
+    provide: ICreateClinicUseCaseToken,
+    useClass: CreateClinicUseCase,
   },
   {
     provide: ICreateClinicHoldUseCaseToken,

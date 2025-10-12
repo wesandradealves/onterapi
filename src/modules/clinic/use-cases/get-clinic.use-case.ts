@@ -8,8 +8,14 @@ import { IGetClinicUseCase as IGetClinicUseCaseToken } from '../../../domain/cli
 import { Clinic } from '../../../domain/clinic/types/clinic.types';
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
 
+interface GetClinicInput {
+  clinicId: string;
+  tenantId: string;
+}
+
 @Injectable()
-export class GetClinicUseCase extends BaseUseCase<{ clinicId: string; tenantId: string }, Clinic>
+export class GetClinicUseCase
+  extends BaseUseCase<GetClinicInput, Clinic>
   implements IGetClinicUseCase
 {
   protected readonly logger = new Logger(GetClinicUseCase.name);
@@ -21,8 +27,9 @@ export class GetClinicUseCase extends BaseUseCase<{ clinicId: string; tenantId: 
     super();
   }
 
-  protected async handle(input: { clinicId: string; tenantId: string }): Promise<Clinic> {
+  protected async handle(input: GetClinicInput): Promise<Clinic> {
     const clinic = await this.clinicRepository.findByTenant(input.tenantId, input.clinicId);
+
     if (!clinic) {
       throw ClinicErrorFactory.clinicNotFound('Clínica não encontrada');
     }

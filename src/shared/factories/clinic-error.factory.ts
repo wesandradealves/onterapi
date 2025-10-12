@@ -70,4 +70,16 @@ export class ClinicErrorFactory {
   static memberNotFound(message: string): NotFoundException {
     return new NotFoundException(message);
   }
+
+  static clinicSlugInUse(message: string): ConflictException {
+    return new ConflictException(message);
+  }
+
+  static clinicDocumentInUse(message: string): ConflictException {
+    return new ConflictException(message);
+  }
+
+  static invalidClinicData(message: string): BadRequestException {
+    return new BadRequestException(message);
+  }
 }

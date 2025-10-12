@@ -1,10 +1,12 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   Get,
   Headers,
   Inject,
   Param,
+  Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -20,10 +22,13 @@ import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe'
 import { ClinicPresenter } from '../presenters/clinic.presenter';
 import { ClinicSummaryDto } from '../dtos/clinic-summary.dto';
 import { listClinicsSchema, ListClinicsSchema } from '../schemas/list-clinics.schema';
+import { createClinicSchema, CreateClinicSchema } from '../schemas/create-clinic.schema';
 import type { IListClinicsUseCase } from '../../../../domain/clinic/interfaces/use-cases/list-clinics.use-case.interface';
 import { IListClinicsUseCase as IListClinicsUseCaseToken } from '../../../../domain/clinic/interfaces/use-cases/list-clinics.use-case.interface';
 import type { IGetClinicUseCase } from '../../../../domain/clinic/interfaces/use-cases/get-clinic.use-case.interface';
 import { IGetClinicUseCase as IGetClinicUseCaseToken } from '../../../../domain/clinic/interfaces/use-cases/get-clinic.use-case.interface';
+import type { ICreateClinicUseCase } from '../../../../domain/clinic/interfaces/use-cases/create-clinic.use-case.interface';
+import { ICreateClinicUseCase as ICreateClinicUseCaseToken } from '../../../../domain/clinic/interfaces/use-cases/create-clinic.use-case.interface';
 
 @ApiTags('Clinics')
 @ApiBearerAuth()
@@ -35,7 +40,35 @@ export class ClinicsController {
     private readonly listClinicsUseCase: IListClinicsUseCase,
     @Inject(IGetClinicUseCaseToken)
     private readonly getClinicUseCase: IGetClinicUseCase,
+    @Inject(ICreateClinicUseCaseToken)
+    private readonly createClinicUseCase: ICreateClinicUseCase,
   ) {}
+
+  @Post()
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Cadastrar nova clínica' })
+  @ApiResponse({ status: 201, type: ClinicSummaryDto })
+  async createClinic(
+    @Body(new ZodValidationPipe(createClinicSchema)) body: CreateClinicSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+  ): Promise<ClinicSummaryDto> {
+    const tenantId = body.tenantId ?? currentUser.tenantId;
+    if (!tenantId) {
+      throw new BadRequestException('Tenant não informado');
+    }
+
+    const clinic = await this.createClinicUseCase.executeOrThrow({
+      tenantId,
+      name: body.name,
+      slug: body.slug,
+      primaryOwnerId: body.primaryOwnerId,
+      document: body.document,
+      holdSettings: body.holdSettings,
+      metadata: body.metadata,
+    });
+
+    return ClinicPresenter.summary(clinic);
+  }
 
   @Get()
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
