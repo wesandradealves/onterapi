@@ -8,6 +8,7 @@ import { ClinicDashboardController } from './api/controllers/clinic-dashboard.co
 import { ClinicServiceTypeController } from './api/controllers/clinic-service-type.controller';
 import { ClinicInvitationController } from './api/controllers/clinic-invitation.controller';
 import { ClinicMemberController } from './api/controllers/clinic-member.controller';
+import { ClinicsController } from './api/controllers/clinics.controller';
 import { ClinicEntity } from '../../infrastructure/clinic/entities/clinic.entity';
 import { ClinicConfigurationVersionEntity } from '../../infrastructure/clinic/entities/clinic-configuration-version.entity';
 import { ClinicMemberEntity } from '../../infrastructure/clinic/entities/clinic-member.entity';
@@ -37,6 +38,8 @@ import { RevokeClinicInvitationUseCase } from './use-cases/revoke-clinic-invitat
 import { ListClinicInvitationsUseCase } from './use-cases/list-clinic-invitations.use-case';
 import { ListClinicMembersUseCase } from './use-cases/list-clinic-members.use-case';
 import { ManageClinicMemberUseCase } from './use-cases/manage-clinic-member.use-case';
+import { ListClinicsUseCase } from './use-cases/list-clinics.use-case';
+import { GetClinicUseCase } from './use-cases/get-clinic.use-case';
 import { IClinicRepository as IClinicRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic.repository.interface';
 import { IClinicConfigurationRepository as IClinicConfigurationRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
 import { IClinicServiceTypeRepository as IClinicServiceTypeRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-service-type.repository.interface';
@@ -57,6 +60,8 @@ import { IRevokeClinicInvitationUseCase as IRevokeClinicInvitationUseCaseToken }
 import { IListClinicInvitationsUseCase as IListClinicInvitationsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/list-clinic-invitations.use-case.interface';
 import { IListClinicMembersUseCase as IListClinicMembersUseCaseToken } from '../../domain/clinic/interfaces/use-cases/list-clinic-members.use-case.interface';
 import { IManageClinicMemberUseCase as IManageClinicMemberUseCaseToken } from '../../domain/clinic/interfaces/use-cases/manage-clinic-member.use-case.interface';
+import { IListClinicsUseCase as IListClinicsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/list-clinics.use-case.interface';
+import { IGetClinicUseCase as IGetClinicUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic.use-case.interface';
 
 const repositoryProviders: Provider[] = [
   {
@@ -142,6 +147,14 @@ const useCaseProviders: Provider[] = [
     provide: IManageClinicMemberUseCaseToken,
     useClass: ManageClinicMemberUseCase,
   },
+  {
+    provide: IListClinicsUseCaseToken,
+    useClass: ListClinicsUseCase,
+  },
+  {
+    provide: IGetClinicUseCaseToken,
+    useClass: GetClinicUseCase,
+  },
 ];
 
 @Module({
@@ -166,6 +179,7 @@ const useCaseProviders: Provider[] = [
     ClinicServiceTypeController,
     ClinicInvitationController,
     ClinicMemberController,
+    ClinicsController,
   ],
   providers: [...repositoryProviders, ...useCaseProviders],
   exports: [...useCaseProviders],
