@@ -1,4 +1,12 @@
-import { BadRequestException, Controller, Get, Headers, Inject, Query, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Headers,
+  Inject,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
@@ -10,10 +18,15 @@ import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
 import { ClinicDashboardResponseDto } from '../dtos/clinic-dashboard-response.dto';
 import { ClinicPresenter } from '../presenters/clinic.presenter';
-import { getClinicDashboardSchema, GetClinicDashboardSchema } from '../schemas/get-clinic-dashboard.schema';
+import {
+  getClinicDashboardSchema,
+  GetClinicDashboardSchema,
+} from '../schemas/get-clinic-dashboard.schema';
 import { ClinicRequestContext, toClinicDashboardQuery } from '../mappers/clinic-request.mapper';
-import type { IGetClinicDashboardUseCase } from '../../../../domain/clinic/interfaces/use-cases/get-clinic-dashboard.use-case.interface';
-import { IGetClinicDashboardUseCase as IGetClinicDashboardUseCaseToken } from '../../../../domain/clinic/interfaces/use-cases/get-clinic-dashboard.use-case.interface';
+import {
+  type IGetClinicDashboardUseCase,
+  IGetClinicDashboardUseCase as IGetClinicDashboardUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/get-clinic-dashboard.use-case.interface';
 
 @ApiTags('Clinics')
 @ApiBearerAuth()
@@ -34,7 +47,11 @@ export class ClinicDashboardController {
     RolesEnum.SUPER_ADMIN,
   )
   @ApiOperation({ summary: 'Obter métricas consolidadas das clínicas' })
-  @ApiQuery({ name: 'clinicIds', required: false, description: 'Lista de IDs separados por vírgula' })
+  @ApiQuery({
+    name: 'clinicIds',
+    required: false,
+    description: 'Lista de IDs separados por vírgula',
+  })
   @ApiQuery({ name: 'from', required: false, description: 'Data inicial (ISO)' })
   @ApiQuery({ name: 'to', required: false, description: 'Data final (ISO)' })
   @ApiQuery({ name: 'includeForecast', required: false, type: Boolean })

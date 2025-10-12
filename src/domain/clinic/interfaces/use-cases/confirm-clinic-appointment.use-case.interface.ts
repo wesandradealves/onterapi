@@ -5,14 +5,8 @@ import {
 } from '../../types/clinic.types';
 
 export interface IConfirmClinicAppointmentUseCase {
-  execute(
-    input: ClinicHoldConfirmationInput,
-  ): Promise<Result<ClinicAppointmentConfirmationResult>>;
-  executeOrThrow(
-    input: ClinicHoldConfirmationInput,
-  ): Promise<ClinicAppointmentConfirmationResult>;
+  execute(input: ClinicHoldConfirmationInput): Promise<Result<ClinicAppointmentConfirmationResult>>;
+  executeOrThrow(input: ClinicHoldConfirmationInput): Promise<ClinicAppointmentConfirmationResult>;
 }
 
-export const IConfirmClinicAppointmentUseCase = Symbol(
-  'IConfirmClinicAppointmentUseCase',
-);
+export const IConfirmClinicAppointmentUseCase = Symbol('IConfirmClinicAppointmentUseCase');

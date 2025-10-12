@@ -1,5 +1,58 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+import {
+  ClinicCurrency,
+  ClinicInvitationChannel,
+  ClinicInvitationStatus,
+  ClinicPayoutModel,
+  ClinicSplitRecipient,
+} from '../../../../domain/clinic/types/clinic.types';
+
+export class ClinicEconomicAgreementDto {
+  @ApiProperty()
+  serviceTypeId!: string;
+
+  @ApiProperty()
+  price!: number;
+
+  @ApiProperty({ enum: ['BRL', 'USD', 'EUR'] })
+  currency!: ClinicCurrency;
+
+  @ApiProperty({ enum: ['fixed', 'percentage'] })
+  payoutModel!: ClinicPayoutModel;
+
+  @ApiProperty()
+  payoutValue!: number;
+}
+
+export class ClinicInvitationEconomicExampleDto {
+  @ApiProperty({ enum: ['BRL', 'USD', 'EUR'] })
+  currency!: ClinicCurrency;
+
+  @ApiProperty()
+  patientPays!: number;
+
+  @ApiProperty()
+  professionalReceives!: number;
+
+  @ApiProperty()
+  remainder!: number;
+}
+
+export class ClinicInvitationEconomicSummaryDto {
+  @ApiProperty({ type: [ClinicEconomicAgreementDto] })
+  items!: ClinicEconomicAgreementDto[];
+
+  @ApiProperty({ enum: ['taxes', 'gateway', 'clinic', 'professional', 'platform'], isArray: true })
+  orderOfRemainders!: ClinicSplitRecipient[];
+
+  @ApiProperty({ enum: ['half_even'] })
+  roundingStrategy!: 'half_even';
+
+  @ApiPropertyOptional({ type: () => [ClinicInvitationEconomicExampleDto] })
+  examples?: ClinicInvitationEconomicExampleDto[];
+}
+
 export class ClinicInvitationResponseDto {
   @ApiProperty()
   id!: string;
@@ -19,11 +72,11 @@ export class ClinicInvitationResponseDto {
   @ApiProperty()
   issuedBy!: string;
 
-  @ApiProperty()
-  status!: string;
+  @ApiProperty({ enum: ['pending', 'accepted', 'declined', 'revoked', 'expired'] })
+  status!: ClinicInvitationStatus;
 
-  @ApiProperty()
-  channel!: string;
+  @ApiProperty({ enum: ['email', 'whatsapp'] })
+  channel!: ClinicInvitationChannel;
 
   @ApiProperty({ type: String })
   expiresAt!: Date;
@@ -49,8 +102,8 @@ export class ClinicInvitationResponseDto {
   @ApiPropertyOptional()
   declinedBy?: string;
 
-  @ApiProperty({ type: Object })
-  economicSummary!: Record<string, unknown>;
+  @ApiProperty({ type: ClinicInvitationEconomicSummaryDto })
+  economicSummary!: ClinicInvitationEconomicSummaryDto;
 
   @ApiPropertyOptional({ type: Object })
   metadata?: Record<string, unknown>;

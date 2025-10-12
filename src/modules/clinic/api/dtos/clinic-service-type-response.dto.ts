@@ -1,5 +1,53 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+export class ClinicServiceCancellationPolicyDto {
+  @ApiProperty()
+  type!: string;
+
+  @ApiPropertyOptional()
+  windowMinutes?: number;
+
+  @ApiPropertyOptional()
+  percentage?: number;
+
+  @ApiPropertyOptional()
+  message?: string;
+}
+
+export class ClinicServiceEligibilityDto {
+  @ApiProperty()
+  allowNewPatients!: boolean;
+
+  @ApiProperty()
+  allowExistingPatients!: boolean;
+
+  @ApiPropertyOptional()
+  minimumAge?: number;
+
+  @ApiPropertyOptional()
+  maximumAge?: number;
+
+  @ApiPropertyOptional({ type: [String] })
+  allowedTags?: string[];
+}
+
+export class ClinicServiceCustomFieldDto {
+  @ApiPropertyOptional()
+  id?: string;
+
+  @ApiProperty()
+  label!: string;
+
+  @ApiProperty()
+  fieldType!: string;
+
+  @ApiProperty()
+  required!: boolean;
+
+  @ApiPropertyOptional({ type: [String] })
+  options?: string[];
+}
+
 export class ClinicServiceTypeResponseDto {
   @ApiProperty()
   id!: string;
@@ -40,11 +88,11 @@ export class ClinicServiceTypeResponseDto {
   @ApiPropertyOptional()
   maxAdvanceMinutes?: number;
 
-  @ApiProperty({ type: Object })
-  cancellationPolicy!: Record<string, unknown>;
+  @ApiProperty({ type: ClinicServiceCancellationPolicyDto })
+  cancellationPolicy!: ClinicServiceCancellationPolicyDto;
 
-  @ApiProperty({ type: Object })
-  eligibility!: Record<string, unknown>;
+  @ApiProperty({ type: ClinicServiceEligibilityDto })
+  eligibility!: ClinicServiceEligibilityDto;
 
   @ApiPropertyOptional()
   instructions?: string;
@@ -52,8 +100,8 @@ export class ClinicServiceTypeResponseDto {
   @ApiProperty({ type: [String] })
   requiredDocuments!: string[];
 
-  @ApiProperty({ type: [Object] })
-  customFields!: Record<string, unknown>[];
+  @ApiProperty({ type: [ClinicServiceCustomFieldDto] })
+  customFields!: ClinicServiceCustomFieldDto[];
 
   @ApiProperty({ type: String })
   createdAt!: Date;

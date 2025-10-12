@@ -1,14 +1,15 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
-import type { IClinicRepository } from '../../../domain/clinic/interfaces/repositories/clinic.repository.interface';
-import { IClinicRepository as IClinicRepositoryToken } from '../../../domain/clinic/interfaces/repositories/clinic.repository.interface';
 import {
-  Clinic,
-  UpdateClinicHoldSettingsInput,
-} from '../../../domain/clinic/types/clinic.types';
-import type { IUpdateClinicHoldSettingsUseCase } from '../../../domain/clinic/interfaces/use-cases/update-clinic-hold-settings.use-case.interface';
-import { IUpdateClinicHoldSettingsUseCase as IUpdateClinicHoldSettingsUseCaseToken } from '../../../domain/clinic/interfaces/use-cases/update-clinic-hold-settings.use-case.interface';
+  type IClinicRepository,
+  IClinicRepository as IClinicRepositoryToken,
+} from '../../../domain/clinic/interfaces/repositories/clinic.repository.interface';
+import { Clinic, UpdateClinicHoldSettingsInput } from '../../../domain/clinic/types/clinic.types';
+import {
+  type IUpdateClinicHoldSettingsUseCase,
+  IUpdateClinicHoldSettingsUseCase as IUpdateClinicHoldSettingsUseCaseToken,
+} from '../../../domain/clinic/interfaces/use-cases/update-clinic-hold-settings.use-case.interface';
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
 
 @Injectable()

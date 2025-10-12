@@ -10,7 +10,14 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../auth/guards/roles.guard';
@@ -19,18 +26,25 @@ import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import { ICurrentUser } from '../../../../domain/auth/interfaces/current-user.interface';
 import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
+import { ZodApiBody } from '../../../../shared/decorators/zod-api-body.decorator';
 import { ClinicPresenter } from '../presenters/clinic.presenter';
 import { ClinicMemberResponseDto } from '../dtos/clinic-member-response.dto';
+import { ClinicMemberListResponseDto } from '../dtos/clinic-member-list-response.dto';
 import {
   listClinicMembersSchema,
   ListClinicMembersSchema,
   manageClinicMemberSchema,
   ManageClinicMemberSchema,
 } from '../schemas/clinic-member.schema';
-import type { IListClinicMembersUseCase } from '../../../../domain/clinic/interfaces/use-cases/list-clinic-members.use-case.interface';
-import { IListClinicMembersUseCase as IListClinicMembersUseCaseToken } from '../../../../domain/clinic/interfaces/use-cases/list-clinic-members.use-case.interface';
-import type { IManageClinicMemberUseCase } from '../../../../domain/clinic/interfaces/use-cases/manage-clinic-member.use-case.interface';
-import { IManageClinicMemberUseCase as IManageClinicMemberUseCaseToken } from '../../../../domain/clinic/interfaces/use-cases/manage-clinic-member.use-case.interface';
+import {
+  type IListClinicMembersUseCase,
+  IListClinicMembersUseCase as IListClinicMembersUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/list-clinic-members.use-case.interface';
+import {
+  type IManageClinicMemberUseCase,
+  IManageClinicMemberUseCase as IManageClinicMemberUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/manage-clinic-member.use-case.interface';
+import { ClinicStaffRole } from '../../../../domain/clinic/types/clinic.types';
 
 @ApiTags('Clinics')
 @ApiBearerAuth()
@@ -50,23 +64,28 @@ export class ClinicMemberController {
   @ApiParam({ name: 'clinicId', type: String })
   @ApiQuery({ name: 'status', required: false, description: 'Status separados por vírgula' })
   @ApiQuery({ name: 'roles', required: false, description: 'Papéis separados por vírgula' })
-  @ApiResponse({ status: 200, type: [ClinicMemberResponseDto] })
+  @ApiResponse({ status: 200, type: ClinicMemberListResponseDto })
   async list(
     @Param('clinicId') clinicId: string,
     @Query(new ZodValidationPipe(listClinicMembersSchema)) query: ListClinicMembersSchema,
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
-  ): Promise<{ data: ClinicMemberResponseDto[]; total: number }> {
+  ): Promise<ClinicMemberListResponseDto> {
     const tenantId = tenantHeader ?? query.tenantId ?? currentUser.tenantId;
     if (!tenantId) {
       throw new BadRequestException('Tenant não informado');
     }
 
+    const roles =
+      query.roles
+        ?.map((role) => this.mapRole(role, 'roles'))
+        .filter((role): role is ClinicStaffRole => Boolean(role)) ?? undefined;
+
     const result = await this.listMembersUseCase.executeOrThrow({
       clinicId,
       tenantId,
       status: query.status,
-      roles: query.roles,
+      roles,
       page: query.page,
       limit: query.limit,
     });
@@ -83,6 +102,7 @@ export class ClinicMemberController {
   @ApiParam({ name: 'clinicId', type: String })
   @ApiParam({ name: 'memberId', type: String })
   @ApiResponse({ status: 200, type: ClinicMemberResponseDto })
+  @ZodApiBody({ schema: manageClinicMemberSchema })
   async update(
     @Param('clinicId') clinicId: string,
     @Param('memberId') memberId: string,
@@ -95,16 +115,41 @@ export class ClinicMemberController {
       throw new BadRequestException('Tenant não informado');
     }
 
+    const role = this.mapRole(body.role, 'role');
+
     const member = await this.manageMemberUseCase.executeOrThrow({
       clinicId,
       tenantId,
       performedBy: currentUser.id,
       memberId,
       status: body.status,
-      role: body.role,
+      role,
       scope: body.scope,
     });
 
     return ClinicPresenter.member(member);
+  }
+
+  private mapRole(
+    rawRole: string | undefined,
+    field: 'roles' | 'role',
+  ): ClinicStaffRole | undefined {
+    if (!rawRole) {
+      return undefined;
+    }
+
+    const mapped = RolesEnum[rawRole as keyof typeof RolesEnum];
+
+    if (
+      !mapped ||
+      (mapped !== RolesEnum.CLINIC_OWNER &&
+        mapped !== RolesEnum.MANAGER &&
+        mapped !== RolesEnum.PROFESSIONAL &&
+        mapped !== RolesEnum.SECRETARY)
+    ) {
+      throw new BadRequestException(`Valor inválido para ${field}: ${rawRole}`);
+    }
+
+    return mapped as ClinicStaffRole;
   }
 }

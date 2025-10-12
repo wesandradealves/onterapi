@@ -1,9 +1,5 @@
 import { Result } from '../../../../shared/types/result.type';
-import {
-  ClinicMember,
-  ClinicMemberStatus,
-  ClinicStaffRole,
-} from '../../types/clinic.types';
+import { ClinicMember, ClinicMemberStatus, ClinicStaffRole } from '../../types/clinic.types';
 
 export interface IListClinicMembersUseCase {
   execute(input: {

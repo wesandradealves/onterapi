@@ -18,9 +18,7 @@ export const getClinicDashboardSchema = z.object({
     .optional(),
   from: z.string().datetime().optional(),
   to: z.string().datetime().optional(),
-  includeForecast: z
-    .union([z.boolean(), z.string().transform((val) => val === 'true')])
-    .optional(),
+  includeForecast: z.union([z.boolean(), z.string().transform((val) => val === 'true')]).optional(),
   includeComparisons: z
     .union([z.boolean(), z.string().transform((val) => val === 'true')])
     .optional(),

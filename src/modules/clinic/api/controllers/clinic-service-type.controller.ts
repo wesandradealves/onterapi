@@ -1,19 +1,28 @@
+import { randomUUID } from 'crypto';
+
 import {
   BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
-  Headers,
   Inject,
   Param,
   Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../auth/guards/roles.guard';
@@ -22,21 +31,33 @@ import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import { ICurrentUser } from '../../../../domain/auth/interfaces/current-user.interface';
 import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
+import { ZodApiBody } from '../../../../shared/decorators/zod-api-body.decorator';
 import { ClinicPresenter } from '../presenters/clinic.presenter';
 import { ClinicServiceTypeResponseDto } from '../dtos/clinic-service-type-response.dto';
 import { ClinicRequestContext } from '../mappers/clinic-request.mapper';
+import {
+  ClinicCurrency,
+  type ClinicServiceCustomField,
+  type UpsertClinicServiceTypeInput,
+} from '../../../../domain/clinic/types/clinic.types';
 import {
   listClinicServiceTypesSchema,
   ListClinicServiceTypesSchema,
   upsertClinicServiceTypeSchema,
   UpsertClinicServiceTypeSchema,
 } from '../schemas/upsert-clinic-service-type.schema';
-import type { IUpsertClinicServiceTypeUseCase } from '../../../../domain/clinic/interfaces/use-cases/upsert-clinic-service-type.use-case.interface';
-import { IUpsertClinicServiceTypeUseCase as IUpsertClinicServiceTypeUseCaseToken } from '../../../../domain/clinic/interfaces/use-cases/upsert-clinic-service-type.use-case.interface';
-import type { IRemoveClinicServiceTypeUseCase } from '../../../../domain/clinic/interfaces/use-cases/remove-clinic-service-type.use-case.interface';
-import { IRemoveClinicServiceTypeUseCase as IRemoveClinicServiceTypeUseCaseToken } from '../../../../domain/clinic/interfaces/use-cases/remove-clinic-service-type.use-case.interface';
-import type { IListClinicServiceTypesUseCase } from '../../../../domain/clinic/interfaces/use-cases/list-clinic-service-types.use-case.interface';
-import { IListClinicServiceTypesUseCase as IListClinicServiceTypesUseCaseToken } from '../../../../domain/clinic/interfaces/use-cases/list-clinic-service-types.use-case.interface';
+import {
+  type IUpsertClinicServiceTypeUseCase,
+  IUpsertClinicServiceTypeUseCase as IUpsertClinicServiceTypeUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/upsert-clinic-service-type.use-case.interface';
+import {
+  type IRemoveClinicServiceTypeUseCase,
+  IRemoveClinicServiceTypeUseCase as IRemoveClinicServiceTypeUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/remove-clinic-service-type.use-case.interface';
+import {
+  type IListClinicServiceTypesUseCase,
+  IListClinicServiceTypesUseCase as IListClinicServiceTypesUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/list-clinic-service-types.use-case.interface';
 
 @ApiTags('Clinics')
 @ApiBearerAuth()
@@ -53,12 +74,7 @@ export class ClinicServiceTypeController {
   ) {}
 
   @Get()
-  @Roles(
-    RolesEnum.CLINIC_OWNER,
-    RolesEnum.MANAGER,
-    RolesEnum.SECRETARY,
-    RolesEnum.SUPER_ADMIN,
-  )
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SECRETARY, RolesEnum.SUPER_ADMIN)
   @ApiOperation({ summary: 'Listar tipos de serviço da clínica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiQuery({ name: 'includeInactive', required: false, type: Boolean })
@@ -85,6 +101,7 @@ export class ClinicServiceTypeController {
   @ApiOperation({ summary: 'Criar ou atualizar tipo de serviço da clínica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: ClinicServiceTypeResponseDto })
+  @ZodApiBody({ schema: upsertClinicServiceTypeSchema })
   async upsert(
     @Param('clinicId') clinicId: string,
     @Body(new ZodValidationPipe(upsertClinicServiceTypeSchema)) body: UpsertClinicServiceTypeSchema,
@@ -93,11 +110,43 @@ export class ClinicServiceTypeController {
   ): Promise<ClinicServiceTypeResponseDto> {
     const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
 
+    const { service } = body;
+
+    const serviceInput: UpsertClinicServiceTypeInput['service'] = {
+      id: service.id,
+      name: service.name,
+      slug: service.slug,
+      color: service.color,
+      durationMinutes: service.durationMinutes,
+      price: service.price,
+      currency: this.mapCurrency(service.currency),
+      isActive: service.isActive ?? true,
+      requiresAnamnesis: service.requiresAnamnesis ?? false,
+      enableOnlineScheduling: service.enableOnlineScheduling ?? true,
+      minAdvanceMinutes: service.minAdvanceMinutes,
+      maxAdvanceMinutes: service.maxAdvanceMinutes,
+      cancellationPolicy: service.cancellationPolicy,
+      eligibility: service.eligibility,
+      instructions: service.instructions,
+      requiredDocuments: service.requiredDocuments ?? [],
+      customFields: service.customFields
+        ? service.customFields.map(
+            (field): ClinicServiceCustomField => ({
+              id: field.id ?? randomUUID(),
+              label: field.label,
+              fieldType: field.fieldType,
+              required: field.required,
+              options: field.options && field.options.length > 0 ? field.options : undefined,
+            }),
+          )
+        : undefined,
+    };
+
     const serviceType = await this.upsertServiceTypeUseCase.executeOrThrow({
       clinicId,
       tenantId: context.tenantId,
       requestedBy: context.userId,
-      service: body.service,
+      service: serviceInput,
     });
 
     return ClinicPresenter.serviceType(serviceType);
@@ -137,5 +186,13 @@ export class ClinicServiceTypeController {
       tenantId: resolvedTenantId,
       userId: currentUser.id,
     };
+  }
+
+  private mapCurrency(rawCurrency: string): ClinicCurrency {
+    if (rawCurrency === 'BRL' || rawCurrency === 'USD' || rawCurrency === 'EUR') {
+      return rawCurrency;
+    }
+
+    throw new BadRequestException(`Moeda inválida: ${rawCurrency}`);
   }
 }

@@ -411,7 +411,7 @@ export class CreateClinicModuleTables1738800000000 implements MigrationInterface
           { name: 'start_at', type: 'timestamp with time zone' },
           { name: 'end_at', type: 'timestamp with time zone' },
           { name: 'ttl_expires_at', type: 'timestamp with time zone' },
-          { name: 'status', type: 'varchar', length: '20', default: '\'pending\'' },
+          { name: 'status', type: 'varchar', length: '20', default: "'pending'" },
           { name: 'location_id', type: 'uuid', isNullable: true },
           { name: 'resources', type: 'jsonb', default: "'[]'" },
           { name: 'idempotency_key', type: 'varchar', length: '120' },

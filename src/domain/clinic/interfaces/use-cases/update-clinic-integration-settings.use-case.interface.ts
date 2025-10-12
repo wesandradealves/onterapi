@@ -5,12 +5,8 @@ import {
 } from '../../types/clinic.types';
 
 export interface IUpdateClinicIntegrationSettingsUseCase {
-  execute(
-    input: UpdateClinicIntegrationSettingsInput,
-  ): Promise<Result<ClinicConfigurationVersion>>;
-  executeOrThrow(
-    input: UpdateClinicIntegrationSettingsInput,
-  ): Promise<ClinicConfigurationVersion>;
+  execute(input: UpdateClinicIntegrationSettingsInput): Promise<Result<ClinicConfigurationVersion>>;
+  executeOrThrow(input: UpdateClinicIntegrationSettingsInput): Promise<ClinicConfigurationVersion>;
 }
 
 export const IUpdateClinicIntegrationSettingsUseCase = Symbol(

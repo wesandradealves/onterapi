@@ -1,12 +1,18 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
-import type { IClinicInvitationRepository } from '../../../domain/clinic/interfaces/repositories/clinic-invitation.repository.interface';
-import { IClinicInvitationRepository as IClinicInvitationRepositoryToken } from '../../../domain/clinic/interfaces/repositories/clinic-invitation.repository.interface';
-import type { IClinicRepository } from '../../../domain/clinic/interfaces/repositories/clinic.repository.interface';
-import { IClinicRepository as IClinicRepositoryToken } from '../../../domain/clinic/interfaces/repositories/clinic.repository.interface';
-import type { IRevokeClinicInvitationUseCase } from '../../../domain/clinic/interfaces/use-cases/revoke-clinic-invitation.use-case.interface';
-import { IRevokeClinicInvitationUseCase as IRevokeClinicInvitationUseCaseToken } from '../../../domain/clinic/interfaces/use-cases/revoke-clinic-invitation.use-case.interface';
+import {
+  type IClinicInvitationRepository,
+  IClinicInvitationRepository as IClinicInvitationRepositoryToken,
+} from '../../../domain/clinic/interfaces/repositories/clinic-invitation.repository.interface';
+import {
+  type IClinicRepository,
+  IClinicRepository as IClinicRepositoryToken,
+} from '../../../domain/clinic/interfaces/repositories/clinic.repository.interface';
+import {
+  type IRevokeClinicInvitationUseCase,
+  IRevokeClinicInvitationUseCase as IRevokeClinicInvitationUseCaseToken,
+} from '../../../domain/clinic/interfaces/use-cases/revoke-clinic-invitation.use-case.interface';
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
 import {
   ClinicInvitation,

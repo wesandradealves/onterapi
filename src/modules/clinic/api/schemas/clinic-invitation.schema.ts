@@ -1,12 +1,22 @@
 import { z } from 'zod';
 
-const invitationEconomicItemSchema = z.object({
-  serviceTypeId: z.string().uuid(),
-  price: z.number().positive(),
-  currency: z.string().length(3),
-  payoutModel: z.enum(['fixed', 'percentage']),
-  payoutValue: z.number().positive(),
-});
+const invitationEconomicItemSchema = z
+  .object({
+    serviceTypeId: z.string().uuid(),
+    price: z.number().positive(),
+    currency: z.enum(['BRL', 'USD', 'EUR']),
+    payoutModel: z.enum(['fixed', 'percentage']),
+    payoutValue: z.number().positive(),
+  })
+  .superRefine((item, ctx) => {
+    if (item.payoutModel === 'percentage' && (item.payoutValue < 0 || item.payoutValue > 100)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'payoutValue deve estar entre 0 e 100 para percentual',
+        path: ['payoutValue'],
+      });
+    }
+  });
 
 export const inviteClinicProfessionalSchema = z.object({
   tenantId: z.string().uuid(),
@@ -15,9 +25,7 @@ export const inviteClinicProfessionalSchema = z.object({
   channel: z.enum(['email', 'whatsapp']),
   economicSummary: z.object({
     items: z.array(invitationEconomicItemSchema).min(1),
-    orderOfRemainders: z.array(
-      z.enum(['taxes', 'gateway', 'clinic', 'professional', 'platform']),
-    ),
+    orderOfRemainders: z.array(z.enum(['taxes', 'gateway', 'clinic', 'professional', 'platform'])),
     roundingStrategy: z.literal('half_even'),
   }),
   expiresAt: z.string().datetime(),
@@ -43,14 +51,17 @@ export type RevokeClinicInvitationSchema = z.infer<typeof revokeClinicInvitation
 export const listClinicInvitationsSchema = z.object({
   tenantId: z.string().uuid(),
   status: z
-    .preprocess((value) => {
-      if (!value) return undefined;
-      if (Array.isArray(value)) return value;
-      if (typeof value === 'string') {
-        return value.split(',').map((item) => item.trim());
-      }
-      return undefined;
-    }, z.array(z.enum(['pending', 'accepted', 'declined', 'revoked', 'expired'])).optional())
+    .preprocess(
+      (value) => {
+        if (!value) return undefined;
+        if (Array.isArray(value)) return value;
+        if (typeof value === 'string') {
+          return value.split(',').map((item) => item.trim());
+        }
+        return undefined;
+      },
+      z.array(z.enum(['pending', 'accepted', 'declined', 'revoked', 'expired'])).optional(),
+    )
     .optional(),
   page: z.coerce.number().int().positive().optional(),
   limit: z.coerce.number().int().positive().max(100).optional(),

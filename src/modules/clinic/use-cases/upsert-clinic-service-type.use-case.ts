@@ -1,16 +1,22 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
-import type { IClinicRepository } from '../../../domain/clinic/interfaces/repositories/clinic.repository.interface';
-import { IClinicRepository as IClinicRepositoryToken } from '../../../domain/clinic/interfaces/repositories/clinic.repository.interface';
-import type { IClinicServiceTypeRepository } from '../../../domain/clinic/interfaces/repositories/clinic-service-type.repository.interface';
-import { IClinicServiceTypeRepository as IClinicServiceTypeRepositoryToken } from '../../../domain/clinic/interfaces/repositories/clinic-service-type.repository.interface';
+import {
+  type IClinicRepository,
+  IClinicRepository as IClinicRepositoryToken,
+} from '../../../domain/clinic/interfaces/repositories/clinic.repository.interface';
+import {
+  type IClinicServiceTypeRepository,
+  IClinicServiceTypeRepository as IClinicServiceTypeRepositoryToken,
+} from '../../../domain/clinic/interfaces/repositories/clinic-service-type.repository.interface';
 import {
   ClinicServiceTypeDefinition,
   UpsertClinicServiceTypeInput,
 } from '../../../domain/clinic/types/clinic.types';
-import type { IUpsertClinicServiceTypeUseCase } from '../../../domain/clinic/interfaces/use-cases/upsert-clinic-service-type.use-case.interface';
-import { IUpsertClinicServiceTypeUseCase as IUpsertClinicServiceTypeUseCaseToken } from '../../../domain/clinic/interfaces/use-cases/upsert-clinic-service-type.use-case.interface';
+import {
+  type IUpsertClinicServiceTypeUseCase,
+  IUpsertClinicServiceTypeUseCase as IUpsertClinicServiceTypeUseCaseToken,
+} from '../../../domain/clinic/interfaces/use-cases/upsert-clinic-service-type.use-case.interface';
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
 
 @Injectable()

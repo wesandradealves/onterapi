@@ -1,8 +1,8 @@
 import {
+  ClinicDashboardQuery,
   ClinicGeneralSettings,
   ClinicHoldRequestInput,
   ClinicHoldSettings,
-  ClinicDashboardQuery,
   UpdateClinicGeneralSettingsInput,
   UpdateClinicHoldSettingsInput,
 } from '../../../../domain/clinic/types/clinic.types';

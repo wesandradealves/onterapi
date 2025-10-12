@@ -42,6 +42,8 @@ import { ManageClinicMemberUseCase } from './use-cases/manage-clinic-member.use-
 import { ListClinicsUseCase } from './use-cases/list-clinics.use-case';
 import { GetClinicUseCase } from './use-cases/get-clinic.use-case';
 import { UpdateClinicStatusUseCase } from './use-cases/update-clinic-status.use-case';
+import { GetClinicGeneralSettingsUseCase } from './use-cases/get-clinic-general-settings.use-case';
+import { GetClinicTeamSettingsUseCase } from './use-cases/get-clinic-team-settings.use-case';
 import { IClinicRepository as IClinicRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic.repository.interface';
 import { IClinicConfigurationRepository as IClinicConfigurationRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
 import { IClinicServiceTypeRepository as IClinicServiceTypeRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-service-type.repository.interface';
@@ -51,6 +53,8 @@ import { IClinicInvitationRepository as IClinicInvitationRepositoryToken } from 
 import { IClinicMemberRepository as IClinicMemberRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-member.repository.interface';
 import { IUpdateClinicGeneralSettingsUseCase as IUpdateClinicGeneralSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/update-clinic-general-settings.use-case.interface';
 import { IUpdateClinicHoldSettingsUseCase as IUpdateClinicHoldSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/update-clinic-hold-settings.use-case.interface';
+import { IGetClinicGeneralSettingsUseCase as IGetClinicGeneralSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic-general-settings.use-case.interface';
+import { IGetClinicTeamSettingsUseCase as IGetClinicTeamSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic-team-settings.use-case.interface';
 import { ICreateClinicUseCase as ICreateClinicUseCaseToken } from '../../domain/clinic/interfaces/use-cases/create-clinic.use-case.interface';
 import { ICreateClinicHoldUseCase as ICreateClinicHoldUseCaseToken } from '../../domain/clinic/interfaces/use-cases/create-clinic-hold.use-case.interface';
 import { IGetClinicDashboardUseCase as IGetClinicDashboardUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic-dashboard.use-case.interface';
@@ -102,6 +106,14 @@ const useCaseProviders: Provider[] = [
   {
     provide: IUpdateClinicGeneralSettingsUseCaseToken,
     useClass: UpdateClinicGeneralSettingsUseCase,
+  },
+  {
+    provide: IGetClinicGeneralSettingsUseCaseToken,
+    useClass: GetClinicGeneralSettingsUseCase,
+  },
+  {
+    provide: IGetClinicTeamSettingsUseCaseToken,
+    useClass: GetClinicTeamSettingsUseCase,
   },
   {
     provide: IUpdateClinicHoldSettingsUseCaseToken,

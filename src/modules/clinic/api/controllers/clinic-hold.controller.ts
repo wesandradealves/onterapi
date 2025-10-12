@@ -19,12 +19,18 @@ import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import { ICurrentUser } from '../../../../domain/auth/interfaces/current-user.interface';
 import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
+import { ZodApiBody } from '../../../../shared/decorators/zod-api-body.decorator';
 import { ClinicHoldResponseDto } from '../dtos/clinic-hold-response.dto';
 import { ClinicPresenter } from '../presenters/clinic.presenter';
-import { createClinicHoldSchema, CreateClinicHoldSchema } from '../schemas/create-clinic-hold.schema';
+import {
+  createClinicHoldSchema,
+  CreateClinicHoldSchema,
+} from '../schemas/create-clinic-hold.schema';
 import { ClinicRequestContext, toCreateClinicHoldInput } from '../mappers/clinic-request.mapper';
-import type { ICreateClinicHoldUseCase } from '../../../../domain/clinic/interfaces/use-cases/create-clinic-hold.use-case.interface';
-import { ICreateClinicHoldUseCase as ICreateClinicHoldUseCaseToken } from '../../../../domain/clinic/interfaces/use-cases/create-clinic-hold.use-case.interface';
+import {
+  type ICreateClinicHoldUseCase,
+  ICreateClinicHoldUseCase as ICreateClinicHoldUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/create-clinic-hold.use-case.interface';
 
 @ApiTags('Clinics')
 @ApiBearerAuth()
@@ -48,6 +54,7 @@ export class ClinicHoldController {
   @ApiOperation({ summary: 'Criar hold clínico' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 201, type: ClinicHoldResponseDto })
+  @ZodApiBody({ schema: createClinicHoldSchema })
   async createHold(
     @Param('clinicId') clinicId: string,
     @Body(new ZodValidationPipe(createClinicHoldSchema)) body: CreateClinicHoldSchema,

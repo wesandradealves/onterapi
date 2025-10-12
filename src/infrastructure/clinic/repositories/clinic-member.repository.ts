@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 
 import {
   AddClinicMemberInput,
@@ -40,10 +40,6 @@ export class ClinicMemberRepository implements IClinicMemberRepository {
   async updateMember(input: ManageClinicMemberInput): Promise<ClinicMember> {
     const entity = await this.repository.findOneOrFail({ where: { id: input.memberId } });
 
-    if (input.status) {
-      entity.status = input.status;
-    }
-
     if (input.scope) {
       entity.scope = input.scope;
     }
@@ -52,10 +48,9 @@ export class ClinicMemberRepository implements IClinicMemberRepository {
       entity.role = input.role;
     }
 
-    if (input.status === 'suspended') {
-      entity.suspendedAt = new Date();
-    } else if (input.status !== 'suspended') {
-      entity.suspendedAt = null;
+    if (input.status) {
+      entity.status = input.status;
+      entity.suspendedAt = input.status === 'suspended' ? new Date() : null;
     }
 
     const saved = await this.repository.save(entity);
@@ -80,7 +75,7 @@ export class ClinicMemberRepository implements IClinicMemberRepository {
 
   async findByUser(clinicId: string, userId: string): Promise<ClinicMember | null> {
     const entity = await this.repository.findOne({
-      where: { clinicId, userId, endedAt: null },
+      where: { clinicId, userId, endedAt: IsNull() },
     });
 
     return entity ? ClinicMapper.toMember(entity) : null;
@@ -133,10 +128,13 @@ export class ClinicMemberRepository implements IClinicMemberRepository {
       .groupBy('member.role')
       .getRawMany<{ role: ClinicStaffRole; count: string }>();
 
-    return rows.reduce<Record<ClinicStaffRole, number>>((acc, row) => {
-      acc[row.role] = Number(row.count);
-      return acc;
-    }, {} as Record<ClinicStaffRole, number>);
+    return rows.reduce<Record<ClinicStaffRole, number>>(
+      (acc, row) => {
+        acc[row.role] = Number(row.count);
+        return acc;
+      },
+      {} as Record<ClinicStaffRole, number>,
+    );
   }
 
   async hasQuotaAvailable(params: {
@@ -148,8 +146,8 @@ export class ClinicMemberRepository implements IClinicMemberRepository {
       where: {
         clinicId: params.clinicId,
         role: params.role,
-        status: In(['active', 'pending_invitation']),
-        endedAt: null,
+        status: In(['active', 'pending_invitation'] as ClinicMemberStatus[]),
+        endedAt: IsNull(),
       },
     });
 

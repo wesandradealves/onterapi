@@ -39,6 +39,4 @@ export const updateClinicGeneralSettingsSchema = z.object({
   }),
 });
 
-export type UpdateClinicGeneralSettingsSchema = z.infer<
-  typeof updateClinicGeneralSettingsSchema
->;
+export type UpdateClinicGeneralSettingsSchema = z.infer<typeof updateClinicGeneralSettingsSchema>;

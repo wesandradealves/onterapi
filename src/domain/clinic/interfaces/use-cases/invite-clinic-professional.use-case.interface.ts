@@ -1,5 +1,5 @@
 import { Result } from '../../../../shared/types/result.type';
-import { InviteClinicProfessionalInput, ClinicInvitation } from '../../types/clinic.types';
+import { ClinicInvitation, InviteClinicProfessionalInput } from '../../types/clinic.types';
 
 export interface IInviteClinicProfessionalUseCase {
   execute(input: InviteClinicProfessionalInput): Promise<Result<ClinicInvitation>>;

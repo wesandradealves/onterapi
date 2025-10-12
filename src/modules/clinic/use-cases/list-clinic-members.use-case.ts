@@ -1,12 +1,18 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
-import type { IClinicRepository } from '../../../domain/clinic/interfaces/repositories/clinic.repository.interface';
-import { IClinicRepository as IClinicRepositoryToken } from '../../../domain/clinic/interfaces/repositories/clinic.repository.interface';
-import type { IClinicMemberRepository } from '../../../domain/clinic/interfaces/repositories/clinic-member.repository.interface';
-import { IClinicMemberRepository as IClinicMemberRepositoryToken } from '../../../domain/clinic/interfaces/repositories/clinic-member.repository.interface';
-import type { IListClinicMembersUseCase } from '../../../domain/clinic/interfaces/use-cases/list-clinic-members.use-case.interface';
-import { IListClinicMembersUseCase as IListClinicMembersUseCaseToken } from '../../../domain/clinic/interfaces/use-cases/list-clinic-members.use-case.interface';
+import {
+  type IClinicRepository,
+  IClinicRepository as IClinicRepositoryToken,
+} from '../../../domain/clinic/interfaces/repositories/clinic.repository.interface';
+import {
+  type IClinicMemberRepository,
+  IClinicMemberRepository as IClinicMemberRepositoryToken,
+} from '../../../domain/clinic/interfaces/repositories/clinic-member.repository.interface';
+import {
+  type IListClinicMembersUseCase,
+  IListClinicMembersUseCase as IListClinicMembersUseCaseToken,
+} from '../../../domain/clinic/interfaces/use-cases/list-clinic-members.use-case.interface';
 import {
   ClinicMember,
   ClinicMemberStatus,

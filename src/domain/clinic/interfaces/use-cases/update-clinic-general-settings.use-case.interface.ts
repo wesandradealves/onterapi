@@ -9,6 +9,4 @@ export interface IUpdateClinicGeneralSettingsUseCase {
   executeOrThrow(input: UpdateClinicGeneralSettingsInput): Promise<ClinicConfigurationVersion>;
 }
 
-export const IUpdateClinicGeneralSettingsUseCase = Symbol(
-  'IUpdateClinicGeneralSettingsUseCase',
-);
+export const IUpdateClinicGeneralSettingsUseCase = Symbol('IUpdateClinicGeneralSettingsUseCase');

@@ -5,12 +5,8 @@ import {
 } from '../../types/clinic.types';
 
 export interface IPropagateClinicTemplateUseCase {
-  execute(
-    input: ClinicTemplatePropagationInput,
-  ): Promise<Result<ClinicConfigurationVersion[]>>;
-  executeOrThrow(
-    input: ClinicTemplatePropagationInput,
-  ): Promise<ClinicConfigurationVersion[]>;
+  execute(input: ClinicTemplatePropagationInput): Promise<Result<ClinicConfigurationVersion[]>>;
+  executeOrThrow(input: ClinicTemplatePropagationInput): Promise<ClinicConfigurationVersion[]>;
 }
 
 export const IPropagateClinicTemplateUseCase = Symbol('IPropagateClinicTemplateUseCase');

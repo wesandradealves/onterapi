@@ -17,9 +17,7 @@ export interface IClinicConfigurationRepository {
     limit?: number;
     beforeVersion?: number;
   }): Promise<ClinicConfigurationVersion[]>;
-  createVersion(
-    data: SaveClinicConfigurationVersionInput,
-  ): Promise<ClinicConfigurationVersion>;
+  createVersion(data: SaveClinicConfigurationVersionInput): Promise<ClinicConfigurationVersion>;
   applyVersion(input: ApplyClinicConfigurationVersionInput): Promise<void>;
   deleteVersion(params: {
     clinicId: string;

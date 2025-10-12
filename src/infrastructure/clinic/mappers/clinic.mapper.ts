@@ -3,6 +3,7 @@ import {
   ClinicAlert,
   ClinicConfigurationVersion,
   ClinicDashboardMetric,
+  ClinicDocumentType,
   ClinicForecastProjection,
   ClinicHold,
   ClinicInvitation,
@@ -29,7 +30,10 @@ export class ClinicMapper {
       status: entity.status,
       document:
         entity.documentType && entity.documentValue
-          ? { type: entity.documentType, value: entity.documentValue }
+          ? {
+              type: entity.documentType as ClinicDocumentType,
+              value: entity.documentValue,
+            }
           : undefined,
       primaryOwnerId: entity.primaryOwnerId,
       configurationVersions: entity.configurationVersions ?? {},
@@ -174,9 +178,7 @@ export class ClinicMapper {
     };
   }
 
-  static toForecastProjection(
-    entity: ClinicForecastProjectionEntity,
-  ): ClinicForecastProjection {
+  static toForecastProjection(entity: ClinicForecastProjectionEntity): ClinicForecastProjection {
     return {
       clinicId: entity.clinicId,
       month: entity.month,

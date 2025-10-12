@@ -1,7 +1,10 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
-import { AvailabilityOptions, BookingHold } from '../../../domain/scheduling/types/scheduling.types';
+import {
+  AvailabilityOptions,
+  BookingHold,
+} from '../../../domain/scheduling/types/scheduling.types';
 import { BookingValidationService } from '../../../domain/scheduling/services/booking-validation.service';
 import {
   IBookingRepository,

@@ -18,9 +18,7 @@ export class ClinicServiceTypeRepository implements IClinicServiceTypeRepository
     private readonly repository: Repository<ClinicServiceTypeEntity>,
   ) {}
 
-  async upsert(
-    input: UpsertClinicServiceTypeInput,
-  ): Promise<ClinicServiceTypeDefinition> {
+  async upsert(input: UpsertClinicServiceTypeInput): Promise<ClinicServiceTypeDefinition> {
     const { clinicId, tenantId, service } = input;
 
     let entity: ClinicServiceTypeEntity | null = null;
@@ -102,10 +100,7 @@ export class ClinicServiceTypeRepository implements IClinicServiceTypeRepository
     return entity ? ClinicMapper.toServiceType(entity) : null;
   }
 
-  async findBySlug(
-    clinicId: string,
-    slug: string,
-  ): Promise<ClinicServiceTypeDefinition | null> {
+  async findBySlug(clinicId: string, slug: string): Promise<ClinicServiceTypeDefinition | null> {
     const entity = await this.repository.findOne({
       where: { clinicId, slug },
     });

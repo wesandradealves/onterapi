@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 
 import {
   ClinicAlert,
@@ -12,6 +12,7 @@ import {
   ClinicForecastProjection,
   TriggerClinicAlertInput,
 } from '../../../domain/clinic/types/clinic.types';
+import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
 import { IClinicMetricsRepository } from '../../../domain/clinic/interfaces/repositories/clinic-metrics.repository.interface';
 import { ClinicAlertEntity } from '../entities/clinic-alert.entity';
 import { ClinicDashboardMetricEntity } from '../entities/clinic-dashboard-metric.entity';
@@ -66,8 +67,8 @@ export class ClinicMetricsRepository implements IClinicMetricsRepository {
     const professionals = await this.memberRepository.count({
       where: {
         tenantId: query.tenantId,
-        role: 'PROFESSIONAL',
-        endedAt: null,
+        role: RolesEnum.PROFESSIONAL,
+        endedAt: IsNull(),
         ...(query.filters?.clinicIds && query.filters.clinicIds.length > 0
           ? { clinicId: In(query.filters.clinicIds) }
           : {}),
@@ -124,20 +125,27 @@ export class ClinicMetricsRepository implements IClinicMetricsRepository {
         })
       : [];
 
-    const currentGrouped = this.groupMetricsByClinic(currentMetrics.map(ClinicMapper.toDashboardMetric));
-    const previousGrouped = this.groupMetricsByClinic(previousMetrics.map(ClinicMapper.toDashboardMetric));
+    const currentGrouped = this.groupMetricsByClinic(
+      currentMetrics.map(ClinicMapper.toDashboardMetric),
+    );
+    const previousGrouped = this.groupMetricsByClinic(
+      previousMetrics.map(ClinicMapper.toDashboardMetric),
+    );
 
     const entries = Object.keys(currentGrouped).map((clinicId) => {
       const current = currentGrouped[clinicId];
       const previous = previousGrouped[clinicId];
       const occupancy = current.periods > 0 ? current.occupancyRate / current.periods : 0;
-      const satisfaction = current.samples > 0 ? current.satisfactionScore / current.samples : undefined;
+      const satisfaction =
+        current.samples > 0 ? current.satisfactionScore / current.samples : undefined;
 
       return {
         clinicId,
         name: clinicId,
         revenue: current.revenue,
-        revenueVariationPercentage: previous ? this.calculateVariation(current.revenue, previous.revenue) : 0,
+        revenueVariationPercentage: previous
+          ? this.calculateVariation(current.revenue, previous.revenue)
+          : 0,
         appointments: current.appointments,
         appointmentsVariationPercentage: previous
           ? this.calculateVariation(current.appointments, previous.appointments)
@@ -148,7 +156,9 @@ export class ClinicMetricsRepository implements IClinicMetricsRepository {
       } as ClinicComparisonEntry;
     });
 
-    entries.sort((a, b) => this.metricValueByField(b, query.metric) - this.metricValueByField(a, query.metric));
+    entries.sort(
+      (a, b) => this.metricValueByField(b, query.metric) - this.metricValueByField(a, query.metric),
+    );
     entries.forEach((entry, index) => {
       entry.rankingPosition = index + 1;
     });
@@ -158,7 +168,8 @@ export class ClinicMetricsRepository implements IClinicMetricsRepository {
 
   async getForecast(query: ClinicDashboardQuery): Promise<ClinicForecastProjection[]> {
     const periodStart = query.filters?.from ?? new Date();
-    const periodEnd = query.filters?.to ?? new Date(periodStart.getTime() + 1000 * 60 * 60 * 24 * 30);
+    const periodEnd =
+      query.filters?.to ?? new Date(periodStart.getTime() + 1000 * 60 * 60 * 24 * 30);
     const clinicFilter = query.filters?.clinicIds;
     const monthKeys = this.buildMonthKeys(periodStart, periodEnd);
 
@@ -187,7 +198,11 @@ export class ClinicMetricsRepository implements IClinicMetricsRepository {
     return ClinicMapper.toAlert(saved);
   }
 
-  async resolveAlert(params: { alertId: string; resolvedBy: string; resolvedAt?: Date }): Promise<void> {
+  async resolveAlert(params: {
+    alertId: string;
+    resolvedBy: string;
+    resolvedAt?: Date;
+  }): Promise<void> {
     await this.alertRepository.update(
       { id: params.alertId },
       { resolvedAt: params.resolvedAt ?? new Date(), resolvedBy: params.resolvedBy },
@@ -246,7 +261,9 @@ export class ClinicMetricsRepository implements IClinicMetricsRepository {
     return `${year}-${month}`;
   }
 
-  private groupMetricsByClinic(metrics: ClinicDashboardMetric[]): Record<string, AggregatedMetrics> {
+  private groupMetricsByClinic(
+    metrics: ClinicDashboardMetric[],
+  ): Record<string, AggregatedMetrics> {
     return metrics.reduce<Record<string, AggregatedMetrics>>((acc, metric) => {
       const current = acc[metric.clinicId] ?? {
         revenue: 0,
@@ -271,7 +288,10 @@ export class ClinicMetricsRepository implements IClinicMetricsRepository {
     }, {});
   }
 
-  private metricValueByField(entry: ClinicComparisonEntry, metric: ClinicComparisonQuery['metric']): number {
+  private metricValueByField(
+    entry: ClinicComparisonEntry,
+    metric: ClinicComparisonQuery['metric'],
+  ): number {
     switch (metric) {
       case 'appointments':
         return entry.appointments;

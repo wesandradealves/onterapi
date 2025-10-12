@@ -6,6 +6,4 @@ export interface IProcessClinicOverbookingUseCase {
   executeOrThrow(input: ClinicOverbookingReviewInput): Promise<ClinicHold>;
 }
 
-export const IProcessClinicOverbookingUseCase = Symbol(
-  'IProcessClinicOverbookingUseCase',
-);
+export const IProcessClinicOverbookingUseCase = Symbol('IProcessClinicOverbookingUseCase');
