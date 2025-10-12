@@ -1,3 +1,4 @@
+import { Result } from '../../../../shared/types/result.type';
 import { ClinicAuditLog, ListClinicAuditLogsInput } from '../../types/clinic.types';
 
 export interface ListClinicAuditLogsUseCaseInput extends ListClinicAuditLogsInput {
@@ -7,7 +8,7 @@ export interface ListClinicAuditLogsUseCaseInput extends ListClinicAuditLogsInpu
 export interface IListClinicAuditLogsUseCase {
   execute(
     input: ListClinicAuditLogsUseCaseInput,
-  ): Promise<{ data: ClinicAuditLog[]; total: number }>;
+  ): Promise<Result<{ data: ClinicAuditLog[]; total: number }>>;
   executeOrThrow(
     input: ListClinicAuditLogsUseCaseInput,
   ): Promise<{ data: ClinicAuditLog[]; total: number }>;
