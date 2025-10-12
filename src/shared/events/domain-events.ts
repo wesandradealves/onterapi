@@ -41,6 +41,10 @@ export class DomainEvents {
   static SCHEDULING_BOOKING_CANCELLED = 'scheduling.booking.cancelled';
   static SCHEDULING_BOOKING_NO_SHOW = 'scheduling.booking.no_show';
   static SCHEDULING_PAYMENT_STATUS_CHANGED = 'scheduling.payment.status_changed';
+  static CLINIC_PAYMENT_STATUS_CHANGED = 'clinic.payment.status_changed';
+  static CLINIC_PAYMENT_SETTLED = 'clinic.payment.settled';
+  static CLINIC_PAYMENT_REFUNDED = 'clinic.payment.refunded';
+  static CLINIC_PAYMENT_CHARGEBACK = 'clinic.payment.chargeback';
   static BILLING_INVOICE_REQUESTED = 'billing.invoice.requested';
   static BILLING_INVOICE_CANCELLATION_REQUESTED = 'billing.invoice.cancellation_requested';
   static BILLING_PAYMENT_STATUS_SYNC_REQUESTED = 'billing.payment.status_sync_requested';
@@ -559,6 +563,140 @@ export class DomainEvents {
       this.SCHEDULING_PAYMENT_STATUS_CHANGED,
       bookingId,
       { bookingId, ...data, changedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static clinicPaymentStatusChanged(
+    appointmentId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      holdId: string;
+      serviceTypeId: string;
+      paymentTransactionId: string;
+      previousStatus: string;
+      newStatus: string;
+      gatewayStatus: string;
+      eventType?: string;
+      sandbox: boolean;
+      fingerprint?: string;
+      payloadId?: string;
+      amount?: { value?: number | null; netValue?: number | null };
+      receivedAt: Date;
+      paidAt?: Date;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    const { receivedAt, ...rest } = data;
+
+    return this.createEvent(
+      this.CLINIC_PAYMENT_STATUS_CHANGED,
+      appointmentId,
+      {
+        appointmentId,
+        ...rest,
+        receivedAt,
+        processedAt: new Date(),
+      },
+      metadata,
+    );
+  }
+
+  static clinicPaymentSettled(
+    appointmentId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      holdId: string;
+      serviceTypeId: string;
+      paymentTransactionId: string;
+      gatewayStatus: string;
+      eventType?: string;
+      sandbox: boolean;
+      fingerprint?: string;
+      payloadId?: string;
+      amount?: { value?: number | null; netValue?: number | null };
+      settledAt: Date;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.CLINIC_PAYMENT_SETTLED,
+      appointmentId,
+      {
+        appointmentId,
+        ...data,
+        processedAt: new Date(),
+      },
+      metadata,
+    );
+  }
+
+  static clinicPaymentRefunded(
+    appointmentId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      holdId: string;
+      serviceTypeId: string;
+      paymentTransactionId: string;
+      gatewayStatus: string;
+      eventType?: string;
+      sandbox: boolean;
+      fingerprint?: string;
+      payloadId?: string;
+      amount?: { value?: number | null; netValue?: number | null };
+      refundedAt: Date;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.CLINIC_PAYMENT_REFUNDED,
+      appointmentId,
+      {
+        appointmentId,
+        ...data,
+        processedAt: new Date(),
+      },
+      metadata,
+    );
+  }
+
+  static clinicPaymentChargeback(
+    appointmentId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      holdId: string;
+      serviceTypeId: string;
+      paymentTransactionId: string;
+      gatewayStatus: string;
+      eventType?: string;
+      sandbox: boolean;
+      fingerprint?: string;
+      payloadId?: string;
+      amount?: { value?: number | null; netValue?: number | null };
+      chargebackAt: Date;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.CLINIC_PAYMENT_CHARGEBACK,
+      appointmentId,
+      {
+        appointmentId,
+        ...data,
+        processedAt: new Date(),
+      },
       metadata,
     );
   }

@@ -11,6 +11,7 @@ import { ClinicMemberController } from './api/controllers/clinic-member.controll
 import { ClinicsController } from './api/controllers/clinics.controller';
 import { ClinicAuditController } from './api/controllers/clinic-audit.controller';
 import { ClinicPaymentWebhookController } from './api/controllers/clinic-payment-webhook.controller';
+import { ClinicPaymentController } from './api/controllers/clinic-payment.controller';
 import { ClinicEntity } from '../../infrastructure/clinic/entities/clinic.entity';
 import { ClinicConfigurationVersionEntity } from '../../infrastructure/clinic/entities/clinic-configuration-version.entity';
 import { ClinicMemberEntity } from '../../infrastructure/clinic/entities/clinic-member.entity';
@@ -48,6 +49,8 @@ import { CreateClinicHoldUseCase } from './use-cases/create-clinic-hold.use-case
 import { ConfirmClinicAppointmentUseCase } from './use-cases/confirm-clinic-appointment.use-case';
 import { GetClinicDashboardUseCase } from './use-cases/get-clinic-dashboard.use-case';
 import { ProcessClinicPaymentWebhookUseCase } from './use-cases/process-clinic-payment-webhook.use-case';
+import { GetClinicPaymentLedgerUseCase } from './use-cases/get-clinic-payment-ledger.use-case';
+import { ListClinicPaymentLedgersUseCase } from './use-cases/list-clinic-payment-ledgers.use-case';
 import { UpsertClinicServiceTypeUseCase } from './use-cases/upsert-clinic-service-type.use-case';
 import { RemoveClinicServiceTypeUseCase } from './use-cases/remove-clinic-service-type.use-case';
 import { ListClinicServiceTypesUseCase } from './use-cases/list-clinic-service-types.use-case';
@@ -69,6 +72,8 @@ import { GetClinicIntegrationSettingsUseCase } from './use-cases/get-clinic-inte
 import { GetClinicNotificationSettingsUseCase } from './use-cases/get-clinic-notification-settings.use-case';
 import { GetClinicBrandingSettingsUseCase } from './use-cases/get-clinic-branding-settings.use-case';
 import { ListClinicAuditLogsUseCase } from './use-cases/list-clinic-audit-logs.use-case';
+import { ClinicPaymentReconciliationService } from './services/clinic-payment-reconciliation.service';
+import { ClinicPaymentEventsSubscriber } from './subscribers/clinic-payment-events.subscriber';
 import { IClinicRepository as IClinicRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic.repository.interface';
 import { IClinicConfigurationRepository as IClinicConfigurationRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
 import { IClinicServiceTypeRepository as IClinicServiceTypeRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-service-type.repository.interface';
@@ -93,6 +98,8 @@ import { IGetClinicTeamSettingsUseCase as IGetClinicTeamSettingsUseCaseToken } f
 import { IGetClinicScheduleSettingsUseCase as IGetClinicScheduleSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic-schedule-settings.use-case.interface';
 import { IGetClinicServiceSettingsUseCase as IGetClinicServiceSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic-service-settings.use-case.interface';
 import { IGetClinicPaymentSettingsUseCase as IGetClinicPaymentSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic-payment-settings.use-case.interface';
+import { IGetClinicPaymentLedgerUseCase as IGetClinicPaymentLedgerUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic-payment-ledger.use-case.interface';
+import { IListClinicPaymentLedgersUseCase as IListClinicPaymentLedgersUseCaseToken } from '../../domain/clinic/interfaces/use-cases/list-clinic-payment-ledgers.use-case.interface';
 import { IGetClinicIntegrationSettingsUseCase as IGetClinicIntegrationSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic-integration-settings.use-case.interface';
 import { IGetClinicNotificationSettingsUseCase as IGetClinicNotificationSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic-notification-settings.use-case.interface';
 import { IGetClinicBrandingSettingsUseCase as IGetClinicBrandingSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic-branding-settings.use-case.interface';
@@ -164,6 +171,8 @@ const serviceProviders: Provider[] = [
     useClass: ClinicAsaasGatewayService,
   },
   ClinicAsaasWebhookGuard,
+  ClinicPaymentReconciliationService,
+  ClinicPaymentEventsSubscriber,
 ];
 
 const useCaseProviders: Provider[] = [
@@ -194,6 +203,14 @@ const useCaseProviders: Provider[] = [
   {
     provide: IGetClinicPaymentSettingsUseCaseToken,
     useClass: GetClinicPaymentSettingsUseCase,
+  },
+  {
+    provide: IGetClinicPaymentLedgerUseCaseToken,
+    useClass: GetClinicPaymentLedgerUseCase,
+  },
+  {
+    provide: IListClinicPaymentLedgersUseCaseToken,
+    useClass: ListClinicPaymentLedgersUseCase,
   },
   {
     provide: IUpdateClinicPaymentSettingsUseCaseToken,
@@ -332,6 +349,7 @@ const useCaseProviders: Provider[] = [
     ClinicsController,
     ClinicAuditController,
     ClinicPaymentWebhookController,
+    ClinicPaymentController,
   ],
   providers: [ClinicAuditService, ...repositoryProviders, ...serviceProviders, ...useCaseProviders],
   exports: [...serviceProviders, ...useCaseProviders],

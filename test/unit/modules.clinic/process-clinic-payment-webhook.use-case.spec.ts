@@ -9,6 +9,8 @@ import {
   ClinicHold,
   ProcessClinicPaymentWebhookInput,
 } from '../../../src/domain/clinic/types/clinic.types';
+import { MessageBus } from '../../../src/shared/messaging/message-bus';
+import { DomainEvents } from '../../../src/shared/events/domain-events';
 
 type Mocked<T> = jest.Mocked<T>;
 
@@ -72,6 +74,7 @@ describe('ProcessClinicPaymentWebhookUseCase', () => {
   let appointmentRepository: Mocked<IClinicAppointmentRepository>;
   let holdRepository: Mocked<IClinicHoldRepository>;
   let auditService: ClinicAuditService;
+  let messageBus: Mocked<MessageBus>;
   let useCase: ProcessClinicPaymentWebhookUseCase;
 
   beforeEach(() => {
@@ -88,10 +91,18 @@ describe('ProcessClinicPaymentWebhookUseCase', () => {
       register: jest.fn(),
     } as unknown as ClinicAuditService;
 
+    messageBus = {
+      publish: jest.fn().mockResolvedValue(undefined),
+      publishMany: jest.fn(),
+      subscribe: jest.fn(),
+      unsubscribe: jest.fn(),
+    } as unknown as Mocked<MessageBus>;
+
     useCase = new ProcessClinicPaymentWebhookUseCase(
       appointmentRepository,
       holdRepository,
       auditService,
+      messageBus,
     );
   });
 
@@ -127,6 +138,7 @@ describe('ProcessClinicPaymentWebhookUseCase', () => {
         appointmentId: appointment.id,
         paymentStatus: 'settled',
         gatewayStatus: 'RECEIVED_IN_ADVANCE',
+        eventFingerprint: expect.any(String),
       }),
     );
     expect(holdRepository.updatePaymentStatus).toHaveBeenCalledWith(
@@ -134,6 +146,7 @@ describe('ProcessClinicPaymentWebhookUseCase', () => {
         holdId: appointment.holdId,
         paymentStatus: 'settled',
         gatewayStatus: 'RECEIVED_IN_ADVANCE',
+        eventFingerprint: expect.any(String),
       }),
     );
     expect(auditService.register).toHaveBeenCalledWith(
@@ -150,6 +163,10 @@ describe('ProcessClinicPaymentWebhookUseCase', () => {
         }),
       }),
     );
+    expect(messageBus.publish).toHaveBeenCalledTimes(2);
+    const eventNames = messageBus.publish.mock.calls.map(([event]) => event.eventName);
+    expect(eventNames).toContain(DomainEvents.CLINIC_PAYMENT_STATUS_CHANGED);
+    expect(eventNames).toContain(DomainEvents.CLINIC_PAYMENT_SETTLED);
   });
 
   it('deve falhar quando status ASAAS for desconhecido', async () => {
@@ -209,6 +226,7 @@ describe('ProcessClinicPaymentWebhookUseCase', () => {
         paymentStatus: 'refunded',
         gatewayStatus: 'REFUNDED',
         paidAt: input.receivedAt,
+        eventFingerprint: expect.any(String),
       }),
     );
     expect(holdRepository.updatePaymentStatus).toHaveBeenCalledWith(
@@ -216,6 +234,7 @@ describe('ProcessClinicPaymentWebhookUseCase', () => {
         paymentStatus: 'refunded',
         gatewayStatus: 'REFUNDED',
         paidAt: input.receivedAt,
+        eventFingerprint: expect.any(String),
       }),
     );
     expect(auditService.register).toHaveBeenCalledWith(
@@ -228,6 +247,10 @@ describe('ProcessClinicPaymentWebhookUseCase', () => {
         }),
       }),
     );
+    expect(messageBus.publish).toHaveBeenCalledTimes(2);
+    const refundEventNames = messageBus.publish.mock.calls.map(([event]) => event.eventName);
+    expect(refundEventNames).toContain(DomainEvents.CLINIC_PAYMENT_STATUS_CHANGED);
+    expect(refundEventNames).toContain(DomainEvents.CLINIC_PAYMENT_REFUNDED);
   });
 
   it('deve registrar chargeback e preservar paymentDate quando informado', async () => {
@@ -261,6 +284,7 @@ describe('ProcessClinicPaymentWebhookUseCase', () => {
         paymentStatus: 'chargeback',
         gatewayStatus: 'CHARGEBACK_REQUESTED',
         paidAt: new Date(paymentDate),
+        eventFingerprint: expect.any(String),
       }),
     );
     expect(holdRepository.updatePaymentStatus).toHaveBeenCalledWith(
@@ -268,6 +292,7 @@ describe('ProcessClinicPaymentWebhookUseCase', () => {
         paymentStatus: 'chargeback',
         gatewayStatus: 'CHARGEBACK_REQUESTED',
         paidAt: new Date(paymentDate),
+        eventFingerprint: expect.any(String),
       }),
     );
     expect(auditService.register).toHaveBeenCalledWith(
@@ -279,5 +304,26 @@ describe('ProcessClinicPaymentWebhookUseCase', () => {
         }),
       }),
     );
+    expect(messageBus.publish).toHaveBeenCalledTimes(2);
+    const chargebackEventNames = messageBus.publish.mock.calls.map(([event]) => event.eventName);
+    expect(chargebackEventNames).toContain(DomainEvents.CLINIC_PAYMENT_STATUS_CHANGED);
+    expect(chargebackEventNames).toContain(DomainEvents.CLINIC_PAYMENT_CHARGEBACK);
+  });
+  it('ignora evento duplicado ja processado', async () => {
+    const appointment = createAppointment({
+      metadata: {
+        paymentGateway: {
+          events: [{ fingerprint: 'pay-123:payment_confirmed:confirmed:' }],
+        },
+      },
+    });
+    appointmentRepository.findByPaymentTransactionId.mockResolvedValue(appointment);
+
+    await expect(useCase.executeOrThrow(createInput())).resolves.toBeUndefined();
+
+    expect(appointmentRepository.updatePaymentStatus).not.toHaveBeenCalled();
+    expect(holdRepository.updatePaymentStatus).not.toHaveBeenCalled();
+    expect(auditService.register).not.toHaveBeenCalled();
+    expect(messageBus.publish).not.toHaveBeenCalled();
   });
 });

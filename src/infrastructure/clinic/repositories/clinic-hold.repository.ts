@@ -189,6 +189,7 @@ export class ClinicHoldRepository implements IClinicHoldRepository {
     paymentStatus: ClinicPaymentStatus;
     gatewayStatus?: string;
     paidAt?: Date;
+    eventFingerprint?: string;
   }): Promise<ClinicHold> {
     const entity = await this.repository.findOneOrFail({
       where: {
@@ -216,12 +217,41 @@ export class ClinicHoldRepository implements IClinicHoldRepository {
       ? [...(metadata.paymentEvents as unknown[])]
       : [];
 
-    events.push({
-      status: params.paymentStatus,
-      gatewayStatus: params.gatewayStatus,
-      paidAt: params.paidAt?.toISOString(),
-      recordedAt: new Date().toISOString(),
-    });
+    const recordedAt = new Date().toISOString();
+    const fingerprint = params.eventFingerprint;
+    let updated = false;
+
+    if (fingerprint) {
+      const index = events.findIndex(
+        (event) =>
+          event &&
+          typeof event === 'object' &&
+          (event as Record<string, unknown>).fingerprint === fingerprint,
+      );
+
+      if (index >= 0) {
+        const existing = events[index] as Record<string, unknown>;
+        events[index] = {
+          ...existing,
+          status: params.paymentStatus,
+          gatewayStatus: params.gatewayStatus,
+          paidAt: params.paidAt?.toISOString(),
+          recordedAt,
+          fingerprint,
+        };
+        updated = true;
+      }
+    }
+
+    if (!updated) {
+      events.push({
+        status: params.paymentStatus,
+        gatewayStatus: params.gatewayStatus,
+        paidAt: params.paidAt?.toISOString(),
+        recordedAt,
+        ...(fingerprint ? { fingerprint } : {}),
+      });
+    }
 
     metadata.paymentStatus = params.paymentStatus;
     if (params.gatewayStatus) {

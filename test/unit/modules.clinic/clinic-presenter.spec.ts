@@ -2,6 +2,7 @@ import { ClinicPresenter } from '../../../src/modules/clinic/api/presenters/clin
 import {
   ClinicAppointmentConfirmationResult,
   ClinicInvitation,
+  ClinicPaymentLedger,
 } from '../../../src/domain/clinic/types/clinic.types';
 
 describe('ClinicPresenter.invitation', () => {
@@ -102,5 +103,99 @@ describe('ClinicPresenter.holdConfirmation', () => {
       confirmedAt: confirmation.confirmedAt,
       paymentStatus: 'approved',
     });
+  });
+});
+
+describe('ClinicPresenter.paymentLedger', () => {
+  const baseLedger: ClinicPaymentLedger = {
+    currency: 'BRL',
+    lastUpdatedAt: '2099-01-01T12:00:00.000Z',
+    events: [
+      {
+        type: 'settled',
+        gatewayStatus: 'RECEIVED_IN_ADVANCE',
+        recordedAt: '2099-01-01T12:00:00.000Z',
+        sandbox: false,
+      },
+      {
+        type: 'refunded',
+        gatewayStatus: 'REFUNDED',
+        recordedAt: '2099-01-02T09:00:00.000Z',
+        sandbox: false,
+        metadata: { reason: 'customer_request' },
+      },
+    ],
+    settlement: {
+      settledAt: '2099-01-01T12:00:00.000Z',
+      baseAmountCents: 20000,
+      netAmountCents: 18000,
+      split: [
+        { recipient: 'taxes', percentage: 5, amountCents: 1000 },
+        { recipient: 'clinic', percentage: 70, amountCents: 14000 },
+        { recipient: 'professional', percentage: 25, amountCents: 5000 },
+      ],
+      remainderCents: 0,
+      gatewayStatus: 'RECEIVED_IN_ADVANCE',
+      fingerprint: 'fp-settled',
+    },
+    refund: {
+      refundedAt: '2099-01-02T09:00:00.000Z',
+      amountCents: 20000,
+      netAmountCents: 18000,
+      gatewayStatus: 'REFUNDED',
+      fingerprint: 'fp-refund',
+    },
+    chargeback: undefined,
+    metadata: { source: 'asaas' },
+  };
+
+  it('should map payment ledger with events and settlement', () => {
+    const dto = ClinicPresenter.paymentLedger({
+      appointmentId: 'appointment-1',
+      clinicId: 'clinic-1',
+      tenantId: 'tenant-1',
+      paymentStatus: 'settled',
+      paymentTransactionId: 'trx-123',
+      ledger: baseLedger,
+    });
+
+    expect(dto.appointmentId).toBe('appointment-1');
+    expect(dto.paymentStatus).toBe('settled');
+    expect(dto.ledger.currency).toBe('BRL');
+    expect(dto.ledger.events).toHaveLength(2);
+    expect(dto.ledger.events[1]).toMatchObject({
+      type: 'refunded',
+      gatewayStatus: 'REFUNDED',
+      metadata: { reason: 'customer_request' },
+    });
+    expect(dto.ledger.settlement?.split).toHaveLength(3);
+    expect(dto.ledger.settlement?.split?.[0]).toEqual({
+      recipient: 'taxes',
+      percentage: 5,
+      amountCents: 1000,
+    });
+    expect(dto.ledger.refund?.fingerprint).toBe('fp-refund');
+    expect(dto.ledger.chargeback).toBeUndefined();
+    expect(dto.ledger.metadata).toEqual({ source: 'asaas' });
+  });
+
+  it('should handle optional sections gracefully', () => {
+    const dto = ClinicPresenter.paymentLedger({
+      appointmentId: 'appointment-2',
+      clinicId: 'clinic-1',
+      tenantId: 'tenant-1',
+      paymentStatus: 'approved',
+      paymentTransactionId: 'trx-456',
+      ledger: {
+        currency: 'BRL',
+        lastUpdatedAt: '2099-01-05T10:00:00.000Z',
+        events: [],
+      },
+    });
+
+    expect(dto.ledger.events).toHaveLength(0);
+    expect(dto.ledger.settlement).toBeUndefined();
+    expect(dto.ledger.refund).toBeUndefined();
+    expect(dto.ledger.chargeback).toBeUndefined();
   });
 });

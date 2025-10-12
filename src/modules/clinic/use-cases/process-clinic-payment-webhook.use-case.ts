@@ -19,6 +19,8 @@ import {
 } from '../../../domain/clinic/types/clinic.types';
 import { ClinicAuditService } from '../../../infrastructure/clinic/services/clinic-audit.service';
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
+import { MessageBus } from '../../../shared/messaging/message-bus';
+import { DomainEvents } from '../../../shared/events/domain-events';
 import {
   mapAsaasEventToPaymentStatus,
   mapAsaasPaymentStatus,
@@ -37,6 +39,7 @@ export class ProcessClinicPaymentWebhookUseCase
     @Inject(IClinicHoldRepositoryToken)
     private readonly clinicHoldRepository: IClinicHoldRepository,
     private readonly auditService: ClinicAuditService,
+    private readonly messageBus: MessageBus,
   ) {
     super();
   }
@@ -79,12 +82,32 @@ export class ProcessClinicPaymentWebhookUseCase
       );
     }
 
+    const previousStatus = appointment.paymentStatus;
+
+    const fingerprint = this.buildEventFingerprint({
+      paymentId,
+      eventType,
+      gatewayStatus,
+      payloadId: typeof input.payload.id === 'string' ? input.payload.id : undefined,
+    });
+
+    if (this.eventAlreadyProcessed(appointment.metadata, fingerprint)) {
+      this.logger.log('Webhook ASAAS ignorado: evento duplicado', {
+        paymentId,
+        eventType,
+        gatewayStatus,
+      });
+      return;
+    }
+
     const paidAt = this.resolvePaidAt(paymentPayload.paymentDate, input.receivedAt);
     const metadataPatch = this.buildMetadataPatch({
       payload: input.payload,
       gatewayStatus,
       eventType,
       receivedAt: input.receivedAt,
+      fingerprint,
+      previousGateway: this.extractPaymentGateway(appointment.metadata),
     });
 
     await this.clinicAppointmentRepository.updatePaymentStatus({
@@ -92,6 +115,7 @@ export class ProcessClinicPaymentWebhookUseCase
       paymentStatus: targetStatus,
       gatewayStatus,
       paidAt,
+      eventFingerprint: fingerprint,
       metadataPatch,
     });
 
@@ -102,7 +126,102 @@ export class ProcessClinicPaymentWebhookUseCase
       paymentStatus: targetStatus,
       gatewayStatus,
       paidAt,
+      eventFingerprint: fingerprint,
     });
+
+    const statusChanged = previousStatus !== targetStatus;
+    const payloadId = typeof input.payload.id === 'string' ? input.payload.id : undefined;
+    const amount =
+      paymentPayload.value !== undefined || paymentPayload.netValue !== undefined
+        ? {
+            value: paymentPayload.value ?? null,
+            netValue: paymentPayload.netValue ?? null,
+          }
+        : undefined;
+    const sandbox = Boolean(input.payload?.sandbox);
+
+    if (statusChanged) {
+      await this.messageBus.publish(
+        DomainEvents.clinicPaymentStatusChanged(appointment.id, {
+          tenantId: appointment.tenantId,
+          clinicId: appointment.clinicId,
+          professionalId: appointment.professionalId,
+          patientId: appointment.patientId,
+          holdId: appointment.holdId,
+          serviceTypeId: appointment.serviceTypeId,
+          paymentTransactionId: paymentId,
+          previousStatus,
+          newStatus: targetStatus,
+          gatewayStatus,
+          eventType,
+          sandbox,
+          fingerprint,
+          payloadId,
+          amount,
+          receivedAt: input.receivedAt,
+          paidAt,
+        }),
+      );
+
+      if (targetStatus === 'settled') {
+        await this.messageBus.publish(
+          DomainEvents.clinicPaymentSettled(appointment.id, {
+            tenantId: appointment.tenantId,
+            clinicId: appointment.clinicId,
+            professionalId: appointment.professionalId,
+            patientId: appointment.patientId,
+            holdId: appointment.holdId,
+            serviceTypeId: appointment.serviceTypeId,
+            paymentTransactionId: paymentId,
+            gatewayStatus,
+            eventType,
+            sandbox,
+            fingerprint,
+            payloadId,
+            amount,
+            settledAt: paidAt ?? input.receivedAt,
+          }),
+        );
+      } else if (targetStatus === 'refunded') {
+        await this.messageBus.publish(
+          DomainEvents.clinicPaymentRefunded(appointment.id, {
+            tenantId: appointment.tenantId,
+            clinicId: appointment.clinicId,
+            professionalId: appointment.professionalId,
+            patientId: appointment.patientId,
+            holdId: appointment.holdId,
+            serviceTypeId: appointment.serviceTypeId,
+            paymentTransactionId: paymentId,
+            gatewayStatus,
+            eventType,
+            sandbox,
+            fingerprint,
+            payloadId,
+            amount,
+            refundedAt: paidAt ?? input.receivedAt,
+          }),
+        );
+      } else if (targetStatus === 'chargeback') {
+        await this.messageBus.publish(
+          DomainEvents.clinicPaymentChargeback(appointment.id, {
+            tenantId: appointment.tenantId,
+            clinicId: appointment.clinicId,
+            professionalId: appointment.professionalId,
+            patientId: appointment.patientId,
+            holdId: appointment.holdId,
+            serviceTypeId: appointment.serviceTypeId,
+            paymentTransactionId: paymentId,
+            gatewayStatus,
+            eventType,
+            sandbox,
+            fingerprint,
+            payloadId,
+            amount,
+            chargebackAt: paidAt ?? input.receivedAt,
+          }),
+        );
+      }
+    }
 
     await this.auditService.register({
       event: 'clinic.payment.webhook_processed',
@@ -142,17 +261,39 @@ export class ProcessClinicPaymentWebhookUseCase
     gatewayStatus: string;
     eventType?: string;
     receivedAt: Date;
+    fingerprint: string;
+    previousGateway?: Record<string, unknown>;
   }): Record<string, unknown> {
     const snapshot = this.extractPaymentSnapshot(input.payload.payment);
 
+    const previousGateway = input.previousGateway ?? {};
+    const previousSandbox =
+      typeof previousGateway['sandbox'] === 'boolean'
+        ? (previousGateway['sandbox'] as boolean)
+        : undefined;
+    const existingEvents = Array.isArray(previousGateway.events)
+      ? [...(previousGateway.events as Record<string, unknown>[])]
+      : [];
+    const recordedAt = input.receivedAt.toISOString();
+
+    existingEvents.push({
+      fingerprint: input.fingerprint,
+      event: input.eventType ?? null,
+      gatewayStatus: input.gatewayStatus,
+      recordedAt,
+      payloadStatus: input.payload.payment.status ?? null,
+    });
+
     return {
       paymentGateway: {
+        ...previousGateway,
         provider: 'asaas',
         lastEvent: input.eventType ?? null,
         gatewayStatus: input.gatewayStatus,
-        sandbox: Boolean(input.payload.sandbox),
-        receivedAt: input.receivedAt.toISOString(),
+        sandbox: input.payload.sandbox ?? previousSandbox ?? false,
+        receivedAt: recordedAt,
         payload: snapshot,
+        events: existingEvents,
       },
     };
   }
@@ -180,6 +321,57 @@ export class ProcessClinicPaymentWebhookUseCase
     }
 
     return snapshot;
+  }
+
+  private buildEventFingerprint(input: {
+    paymentId: string;
+    eventType?: string;
+    gatewayStatus: string;
+    payloadId?: string;
+  }): string {
+    const parts = [
+      input.paymentId.trim().toLowerCase(),
+      (input.eventType ?? 'unknown_event').toLowerCase(),
+      (input.gatewayStatus ?? 'unknown_status').toLowerCase(),
+      input.payloadId ? input.payloadId.trim().toLowerCase() : '',
+    ];
+
+    return parts.join(':');
+  }
+
+  private eventAlreadyProcessed(
+    metadata: Record<string, unknown> | undefined,
+    fingerprint: string,
+  ): boolean {
+    const gateway = this.extractPaymentGateway(metadata);
+
+    if (!gateway) {
+      return false;
+    }
+
+    const events = Array.isArray(gateway.events) ? gateway.events : [];
+    return events.some(
+      (event) =>
+        event &&
+        typeof event === 'object' &&
+        'fingerprint' in event &&
+        (event as Record<string, unknown>).fingerprint === fingerprint,
+    );
+  }
+
+  private extractPaymentGateway(
+    metadata: Record<string, unknown> | undefined,
+  ): Record<string, unknown> | undefined {
+    if (!metadata || typeof metadata !== 'object') {
+      return undefined;
+    }
+
+    const gateway = (metadata as Record<string, unknown>).paymentGateway;
+    if (gateway && typeof gateway === 'object' && gateway !== null) {
+      return gateway as Record<string, unknown>;
+    }
+
+    return undefined;
   }
 }
 

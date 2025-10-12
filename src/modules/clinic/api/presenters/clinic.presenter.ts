@@ -7,6 +7,12 @@ import {
   ClinicHold,
   ClinicInvitation,
   ClinicMember,
+  ClinicPaymentLedger,
+  ClinicPaymentLedgerChargeback as DomainClinicPaymentLedgerChargeback,
+  ClinicPaymentLedgerEventEntry,
+  ClinicPaymentLedgerRefund as DomainClinicPaymentLedgerRefund,
+  ClinicPaymentLedgerSettlement as DomainClinicPaymentLedgerSettlement,
+  ClinicPaymentSplitAllocation,
   ClinicServiceCustomField,
   ClinicServiceTypeDefinition,
 } from '../../../../domain/clinic/types/clinic.types';
@@ -56,6 +62,19 @@ import {
   ClinicNotificationSettingsTemplateVariableDto,
 } from '../dtos/clinic-notification-settings-response.dto';
 import { ClinicBrandingSettingsResponseDto } from '../dtos/clinic-branding-settings-response.dto';
+import {
+  ClinicPaymentLedgerListItemDto,
+  ClinicPaymentLedgerListResponseDto,
+} from '../dtos/clinic-payment-ledger-list-response.dto';
+import {
+  ClinicPaymentLedgerChargebackDto,
+  ClinicPaymentLedgerDto,
+  ClinicPaymentLedgerEventDto,
+  ClinicPaymentLedgerRefundDto,
+  ClinicPaymentLedgerResponseDto,
+  ClinicPaymentLedgerSettlementDto,
+  ClinicPaymentSplitAllocationDto,
+} from '../dtos/clinic-payment-ledger-response.dto';
 
 export class ClinicPresenter {
   static configuration(version: ClinicConfigurationVersion): ClinicConfigurationVersionResponseDto {
@@ -374,6 +393,138 @@ export class ClinicPresenter {
       endedAt: member.endedAt ?? undefined,
       createdAt: member.createdAt,
       updatedAt: member.updatedAt,
+    };
+  }
+
+  static paymentLedger(data: {
+    appointmentId: string;
+    clinicId: string;
+    tenantId: string;
+    paymentStatus: ClinicPaymentLedgerResponseDto['paymentStatus'];
+    paymentTransactionId: string;
+    ledger: ClinicPaymentLedger;
+  }): ClinicPaymentLedgerResponseDto {
+    return {
+      appointmentId: data.appointmentId,
+      clinicId: data.clinicId,
+      tenantId: data.tenantId,
+      paymentStatus: data.paymentStatus,
+      paymentTransactionId: data.paymentTransactionId,
+      ledger: ClinicPresenter.mapPaymentLedger(data.ledger),
+    };
+  }
+
+  static paymentLedgerList(
+    items: Array<{
+      appointmentId: string;
+      clinicId: string;
+      tenantId: string;
+      serviceTypeId: string;
+      professionalId: string;
+      paymentStatus: ClinicPaymentLedgerResponseDto['paymentStatus'];
+      paymentTransactionId: string;
+      confirmedAt: Date;
+      ledger: ClinicPaymentLedger;
+    }>,
+  ): ClinicPaymentLedgerListResponseDto {
+    return {
+      items: items.map((item) => ({
+        appointmentId: item.appointmentId,
+        clinicId: item.clinicId,
+        tenantId: item.tenantId,
+        serviceTypeId: item.serviceTypeId,
+        professionalId: item.professionalId,
+        paymentStatus: item.paymentStatus,
+        paymentTransactionId: item.paymentTransactionId,
+        confirmedAt: item.confirmedAt,
+        ledger: ClinicPresenter.mapPaymentLedger(item.ledger),
+      })),
+    };
+  }
+
+  private static mapPaymentLedger(
+    ledger: ClinicPaymentLedger,
+  ): ClinicPaymentLedgerDto {
+    return {
+      currency: ledger.currency,
+      lastUpdatedAt: ledger.lastUpdatedAt,
+      events: ledger.events.map((event) =>
+        ClinicPresenter.mapPaymentLedgerEvent(event),
+      ),
+      settlement: ledger.settlement
+        ? ClinicPresenter.mapPaymentLedgerSettlement(ledger.settlement)
+        : undefined,
+      refund: ledger.refund
+        ? ClinicPresenter.mapPaymentLedgerRefund(ledger.refund)
+        : undefined,
+      chargeback: ledger.chargeback
+        ? ClinicPresenter.mapPaymentLedgerChargeback(ledger.chargeback)
+        : undefined,
+      metadata: ledger.metadata ?? undefined,
+    };
+  }
+
+  private static mapPaymentLedgerEvent(
+    event: ClinicPaymentLedgerEventEntry,
+  ): ClinicPaymentLedgerEventDto {
+    return {
+      type: event.type,
+      gatewayStatus: event.gatewayStatus,
+      eventType: event.eventType ?? undefined,
+      recordedAt: event.recordedAt,
+      fingerprint: event.fingerprint ?? undefined,
+      sandbox: event.sandbox,
+      metadata: event.metadata ?? undefined,
+    };
+  }
+
+  private static mapPaymentLedgerSettlement(
+    settlement: DomainClinicPaymentLedgerSettlement,
+  ): ClinicPaymentLedgerSettlementDto {
+    return {
+      settledAt: settlement.settledAt,
+      baseAmountCents: settlement.baseAmountCents,
+      netAmountCents: settlement.netAmountCents ?? undefined,
+      split: settlement.split.map((allocation) =>
+        ClinicPresenter.mapPaymentSplitAllocation(allocation),
+      ),
+      remainderCents: settlement.remainderCents,
+      fingerprint: settlement.fingerprint ?? undefined,
+      gatewayStatus: settlement.gatewayStatus,
+    };
+  }
+
+  private static mapPaymentLedgerRefund(
+    refund: DomainClinicPaymentLedgerRefund,
+  ): ClinicPaymentLedgerRefundDto {
+    return {
+      refundedAt: refund.refundedAt,
+      amountCents: refund.amountCents ?? undefined,
+      netAmountCents: refund.netAmountCents ?? undefined,
+      fingerprint: refund.fingerprint ?? undefined,
+      gatewayStatus: refund.gatewayStatus,
+    };
+  }
+
+  private static mapPaymentLedgerChargeback(
+    chargeback: DomainClinicPaymentLedgerChargeback,
+  ): ClinicPaymentLedgerChargebackDto {
+    return {
+      chargebackAt: chargeback.chargebackAt,
+      amountCents: chargeback.amountCents ?? undefined,
+      netAmountCents: chargeback.netAmountCents ?? undefined,
+      fingerprint: chargeback.fingerprint ?? undefined,
+      gatewayStatus: chargeback.gatewayStatus,
+    };
+  }
+
+  private static mapPaymentSplitAllocation(
+    allocation: ClinicPaymentSplitAllocation,
+  ): ClinicPaymentSplitAllocationDto {
+    return {
+      recipient: allocation.recipient,
+      percentage: allocation.percentage,
+      amountCents: allocation.amountCents,
     };
   }
 

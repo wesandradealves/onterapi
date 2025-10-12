@@ -43,6 +43,11 @@ export class ClinicAppointmentRepository implements IClinicAppointmentRepository
     return ClinicMapper.toAppointment(saved);
   }
 
+  async findById(appointmentId: string): Promise<ClinicAppointment | null> {
+    const entity = await this.repository.findOne({ where: { id: appointmentId } });
+    return entity ? ClinicMapper.toAppointment(entity) : null;
+  }
+
   async findByHoldId(holdId: string): Promise<ClinicAppointment | null> {
     const entity = await this.repository.findOne({ where: { holdId } });
     return entity ? ClinicMapper.toAppointment(entity) : null;
@@ -128,18 +133,48 @@ export class ClinicAppointmentRepository implements IClinicAppointmentRepository
 
     const recordedAt = new Date().toISOString();
 
-    if (shouldAppend) {
-      history.push({
-        status: input.paymentStatus,
-        gatewayStatus: input.gatewayStatus,
-        paidAt: normalizedPaidAt,
-        recordedAt,
-      });
-    } else {
-      history[history.length - 1] = {
-        ...lastEntry,
-        recordedAt,
-      };
+    const fingerprint = input.eventFingerprint;
+    let updated = false;
+    if (fingerprint) {
+      const index = history.findIndex(
+        (entry) =>
+          entry &&
+          typeof entry === 'object' &&
+          (entry as Record<string, unknown>).fingerprint === fingerprint,
+      );
+
+      if (index >= 0) {
+        history[index] = {
+          ...history[index],
+          status: input.paymentStatus,
+          gatewayStatus: input.gatewayStatus,
+          paidAt: normalizedPaidAt,
+          recordedAt,
+          fingerprint,
+        };
+        updated = true;
+      }
+    }
+
+    if (!updated) {
+      if (shouldAppend) {
+        history.push({
+          status: input.paymentStatus,
+          gatewayStatus: input.gatewayStatus,
+          paidAt: normalizedPaidAt,
+          recordedAt,
+          fingerprint,
+        });
+      } else if (lastEntry) {
+        history[history.length - 1] = {
+          ...lastEntry,
+          recordedAt,
+          status: input.paymentStatus,
+          gatewayStatus: input.gatewayStatus,
+          paidAt: normalizedPaidAt,
+          ...(fingerprint ? { fingerprint } : {}),
+        };
+      }
     }
 
     paymentMetadata.history = history;
@@ -155,5 +190,61 @@ export class ClinicAppointmentRepository implements IClinicAppointmentRepository
 
     const saved = await this.repository.save(entity);
     return ClinicMapper.toAppointment(saved);
+  }
+
+  async updateMetadata(params: {
+    appointmentId: string;
+    metadataPatch: Record<string, unknown>;
+  }): Promise<ClinicAppointment> {
+    const entity = await this.repository.findOneOrFail({ where: { id: params.appointmentId } });
+
+    const metadata: Record<string, unknown> = { ...(entity.metadata ?? {}) };
+    for (const [key, value] of Object.entries(params.metadataPatch)) {
+      metadata[key] = value;
+    }
+
+    entity.metadata = metadata;
+    const saved = await this.repository.save(entity);
+    return ClinicMapper.toAppointment(saved);
+  }
+
+  async listByClinic(params: {
+    clinicId: string;
+    tenantId: string;
+    paymentStatuses?: ClinicPaymentStatus[];
+    fromConfirmedAt?: Date;
+    toConfirmedAt?: Date;
+    limit?: number;
+    offset?: number;
+  }): Promise<ClinicAppointment[]> {
+    const query = this.repository
+      .createQueryBuilder('appointment')
+      .where('appointment.clinic_id = :clinicId', { clinicId: params.clinicId })
+      .andWhere('appointment.tenant_id = :tenantId', { tenantId: params.tenantId });
+
+    if (params.paymentStatuses && params.paymentStatuses.length > 0) {
+      query.andWhere('appointment.payment_status IN (:...statuses)', {
+        statuses: params.paymentStatuses,
+      });
+    }
+
+    if (params.fromConfirmedAt) {
+      query.andWhere('appointment.confirmed_at >= :from', { from: params.fromConfirmedAt });
+    }
+
+    if (params.toConfirmedAt) {
+      query.andWhere('appointment.confirmed_at <= :to', { to: params.toConfirmedAt });
+    }
+
+    query.orderBy('appointment.confirmed_at', 'DESC');
+
+    if (typeof params.offset === 'number') {
+      query.skip(params.offset);
+    }
+
+    query.take(params.limit ?? 50);
+
+    const entities = await query.getMany();
+    return entities.map(ClinicMapper.toAppointment);
   }
 }

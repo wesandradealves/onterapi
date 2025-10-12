@@ -254,6 +254,7 @@ export interface ClinicPaymentCredentials {
 
 export interface ClinicPaymentWebhookPayload {
   event: string;
+  id?: string;
   sandbox?: boolean;
   payment: {
     id: string;
@@ -625,6 +626,58 @@ export interface ClinicHold {
 export type ClinicAppointmentStatus = 'scheduled' | 'completed' | 'cancelled';
 
 export type ClinicPaymentStatus = 'approved' | 'settled' | 'refunded' | 'chargeback' | 'failed';
+
+export interface ClinicPaymentSplitAllocation {
+  recipient: ClinicSplitRecipient;
+  percentage: number;
+  amountCents: number;
+}
+
+export interface ClinicPaymentLedgerEventEntry {
+  type: 'status_changed' | 'settled' | 'refunded' | 'chargeback';
+  gatewayStatus: string;
+  eventType?: string;
+  recordedAt: string;
+  fingerprint?: string;
+  sandbox: boolean;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ClinicPaymentLedgerSettlement {
+  settledAt: string;
+  baseAmountCents: number;
+  netAmountCents?: number;
+  split: ClinicPaymentSplitAllocation[];
+  remainderCents: number;
+  fingerprint?: string;
+  gatewayStatus: string;
+}
+
+export interface ClinicPaymentLedgerRefund {
+  refundedAt: string;
+  amountCents?: number;
+  netAmountCents?: number;
+  fingerprint?: string;
+  gatewayStatus: string;
+}
+
+export interface ClinicPaymentLedgerChargeback {
+  chargebackAt: string;
+  amountCents?: number;
+  netAmountCents?: number;
+  fingerprint?: string;
+  gatewayStatus: string;
+}
+
+export interface ClinicPaymentLedger {
+  currency: ClinicCurrency;
+  lastUpdatedAt: string;
+  events: ClinicPaymentLedgerEventEntry[];
+  settlement?: ClinicPaymentLedgerSettlement;
+  refund?: ClinicPaymentLedgerRefund;
+  chargeback?: ClinicPaymentLedgerChargeback;
+  metadata?: Record<string, unknown>;
+}
 
 export interface ClinicAppointment {
   id: string;

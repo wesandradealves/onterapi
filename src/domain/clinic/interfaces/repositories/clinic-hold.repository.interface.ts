@@ -38,6 +38,7 @@ export interface IClinicHoldRepository {
     paymentStatus: ClinicPaymentStatus;
     gatewayStatus?: string;
     paidAt?: Date;
+    eventFingerprint?: string;
   }): Promise<ClinicHold>;
   findActiveOverlapByProfessional(params: {
     tenantId: string;
