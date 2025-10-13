@@ -1,5 +1,4 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { createHash } from 'crypto';
 
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import {
@@ -25,6 +24,7 @@ import {
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
 import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
 import { ClinicAuditService } from '../../../infrastructure/clinic/services/clinic-audit.service';
+import { ClinicInvitationTokenService } from '../services/clinic-invitation-token.service';
 
 @Injectable()
 export class AcceptClinicInvitationUseCase
@@ -41,6 +41,7 @@ export class AcceptClinicInvitationUseCase
     @Inject(IClinicMemberRepositoryToken)
     private readonly memberRepository: IClinicMemberRepository,
     private readonly auditService: ClinicAuditService,
+    private readonly invitationTokenService: ClinicInvitationTokenService,
   ) {
     super();
   }
@@ -62,8 +63,21 @@ export class AcceptClinicInvitationUseCase
       throw ClinicErrorFactory.invitationExpired('Convite expirado');
     }
 
-    const hashedToken = createHash('sha256').update(input.token).digest('hex');
-    if (hashedToken !== invitation.tokenHash) {
+    const decodedToken = this.invitationTokenService.verifyToken(input.token);
+
+    if (decodedToken.invitationId !== invitation.id) {
+      throw ClinicErrorFactory.invitationInvalidToken('Token não corresponde ao convite fornecido');
+    }
+
+    if (decodedToken.clinicId !== invitation.clinicId) {
+      throw ClinicErrorFactory.invitationInvalidToken('Token não pertence à clínica informada');
+    }
+
+    if (decodedToken.tenantId !== invitation.tenantId) {
+      throw ClinicErrorFactory.invitationInvalidToken('Token não pertence ao tenant informado');
+    }
+
+    if (decodedToken.hash !== invitation.tokenHash) {
       throw ClinicErrorFactory.invitationInvalidToken('Token inválido para o convite');
     }
 

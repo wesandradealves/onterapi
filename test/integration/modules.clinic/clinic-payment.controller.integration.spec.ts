@@ -196,3 +196,4 @@ describe('ClinicPaymentController (integration)', () => {
       paymentStatus: 'settled',
     });
   });
+});

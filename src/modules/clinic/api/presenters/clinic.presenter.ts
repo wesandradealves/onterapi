@@ -8,13 +8,13 @@ import {
   ClinicInvitation,
   ClinicMember,
   ClinicPaymentLedger,
-  ClinicPaymentLedgerChargeback as DomainClinicPaymentLedgerChargeback,
   ClinicPaymentLedgerEventEntry,
-  ClinicPaymentLedgerRefund as DomainClinicPaymentLedgerRefund,
-  ClinicPaymentLedgerSettlement as DomainClinicPaymentLedgerSettlement,
   ClinicPaymentSplitAllocation,
   ClinicServiceCustomField,
   ClinicServiceTypeDefinition,
+  ClinicPaymentLedgerChargeback as DomainClinicPaymentLedgerChargeback,
+  ClinicPaymentLedgerRefund as DomainClinicPaymentLedgerRefund,
+  ClinicPaymentLedgerSettlement as DomainClinicPaymentLedgerSettlement,
 } from '../../../../domain/clinic/types/clinic.types';
 import { ClinicConfigurationVersionResponseDto } from '../dtos/clinic-configuration-response.dto';
 import { ClinicHoldResponseDto } from '../dtos/clinic-hold-response.dto';
@@ -62,10 +62,7 @@ import {
   ClinicNotificationSettingsTemplateVariableDto,
 } from '../dtos/clinic-notification-settings-response.dto';
 import { ClinicBrandingSettingsResponseDto } from '../dtos/clinic-branding-settings-response.dto';
-import {
-  ClinicPaymentLedgerListItemDto,
-  ClinicPaymentLedgerListResponseDto,
-} from '../dtos/clinic-payment-ledger-list-response.dto';
+import { ClinicPaymentLedgerListResponseDto } from '../dtos/clinic-payment-ledger-list-response.dto';
 import {
   ClinicPaymentLedgerChargebackDto,
   ClinicPaymentLedgerDto,
@@ -75,6 +72,10 @@ import {
   ClinicPaymentLedgerSettlementDto,
   ClinicPaymentSplitAllocationDto,
 } from '../dtos/clinic-payment-ledger-response.dto';
+import {
+  ClinicTemplatePropagationResponseDto,
+  ClinicTemplatePropagationSectionDto,
+} from '../dtos/clinic-template-propagation-response.dto';
 
 export class ClinicPresenter {
   static configuration(version: ClinicConfigurationVersion): ClinicConfigurationVersionResponseDto {
@@ -83,11 +84,13 @@ export class ClinicPresenter {
       clinicId: version.clinicId,
       section: version.section,
       version: version.version,
-      payload: version.payload,
       createdBy: version.createdBy,
       createdAt: version.createdAt,
       appliedAt: version.appliedAt,
       notes: version.notes,
+      state: ClinicPresenter.resolveConfigurationState(version),
+      autoApply: version.autoApply,
+      payload: version.payload,
     };
   }
 
@@ -101,6 +104,66 @@ export class ClinicPresenter {
       slug: clinic.slug,
       status: clinic.status,
       holdSettings,
+    };
+  }
+
+  static templatePropagation(clinic: Clinic): ClinicTemplatePropagationResponseDto {
+    const rawMetadata =
+      clinic.metadata && typeof clinic.metadata === 'object' ? clinic.metadata : {};
+    const propagationRaw = (
+      rawMetadata.templatePropagation && typeof rawMetadata.templatePropagation === 'object'
+        ? rawMetadata.templatePropagation
+        : {}
+    ) as Record<string, unknown>;
+
+    const sectionsRaw =
+      propagationRaw.sections && typeof propagationRaw.sections === 'object'
+        ? (propagationRaw.sections as Record<string, unknown>)
+        : {};
+
+    const sections: ClinicTemplatePropagationSectionDto[] = [];
+
+    Object.entries(sectionsRaw).forEach(([section, value]) => {
+      if (!value || typeof value !== 'object') {
+        return;
+      }
+      const sectionData = value as Record<string, unknown>;
+      const templateVersionId = sectionData.templateVersionId;
+      const propagatedVersionId = sectionData.propagatedVersionId;
+      const propagatedAt = ClinicPresenter.toDate(sectionData.propagatedAt);
+      const triggeredBy = sectionData.triggeredBy;
+
+      if (
+        typeof templateVersionId !== 'string' ||
+        typeof propagatedVersionId !== 'string' ||
+        !propagatedAt ||
+        typeof triggeredBy !== 'string'
+      ) {
+        return;
+      }
+
+      sections.push({
+        section,
+        templateVersionId,
+        propagatedVersionId,
+        propagatedAt,
+        triggeredBy,
+      });
+    });
+
+    sections.sort((a, b) => b.propagatedAt.getTime() - a.propagatedAt.getTime());
+
+    return {
+      templateClinicId:
+        typeof propagationRaw.templateClinicId === 'string'
+          ? propagationRaw.templateClinicId
+          : undefined,
+      lastPropagationAt: ClinicPresenter.toDate(propagationRaw.lastPropagationAt),
+      lastTriggeredBy:
+        typeof propagationRaw.lastTriggeredBy === 'string'
+          ? propagationRaw.lastTriggeredBy
+          : undefined,
+      sections,
     };
   }
 
@@ -149,6 +212,8 @@ export class ClinicPresenter {
       createdAt: version.createdAt,
       appliedAt: version.appliedAt ?? undefined,
       notes: version.notes ?? undefined,
+      state: ClinicPresenter.resolveConfigurationState(version),
+      autoApply: version.autoApply,
       payload: ClinicPresenter.mapGeneralSettingsPayload(version.payload ?? {}),
     };
   }
@@ -171,6 +236,8 @@ export class ClinicPresenter {
       createdAt: version.createdAt,
       appliedAt: version.appliedAt ?? undefined,
       notes: version.notes ?? undefined,
+      state: ClinicPresenter.resolveConfigurationState(version),
+      autoApply: version.autoApply,
       payload: ClinicPresenter.mapTeamSettingsPayload(version.payload ?? {}),
     };
   }
@@ -185,6 +252,8 @@ export class ClinicPresenter {
       createdAt: version.createdAt,
       appliedAt: version.appliedAt ?? undefined,
       notes: version.notes ?? undefined,
+      state: ClinicPresenter.resolveConfigurationState(version),
+      autoApply: version.autoApply,
       payload: ClinicPresenter.mapScheduleSettingsPayload(version.payload ?? {}),
     };
   }
@@ -199,6 +268,8 @@ export class ClinicPresenter {
       createdAt: version.createdAt,
       appliedAt: version.appliedAt ?? undefined,
       notes: version.notes ?? undefined,
+      state: ClinicPresenter.resolveConfigurationState(version),
+      autoApply: version.autoApply,
       services: ClinicPresenter.mapServiceSettingsPayload(version.payload ?? {}),
     };
   }
@@ -213,6 +284,8 @@ export class ClinicPresenter {
       createdAt: version.createdAt,
       appliedAt: version.appliedAt ?? undefined,
       notes: version.notes ?? undefined,
+      state: ClinicPresenter.resolveConfigurationState(version),
+      autoApply: version.autoApply,
       payload: ClinicPresenter.mapPaymentSettingsPayload(version.payload ?? {}),
     };
   }
@@ -229,6 +302,8 @@ export class ClinicPresenter {
       createdAt: version.createdAt,
       appliedAt: version.appliedAt ?? undefined,
       notes: version.notes ?? undefined,
+      state: ClinicPresenter.resolveConfigurationState(version),
+      autoApply: version.autoApply,
       payload: ClinicPresenter.mapIntegrationSettingsPayload(version.payload ?? {}),
     };
   }
@@ -245,6 +320,8 @@ export class ClinicPresenter {
       createdAt: version.createdAt,
       appliedAt: version.appliedAt ?? undefined,
       notes: version.notes ?? undefined,
+      state: ClinicPresenter.resolveConfigurationState(version),
+      autoApply: version.autoApply,
       payload: ClinicPresenter.mapNotificationSettingsPayload(version.payload ?? {}),
     };
   }
@@ -259,6 +336,8 @@ export class ClinicPresenter {
       createdAt: version.createdAt,
       appliedAt: version.appliedAt ?? undefined,
       notes: version.notes ?? undefined,
+      state: ClinicPresenter.resolveConfigurationState(version),
+      autoApply: version.autoApply,
       payload: ClinicPresenter.mapBrandingSettingsPayload(version.payload ?? {}),
     };
   }
@@ -309,6 +388,22 @@ export class ClinicPresenter {
       totals: snapshot.totals,
       metrics: snapshot.metrics.map((metric) => ({ ...metric })),
       alerts: snapshot.alerts.map((alert) => ({ ...alert })),
+      comparisons: snapshot.comparisons
+        ? {
+            period: { ...snapshot.comparisons.period },
+            previousPeriod: { ...snapshot.comparisons.previousPeriod },
+            metrics: snapshot.comparisons.metrics.map((metric) => ({
+              metric: metric.metric,
+              entries: metric.entries.map((entry) => ({ ...entry })),
+            })),
+          }
+        : undefined,
+      forecast: snapshot.forecast
+        ? {
+            period: { ...snapshot.forecast.period },
+            projections: snapshot.forecast.projections.map((projection) => ({ ...projection })),
+          }
+        : undefined,
     };
   }
 
@@ -442,21 +537,15 @@ export class ClinicPresenter {
     };
   }
 
-  private static mapPaymentLedger(
-    ledger: ClinicPaymentLedger,
-  ): ClinicPaymentLedgerDto {
+  private static mapPaymentLedger(ledger: ClinicPaymentLedger): ClinicPaymentLedgerDto {
     return {
       currency: ledger.currency,
       lastUpdatedAt: ledger.lastUpdatedAt,
-      events: ledger.events.map((event) =>
-        ClinicPresenter.mapPaymentLedgerEvent(event),
-      ),
+      events: ledger.events.map((event) => ClinicPresenter.mapPaymentLedgerEvent(event)),
       settlement: ledger.settlement
         ? ClinicPresenter.mapPaymentLedgerSettlement(ledger.settlement)
         : undefined,
-      refund: ledger.refund
-        ? ClinicPresenter.mapPaymentLedgerRefund(ledger.refund)
-        : undefined,
+      refund: ledger.refund ? ClinicPresenter.mapPaymentLedgerRefund(ledger.refund) : undefined,
       chargeback: ledger.chargeback
         ? ClinicPresenter.mapPaymentLedgerChargeback(ledger.chargeback)
         : undefined,
@@ -1454,5 +1543,32 @@ export class ClinicPresenter {
       versionLabel: branding.versionLabel !== undefined ? String(branding.versionLabel) : undefined,
       metadata,
     };
+  }
+
+  private static resolveConfigurationState(
+    version: ClinicConfigurationVersion,
+  ): 'idle' | 'saving' | 'saved' | 'error' {
+    if (version.appliedAt) {
+      return 'saved';
+    }
+
+    if (version.autoApply) {
+      return 'saving';
+    }
+
+    return 'idle';
+  }
+
+  private static toDate(value: unknown): Date | undefined {
+    if (typeof value === 'string') {
+      const parsed = new Date(value);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed;
+      }
+    }
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      return value;
+    }
+    return undefined;
   }
 }

@@ -45,6 +45,7 @@ export class DomainEvents {
   static CLINIC_PAYMENT_SETTLED = 'clinic.payment.settled';
   static CLINIC_PAYMENT_REFUNDED = 'clinic.payment.refunded';
   static CLINIC_PAYMENT_CHARGEBACK = 'clinic.payment.chargeback';
+  static CLINIC_TEMPLATE_PROPAGATED = 'clinic.template.propagated';
   static BILLING_INVOICE_REQUESTED = 'billing.invoice.requested';
   static BILLING_INVOICE_CANCELLATION_REQUESTED = 'billing.invoice.cancellation_requested';
   static BILLING_PAYMENT_STATUS_SYNC_REQUESTED = 'billing.payment.status_sync_requested';
@@ -801,6 +802,26 @@ export class DomainEvents {
       this.NOTIFICATION_SCHEDULING_HOLD_CREATED,
       holdId,
       { holdId, ...data, queuedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static clinicTemplatePropagated(
+    templateClinicId: string,
+    data: {
+      tenantId: string;
+      templateVersionId: string;
+      propagatedVersionId: string;
+      targetClinicId: string;
+      section: string;
+      triggeredBy: string;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.CLINIC_TEMPLATE_PROPAGATED,
+      templateClinicId,
+      { templateClinicId, ...data, propagatedAt: new Date() },
       metadata,
     );
   }

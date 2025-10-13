@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import {
   AcceptClinicInvitationInput,
   ClinicInvitation,
+  ClinicInvitationChannel,
   ClinicInvitationStatus,
   InviteClinicProfessionalInput,
   RevokeClinicInvitationInput,
@@ -36,6 +37,33 @@ export class ClinicInvitationRepository implements IClinicInvitationRepository {
       economicSummary: input.economicSummary,
       metadata: input.metadata ?? {},
     });
+
+    const saved = await this.repository.save(entity);
+    return ClinicMapper.toInvitation(saved);
+  }
+
+  async updateToken(params: {
+    invitationId: string;
+    tenantId: string;
+    tokenHash: string;
+    expiresAt?: Date;
+    channel?: ClinicInvitationChannel;
+  }): Promise<ClinicInvitation> {
+    const entity = await this.repository.findOneOrFail({
+      where: { id: params.invitationId, tenantId: params.tenantId },
+    });
+
+    entity.tokenHash = params.tokenHash;
+
+    if (params.expiresAt) {
+      entity.expiresAt = params.expiresAt;
+    }
+
+    if (params.channel) {
+      entity.channel = params.channel;
+    }
+
+    entity.status = 'pending';
 
     const saved = await this.repository.save(entity);
     return ClinicMapper.toInvitation(saved);

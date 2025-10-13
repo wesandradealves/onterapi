@@ -154,16 +154,13 @@ function normalizeSettlement(raw: unknown): ClinicPaymentLedgerSettlement | unde
     netAmountCents:
       typeof data.netAmountCents === 'number' ? (data.netAmountCents as number) : undefined,
     split,
-    remainderCents:
-      typeof data.remainderCents === 'number' ? (data.remainderCents as number) : 0,
+    remainderCents: typeof data.remainderCents === 'number' ? (data.remainderCents as number) : 0,
     fingerprint:
       typeof data.fingerprint === 'string' && data.fingerprint.length > 0
         ? (data.fingerprint as string)
         : undefined,
     gatewayStatus:
-      typeof data.gatewayStatus === 'string'
-        ? (data.gatewayStatus as string)
-        : 'UNKNOWN',
+      typeof data.gatewayStatus === 'string' ? (data.gatewayStatus as string) : 'UNKNOWN',
   };
 }
 
@@ -182,8 +179,7 @@ function normalizeRefund(raw: unknown): ClinicPaymentLedgerRefund | undefined {
 
   return {
     refundedAt,
-    amountCents:
-      typeof data.amountCents === 'number' ? (data.amountCents as number) : undefined,
+    amountCents: typeof data.amountCents === 'number' ? (data.amountCents as number) : undefined,
     netAmountCents:
       typeof data.netAmountCents === 'number' ? (data.netAmountCents as number) : undefined,
     fingerprint:
@@ -209,8 +205,7 @@ function normalizeChargeback(raw: unknown): ClinicPaymentLedgerChargeback | unde
 
   return {
     chargebackAt,
-    amountCents:
-      typeof data.amountCents === 'number' ? (data.amountCents as number) : undefined,
+    amountCents: typeof data.amountCents === 'number' ? (data.amountCents as number) : undefined,
     netAmountCents:
       typeof data.netAmountCents === 'number' ? (data.netAmountCents as number) : undefined,
     fingerprint:

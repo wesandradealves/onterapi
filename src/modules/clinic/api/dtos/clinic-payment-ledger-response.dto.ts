@@ -10,9 +10,7 @@ import {
   ClinicPaymentStatus,
 } from '../../../../domain/clinic/types/clinic.types';
 
-export class ClinicPaymentSplitAllocationDto
-  implements ClinicPaymentSplitAllocation
-{
+export class ClinicPaymentSplitAllocationDto implements ClinicPaymentSplitAllocation {
   @ApiProperty({ enum: ['taxes', 'gateway', 'clinic', 'professional', 'platform'] })
   recipient!: ClinicPaymentSplitAllocation['recipient'];
 
@@ -46,9 +44,7 @@ export class ClinicPaymentLedgerEventDto implements ClinicPaymentLedgerEventEntr
   metadata?: Record<string, unknown>;
 }
 
-export class ClinicPaymentLedgerSettlementDto
-  implements ClinicPaymentLedgerSettlement
-{
+export class ClinicPaymentLedgerSettlementDto implements ClinicPaymentLedgerSettlement {
   @ApiProperty()
   settledAt!: string;
 
@@ -88,9 +84,7 @@ export class ClinicPaymentLedgerRefundDto implements ClinicPaymentLedgerRefund {
   gatewayStatus!: string;
 }
 
-export class ClinicPaymentLedgerChargebackDto
-  implements ClinicPaymentLedgerChargeback
-{
+export class ClinicPaymentLedgerChargebackDto implements ClinicPaymentLedgerChargeback {
   @ApiProperty()
   chargebackAt!: string;
 

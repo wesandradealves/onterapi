@@ -18,11 +18,13 @@ import { ClinicAlertEntity } from '../entities/clinic-alert.entity';
 import { ClinicDashboardMetricEntity } from '../entities/clinic-dashboard-metric.entity';
 import { ClinicForecastProjectionEntity } from '../entities/clinic-forecast-projection.entity';
 import { ClinicMemberEntity } from '../entities/clinic-member.entity';
+import { ClinicEntity } from '../entities/clinic.entity';
 import { ClinicMapper } from '../mappers/clinic.mapper';
 
 interface AggregatedMetrics {
   revenue: number;
   appointments: number;
+  activePatients: number;
   occupancyRate: number;
   satisfactionScore: number;
   samples: number;
@@ -40,6 +42,8 @@ export class ClinicMetricsRepository implements IClinicMetricsRepository {
     private readonly alertRepository: Repository<ClinicAlertEntity>,
     @InjectRepository(ClinicMemberEntity)
     private readonly memberRepository: Repository<ClinicMemberEntity>,
+    @InjectRepository(ClinicEntity)
+    private readonly clinicRepository: Repository<ClinicEntity>,
   ) {}
 
   async getDashboardSnapshot(query: ClinicDashboardQuery): Promise<ClinicDashboardSnapshot> {
@@ -139,19 +143,43 @@ export class ClinicMetricsRepository implements IClinicMetricsRepository {
       const satisfaction =
         current.samples > 0 ? current.satisfactionScore / current.samples : undefined;
 
+      const previousOccupancy =
+        previous && previous.periods > 0 ? previous.occupancyRate / previous.periods : 0;
+      const previousSatisfaction =
+        previous && previous.samples > 0
+          ? previous.satisfactionScore / previous.samples
+          : undefined;
+
+      const revenueVariation = previous
+        ? this.calculateVariation(current.revenue, previous.revenue)
+        : 0;
+      const appointmentsVariation = previous
+        ? this.calculateVariation(current.appointments, previous.appointments)
+        : 0;
+      const patientsVariation = previous
+        ? this.calculateVariation(current.activePatients, previous.activePatients)
+        : 0;
+      const occupancyVariation = previous
+        ? this.calculateVariation(occupancy, previousOccupancy)
+        : 0;
+      const satisfactionVariation =
+        satisfaction !== undefined && previousSatisfaction !== undefined
+          ? this.calculateVariation(satisfaction, previousSatisfaction)
+          : undefined;
+
       return {
         clinicId,
         name: clinicId,
         revenue: current.revenue,
-        revenueVariationPercentage: previous
-          ? this.calculateVariation(current.revenue, previous.revenue)
-          : 0,
+        revenueVariationPercentage: revenueVariation,
         appointments: current.appointments,
-        appointmentsVariationPercentage: previous
-          ? this.calculateVariation(current.appointments, previous.appointments)
-          : 0,
+        appointmentsVariationPercentage: appointmentsVariation,
+        activePatients: current.activePatients,
+        activePatientsVariationPercentage: patientsVariation,
         occupancyRate: occupancy,
+        occupancyVariationPercentage: occupancyVariation,
         satisfactionScore: satisfaction,
+        satisfactionVariationPercentage: satisfactionVariation,
         rankingPosition: 0,
       } as ClinicComparisonEntry;
     });
@@ -162,6 +190,24 @@ export class ClinicMetricsRepository implements IClinicMetricsRepository {
     entries.forEach((entry, index) => {
       entry.rankingPosition = index + 1;
     });
+
+    if (entries.length > 0) {
+      const clinicIds = entries.map((entry) => entry.clinicId);
+      const clinics = await this.clinicRepository.find({
+        where: {
+          id: In(clinicIds),
+          tenantId: query.tenantId,
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      });
+      const nameMap = new Map(clinics.map((clinic) => [clinic.id, clinic.name]));
+      entries.forEach((entry) => {
+        entry.name = nameMap.get(entry.clinicId) ?? entry.clinicId;
+      });
+    }
 
     return entries;
   }
@@ -268,6 +314,7 @@ export class ClinicMetricsRepository implements IClinicMetricsRepository {
       const current = acc[metric.clinicId] ?? {
         revenue: 0,
         appointments: 0,
+        activePatients: 0,
         occupancyRate: 0,
         satisfactionScore: 0,
         samples: 0,
@@ -276,6 +323,7 @@ export class ClinicMetricsRepository implements IClinicMetricsRepository {
 
       current.revenue += metric.revenue;
       current.appointments += metric.appointments;
+      current.activePatients += metric.activePatients;
       current.occupancyRate += metric.occupancyRate;
       current.periods += 1;
       if (metric.satisfactionScore !== undefined) {
@@ -295,6 +343,8 @@ export class ClinicMetricsRepository implements IClinicMetricsRepository {
     switch (metric) {
       case 'appointments':
         return entry.appointments;
+      case 'patients':
+        return entry.activePatients;
       case 'occupancy':
         return entry.occupancyRate;
       case 'satisfaction':
@@ -304,8 +354,10 @@ export class ClinicMetricsRepository implements IClinicMetricsRepository {
     }
   }
 
-  private calculateVariation(current: number, previous: number): number {
-    if (previous === 0) return 0;
+  private calculateVariation(current: number, previous?: number): number {
+    if (!previous || previous === 0) {
+      return 0;
+    }
     return ((current - previous) / previous) * 100;
   }
 }

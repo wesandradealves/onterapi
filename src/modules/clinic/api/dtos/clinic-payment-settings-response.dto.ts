@@ -124,6 +124,12 @@ export class ClinicPaymentSettingsResponseDto {
   @ApiPropertyOptional()
   notes?: string;
 
+  @ApiProperty({ enum: ['idle', 'saving', 'saved', 'error'] })
+  state!: 'idle' | 'saving' | 'saved' | 'error';
+
+  @ApiProperty({ description: 'Indica se a configuração é aplicada automaticamente' })
+  autoApply!: boolean;
+
   @ApiProperty({ type: ClinicPaymentSettingsPayloadDto })
   payload!: ClinicPaymentSettingsPayloadDto;
 }

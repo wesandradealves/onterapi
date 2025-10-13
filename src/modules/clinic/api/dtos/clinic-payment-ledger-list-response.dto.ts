@@ -1,14 +1,7 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 
 import { ClinicPaymentStatus } from '../../../../domain/clinic/types/clinic.types';
-import {
-  ClinicPaymentLedgerChargebackDto,
-  ClinicPaymentLedgerDto,
-  ClinicPaymentLedgerEventDto,
-  ClinicPaymentLedgerRefundDto,
-  ClinicPaymentLedgerSettlementDto,
-  ClinicPaymentSplitAllocationDto,
-} from './clinic-payment-ledger-response.dto';
+import { ClinicPaymentLedgerDto } from './clinic-payment-ledger-response.dto';
 
 export class ClinicPaymentLedgerListItemDto {
   @ApiProperty()
@@ -44,8 +37,8 @@ export class ClinicPaymentLedgerListResponseDto {
   items!: ClinicPaymentLedgerListItemDto[];
 }
 
+export { ClinicPaymentLedgerDto } from './clinic-payment-ledger-response.dto';
 export {
-  ClinicPaymentLedgerDto,
   ClinicPaymentLedgerEventDto,
   ClinicPaymentLedgerSettlementDto,
   ClinicPaymentLedgerRefundDto,

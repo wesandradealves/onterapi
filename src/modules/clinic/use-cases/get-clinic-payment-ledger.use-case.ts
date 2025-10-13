@@ -31,9 +31,7 @@ export class GetClinicPaymentLedgerUseCase
   protected async handle(
     input: GetClinicPaymentLedgerInput,
   ): Promise<GetClinicPaymentLedgerOutput> {
-    const appointment = await this.clinicAppointmentRepository.findById(
-      input.appointmentId,
-    );
+    const appointment = await this.clinicAppointmentRepository.findById(input.appointmentId);
 
     if (
       !appointment ||
@@ -58,5 +56,4 @@ export class GetClinicPaymentLedgerUseCase
   }
 }
 
-export const GetClinicPaymentLedgerUseCaseToken =
-  IGetClinicPaymentLedgerUseCaseToken;
+export const GetClinicPaymentLedgerUseCaseToken = IGetClinicPaymentLedgerUseCaseToken;

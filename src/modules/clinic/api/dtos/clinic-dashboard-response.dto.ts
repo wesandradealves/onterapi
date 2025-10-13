@@ -49,6 +49,91 @@ export class ClinicDashboardAlertDto {
   payload!: Record<string, unknown>;
 }
 
+export class ClinicDashboardComparisonEntryDto {
+  @ApiProperty()
+  clinicId!: string;
+
+  @ApiProperty()
+  name!: string;
+
+  @ApiProperty()
+  revenue!: number;
+
+  @ApiProperty()
+  revenueVariationPercentage!: number;
+
+  @ApiProperty()
+  appointments!: number;
+
+  @ApiProperty()
+  appointmentsVariationPercentage!: number;
+
+  @ApiProperty()
+  activePatients!: number;
+
+  @ApiProperty()
+  activePatientsVariationPercentage!: number;
+
+  @ApiProperty()
+  occupancyRate!: number;
+
+  @ApiProperty()
+  occupancyVariationPercentage!: number;
+
+  @ApiPropertyOptional()
+  satisfactionScore?: number;
+
+  @ApiPropertyOptional()
+  satisfactionVariationPercentage?: number;
+
+  @ApiProperty()
+  rankingPosition!: number;
+}
+
+export class ClinicDashboardComparisonMetricDto {
+  @ApiProperty({ enum: ['revenue', 'appointments', 'patients', 'occupancy', 'satisfaction'] })
+  metric!: 'revenue' | 'appointments' | 'patients' | 'occupancy' | 'satisfaction';
+
+  @ApiProperty({ type: [ClinicDashboardComparisonEntryDto] })
+  entries!: ClinicDashboardComparisonEntryDto[];
+}
+
+export class ClinicDashboardComparisonDto {
+  @ApiProperty({ type: () => Object })
+  period!: { start: Date; end: Date };
+
+  @ApiProperty({ type: () => Object })
+  previousPeriod!: { start: Date; end: Date };
+
+  @ApiProperty({ type: [ClinicDashboardComparisonMetricDto] })
+  metrics!: ClinicDashboardComparisonMetricDto[];
+}
+
+export class ClinicDashboardForecastProjectionDto {
+  @ApiProperty()
+  clinicId!: string;
+
+  @ApiProperty()
+  month!: string;
+
+  @ApiProperty()
+  projectedRevenue!: number;
+
+  @ApiProperty()
+  projectedAppointments!: number;
+
+  @ApiProperty()
+  projectedOccupancyRate!: number;
+}
+
+export class ClinicDashboardForecastDto {
+  @ApiProperty({ type: () => Object })
+  period!: { start: Date; end: Date };
+
+  @ApiProperty({ type: [ClinicDashboardForecastProjectionDto] })
+  projections!: ClinicDashboardForecastProjectionDto[];
+}
+
 export class ClinicDashboardResponseDto {
   @ApiProperty({ type: () => Object })
   period!: { start: Date; end: Date };
@@ -66,4 +151,10 @@ export class ClinicDashboardResponseDto {
 
   @ApiProperty({ type: [ClinicDashboardAlertDto] })
   alerts!: ClinicDashboardAlertDto[];
+
+  @ApiPropertyOptional({ type: () => ClinicDashboardComparisonDto })
+  comparisons?: ClinicDashboardComparisonDto;
+
+  @ApiPropertyOptional({ type: () => ClinicDashboardForecastDto })
+  forecast?: ClinicDashboardForecastDto;
 }

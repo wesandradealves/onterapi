@@ -77,9 +77,7 @@ describe('GetClinicPaymentLedgerUseCase', () => {
   });
 
   it('retorna ledger padrao quando metadados nao existem', async () => {
-    appointmentRepository.findById.mockResolvedValue(
-      createAppointment({ metadata: undefined }),
-    );
+    appointmentRepository.findById.mockResolvedValue(createAppointment({ metadata: undefined }));
 
     const result = await useCase.executeOrThrow({
       appointmentId: 'appointment-1',

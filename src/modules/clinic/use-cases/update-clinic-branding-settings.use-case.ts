@@ -18,6 +18,7 @@ import {
   UpdateClinicBrandingSettingsInput,
 } from '../../../domain/clinic/types/clinic.types';
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
+import { ClinicConfigurationValidator } from '../services/clinic-configuration-validator.service';
 
 @Injectable()
 export class UpdateClinicBrandingSettingsUseCase
@@ -31,6 +32,7 @@ export class UpdateClinicBrandingSettingsUseCase
     private readonly clinicRepository: IClinicRepository,
     @Inject(IClinicConfigurationRepositoryToken)
     private readonly configurationRepository: IClinicConfigurationRepository,
+    private readonly configurationValidator: ClinicConfigurationValidator,
   ) {
     super();
   }
@@ -45,6 +47,8 @@ export class UpdateClinicBrandingSettingsUseCase
     }
 
     const payload = JSON.parse(JSON.stringify(input.brandingSettings ?? {}));
+
+    this.configurationValidator.validateBrandingSettings(input.brandingSettings);
 
     const version = await this.configurationRepository.createVersion({
       clinicId: input.clinicId,
@@ -62,6 +66,8 @@ export class UpdateClinicBrandingSettingsUseCase
       versionId: version.id,
       appliedBy: input.requestedBy,
     });
+
+    version.appliedAt = new Date();
 
     await this.clinicRepository.setCurrentConfigurationVersion({
       clinicId: input.clinicId,

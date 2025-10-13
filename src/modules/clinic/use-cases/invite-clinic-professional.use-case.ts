@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { createHash, randomBytes } from 'crypto';
+import { randomBytes } from 'crypto';
 
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import {
@@ -24,6 +24,7 @@ import {
   InviteClinicProfessionalInput,
 } from '../../../domain/clinic/types/clinic.types';
 import { ClinicAuditService } from '../../../infrastructure/clinic/services/clinic-audit.service';
+import { ClinicInvitationTokenService } from '../services/clinic-invitation-token.service';
 
 @Injectable()
 export class InviteClinicProfessionalUseCase
@@ -40,6 +41,7 @@ export class InviteClinicProfessionalUseCase
     @Inject(IClinicMemberRepositoryToken)
     private readonly memberRepository: IClinicMemberRepository,
     private readonly auditService: ClinicAuditService,
+    private readonly invitationTokenService: ClinicInvitationTokenService,
   ) {
     super();
   }
@@ -80,19 +82,39 @@ export class InviteClinicProfessionalUseCase
       );
     }
 
-    const rawToken = randomBytes(32).toString('hex');
-    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    if (input.expiresAt <= new Date()) {
+      throw ClinicErrorFactory.invalidClinicData('Data de expiração do convite deve ser futura');
+    }
+
+    const placeholderHash = this.invitationTokenService.hash(
+      `pending:${randomBytes(8).toString('hex')}:${Date.now()}`,
+    );
 
     const invitation = await this.invitationRepository.create({
       ...input,
-      tokenHash,
+      tokenHash: placeholderHash,
+    });
+
+    const { token, hash } = this.invitationTokenService.generateToken({
+      invitationId: invitation.id,
+      clinicId: input.clinicId,
+      tenantId: input.tenantId,
+      expiresAt: input.expiresAt,
+    });
+
+    const refreshedInvitation = await this.invitationRepository.updateToken({
+      invitationId: invitation.id,
+      tenantId: invitation.tenantId,
+      tokenHash: hash,
+      expiresAt: input.expiresAt,
+      channel: input.channel,
     });
 
     const result = {
-      ...invitation,
+      ...refreshedInvitation,
       metadata: {
-        ...(invitation.metadata ?? {}),
-        rawToken,
+        ...(refreshedInvitation.metadata ?? {}),
+        issuedToken: token,
       },
     };
 

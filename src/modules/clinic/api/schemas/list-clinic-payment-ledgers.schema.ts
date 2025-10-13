@@ -11,16 +11,12 @@ export const listClinicPaymentLedgersSchema = z.object({
         .filter((item) => item.length > 0),
     )
     .optional()
-    .transform((statuses) =>
-      statuses && statuses.length > 0 ? statuses : undefined,
-    )
+    .transform((statuses) => (statuses && statuses.length > 0 ? statuses : undefined))
     .refine(
       (statuses) =>
         !statuses ||
         statuses.every((status) =>
-          ['approved', 'settled', 'refunded', 'chargeback', 'failed'].includes(
-            status,
-          ),
+          ['approved', 'settled', 'refunded', 'chargeback', 'failed'].includes(status),
         ),
       {
         message:
@@ -56,15 +52,10 @@ export const listClinicPaymentLedgersSchema = z.object({
     .string()
     .optional()
     .transform((value) => (value ? Number(value) : undefined))
-    .refine(
-      (value) => value === undefined || (Number.isInteger(value) && value >= 0),
-      {
-        message: 'offset deve ser um inteiro maior ou igual a zero',
-      },
-    )
+    .refine((value) => value === undefined || (Number.isInteger(value) && value >= 0), {
+      message: 'offset deve ser um inteiro maior ou igual a zero',
+    })
     .optional(),
 });
 
-export type ListClinicPaymentLedgersSchema = z.infer<
-  typeof listClinicPaymentLedgersSchema
->;
+export type ListClinicPaymentLedgersSchema = z.infer<typeof listClinicPaymentLedgersSchema>;

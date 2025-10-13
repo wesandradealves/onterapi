@@ -44,6 +44,10 @@ import {
   revokeClinicInvitationSchema,
 } from '../schemas/clinic-invitation.schema';
 import {
+  ReissueClinicInvitationSchema,
+  reissueClinicInvitationSchema,
+} from '../schemas/reissue-clinic-invitation.schema';
+import {
   type IInviteClinicProfessionalUseCase,
   IInviteClinicProfessionalUseCase as IInviteClinicProfessionalUseCaseToken,
 } from '../../../../domain/clinic/interfaces/use-cases/invite-clinic-professional.use-case.interface';
@@ -59,6 +63,10 @@ import {
   type IRevokeClinicInvitationUseCase,
   IRevokeClinicInvitationUseCase as IRevokeClinicInvitationUseCaseToken,
 } from '../../../../domain/clinic/interfaces/use-cases/revoke-clinic-invitation.use-case.interface';
+import {
+  type IReissueClinicInvitationUseCase,
+  IReissueClinicInvitationUseCase as IReissueClinicInvitationUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/reissue-clinic-invitation.use-case.interface';
 import { ZodApiBody } from '../../../../shared/decorators/zod-api-body.decorator';
 
 @ApiTags('Clinics')
@@ -75,6 +83,8 @@ export class ClinicInvitationController {
     private readonly acceptInvitationUseCase: IAcceptClinicInvitationUseCase,
     @Inject(IRevokeClinicInvitationUseCaseToken)
     private readonly revokeInvitationUseCase: IRevokeClinicInvitationUseCase,
+    @Inject(IReissueClinicInvitationUseCaseToken)
+    private readonly reissueInvitationUseCase: IReissueClinicInvitationUseCase,
   ) {}
 
   @Post(':clinicId/invitations')
@@ -117,10 +127,10 @@ export class ClinicInvitationController {
       metadata: body.metadata,
     });
 
-    const token = invitation.metadata?.rawToken as string | undefined;
+    const token = invitation.metadata?.issuedToken as string | undefined;
 
-    if (invitation.metadata?.rawToken) {
-      delete invitation.metadata.rawToken;
+    if (invitation.metadata?.issuedToken) {
+      delete invitation.metadata.issuedToken;
     }
 
     return ClinicPresenter.invitation(invitation, token);
@@ -210,6 +220,40 @@ export class ClinicInvitationController {
     });
 
     return ClinicPresenter.invitation(invitation);
+  }
+
+  @Post('invitations/:invitationId/reissue')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SECRETARY, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Reemitir convite de clínica com novo token' })
+  @ApiParam({ name: 'invitationId', type: String })
+  @ApiResponse({ status: 200, type: ClinicInvitationResponseDto })
+  @ZodApiBody({ schema: reissueClinicInvitationSchema })
+  async reissueInvitation(
+    @Param('invitationId') invitationId: string,
+    @Body(new ZodValidationPipe(reissueClinicInvitationSchema)) body: ReissueClinicInvitationSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+  ): Promise<ClinicInvitationResponseDto> {
+    const tenantId = body.tenantId ?? currentUser.tenantId;
+
+    if (!tenantId) {
+      throw new BadRequestException('Tenant não informado');
+    }
+
+    const invitation = await this.reissueInvitationUseCase.executeOrThrow({
+      invitationId,
+      tenantId,
+      reissuedBy: currentUser.id,
+      expiresAt: new Date(body.expiresAt),
+      channel: body.channel,
+    });
+
+    const token = invitation.metadata?.issuedToken as string | undefined;
+
+    if (invitation.metadata?.issuedToken) {
+      delete invitation.metadata.issuedToken;
+    }
+
+    return ClinicPresenter.invitation(invitation, token);
   }
 
   private resolveContext(currentUser: ICurrentUser, tenantId?: string): ClinicRequestContext {

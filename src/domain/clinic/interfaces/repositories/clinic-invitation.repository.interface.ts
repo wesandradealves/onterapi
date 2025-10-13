@@ -1,6 +1,7 @@
 import {
   AcceptClinicInvitationInput,
   ClinicInvitation,
+  ClinicInvitationChannel,
   ClinicInvitationStatus,
   InviteClinicProfessionalInput,
   RevokeClinicInvitationInput,
@@ -8,6 +9,13 @@ import {
 
 export interface IClinicInvitationRepository {
   create(input: InviteClinicProfessionalInput & { tokenHash: string }): Promise<ClinicInvitation>;
+  updateToken(params: {
+    invitationId: string;
+    tenantId: string;
+    tokenHash: string;
+    expiresAt?: Date;
+    channel?: ClinicInvitationChannel;
+  }): Promise<ClinicInvitation>;
   findById(invitationId: string): Promise<ClinicInvitation | null>;
   findByTokenHash(tokenHash: string): Promise<ClinicInvitation | null>;
   listPending(params: {

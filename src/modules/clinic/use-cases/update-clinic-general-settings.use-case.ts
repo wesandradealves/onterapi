@@ -19,6 +19,7 @@ import {
 } from '../../../domain/clinic/interfaces/use-cases/update-clinic-general-settings.use-case.interface';
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
 import { ClinicAuditService } from '../../../infrastructure/clinic/services/clinic-audit.service';
+import { ClinicConfigurationValidator } from '../services/clinic-configuration-validator.service';
 
 @Injectable()
 export class UpdateClinicGeneralSettingsUseCase
@@ -33,6 +34,7 @@ export class UpdateClinicGeneralSettingsUseCase
     @Inject(IClinicConfigurationRepositoryToken)
     private readonly configurationRepository: IClinicConfigurationRepository,
     private readonly auditService: ClinicAuditService,
+    private readonly configurationValidator: ClinicConfigurationValidator,
   ) {
     super();
   }
@@ -47,6 +49,15 @@ export class UpdateClinicGeneralSettingsUseCase
     }
 
     const payload = JSON.parse(JSON.stringify(input.settings ?? {}));
+
+    await this.configurationValidator.validateGeneralSettings(clinic, input.settings);
+
+    await this.clinicRepository.updateGeneralProfile({
+      clinicId: clinic.id,
+      tenantId: clinic.tenantId,
+      requestedBy: input.requestedBy,
+      settings: input.settings,
+    });
 
     const version = await this.configurationRepository.createVersion({
       clinicId: input.clinicId,
@@ -64,6 +75,8 @@ export class UpdateClinicGeneralSettingsUseCase
       versionId: version.id,
       appliedBy: input.requestedBy,
     });
+
+    version.appliedAt = new Date();
 
     await this.clinicRepository.setCurrentConfigurationVersion({
       clinicId: input.clinicId,

@@ -1,6 +1,8 @@
 import {
+  toClinicDashboardQuery,
   toConfirmClinicHoldInput,
   toCreateClinicHoldInput,
+  toPropagateClinicTemplateInput,
   toUpdateClinicBrandingSettingsInput,
   toUpdateClinicIntegrationSettingsInput,
   toUpdateClinicNotificationSettingsInput,
@@ -16,6 +18,8 @@ import { UpdateClinicNotificationSettingsSchema } from '../../../src/modules/cli
 import { UpdateClinicBrandingSettingsSchema } from '../../../src/modules/clinic/api/schemas/update-clinic-branding-settings.schema';
 import { CreateClinicHoldSchema } from '../../../src/modules/clinic/api/schemas/create-clinic-hold.schema';
 import { ConfirmClinicHoldSchema } from '../../../src/modules/clinic/api/schemas/confirm-clinic-hold.schema';
+import { GetClinicDashboardSchema } from '../../../src/modules/clinic/api/schemas/get-clinic-dashboard.schema';
+import { PropagateClinicTemplateSchema } from '../../../src/modules/clinic/api/schemas/propagate-clinic-template.schema';
 
 describe('ClinicRequestMapper - schedule settings', () => {
   const baseContext = {
@@ -373,6 +377,79 @@ describe('ClinicRequestMapper - payment settings', () => {
     expect(input.paymentSettings.inadimplencyRule.gracePeriodDays).toBe(0);
     expect(input.paymentSettings.inadimplencyRule.actions).toEqual([]);
     expect(input.paymentSettings.cancellationPolicies).toEqual([]);
+  });
+});
+
+describe('ClinicRequestMapper - dashboard query', () => {
+  const baseContext = { tenantId: 'tenant-dashboard', userId: 'user-dashboard' };
+
+  it('maps filters, flags e metricas com deduplicacao', () => {
+    const body: GetClinicDashboardSchema = {
+      tenantId: 'tenant-body',
+      clinicIds: ['clinic-1', 'clinic-2'],
+      from: '2025-01-01T00:00:00Z',
+      to: '2025-01-31T23:59:59Z',
+      includeForecast: true,
+      includeComparisons: true,
+      comparisonMetrics: ['revenue', 'patients', 'occupancy', 'revenue'],
+    };
+
+    const query = toClinicDashboardQuery(body, baseContext);
+
+    expect(query.tenantId).toBe('tenant-body');
+    expect(query.includeForecast).toBe(true);
+    expect(query.includeComparisons).toBe(true);
+    expect(query.filters?.clinicIds).toEqual(['clinic-1', 'clinic-2']);
+    expect(query.filters?.from).toBeInstanceOf(Date);
+    expect(query.filters?.to).toBeInstanceOf(Date);
+    expect(query.comparisonMetrics).toEqual(['revenue', 'patients', 'occupancy']);
+  });
+
+  it('usa tenant do contexto e ignora metricas ausentes', () => {
+    const body: GetClinicDashboardSchema = {};
+
+    const query = toClinicDashboardQuery(body, baseContext);
+
+    expect(query.tenantId).toBe(baseContext.tenantId);
+    expect(query.filters).toBeUndefined();
+    expect(query.includeForecast).toBeUndefined();
+    expect(query.includeComparisons).toBeUndefined();
+    expect(query.comparisonMetrics).toBeUndefined();
+  });
+});
+
+describe('ClinicRequestMapper - template propagation', () => {
+  const baseContext = { tenantId: 'tenant-template', userId: 'user-template' };
+
+  it('mapeia dados removendo duplicados e auto-propagacao', () => {
+    const body: PropagateClinicTemplateSchema = {
+      tenantId: 'tenant-body',
+      targetClinicIds: ['clinic-1', 'clinic-1', 'template-clinic', 'clinic-2'],
+      sections: ['general', 'services'],
+      versionNotes: 'propagar v2',
+    };
+
+    const input = toPropagateClinicTemplateInput('template-clinic', body, baseContext);
+
+    expect(input.tenantId).toBe('tenant-body');
+    expect(input.templateClinicId).toBe('template-clinic');
+    expect(input.targetClinicIds).toEqual(['clinic-1', 'clinic-2']);
+    expect(input.sections).toEqual(['general', 'services']);
+    expect(input.versionNotes).toBe('propagar v2');
+    expect(input.triggeredBy).toBe(baseContext.userId);
+  });
+
+  it('usa tenant do contexto quando omitido', () => {
+    const body: PropagateClinicTemplateSchema = {
+      targetClinicIds: ['clinic-3'],
+      sections: ['branding'],
+    };
+
+    const input = toPropagateClinicTemplateInput('template-clinic', body, baseContext);
+
+    expect(input.tenantId).toBe(baseContext.tenantId);
+    expect(input.targetClinicIds).toEqual(['clinic-3']);
+    expect(input.sections).toEqual(['branding']);
   });
 });
 

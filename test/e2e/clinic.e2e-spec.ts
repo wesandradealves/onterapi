@@ -436,7 +436,7 @@ describe('Clinic module (e2e)', () => {
         economicSummary: generalEconomicSummary,
         createdAt: new Date('2025-10-11T10:00:00.000Z'),
         updatedAt: new Date('2025-10-11T10:00:00.000Z'),
-        metadata: { rawToken: 'flow-token' },
+        metadata: { issuedToken: 'flow-token' },
       };
       return state.invitation;
     });

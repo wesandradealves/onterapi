@@ -12,6 +12,7 @@ describe('ClinicPresenter configuration settings mapping', () => {
     createdAt: new Date('2025-10-10T10:00:00Z'),
     appliedAt: new Date('2025-10-11T10:00:00Z'),
     notes: 'note',
+    autoApply: true,
   };
 
   it('maps schedule settings payload with intervals, exceptions and holidays', () => {
@@ -69,6 +70,8 @@ describe('ClinicPresenter configuration settings mapping', () => {
       id: 'holiday-1',
       scope: 'national',
     });
+    expect(dto.state).toBe('saved');
+    expect(dto.autoApply).toBe(true);
   });
 
   it('maps service settings payload with eligibility and cancellation policy', () => {

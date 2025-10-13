@@ -1,8 +1,5 @@
 import { Result } from '../../../../shared/types/result.type';
-import {
-  ClinicPaymentLedger,
-  ClinicPaymentStatus,
-} from '../../types/clinic.types';
+import { ClinicPaymentLedger, ClinicPaymentStatus } from '../../types/clinic.types';
 
 export interface ListClinicPaymentLedgersInput {
   clinicId: string;
@@ -27,14 +24,8 @@ export interface ClinicPaymentLedgerListItem {
 }
 
 export interface IListClinicPaymentLedgersUseCase {
-  execute(
-    input: ListClinicPaymentLedgersInput,
-  ): Promise<Result<ClinicPaymentLedgerListItem[]>>;
-  executeOrThrow(
-    input: ListClinicPaymentLedgersInput,
-  ): Promise<ClinicPaymentLedgerListItem[]>;
+  execute(input: ListClinicPaymentLedgersInput): Promise<Result<ClinicPaymentLedgerListItem[]>>;
+  executeOrThrow(input: ListClinicPaymentLedgersInput): Promise<ClinicPaymentLedgerListItem[]>;
 }
 
-export const IListClinicPaymentLedgersUseCase = Symbol(
-  'IListClinicPaymentLedgersUseCase',
-);
+export const IListClinicPaymentLedgersUseCase = Symbol('IListClinicPaymentLedgersUseCase');

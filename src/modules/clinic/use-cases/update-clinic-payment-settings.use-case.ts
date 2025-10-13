@@ -18,6 +18,7 @@ import {
   UpdateClinicPaymentSettingsInput,
 } from '../../../domain/clinic/types/clinic.types';
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
+import { ClinicConfigurationValidator } from '../services/clinic-configuration-validator.service';
 
 @Injectable()
 export class UpdateClinicPaymentSettingsUseCase
@@ -31,6 +32,7 @@ export class UpdateClinicPaymentSettingsUseCase
     private readonly clinicRepository: IClinicRepository,
     @Inject(IClinicConfigurationRepositoryToken)
     private readonly configurationRepository: IClinicConfigurationRepository,
+    private readonly configurationValidator: ClinicConfigurationValidator,
   ) {
     super();
   }
@@ -45,6 +47,8 @@ export class UpdateClinicPaymentSettingsUseCase
     }
 
     const payload = JSON.parse(JSON.stringify(input.paymentSettings ?? {}));
+
+    await this.configurationValidator.validatePaymentSettings(clinic, input.paymentSettings);
 
     const version = await this.configurationRepository.createVersion({
       clinicId: input.clinicId,
@@ -62,6 +66,8 @@ export class UpdateClinicPaymentSettingsUseCase
       versionId: version.id,
       appliedBy: input.requestedBy,
     });
+
+    version.appliedAt = new Date();
 
     await this.clinicRepository.setCurrentConfigurationVersion({
       clinicId: input.clinicId,

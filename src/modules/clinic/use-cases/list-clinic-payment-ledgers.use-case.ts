@@ -54,5 +54,4 @@ export class ListClinicPaymentLedgersUseCase
   }
 }
 
-export const ListClinicPaymentLedgersUseCaseToken =
-  IListClinicPaymentLedgersUseCaseToken;
+export const ListClinicPaymentLedgersUseCaseToken = IListClinicPaymentLedgersUseCaseToken;

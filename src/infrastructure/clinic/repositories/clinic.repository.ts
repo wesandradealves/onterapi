@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import {
   Clinic,
   ClinicConfigurationSection,
+  ClinicGeneralSettings,
   ClinicStatus,
   CreateClinicInput,
   UpdateClinicHoldSettingsInput,
@@ -171,6 +172,85 @@ export class ClinicRepository implements IClinicRepository {
     const current = entity.configurationVersions ?? {};
     const next = { ...current, [params.section]: params.versionId };
     entity.configurationVersions = next;
+    await this.repository.save(entity);
+  }
+
+  async updateGeneralProfile(params: {
+    clinicId: string;
+    tenantId: string;
+    requestedBy: string;
+    settings: ClinicGeneralSettings;
+  }): Promise<Clinic> {
+    const entity = await this.repository.findOne({
+      where: { id: params.clinicId, tenantId: params.tenantId },
+    });
+
+    if (!entity) {
+      throw new Error('Clinic not found');
+    }
+
+    entity.name = params.settings.tradeName.trim();
+
+    if (params.settings.document?.value) {
+      const digits = params.settings.document.value.replace(/\D+/g, '');
+      entity.documentType = params.settings.document.type;
+      entity.documentValue = digits.length > 0 ? digits : null;
+    } else {
+      entity.documentType = null;
+      entity.documentValue = null;
+    }
+
+    const metadata = entity.metadata ?? {};
+    metadata.generalSettings = {
+      ...params.settings,
+      foundationDate: params.settings.foundationDate
+        ? params.settings.foundationDate.toISOString()
+        : undefined,
+    };
+
+    entity.metadata = metadata;
+
+    const saved = await this.repository.save(entity);
+    return ClinicMapper.toClinic(saved);
+  }
+
+  async updateTemplatePropagationMetadata(params: {
+    clinicId: string;
+    tenantId: string;
+    section: ClinicConfigurationSection;
+    templateClinicId: string;
+    templateVersionId: string;
+    propagatedVersionId: string;
+    propagatedAt: Date;
+    triggeredBy: string;
+  }): Promise<void> {
+    const entity = await this.repository.findOne({
+      where: { id: params.clinicId, tenantId: params.tenantId },
+    });
+
+    if (!entity) {
+      throw new Error('Clinic not found');
+    }
+
+    const metadata = (entity.metadata ?? {}) as Record<string, unknown>;
+    const templatePropagationRaw = (metadata.templatePropagation ?? {}) as Record<string, unknown>;
+    const sectionsRaw = (templatePropagationRaw.sections ?? {}) as Record<string, unknown>;
+
+    sectionsRaw[params.section] = {
+      templateVersionId: params.templateVersionId,
+      propagatedVersionId: params.propagatedVersionId,
+      propagatedAt: params.propagatedAt.toISOString(),
+      triggeredBy: params.triggeredBy,
+    };
+
+    metadata.templatePropagation = {
+      templateClinicId: params.templateClinicId,
+      lastPropagationAt: params.propagatedAt.toISOString(),
+      lastTriggeredBy: params.triggeredBy,
+      sections: sectionsRaw,
+    };
+
+    entity.metadata = metadata;
     await this.repository.save(entity);
   }
 

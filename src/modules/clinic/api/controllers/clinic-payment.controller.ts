@@ -61,7 +61,8 @@ export class ClinicPaymentController {
     name: 'paymentStatus',
     required: false,
     type: String,
-    description: 'Estados de pagamento separados por vírgula (approved, settled, refunded, chargeback, failed)',
+    description:
+      'Estados de pagamento separados por vírgula (approved, settled, refunded, chargeback, failed)',
   })
   @ApiQuery({
     name: 'from',

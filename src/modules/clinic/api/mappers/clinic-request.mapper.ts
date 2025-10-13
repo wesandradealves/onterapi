@@ -1,3 +1,4 @@
+import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
 import {
   ClinicBrandingSettingsConfig,
   ClinicDashboardQuery,
@@ -11,6 +12,9 @@ import {
   ClinicPaymentSettings,
   ClinicScheduleSettings,
   ClinicServiceSettings,
+  ClinicStaffRole,
+  ClinicTeamSettings,
+  ClinicTemplatePropagationInput,
   UpdateClinicBrandingSettingsInput,
   UpdateClinicGeneralSettingsInput,
   UpdateClinicHoldSettingsInput,
@@ -19,9 +23,11 @@ import {
   UpdateClinicPaymentSettingsInput,
   UpdateClinicScheduleSettingsInput,
   UpdateClinicServiceSettingsInput,
+  UpdateClinicTeamSettingsInput,
 } from '../../../../domain/clinic/types/clinic.types';
 import { UpdateClinicGeneralSettingsSchema } from '../schemas/update-clinic-general-settings.schema';
 import { UpdateClinicHoldSettingsSchema } from '../schemas/update-clinic-hold-settings.schema';
+import { UpdateClinicTeamSettingsSchema } from '../schemas/update-clinic-team-settings.schema';
 import { UpdateClinicScheduleSettingsSchema } from '../schemas/update-clinic-schedule-settings.schema';
 import { UpdateClinicServiceSettingsSchema } from '../schemas/update-clinic-service-settings.schema';
 import { UpdateClinicPaymentSettingsSchema } from '../schemas/update-clinic-payment-settings.schema';
@@ -31,6 +37,7 @@ import { UpdateClinicBrandingSettingsSchema } from '../schemas/update-clinic-bra
 import { CreateClinicHoldSchema } from '../schemas/create-clinic-hold.schema';
 import { GetClinicDashboardSchema } from '../schemas/get-clinic-dashboard.schema';
 import { ConfirmClinicHoldSchema } from '../schemas/confirm-clinic-hold.schema';
+import { PropagateClinicTemplateSchema } from '../schemas/propagate-clinic-template.schema';
 
 export interface ClinicRequestContext {
   tenantId: string;
@@ -63,6 +70,32 @@ export const toUpdateClinicGeneralSettingsInput = (
     tenantId: body.tenantId ?? context.tenantId,
     requestedBy: context.userId,
     settings,
+  };
+};
+
+export const toUpdateClinicTeamSettingsInput = (
+  clinicId: string,
+  body: UpdateClinicTeamSettingsSchema,
+  context: ClinicRequestContext,
+): UpdateClinicTeamSettingsInput => {
+  const teamSettings: ClinicTeamSettings = {
+    quotas: body.teamSettings.quotas.map((quota) => {
+      const role = RolesEnum[quota.role as keyof typeof RolesEnum] as ClinicStaffRole;
+
+      return {
+        role,
+        limit: quota.limit,
+      };
+    }),
+    allowExternalInvitations: body.teamSettings.allowExternalInvitations,
+    defaultMemberStatus: body.teamSettings.defaultMemberStatus ?? 'pending_invitation',
+  };
+
+  return {
+    clinicId,
+    tenantId: body.tenantId ?? context.tenantId,
+    requestedBy: context.userId,
+    teamSettings,
   };
 };
 
@@ -371,10 +404,35 @@ export const toClinicDashboardQuery = (
     filters.to = new Date(body.to);
   }
 
+  const comparisonMetrics =
+    body.comparisonMetrics && body.comparisonMetrics.length > 0
+      ? Array.from(new Set(body.comparisonMetrics))
+      : undefined;
+
   return {
     tenantId: body.tenantId ?? context.tenantId,
     filters: Object.keys(filters).length > 0 ? filters : undefined,
     includeForecast: body.includeForecast,
     includeComparisons: body.includeComparisons,
+    comparisonMetrics,
+  };
+};
+
+export const toPropagateClinicTemplateInput = (
+  templateClinicId: string,
+  body: PropagateClinicTemplateSchema,
+  context: ClinicRequestContext,
+): ClinicTemplatePropagationInput => {
+  const uniqueTargets = Array.from(
+    new Set((body.targetClinicIds ?? []).filter((id) => id !== templateClinicId)),
+  );
+
+  return {
+    tenantId: body.tenantId ?? context.tenantId,
+    templateClinicId,
+    targetClinicIds: uniqueTargets,
+    sections: body.sections,
+    versionNotes: body.versionNotes,
+    triggeredBy: context.userId,
   };
 };

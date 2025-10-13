@@ -13,9 +13,6 @@ export class ClinicConfigurationVersionResponseDto {
   @ApiProperty({ description: 'Número da versão' })
   version!: number;
 
-  @ApiProperty({ description: 'Payload salvo da configuração' })
-  payload!: Record<string, unknown>;
-
   @ApiProperty({ description: 'Usuário responsável pela alteração' })
   createdBy!: string;
 
@@ -27,4 +24,13 @@ export class ClinicConfigurationVersionResponseDto {
 
   @ApiProperty({ description: 'Notas associadas', required: false })
   notes?: string;
+
+  @ApiProperty({ enum: ['idle', 'saving', 'saved', 'error'] })
+  state!: 'idle' | 'saving' | 'saved' | 'error';
+
+  @ApiProperty({ description: 'Indica se a versão é aplicada automaticamente' })
+  autoApply!: boolean;
+
+  @ApiProperty({ description: 'Payload salvo da configuração' })
+  payload!: Record<string, unknown>;
 }

@@ -56,6 +56,14 @@ export class ClinicDashboardController {
   @ApiQuery({ name: 'to', required: false, description: 'Data final (ISO)' })
   @ApiQuery({ name: 'includeForecast', required: false, type: Boolean })
   @ApiQuery({ name: 'includeComparisons', required: false, type: Boolean })
+  @ApiQuery({
+    name: 'comparisonMetrics',
+    required: false,
+    description:
+      'Métricas para o comparativo (valores aceitos: revenue, appointments, patients, occupancy, satisfaction)',
+    enum: ['revenue', 'appointments', 'patients', 'occupancy', 'satisfaction'],
+    isArray: true,
+  })
   @ApiResponse({ status: 200, type: ClinicDashboardResponseDto })
   async getDashboard(
     @Query(new ZodValidationPipe(getClinicDashboardSchema)) query: GetClinicDashboardSchema,

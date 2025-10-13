@@ -18,6 +18,7 @@ import {
   ClinicHoldConfirmationInput,
   ClinicInvitation,
   ClinicInvitationEconomicSummary,
+  ClinicTemplatePropagationInput,
 } from '@domain/clinic/types/clinic.types';
 import {
   IUpdateClinicGeneralSettingsUseCase as IUpdateClinicGeneralSettingsUseCaseToken,
@@ -27,6 +28,10 @@ import {
   IUpdateClinicHoldSettingsUseCase as IUpdateClinicHoldSettingsUseCaseToken,
   UpdateClinicHoldSettingsInput,
 } from '@domain/clinic/interfaces/use-cases/update-clinic-hold-settings.use-case.interface';
+import {
+  IUpdateClinicTeamSettingsUseCase as IUpdateClinicTeamSettingsUseCaseToken,
+  UpdateClinicTeamSettingsInput,
+} from '@domain/clinic/interfaces/use-cases/update-clinic-team-settings.use-case.interface';
 import {
   IUpdateClinicServiceSettingsUseCase as IUpdateClinicServiceSettingsUseCaseToken,
   UpdateClinicServiceSettingsInput,
@@ -51,6 +56,7 @@ import {
   IUpdateClinicScheduleSettingsUseCase as IUpdateClinicScheduleSettingsUseCaseToken,
   UpdateClinicScheduleSettingsInput,
 } from '@domain/clinic/interfaces/use-cases/update-clinic-schedule-settings.use-case.interface';
+import { IPropagateClinicTemplateUseCase as IPropagateClinicTemplateUseCaseToken } from '@domain/clinic/interfaces/use-cases/propagate-clinic-template.use-case.interface';
 import {
   GetClinicGeneralSettingsInput,
   IGetClinicGeneralSettingsUseCase as IGetClinicGeneralSettingsUseCaseToken,
@@ -98,12 +104,14 @@ import {
   RevokeClinicInvitationInput,
 } from '@domain/clinic/interfaces/use-cases/revoke-clinic-invitation.use-case.interface';
 import {
+  IReissueClinicInvitationUseCase as IReissueClinicInvitationUseCaseToken,
+  ReissueClinicInvitationInput,
+} from '@domain/clinic/interfaces/use-cases/reissue-clinic-invitation.use-case.interface';
+import {
   ClinicHoldRequestInput,
   ICreateClinicHoldUseCase as ICreateClinicHoldUseCaseToken,
 } from '@domain/clinic/interfaces/use-cases/create-clinic-hold.use-case.interface';
-import {
-  IConfirmClinicAppointmentUseCase as IConfirmClinicAppointmentUseCaseToken,
-} from '@domain/clinic/interfaces/use-cases/confirm-clinic-appointment.use-case.interface';
+import { IConfirmClinicAppointmentUseCase as IConfirmClinicAppointmentUseCaseToken } from '@domain/clinic/interfaces/use-cases/confirm-clinic-appointment.use-case.interface';
 import {
   IListClinicAuditLogsUseCase as IListClinicAuditLogsUseCaseToken,
   ListClinicAuditLogsUseCaseInput,
@@ -168,6 +176,7 @@ describe('ClinicConfigurationController (integration)', () => {
       ClinicConfigurationVersion
     >(),
     updateHold: createUseCaseMock<UpdateClinicHoldSettingsInput, unknown>(),
+    updateTeam: createUseCaseMock<UpdateClinicTeamSettingsInput, ClinicConfigurationVersion>(),
     updateServices: createUseCaseMock<
       UpdateClinicServiceSettingsInput,
       ClinicConfigurationVersion
@@ -192,6 +201,10 @@ describe('ClinicConfigurationController (integration)', () => {
       UpdateClinicScheduleSettingsInput,
       ClinicConfigurationVersion
     >(),
+    propagateTemplate: createUseCaseMock<
+      ClinicTemplatePropagationInput,
+      ClinicConfigurationVersion[]
+    >(),
     getGeneral: createUseCaseMock<GetClinicGeneralSettingsInput, ClinicConfigurationVersion>(),
     getTeam: createUseCaseMock<GetClinicTeamSettingsInput, ClinicConfigurationVersion>(),
     getSchedule: createUseCaseMock<GetClinicScheduleSettingsInput, ClinicConfigurationVersion>(),
@@ -215,6 +228,7 @@ describe('ClinicConfigurationController (integration)', () => {
       providers: [
         { provide: IUpdateClinicGeneralSettingsUseCaseToken, useValue: useCases.updateGeneral },
         { provide: IUpdateClinicHoldSettingsUseCaseToken, useValue: useCases.updateHold },
+        { provide: IUpdateClinicTeamSettingsUseCaseToken, useValue: useCases.updateTeam },
         { provide: IUpdateClinicServiceSettingsUseCaseToken, useValue: useCases.updateServices },
         { provide: IUpdateClinicPaymentSettingsUseCaseToken, useValue: useCases.updatePayments },
         {
@@ -227,6 +241,10 @@ describe('ClinicConfigurationController (integration)', () => {
         },
         { provide: IUpdateClinicBrandingSettingsUseCaseToken, useValue: useCases.updateBranding },
         { provide: IUpdateClinicScheduleSettingsUseCaseToken, useValue: useCases.updateSchedule },
+        {
+          provide: IPropagateClinicTemplateUseCaseToken,
+          useValue: useCases.propagateTemplate,
+        },
         { provide: IGetClinicGeneralSettingsUseCaseToken, useValue: useCases.getGeneral },
         { provide: IGetClinicTeamSettingsUseCaseToken, useValue: useCases.getTeam },
         { provide: IGetClinicScheduleSettingsUseCaseToken, useValue: useCases.getSchedule },
@@ -277,6 +295,7 @@ describe('ClinicConfigurationController (integration)', () => {
       createdAt: new Date('2025-10-10T10:00:00.000Z'),
       appliedAt: new Date('2025-10-10T10:05:00.000Z'),
       notes: 'Primeira versão',
+      autoApply: true,
     };
     useCases.getGeneral.executeOrThrow.mockResolvedValue(version);
 
@@ -299,6 +318,8 @@ describe('ClinicConfigurationController (integration)', () => {
     });
     expect(response.body.createdAt).toBe(version.createdAt.toISOString());
     expect(response.body.appliedAt).toBe(version.appliedAt?.toISOString());
+    expect(response.body.state).toBe('saved');
+    expect(response.body.autoApply).toBe(true);
   });
 
   it('PATCH /clinics/:id/settings/general deve mapear payload e aplicar versão', async () => {
@@ -334,6 +355,7 @@ describe('ClinicConfigurationController (integration)', () => {
       createdAt: new Date('2025-10-11T12:00:00.000Z'),
       appliedAt: new Date('2025-10-11T12:01:00.000Z'),
       notes: 'Autosave',
+      autoApply: true,
     };
     useCases.updateGeneral.executeOrThrow.mockResolvedValue(updatedVersion);
 
@@ -362,6 +384,146 @@ describe('ClinicConfigurationController (integration)', () => {
     expect(response.body.id).toBe(updatedVersion.id);
     expect(response.body.version).toBe(updatedVersion.version);
     expect(response.body.createdAt).toBe(updatedVersion.createdAt.toISOString());
+    expect(response.body.state).toBe('saved');
+    expect(response.body.autoApply).toBe(true);
+  });
+
+  it('PATCH /clinics/:id/settings/propagate deve propagar template para as clínicas alvo', async () => {
+    const targetClinicA = '77777777-7777-7777-7777-777777777771';
+    const targetClinicB = '77777777-7777-7777-7777-777777777772';
+    const requestPayload = {
+      tenantId: FIXTURES.tenant,
+      targetClinicIds: [FIXTURES.clinic, targetClinicA, targetClinicB, targetClinicA],
+      sections: ['general', 'services'],
+      versionNotes: 'Propagacao 2',
+    };
+
+    const propagatedVersions: ClinicConfigurationVersion[] = [
+      {
+        id: 'version-general',
+        clinicId: targetClinicA,
+        section: 'general',
+        version: 5,
+        payload: { tradeName: 'Template Geral' },
+        createdBy: currentUser.id,
+        createdAt: new Date('2025-10-12T10:00:00.000Z'),
+        appliedAt: new Date('2025-10-12T10:01:00.000Z'),
+        notes: 'Propagacao 2',
+        autoApply: true,
+      },
+      {
+        id: 'version-services',
+        clinicId: targetClinicB,
+        section: 'services',
+        version: 7,
+        payload: { services: ['consulta', 'retorno'] },
+        createdBy: currentUser.id,
+        createdAt: new Date('2025-10-12T10:05:00.000Z'),
+        appliedAt: new Date('2025-10-12T10:06:00.000Z'),
+        notes: 'Propagacao 2',
+        autoApply: true,
+      },
+    ];
+
+    useCases.propagateTemplate.executeOrThrow.mockResolvedValue(propagatedVersions);
+
+    const response = await request(app.getHttpServer())
+      .patch(`/clinics/${FIXTURES.clinic}/settings/propagate`)
+      .set('x-tenant-id', FIXTURES.tenant)
+      .send(requestPayload)
+      .expect(200);
+
+    expect(useCases.propagateTemplate.executeOrThrow).toHaveBeenCalledWith({
+      tenantId: FIXTURES.tenant,
+      templateClinicId: FIXTURES.clinic,
+      targetClinicIds: [targetClinicA, targetClinicB],
+      sections: ['general', 'services'],
+      versionNotes: 'Propagacao 2',
+      triggeredBy: currentUser.id,
+    });
+
+    expect(response.body).toHaveLength(2);
+    expect(response.body[0]).toMatchObject({
+      id: propagatedVersions[0].id,
+      clinicId: propagatedVersions[0].clinicId,
+      section: propagatedVersions[0].section,
+      state: 'saved',
+      autoApply: true,
+    });
+    expect(response.body[1]).toMatchObject({
+      id: propagatedVersions[1].id,
+      clinicId: propagatedVersions[1].clinicId,
+      section: propagatedVersions[1].section,
+    });
+  });
+
+  it('GET /clinics/:id/settings/propagation deve retornar snapshot da última propagação', async () => {
+    const clinicMetadata = {
+      templatePropagation: {
+        templateClinicId: 'template-uuid',
+        lastPropagationAt: '2025-10-12T10:06:00.000Z',
+        lastTriggeredBy: 'user-123',
+        sections: {
+          general: {
+            templateVersionId: 'version-general',
+            propagatedVersionId: 'version-general-prop',
+            propagatedAt: '2025-10-12T10:01:00.000Z',
+            triggeredBy: 'user-123',
+          },
+        },
+      },
+    };
+
+    useCases.getClinic.executeOrThrow.mockResolvedValue({
+      id: FIXTURES.clinic,
+      tenantId: FIXTURES.tenant,
+      name: 'Clinica Propagation',
+      slug: 'clinica-propagation',
+      status: 'active',
+      document: undefined,
+      primaryOwnerId: currentUser.id,
+      configurationVersions: {},
+      holdSettings: {
+        ttlMinutes: 30,
+        minAdvanceMinutes: 60,
+        maxAdvanceMinutes: undefined,
+        allowOverbooking: false,
+        overbookingThreshold: undefined,
+        resourceMatchingStrict: true,
+      },
+      createdAt: new Date('2025-10-01T10:00:00.000Z'),
+      updatedAt: new Date('2025-10-12T10:06:00.000Z'),
+      deletedAt: undefined,
+      metadata: clinicMetadata,
+    });
+
+    const response = await request(app.getHttpServer())
+      .get(`/clinics/${FIXTURES.clinic}/settings/propagation`)
+      .set('x-tenant-id', FIXTURES.tenant)
+      .expect(200);
+
+    expect(useCases.getClinic.executeOrThrow).toHaveBeenCalledWith({
+      clinicId: FIXTURES.clinic,
+      tenantId: FIXTURES.tenant,
+    });
+
+    expect(response.body).toMatchObject({
+      templateClinicId: clinicMetadata.templatePropagation.templateClinicId,
+      lastTriggeredBy: clinicMetadata.templatePropagation.lastTriggeredBy,
+    });
+    expect(response.body.lastPropagationAt).toBe(
+      clinicMetadata.templatePropagation.lastPropagationAt,
+    );
+    expect(response.body.sections).toHaveLength(1);
+    expect(response.body.sections[0]).toMatchObject({
+      section: 'general',
+      templateVersionId: 'version-general',
+      propagatedVersionId: 'version-general-prop',
+      triggeredBy: 'user-123',
+    });
+    expect(response.body.sections[0].propagatedAt).toBe(
+      clinicMetadata.templatePropagation.sections.general.propagatedAt,
+    );
   });
 });
 
@@ -402,7 +564,7 @@ describe('ClinicInvitationController (integration)', () => {
     economicSummary: overrides.economicSummary ?? economicSummary,
     createdAt: overrides.createdAt ?? new Date('2025-10-01T12:00:00.000Z'),
     updatedAt: overrides.updatedAt ?? new Date('2025-10-01T12:00:00.000Z'),
-    metadata: { ...(overrides.metadata ?? { rawToken: 'token-123', source: 'manager' }) },
+    metadata: { ...(overrides.metadata ?? { issuedToken: 'token-123', source: 'manager' }) },
   });
 
   const useCases = {
@@ -413,6 +575,7 @@ describe('ClinicInvitationController (integration)', () => {
     >(),
     accept: createUseCaseMock<AcceptClinicInvitationInput, ClinicInvitation>(),
     revoke: createUseCaseMock<RevokeClinicInvitationInput, ClinicInvitation>(),
+    reissue: createUseCaseMock<ReissueClinicInvitationInput, ClinicInvitation>(),
   };
 
   beforeAll(async () => {
@@ -423,6 +586,7 @@ describe('ClinicInvitationController (integration)', () => {
         { provide: IListClinicInvitationsUseCaseToken, useValue: useCases.list },
         { provide: IAcceptClinicInvitationUseCaseToken, useValue: useCases.accept },
         { provide: IRevokeClinicInvitationUseCaseToken, useValue: useCases.revoke },
+        { provide: IReissueClinicInvitationUseCaseToken, useValue: useCases.reissue },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -542,6 +706,35 @@ describe('ClinicInvitationController (integration)', () => {
     });
     expect(response.body.status).toBe('revoked');
     expect(response.body.revokedBy).toBe(currentUser.id);
+  });
+
+  it('POST /clinics/invitations/:id/reissue deve reemitir convite com novo token', async () => {
+    const reissuedInvitation = buildInvitation({
+      metadata: { issuedToken: 'token-reissue', source: 'manager' },
+    });
+    useCases.reissue.executeOrThrow.mockResolvedValue(reissuedInvitation);
+
+    const payload = {
+      tenantId: FIXTURES.tenant,
+      expiresAt: new Date('2025-12-31T12:00:00.000Z').toISOString(),
+      channel: 'email',
+    };
+
+    const response = await request(app.getHttpServer())
+      .post(`/clinics/invitations/${FIXTURES.invitation}/reissue`)
+      .send(payload)
+      .expect(201);
+
+    expect(useCases.reissue.executeOrThrow).toHaveBeenCalledWith({
+      invitationId: FIXTURES.invitation,
+      tenantId: FIXTURES.tenant,
+      reissuedBy: currentUser.id,
+      expiresAt: new Date(payload.expiresAt),
+      channel: payload.channel,
+    });
+    expect(response.body.token).toBe('token-reissue');
+    expect(response.body.metadata).toEqual({ source: 'manager' });
+    expect(response.body.status).toBe('pending');
   });
 });
 

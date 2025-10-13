@@ -67,6 +67,7 @@ export class ClinicMapper {
       createdAt: entity.createdAt,
       appliedAt: entity.appliedAt ?? undefined,
       notes: entity.notes ?? undefined,
+      autoApply: entity.autoApply,
     };
   }
 

@@ -1,6 +1,7 @@
 import {
   Clinic,
   ClinicConfigurationSection,
+  ClinicGeneralSettings,
   ClinicStatus,
   CreateClinicInput,
   UpdateClinicHoldSettingsInput,
@@ -38,6 +39,22 @@ export interface IClinicRepository {
     section: ClinicConfigurationSection;
     versionId: string;
     updatedBy: string;
+  }): Promise<void>;
+  updateGeneralProfile(params: {
+    clinicId: string;
+    tenantId: string;
+    requestedBy: string;
+    settings: ClinicGeneralSettings;
+  }): Promise<Clinic>;
+  updateTemplatePropagationMetadata(params: {
+    clinicId: string;
+    tenantId: string;
+    section: ClinicConfigurationSection;
+    templateClinicId: string;
+    templateVersionId: string;
+    propagatedVersionId: string;
+    propagatedAt: Date;
+    triggeredBy: string;
   }): Promise<void>;
   existsByDocument(
     tenantId: string,

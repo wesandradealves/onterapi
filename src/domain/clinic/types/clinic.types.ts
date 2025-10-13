@@ -580,6 +580,7 @@ export interface ClinicConfigurationVersion {
   createdAt: Date;
   appliedAt?: Date;
   notes?: string;
+  autoApply: boolean;
 }
 
 export interface Clinic {
@@ -641,6 +642,14 @@ export interface ClinicPaymentLedgerEventEntry {
   fingerprint?: string;
   sandbox: boolean;
   metadata?: Record<string, unknown>;
+}
+
+export interface ReissueClinicInvitationInput {
+  invitationId: string;
+  tenantId: string;
+  reissuedBy: string;
+  expiresAt: Date;
+  channel?: ClinicInvitationChannel;
 }
 
 export interface ClinicPaymentLedgerSettlement {
@@ -719,6 +728,8 @@ export interface ClinicDashboardSnapshot {
   };
   metrics: ClinicDashboardMetric[];
   alerts: ClinicAlert[];
+  comparisons?: ClinicDashboardComparison;
+  forecast?: ClinicDashboardForecast;
 }
 
 export interface ClinicComparisonEntry {
@@ -728,8 +739,12 @@ export interface ClinicComparisonEntry {
   revenueVariationPercentage: number;
   appointments: number;
   appointmentsVariationPercentage: number;
+  activePatients: number;
+  activePatientsVariationPercentage: number;
   occupancyRate: number;
+  occupancyVariationPercentage: number;
   satisfactionScore?: number;
+  satisfactionVariationPercentage?: number;
   rankingPosition: number;
 }
 
@@ -749,6 +764,22 @@ export interface ClinicAlert {
   triggeredAt: Date;
   resolvedAt?: Date;
   payload: Record<string, unknown>;
+}
+
+export interface ClinicDashboardComparisonMetric {
+  metric: ClinicComparisonQuery['metric'];
+  entries: ClinicComparisonEntry[];
+}
+
+export interface ClinicDashboardComparison {
+  period: { start: Date; end: Date };
+  previousPeriod: { start: Date; end: Date };
+  metrics: ClinicDashboardComparisonMetric[];
+}
+
+export interface ClinicDashboardForecast {
+  period: { start: Date; end: Date };
+  projections: ClinicForecastProjection[];
 }
 
 export interface CreateClinicInput {
@@ -975,16 +1006,18 @@ export interface ClinicDashboardQuery {
   };
   includeForecast?: boolean;
   includeComparisons?: boolean;
+  comparisonMetrics?: ClinicComparisonQuery['metric'][];
 }
 
 export interface ClinicComparisonQuery {
   tenantId: string;
   clinicIds?: string[];
-  metric: 'revenue' | 'appointments' | 'occupancy' | 'satisfaction';
+  metric: 'revenue' | 'appointments' | 'patients' | 'occupancy' | 'satisfaction';
   period: { start: Date; end: Date };
 }
 
 export interface ClinicTemplatePropagationInput {
+  tenantId: string;
   templateClinicId: string;
   targetClinicIds: string[];
   sections: ClinicConfigurationSection[];

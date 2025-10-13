@@ -31,10 +31,15 @@ import { ClinicIntegrationSettingsResponseDto } from '../dtos/clinic-integration
 import { ClinicNotificationSettingsResponseDto } from '../dtos/clinic-notification-settings-response.dto';
 import { ClinicBrandingSettingsResponseDto } from '../dtos/clinic-branding-settings-response.dto';
 import { ClinicSummaryDto } from '../dtos/clinic-summary.dto';
+import { ClinicTemplatePropagationResponseDto } from '../dtos/clinic-template-propagation-response.dto';
 import {
   updateClinicGeneralSettingsSchema,
   UpdateClinicGeneralSettingsSchema,
 } from '../schemas/update-clinic-general-settings.schema';
+import {
+  updateClinicTeamSettingsSchema,
+  UpdateClinicTeamSettingsSchema,
+} from '../schemas/update-clinic-team-settings.schema';
 import {
   updateClinicHoldSettingsSchema,
   UpdateClinicHoldSettingsSchema,
@@ -64,7 +69,12 @@ import {
   UpdateClinicBrandingSettingsSchema,
 } from '../schemas/update-clinic-branding-settings.schema';
 import {
+  propagateClinicTemplateSchema,
+  PropagateClinicTemplateSchema,
+} from '../schemas/propagate-clinic-template.schema';
+import {
   ClinicRequestContext,
+  toPropagateClinicTemplateInput,
   toUpdateClinicBrandingSettingsInput,
   toUpdateClinicGeneralSettingsInput,
   toUpdateClinicHoldSettingsInput,
@@ -73,11 +83,16 @@ import {
   toUpdateClinicPaymentSettingsInput,
   toUpdateClinicScheduleSettingsInput,
   toUpdateClinicServiceSettingsInput,
+  toUpdateClinicTeamSettingsInput,
 } from '../mappers/clinic-request.mapper';
 import {
   type IUpdateClinicGeneralSettingsUseCase,
   IUpdateClinicGeneralSettingsUseCase as IUpdateClinicGeneralSettingsUseCaseToken,
 } from '../../../../domain/clinic/interfaces/use-cases/update-clinic-general-settings.use-case.interface';
+import {
+  type IUpdateClinicTeamSettingsUseCase,
+  IUpdateClinicTeamSettingsUseCase as IUpdateClinicTeamSettingsUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/update-clinic-team-settings.use-case.interface';
 import {
   type IUpdateClinicHoldSettingsUseCase,
   IUpdateClinicHoldSettingsUseCase as IUpdateClinicHoldSettingsUseCaseToken,
@@ -102,6 +117,10 @@ import {
   type IUpdateClinicBrandingSettingsUseCase,
   IUpdateClinicBrandingSettingsUseCase as IUpdateClinicBrandingSettingsUseCaseToken,
 } from '../../../../domain/clinic/interfaces/use-cases/update-clinic-branding-settings.use-case.interface';
+import {
+  type IPropagateClinicTemplateUseCase,
+  IPropagateClinicTemplateUseCase as IPropagateClinicTemplateUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/propagate-clinic-template.use-case.interface';
 import {
   type IUpdateClinicScheduleSettingsUseCase,
   IUpdateClinicScheduleSettingsUseCase as IUpdateClinicScheduleSettingsUseCaseToken,
@@ -151,6 +170,8 @@ export class ClinicConfigurationController {
   constructor(
     @Inject(IUpdateClinicGeneralSettingsUseCaseToken)
     private readonly updateClinicGeneralSettingsUseCase: IUpdateClinicGeneralSettingsUseCase,
+    @Inject(IUpdateClinicTeamSettingsUseCaseToken)
+    private readonly updateClinicTeamSettingsUseCase: IUpdateClinicTeamSettingsUseCase,
     @Inject(IUpdateClinicHoldSettingsUseCaseToken)
     private readonly updateClinicHoldSettingsUseCase: IUpdateClinicHoldSettingsUseCase,
     @Inject(IUpdateClinicServiceSettingsUseCaseToken)
@@ -165,6 +186,8 @@ export class ClinicConfigurationController {
     private readonly updateClinicBrandingSettingsUseCase: IUpdateClinicBrandingSettingsUseCase,
     @Inject(IUpdateClinicScheduleSettingsUseCaseToken)
     private readonly updateClinicScheduleSettingsUseCase: IUpdateClinicScheduleSettingsUseCase,
+    @Inject(IPropagateClinicTemplateUseCaseToken)
+    private readonly propagateClinicTemplateUseCase: IPropagateClinicTemplateUseCase,
     @Inject(IGetClinicGeneralSettingsUseCaseToken)
     private readonly getClinicGeneralSettingsUseCase: IGetClinicGeneralSettingsUseCase,
     @Inject(IGetClinicTeamSettingsUseCaseToken)
@@ -470,6 +493,26 @@ export class ClinicConfigurationController {
     return ClinicPresenter.brandingSettings(version);
   }
 
+  @Get('propagation')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Obter últimos dados de propagação de template da clínica' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiResponse({ status: 200, type: ClinicTemplatePropagationResponseDto })
+  async getTemplatePropagation(
+    @Param('clinicId') clinicId: string,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicTemplatePropagationResponseDto> {
+    const context = this.resolveContext(currentUser, tenantHeader);
+
+    const clinic = await this.getClinicUseCase.executeOrThrow({
+      clinicId,
+      tenantId: context.tenantId,
+    });
+
+    return ClinicPresenter.templatePropagation(clinic);
+  }
+
   @Patch('general')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
   @ApiOperation({ summary: 'Atualizar configurações gerais da clínica' })
@@ -489,6 +532,27 @@ export class ClinicConfigurationController {
     const version = await this.updateClinicGeneralSettingsUseCase.executeOrThrow(input);
 
     return ClinicPresenter.configuration(version);
+  }
+
+  @Patch('team')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Atualizar configurações de equipe da clínica' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiResponse({ status: 200, type: ClinicTeamSettingsResponseDto })
+  @ZodApiBody({ schema: updateClinicTeamSettingsSchema })
+  async updateTeamSettings(
+    @Param('clinicId') clinicId: string,
+    @Body(new ZodValidationPipe(updateClinicTeamSettingsSchema))
+    body: UpdateClinicTeamSettingsSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicTeamSettingsResponseDto> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
+
+    const input = toUpdateClinicTeamSettingsInput(clinicId, body, context);
+    const version = await this.updateClinicTeamSettingsUseCase.executeOrThrow(input);
+
+    return ClinicPresenter.teamSettings(version);
   }
 
   @Patch('hold')
@@ -531,6 +595,27 @@ export class ClinicConfigurationController {
     const version = await this.updateClinicScheduleSettingsUseCase.executeOrThrow(input);
 
     return ClinicPresenter.configuration(version);
+  }
+
+  @Patch('propagate')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Propagar configurações para clínicas alvo' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiResponse({ status: 200, type: [ClinicConfigurationVersionResponseDto] })
+  @ZodApiBody({ schema: propagateClinicTemplateSchema })
+  async propagateTemplate(
+    @Param('clinicId') clinicId: string,
+    @Body(new ZodValidationPipe(propagateClinicTemplateSchema))
+    body: PropagateClinicTemplateSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicConfigurationVersionResponseDto[]> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
+
+    const input = toPropagateClinicTemplateInput(clinicId, body, context);
+    const versions = await this.propagateClinicTemplateUseCase.executeOrThrow(input);
+
+    return versions.map((version) => ClinicPresenter.configuration(version));
   }
 
   private resolveContext(currentUser: ICurrentUser, tenantId?: string): ClinicRequestContext {

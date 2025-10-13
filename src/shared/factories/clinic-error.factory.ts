@@ -95,6 +95,10 @@ export class ClinicErrorFactory {
     return new BadRequestException(message);
   }
 
+  static invalidConfiguration(section: string, reason: string): BadRequestException {
+    return new BadRequestException(`Configuração inválida para a seção "${section}": ${reason}`);
+  }
+
   static paymentVerificationFailed(message: string): BadRequestException {
     return new BadRequestException(message);
   }

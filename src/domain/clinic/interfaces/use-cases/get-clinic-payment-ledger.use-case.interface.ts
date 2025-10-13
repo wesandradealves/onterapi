@@ -1,8 +1,5 @@
 import { Result } from '../../../../shared/types/result.type';
-import {
-  ClinicPaymentLedger,
-  ClinicPaymentStatus,
-} from '../../types/clinic.types';
+import { ClinicPaymentLedger, ClinicPaymentStatus } from '../../types/clinic.types';
 
 export interface GetClinicPaymentLedgerInput {
   tenantId: string;
@@ -20,14 +17,8 @@ export interface GetClinicPaymentLedgerOutput {
 }
 
 export interface IGetClinicPaymentLedgerUseCase {
-  execute(
-    input: GetClinicPaymentLedgerInput,
-  ): Promise<Result<GetClinicPaymentLedgerOutput>>;
-  executeOrThrow(
-    input: GetClinicPaymentLedgerInput,
-  ): Promise<GetClinicPaymentLedgerOutput>;
+  execute(input: GetClinicPaymentLedgerInput): Promise<Result<GetClinicPaymentLedgerOutput>>;
+  executeOrThrow(input: GetClinicPaymentLedgerInput): Promise<GetClinicPaymentLedgerOutput>;
 }
 
-export const IGetClinicPaymentLedgerUseCase = Symbol(
-  'IGetClinicPaymentLedgerUseCase',
-);
+export const IGetClinicPaymentLedgerUseCase = Symbol('IGetClinicPaymentLedgerUseCase');
