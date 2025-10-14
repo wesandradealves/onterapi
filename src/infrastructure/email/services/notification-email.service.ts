@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
 import {
+  ClinicAlertEmailData,
   PasswordChangedEmailData,
   SuspiciousLoginData,
   WelcomeEmailData,
@@ -75,6 +76,18 @@ export class NotificationEmailService {
   async sendPasswordChangedEmail(data: PasswordChangedEmailData): Promise<Result<void>> {
     const subject = 'Senha alterada com sucesso - Onterapi';
     const html = this.getPasswordChangedTemplate(data);
+
+    return this.sendEmail({
+      to: data.to,
+      subject,
+      html,
+    });
+  }
+
+  async sendClinicAlertEmail(data: ClinicAlertEmailData): Promise<Result<void>> {
+    const statusLabel = data.status === 'resolved' ? 'Alerta resolvido' : 'Alerta disparado';
+    const subject = `[Onterapi] ${statusLabel} - ${data.alertType}`;
+    const html = this.getClinicAlertTemplate(data);
 
     return this.sendEmail({
       to: data.to,
@@ -310,6 +323,60 @@ export class NotificationEmailService {
             <div class="footer">
               <p>Esta Ã© uma mensagem automÃ¡tica de seguranÃ§a. NÃ£o responda a este e-mail.</p>
               <p>Â© 2024 Onterapi. Todos os direitos reservados.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+  }
+
+  private getClinicAlertTemplate(data: ClinicAlertEmailData): string {
+    const triggeredAt = data.triggeredAt.toISOString();
+    const resolvedAt = data.resolvedAt ? data.resolvedAt.toISOString() : undefined;
+    const payloadDetails = data.payload
+      ? JSON.stringify(data.payload, null, 2)
+      : 'Nenhum detalhe adicional fornecido.';
+    const statusLabel = data.status === 'resolved' ? 'Alerta resolvido' : 'Alerta disparado';
+
+    const resolutionBlock =
+      data.status === 'resolved'
+        ? `
+      <h3 style="margin-top:24px;">Resumo da resolucao</h3>
+      <ul style="padding-left:20px;">
+        <li><strong>Responsavel:</strong> ${data.resolvedBy ?? 'Nao informado'}</li>
+        <li><strong>Resolvido em:</strong> ${resolvedAt ?? 'Nao informado'}</li>
+      </ul>
+    `
+        : '';
+
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8" />
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 640px; margin: 0 auto; padding: 24px; background: #f7f7f7; border-radius: 8px; }
+            .card { background: #ffffff; padding: 24px; border-radius: 6px; border: 1px solid #e0e0e0; }
+            h2 { margin-top: 0; }
+            pre { background: #1f2933; color: #f4f5f7; padding: 16px; border-radius: 4px; overflow-x: auto; font-size: 13px; }
+            .meta { margin: 16px 0; padding: 16px; background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 4px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="card">
+              <h2>${statusLabel} - ${data.alertType}</h2>
+              <p>Clinica: <strong>${data.clinicName}</strong></p>
+              <div class="meta">
+                <p><strong>Status:</strong> ${statusLabel}</p>
+                <p><strong>Canal configurado:</strong> ${data.channel ?? 'Nao informado'}</p>
+                <p><strong>Registrado em:</strong> ${triggeredAt}</p>
+                <p><strong>Responsavel:</strong> ${data.triggeredBy ?? data.resolvedBy ?? 'Nao informado'}</p>
+              </div>
+              ${resolutionBlock}
+              <h3>Detalhes do alerta</h3>
+              <pre>${payloadDetails}</pre>
             </div>
           </div>
         </body>

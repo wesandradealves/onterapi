@@ -4,6 +4,7 @@ import request from 'supertest';
 
 import { ClinicConfigurationController } from '@modules/clinic/api/controllers/clinic-configuration.controller';
 import { ClinicInvitationController } from '@modules/clinic/api/controllers/clinic-invitation.controller';
+import { ClinicMemberController } from '@modules/clinic/api/controllers/clinic-member.controller';
 import { ClinicHoldController } from '@modules/clinic/api/controllers/clinic-hold.controller';
 import { ClinicAuditController } from '@modules/clinic/api/controllers/clinic-audit.controller';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
@@ -11,6 +12,7 @@ import { RolesGuard } from '@modules/auth/guards/roles.guard';
 import { RolesEnum } from '@domain/auth/enums/roles.enum';
 import { ICurrentUser } from '@domain/auth/interfaces/current-user.interface';
 import {
+  CheckClinicProfessionalFinancialClearanceInput,
   ClinicAppointmentConfirmationResult,
   ClinicAuditLog,
   ClinicConfigurationVersion,
@@ -18,6 +20,7 @@ import {
   ClinicHoldConfirmationInput,
   ClinicInvitation,
   ClinicInvitationEconomicSummary,
+  ClinicProfessionalFinancialClearanceStatus,
   ClinicTemplatePropagationInput,
 } from '@domain/clinic/types/clinic.types';
 import {
@@ -95,6 +98,8 @@ import {
   InviteClinicProfessionalInput,
 } from '@domain/clinic/interfaces/use-cases/invite-clinic-professional.use-case.interface';
 import { IListClinicInvitationsUseCase as IListClinicInvitationsUseCaseToken } from '@domain/clinic/interfaces/use-cases/list-clinic-invitations.use-case.interface';
+import { IListClinicMembersUseCase as IListClinicMembersUseCaseToken } from '@domain/clinic/interfaces/use-cases/list-clinic-members.use-case.interface';
+import { IManageClinicMemberUseCase as IManageClinicMemberUseCaseToken } from '@domain/clinic/interfaces/use-cases/manage-clinic-member.use-case.interface';
 import {
   AcceptClinicInvitationInput,
   IAcceptClinicInvitationUseCase as IAcceptClinicInvitationUseCaseToken,
@@ -107,6 +112,7 @@ import {
   IReissueClinicInvitationUseCase as IReissueClinicInvitationUseCaseToken,
   ReissueClinicInvitationInput,
 } from '@domain/clinic/interfaces/use-cases/reissue-clinic-invitation.use-case.interface';
+import { ICheckClinicProfessionalFinancialClearanceUseCase as ICheckClinicProfessionalFinancialClearanceUseCaseToken } from '@domain/clinic/interfaces/use-cases/check-clinic-professional-financial-clearance.use-case.interface';
 import {
   ClinicHoldRequestInput,
   ICreateClinicHoldUseCase as ICreateClinicHoldUseCaseToken,
@@ -844,6 +850,81 @@ describe('ClinicHoldController (integration)', () => {
     expect(response.body.id).toBe(hold.id);
     expect(response.body.start).toBe(hold.start.toISOString());
     expect(response.body.ttlExpiresAt).toBe(hold.ttlExpiresAt.toISOString());
+  });
+});
+
+describe('ClinicMemberController (integration)', () => {
+  let app: INestApplication;
+  const useCases = {
+    list: createUseCaseMock<any, { data: unknown[]; total: number }>(),
+    manage: createUseCaseMock<any, unknown>(),
+    financialClearance: createUseCaseMock<
+      CheckClinicProfessionalFinancialClearanceInput,
+      ClinicProfessionalFinancialClearanceStatus
+    >(),
+  };
+
+  beforeAll(async () => {
+    const moduleRef: TestingModule = await Test.createTestingModule({
+      controllers: [ClinicMemberController],
+      providers: [
+        { provide: IListClinicMembersUseCaseToken, useValue: useCases.list },
+        { provide: IManageClinicMemberUseCaseToken, useValue: useCases.manage },
+        {
+          provide: ICheckClinicProfessionalFinancialClearanceUseCaseToken,
+          useValue: useCases.financialClearance,
+        },
+      ],
+    })
+      .overrideGuard(JwtAuthGuard)
+      .useClass(guards.JwtAuthGuard as new () => JwtAuthGuard)
+      .overrideGuard(RolesGuard)
+      .useClass(guards.RolesGuard as new () => RolesGuard)
+      .compile();
+
+    app = moduleRef.createNestApplication();
+    await app.init();
+  });
+
+  beforeEach(() => {
+    Object.values(useCases).forEach((mock) => {
+      mock.execute.mockReset();
+      mock.executeOrThrow.mockReset();
+    });
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('GET /clinics/:id/members/professional/:professionalId/financial-clearance retorna status de pendencias', async () => {
+    useCases.financialClearance.executeOrThrow.mockResolvedValue({
+      requiresClearance: true,
+      hasPendencies: false,
+      pendingCount: 0,
+      statusesEvaluated: ['chargeback', 'failed'],
+    });
+
+    const response = await request(app.getHttpServer())
+      .get(
+        `/clinics/${FIXTURES.clinic}/members/professional/${FIXTURES.professional}/financial-clearance`,
+      )
+      .set('x-tenant-id', FIXTURES.tenant)
+      .query({ tenantId: FIXTURES.tenant })
+      .expect(200);
+
+    expect(useCases.financialClearance.executeOrThrow).toHaveBeenCalledWith({
+      clinicId: FIXTURES.clinic,
+      tenantId: FIXTURES.tenant,
+      professionalId: FIXTURES.professional,
+    });
+
+    expect(response.body).toEqual({
+      requiresClearance: true,
+      hasPendencies: false,
+      pendingCount: 0,
+      statusesEvaluated: ['chargeback', 'failed'],
+    });
   });
 });
 

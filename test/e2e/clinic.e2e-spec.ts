@@ -13,12 +13,12 @@ import { RolesEnum } from '@domain/auth/enums/roles.enum';
 import { ICurrentUser } from '@domain/auth/interfaces/current-user.interface';
 import {
   Clinic,
-  ClinicAuditLog,
   ClinicAppointmentConfirmationResult,
+  ClinicAuditLog,
   ClinicConfigurationVersion,
   ClinicHold,
-  ClinicHoldSettings,
   ClinicHoldConfirmationInput,
+  ClinicHoldSettings,
   ClinicInvitation,
   ClinicInvitationEconomicSummary,
   ClinicTemplatePropagationInput,

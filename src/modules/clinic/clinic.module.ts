@@ -1,7 +1,8 @@
-import { Module, Provider } from '@nestjs/common';
+import { forwardRef, Module, Provider } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuthModule } from '../auth/auth.module';
+import { UsersModule } from '../users/users.module';
 import { ClinicConfigurationController } from './api/controllers/clinic-configuration.controller';
 import { ClinicHoldController } from './api/controllers/clinic-hold.controller';
 import { ClinicDashboardController } from './api/controllers/clinic-dashboard.controller';
@@ -45,6 +46,8 @@ import { ClinicTemplateOverrideService } from './services/clinic-template-overri
 import { ClinicConfigurationCacheService } from './services/clinic-configuration-cache.service';
 import { ClinicConfigurationTelemetryService } from './services/clinic-configuration-telemetry.service';
 import { ClinicAsaasWebhookGuard } from './guards/clinic-asaas-webhook.guard';
+import { ClinicAlertNotificationService } from './services/clinic-alert-notification.service';
+import { ClinicAlertEventsSubscriber } from './subscribers/clinic-alert-events.subscriber';
 import { UpdateClinicGeneralSettingsUseCase } from './use-cases/update-clinic-general-settings.use-case';
 import { UpdateClinicHoldSettingsUseCase } from './use-cases/update-clinic-hold-settings.use-case';
 import { UpdateClinicServiceSettingsUseCase } from './use-cases/update-clinic-service-settings.use-case';
@@ -59,6 +62,7 @@ import { CreateClinicUseCase } from './use-cases/create-clinic.use-case';
 import { CreateClinicHoldUseCase } from './use-cases/create-clinic-hold.use-case';
 import { ConfirmClinicAppointmentUseCase } from './use-cases/confirm-clinic-appointment.use-case';
 import { TransferClinicProfessionalUseCase } from './use-cases/transfer-clinic-professional.use-case';
+import { CheckClinicProfessionalFinancialClearanceUseCase } from './use-cases/check-clinic-professional-financial-clearance.use-case';
 import { GetClinicDashboardUseCase } from './use-cases/get-clinic-dashboard.use-case';
 import { GetClinicManagementOverviewUseCase } from './use-cases/get-clinic-management-overview.use-case';
 import { ListClinicAlertsUseCase } from './use-cases/list-clinic-alerts.use-case';
@@ -143,6 +147,7 @@ import { IListClinicInvitationsUseCase as IListClinicInvitationsUseCaseToken } f
 import { IListClinicMembersUseCase as IListClinicMembersUseCaseToken } from '../../domain/clinic/interfaces/use-cases/list-clinic-members.use-case.interface';
 import { IManageClinicMemberUseCase as IManageClinicMemberUseCaseToken } from '../../domain/clinic/interfaces/use-cases/manage-clinic-member.use-case.interface';
 import { ITransferClinicProfessionalUseCase as ITransferClinicProfessionalUseCaseToken } from '../../domain/clinic/interfaces/use-cases/transfer-clinic-professional.use-case.interface';
+import { ICheckClinicProfessionalFinancialClearanceUseCase as ICheckClinicProfessionalFinancialClearanceUseCaseToken } from '../../domain/clinic/interfaces/use-cases/check-clinic-professional-financial-clearance.use-case.interface';
 import { IListClinicsUseCase as IListClinicsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/list-clinics.use-case.interface';
 import { IGetClinicUseCase as IGetClinicUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic.use-case.interface';
 import { IUpdateClinicStatusUseCase as IUpdateClinicStatusUseCaseToken } from '../../domain/clinic/interfaces/use-cases/update-clinic-status.use-case.interface';
@@ -204,8 +209,10 @@ const serviceProviders: Provider[] = [
   ClinicConfigurationValidator,
   ClinicAsaasWebhookGuard,
   ClinicPaymentReconciliationService,
+  ClinicAlertNotificationService,
   ClinicTemplateOverrideService,
   ClinicPaymentEventsSubscriber,
+  ClinicAlertEventsSubscriber,
   ClinicConfigurationCacheService,
   ClinicConfigurationTelemetryService,
 ];
@@ -372,6 +379,10 @@ const useCaseProviders: Provider[] = [
     useClass: TransferClinicProfessionalUseCase,
   },
   {
+    provide: ICheckClinicProfessionalFinancialClearanceUseCaseToken,
+    useClass: CheckClinicProfessionalFinancialClearanceUseCase,
+  },
+  {
     provide: IListClinicsUseCaseToken,
     useClass: ListClinicsUseCase,
   },
@@ -392,6 +403,7 @@ const useCaseProviders: Provider[] = [
 @Module({
   imports: [
     AuthModule,
+    forwardRef(() => UsersModule),
     TypeOrmModule.forFeature([
       ClinicEntity,
       ClinicConfigurationVersionEntity,

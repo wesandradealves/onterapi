@@ -2,6 +2,7 @@
 import { RolesEnum } from '../../../src/domain/auth/enums/roles.enum';
 import {
   ClinicAppointmentConfirmationResult,
+  ClinicConfigurationVersion,
   ClinicDashboardComparison,
   ClinicDashboardForecast,
   ClinicInvitation,
@@ -336,5 +337,31 @@ describe('ClinicPresenter.managementOverview', () => {
     expect(dto.clinics[0].template?.sections[0].overrideId).toBe('ov-1');
     expect(dto.comparisons?.metrics[0].entries[0].revenueVariationPercentage).toBe(5);
     expect(dto.forecast?.projections[0].projectedRevenue).toBe(8200);
+  });
+});
+
+describe('ClinicPresenter.teamSettings', () => {
+  it('maps requireFinancialClearance flag', () => {
+    const version: ClinicConfigurationVersion = {
+      id: 'version-team',
+      clinicId: 'clinic-1',
+      section: 'team',
+      version: 1,
+      payload: {
+        teamSettings: {
+          quotas: [],
+          allowExternalInvitations: true,
+          defaultMemberStatus: 'pending_invitation',
+          requireFinancialClearance: true,
+        },
+      },
+      createdBy: 'user',
+      createdAt: new Date('2025-10-10T10:00:00Z'),
+      autoApply: true,
+    };
+
+    const dto = ClinicPresenter.teamSettings(version);
+
+    expect(dto.payload.requireFinancialClearance).toBe(true);
   });
 });

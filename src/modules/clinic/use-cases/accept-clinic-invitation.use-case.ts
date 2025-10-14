@@ -161,10 +161,7 @@ export class AcceptClinicInvitationUseCase
   }
 
   private async requiresFinancialClearance(clinicId: string): Promise<boolean> {
-    const version = await this.configurationRepository.findLatestAppliedVersion(
-      clinicId,
-      'team',
-    );
+    const version = await this.configurationRepository.findLatestAppliedVersion(clinicId, 'team');
 
     if (!version || !version.payload || typeof version.payload !== 'object') {
       return false;

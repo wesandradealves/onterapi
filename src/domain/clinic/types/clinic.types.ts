@@ -649,6 +649,19 @@ export type ClinicAppointmentStatus = 'scheduled' | 'completed' | 'cancelled';
 
 export type ClinicPaymentStatus = 'approved' | 'settled' | 'refunded' | 'chargeback' | 'failed';
 
+export interface CheckClinicProfessionalFinancialClearanceInput {
+  clinicId: string;
+  tenantId: string;
+  professionalId?: string;
+}
+
+export interface ClinicProfessionalFinancialClearanceStatus {
+  requiresClearance: boolean;
+  hasPendencies: boolean;
+  pendingCount: number;
+  statusesEvaluated: ClinicPaymentStatus[];
+}
+
 export interface ClinicPaymentSplitAllocation {
   recipient: ClinicSplitRecipient;
   percentage: number;

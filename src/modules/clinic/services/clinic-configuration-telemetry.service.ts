@@ -490,5 +490,3 @@ export class ClinicConfigurationTelemetryService {
       .replace(/[^\x20-\x7E]/g, '');
   }
 }
-
-

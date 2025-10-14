@@ -30,6 +30,7 @@ import { ZodApiBody } from '../../../../shared/decorators/zod-api-body.decorator
 import { ClinicPresenter } from '../presenters/clinic.presenter';
 import { ClinicMemberResponseDto } from '../dtos/clinic-member-response.dto';
 import { ClinicMemberListResponseDto } from '../dtos/clinic-member-list-response.dto';
+import { ClinicProfessionalFinancialClearanceResponseDto } from '../dtos/clinic-professional-financial-clearance-response.dto';
 import {
   listClinicMembersSchema,
   ListClinicMembersSchema,
@@ -44,6 +45,10 @@ import {
   type IManageClinicMemberUseCase,
   IManageClinicMemberUseCase as IManageClinicMemberUseCaseToken,
 } from '../../../../domain/clinic/interfaces/use-cases/manage-clinic-member.use-case.interface';
+import {
+  type ICheckClinicProfessionalFinancialClearanceUseCase,
+  ICheckClinicProfessionalFinancialClearanceUseCase as ICheckClinicProfessionalFinancialClearanceUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/check-clinic-professional-financial-clearance.use-case.interface';
 import { ClinicStaffRole } from '../../../../domain/clinic/types/clinic.types';
 
 @ApiTags('Clinics')
@@ -56,14 +61,16 @@ export class ClinicMemberController {
     private readonly listMembersUseCase: IListClinicMembersUseCase,
     @Inject(IManageClinicMemberUseCaseToken)
     private readonly manageMemberUseCase: IManageClinicMemberUseCase,
+    @Inject(ICheckClinicProfessionalFinancialClearanceUseCaseToken)
+    private readonly checkFinancialClearanceUseCase: ICheckClinicProfessionalFinancialClearanceUseCase,
   ) {}
 
   @Get()
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Listar membros da clínica' })
+  @ApiOperation({ summary: 'Listar membros da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
-  @ApiQuery({ name: 'status', required: false, description: 'Status separados por vírgula' })
-  @ApiQuery({ name: 'roles', required: false, description: 'Papéis separados por vírgula' })
+  @ApiQuery({ name: 'status', required: false, description: 'Status separados por virgula' })
+  @ApiQuery({ name: 'roles', required: false, description: 'Papeis separados por virgula' })
   @ApiResponse({ status: 200, type: ClinicMemberListResponseDto })
   async list(
     @Param('clinicId') clinicId: string,
@@ -73,7 +80,7 @@ export class ClinicMemberController {
   ): Promise<ClinicMemberListResponseDto> {
     const tenantId = tenantHeader ?? query.tenantId ?? currentUser.tenantId;
     if (!tenantId) {
-      throw new BadRequestException('Tenant não informado');
+      throw new BadRequestException('Tenant nao informado');
     }
 
     const roles =
@@ -96,9 +103,42 @@ export class ClinicMemberController {
     };
   }
 
+  @Get('professional/:professionalId/financial-clearance')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Consultar pendencias financeiras do profissional' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiParam({ name: 'professionalId', type: String })
+  @ApiQuery({ name: 'tenantId', required: false })
+  @ApiResponse({ status: 200, type: ClinicProfessionalFinancialClearanceResponseDto })
+  async getFinancialClearance(
+    @Param('clinicId') clinicId: string,
+    @Param('professionalId') professionalId: string,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Query('tenantId') tenantQuery?: string,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicProfessionalFinancialClearanceResponseDto> {
+    const tenantId = tenantHeader ?? tenantQuery ?? currentUser.tenantId;
+    if (!tenantId) {
+      throw new BadRequestException('Tenant nao informado');
+    }
+
+    const status = await this.checkFinancialClearanceUseCase.executeOrThrow({
+      clinicId,
+      tenantId,
+      professionalId,
+    });
+
+    return {
+      requiresClearance: status.requiresClearance,
+      hasPendencies: status.hasPendencies,
+      pendingCount: status.pendingCount,
+      statusesEvaluated: status.statusesEvaluated,
+    };
+  }
+
   @Patch(':memberId')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Atualizar membro da clínica' })
+  @ApiOperation({ summary: 'Atualizar membro da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiParam({ name: 'memberId', type: String })
   @ApiResponse({ status: 200, type: ClinicMemberResponseDto })
@@ -112,7 +152,7 @@ export class ClinicMemberController {
   ): Promise<ClinicMemberResponseDto> {
     const tenantId = tenantHeader ?? body.tenantId ?? currentUser.tenantId;
     if (!tenantId) {
-      throw new BadRequestException('Tenant não informado');
+      throw new BadRequestException('Tenant nao informado');
     }
 
     const role = this.mapRole(body.role, 'role');
@@ -147,7 +187,7 @@ export class ClinicMemberController {
         mapped !== RolesEnum.PROFESSIONAL &&
         mapped !== RolesEnum.SECRETARY)
     ) {
-      throw new BadRequestException(`Valor inválido para ${field}: ${rawRole}`);
+      throw new BadRequestException(`Valor invalido para ${field}`);
     }
 
     return mapped as ClinicStaffRole;

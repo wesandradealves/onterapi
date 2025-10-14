@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
 
-export class AddAcceptedSnapshotToClinicInvitations1739200000000
-  implements MigrationInterface
-{
+export class AddAcceptedSnapshotToClinicInvitations1739200000000 implements MigrationInterface {
   private readonly tableName = 'clinic_invitations';
   private readonly columnName = 'accepted_economic_snapshot';
 

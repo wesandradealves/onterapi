@@ -62,6 +62,8 @@ export class DomainEvents {
   static NOTIFICATION_SCHEDULING_BOOKING_NO_SHOW = 'notifications.scheduling.booking.no_show';
   static NOTIFICATION_SCHEDULING_PAYMENT_STATUS_CHANGED =
     'notifications.scheduling.payment.status_changed';
+  static NOTIFICATION_CLINIC_ALERT_TRIGGERED = 'notifications.clinic.alert.triggered';
+  static NOTIFICATION_CLINIC_ALERT_RESOLVED = 'notifications.clinic.alert.resolved';
 
   static createEvent<
     TPayload = Record<string, unknown>,
@@ -860,8 +862,12 @@ export class DomainEvents {
       tenantId: string;
       clinicId: string;
       type: string;
+      channel?: string;
       resolvedBy: string;
       resolvedAt: Date;
+      triggeredAt?: Date;
+      triggeredBy?: string;
+      payload?: Record<string, unknown>;
     },
     metadata?: DomainEventMetadata,
   ): DomainEvent {
@@ -1015,6 +1021,52 @@ export class DomainEvents {
       this.NOTIFICATION_SCHEDULING_PAYMENT_STATUS_CHANGED,
       bookingId,
       { bookingId, ...data, queuedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static notificationsClinicAlertTriggered(
+    alertId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      type: string;
+      channel: string;
+      triggeredBy: string;
+      triggeredAt: Date;
+      payload: Record<string, unknown>;
+      recipientIds: string[];
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_CLINIC_ALERT_TRIGGERED,
+      alertId,
+      { alertId, ...data, queuedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static notificationsClinicAlertResolved(
+    alertId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      type: string;
+      channel?: string;
+      resolvedBy: string;
+      resolvedAt: Date;
+      triggeredAt?: Date;
+      triggeredBy?: string;
+      payload?: Record<string, unknown>;
+      recipientIds: string[];
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_CLINIC_ALERT_RESOLVED,
+      alertId,
+      { alertId, ...data, queuedAt: new Date() },
       metadata,
     );
   }

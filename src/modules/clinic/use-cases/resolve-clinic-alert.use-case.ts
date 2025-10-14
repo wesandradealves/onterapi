@@ -57,8 +57,12 @@ export class ResolveClinicAlertUseCase
         tenantId: finalAlert.tenantId,
         clinicId: finalAlert.clinicId,
         type: finalAlert.type,
+        channel: finalAlert.channel,
         resolvedBy: input.resolvedBy,
         resolvedAt: finalAlert.resolvedAt ?? new Date(),
+        triggeredAt: finalAlert.triggeredAt,
+        triggeredBy: finalAlert.triggeredBy,
+        payload: finalAlert.payload ?? {},
       }),
     );
 

@@ -14,6 +14,8 @@ export interface IEmailService {
   sendLoginAlertEmail(data: LoginAlertData): Promise<Result<void>>;
 
   sendPasswordChangedEmail(data: PasswordChangedEmailData): Promise<Result<void>>;
+
+  sendClinicAlertEmail(data: ClinicAlertEmailData): Promise<Result<void>>;
 }
 
 export interface VerificationEmailData {
@@ -69,6 +71,19 @@ export interface PasswordChangedEmailData {
   changedAt: Date;
   ip?: string;
   device?: string;
+}
+
+export interface ClinicAlertEmailData {
+  to: string;
+  clinicName: string;
+  alertType: string;
+  status: 'triggered' | 'resolved';
+  triggeredAt: Date;
+  resolvedAt?: Date;
+  triggeredBy?: string;
+  resolvedBy?: string;
+  channel?: string;
+  payload?: Record<string, unknown>;
 }
 
 export const IEmailService = Symbol('IEmailService');

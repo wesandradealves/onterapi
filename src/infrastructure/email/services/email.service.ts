@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { AuthEmailService } from './auth-email.service';
 import { NotificationEmailService } from './notification-email.service';
 import {
+  ClinicAlertEmailData,
   IEmailService,
   LoginAlertData,
   PasswordChangedEmailData,
@@ -38,6 +39,10 @@ export class EmailService implements IEmailService {
 
   async sendPasswordChangedEmail(data: PasswordChangedEmailData): Promise<Result<void>> {
     return this.notificationEmailService.sendPasswordChangedEmail(data);
+  }
+
+  async sendClinicAlertEmail(data: ClinicAlertEmailData): Promise<Result<void>> {
+    return this.notificationEmailService.sendClinicAlertEmail(data);
   }
 
   async sendSuspiciousLoginEmail(data: SuspiciousLoginData): Promise<Result<void>> {
