@@ -30,3 +30,12 @@ export interface UpdateNotificationEventStatusInput {
   processedAt?: Date;
   errorDetail?: Record<string, unknown> | null;
 }
+
+export interface ListNotificationEventsInput {
+  eventName?: string;
+  status?: NotificationEventStatus;
+  from?: Date;
+  to?: Date;
+  page?: number;
+  limit?: number;
+}
