@@ -247,4 +247,31 @@ export class ClinicAppointmentRepository implements IClinicAppointmentRepository
     const entities = await query.getMany();
     return entities.map(ClinicMapper.toAppointment);
   }
+
+  async countByProfessionalAndPaymentStatus(params: {
+    clinicId: string;
+    tenantId: string;
+    professionalId: string;
+    statuses: ClinicPaymentStatus[];
+  }): Promise<number> {
+    if (!params.professionalId) {
+      return 0;
+    }
+
+    const query = this.repository
+      .createQueryBuilder('appointment')
+      .where('appointment.clinic_id = :clinicId', { clinicId: params.clinicId })
+      .andWhere('appointment.tenant_id = :tenantId', { tenantId: params.tenantId })
+      .andWhere('appointment.professional_id = :professionalId', {
+        professionalId: params.professionalId,
+      });
+
+    if (params.statuses && params.statuses.length > 0) {
+      query.andWhere('appointment.payment_status IN (:...statuses)', {
+        statuses: params.statuses,
+      });
+    }
+
+    return query.getCount();
+  }
 }

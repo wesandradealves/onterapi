@@ -98,6 +98,7 @@ export const toUpdateClinicTeamSettingsInput = (
     }),
     allowExternalInvitations: body.teamSettings.allowExternalInvitations,
     defaultMemberStatus: body.teamSettings.defaultMemberStatus ?? 'pending_invitation',
+    requireFinancialClearance: body.teamSettings.requireFinancialClearance ?? false,
   };
 
   return {

@@ -108,6 +108,7 @@ export interface ClinicTeamSettings {
   quotas: ClinicRoleQuota[];
   allowExternalInvitations: boolean;
   defaultMemberStatus: ClinicMemberStatus;
+  requireFinancialClearance: boolean;
 }
 
 export interface ClinicWorkInterval {
@@ -558,6 +559,7 @@ export interface ClinicInvitation {
   expiresAt: Date;
   acceptedAt?: Date;
   acceptedBy?: string;
+  acceptedEconomicSnapshot?: ClinicInvitationEconomicSummary;
   revokedAt?: Date;
   revokedBy?: string;
   revocationReason?: string | null;

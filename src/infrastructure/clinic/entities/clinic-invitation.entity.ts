@@ -76,6 +76,13 @@ export class ClinicInvitationEntity {
   @Column({ name: 'economic_summary', type: 'jsonb' })
   economicSummary!: ClinicInvitationEconomicSummary;
 
+  @Column({
+    name: 'accepted_economic_snapshot',
+    type: 'jsonb',
+    nullable: true,
+  })
+  acceptedEconomicSnapshot?: ClinicInvitationEconomicSummary | null;
+
   @Column({ name: 'metadata', type: 'jsonb', default: () => "'{}'" })
   metadata!: Record<string, unknown>;
 

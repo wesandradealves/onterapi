@@ -105,6 +105,9 @@ export class ClinicInvitationResponseDto {
   @ApiProperty({ type: ClinicInvitationEconomicSummaryDto })
   economicSummary!: ClinicInvitationEconomicSummaryDto;
 
+  @ApiPropertyOptional({ type: ClinicInvitationEconomicSummaryDto })
+  acceptedEconomicSnapshot?: ClinicInvitationEconomicSummaryDto;
+
   @ApiPropertyOptional({ type: Object })
   metadata?: Record<string, unknown>;
 

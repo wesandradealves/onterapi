@@ -20,6 +20,9 @@ export class ClinicTeamSettingsPayloadDto {
   @ApiProperty({ enum: ['pending_invitation', 'active', 'inactive', 'suspended'] })
   defaultMemberStatus!: string;
 
+  @ApiProperty({ description: 'Bloqueia aceite de convite quando ha pendencias financeiras' })
+  requireFinancialClearance!: boolean;
+
   @ApiPropertyOptional({ type: Object })
   metadata?: Record<string, unknown>;
 }

@@ -14,11 +14,14 @@ import { ICurrentUser } from '@domain/auth/interfaces/current-user.interface';
 import {
   Clinic,
   ClinicAuditLog,
+  ClinicAppointmentConfirmationResult,
   ClinicConfigurationVersion,
   ClinicHold,
   ClinicHoldSettings,
+  ClinicHoldConfirmationInput,
   ClinicInvitation,
   ClinicInvitationEconomicSummary,
+  ClinicTemplatePropagationInput,
   CreateClinicInput,
 } from '@domain/clinic/types/clinic.types';
 import { IListClinicsUseCase as IListClinicsUseCaseToken } from '@domain/clinic/interfaces/use-cases/list-clinics.use-case.interface';
@@ -33,6 +36,10 @@ import {
   GetClinicTeamSettingsInput,
   IGetClinicTeamSettingsUseCase as IGetClinicTeamSettingsUseCaseToken,
 } from '@domain/clinic/interfaces/use-cases/get-clinic-team-settings.use-case.interface';
+import {
+  IUpdateClinicTeamSettingsUseCase as IUpdateClinicTeamSettingsUseCaseToken,
+  UpdateClinicTeamSettingsInput,
+} from '@domain/clinic/interfaces/use-cases/update-clinic-team-settings.use-case.interface';
 import {
   IUpdateClinicGeneralSettingsUseCase as IUpdateClinicGeneralSettingsUseCaseToken,
   UpdateClinicGeneralSettingsInput,
@@ -68,6 +75,7 @@ import {
   GetClinicBrandingSettingsInput,
   IGetClinicBrandingSettingsUseCase as IGetClinicBrandingSettingsUseCaseToken,
 } from '@domain/clinic/interfaces/use-cases/get-clinic-branding-settings.use-case.interface';
+import { IPropagateClinicTemplateUseCase as IPropagateClinicTemplateUseCaseToken } from '@domain/clinic/interfaces/use-cases/propagate-clinic-template.use-case.interface';
 import {
   IInviteClinicProfessionalUseCase as IInviteClinicProfessionalUseCaseToken,
   InviteClinicProfessionalInput,
@@ -79,9 +87,14 @@ import {
 } from '@domain/clinic/interfaces/use-cases/accept-clinic-invitation.use-case.interface';
 import { IRevokeClinicInvitationUseCase as IRevokeClinicInvitationUseCaseToken } from '@domain/clinic/interfaces/use-cases/revoke-clinic-invitation.use-case.interface';
 import {
+  IReissueClinicInvitationUseCase as IReissueClinicInvitationUseCaseToken,
+  ReissueClinicInvitationInput,
+} from '@domain/clinic/interfaces/use-cases/reissue-clinic-invitation.use-case.interface';
+import {
   ClinicHoldRequestInput,
   ICreateClinicHoldUseCase as ICreateClinicHoldUseCaseToken,
 } from '@domain/clinic/interfaces/use-cases/create-clinic-hold.use-case.interface';
+import { IConfirmClinicAppointmentUseCase as IConfirmClinicAppointmentUseCaseToken } from '@domain/clinic/interfaces/use-cases/confirm-clinic-appointment.use-case.interface';
 import {
   IListClinicAuditLogsUseCase as IListClinicAuditLogsUseCaseToken,
   ListClinicAuditLogsUseCaseInput,
@@ -193,9 +206,17 @@ describe('Clinic module (e2e)', () => {
     GetClinicTeamSettingsInput,
     ClinicConfigurationVersion
   >();
+  const updateTeamSettingsUseCase = createUseCaseMock<
+    UpdateClinicTeamSettingsInput,
+    ClinicConfigurationVersion
+  >();
   const updateGeneralSettingsUseCase = createUseCaseMock<
     UpdateClinicGeneralSettingsInput,
     ClinicConfigurationVersion
+  >();
+  const propagateTemplateUseCase = createUseCaseMock<
+    ClinicTemplatePropagationInput,
+    ClinicConfigurationVersion[]
   >();
   const getScheduleSettingsUseCase = createUseCaseMock<
     GetClinicScheduleSettingsInput,
@@ -243,8 +264,16 @@ describe('Clinic module (e2e)', () => {
     RevokeClinicInvitationInputShape,
     ClinicInvitation
   >();
+  const reissueInvitationUseCase = createUseCaseMock<
+    ReissueClinicInvitationInput,
+    ClinicInvitation
+  >();
 
   const createHoldUseCase = createUseCaseMock<ClinicHoldRequestInput, ClinicHold>();
+  const confirmAppointmentUseCase = createUseCaseMock<
+    ClinicHoldConfirmationInput,
+    ClinicAppointmentConfirmationResult
+  >();
   const listAuditLogsUseCase = createUseCaseMock<
     ListClinicAuditLogsUseCaseInput,
     { data: ClinicAuditLog[]; total: number }
@@ -269,6 +298,8 @@ describe('Clinic module (e2e)', () => {
           provide: IUpdateClinicGeneralSettingsUseCaseToken,
           useValue: updateGeneralSettingsUseCase,
         },
+        { provide: IUpdateClinicTeamSettingsUseCaseToken, useValue: updateTeamSettingsUseCase },
+        { provide: IPropagateClinicTemplateUseCaseToken, useValue: propagateTemplateUseCase },
         { provide: IGetClinicTeamSettingsUseCaseToken, useValue: getTeamSettingsUseCase },
         { provide: IGetClinicScheduleSettingsUseCaseToken, useValue: getScheduleSettingsUseCase },
         { provide: IGetClinicServiceSettingsUseCaseToken, useValue: getServiceSettingsUseCase },
@@ -299,7 +330,9 @@ describe('Clinic module (e2e)', () => {
         { provide: IListClinicInvitationsUseCaseToken, useValue: listInvitationsUseCase },
         { provide: IAcceptClinicInvitationUseCaseToken, useValue: acceptInvitationUseCase },
         { provide: IRevokeClinicInvitationUseCaseToken, useValue: revokeInvitationUseCase },
+        { provide: IReissueClinicInvitationUseCaseToken, useValue: reissueInvitationUseCase },
         { provide: ICreateClinicHoldUseCaseToken, useValue: createHoldUseCase },
+        { provide: IConfirmClinicAppointmentUseCaseToken, useValue: confirmAppointmentUseCase },
         { provide: IListClinicAuditLogsUseCaseToken, useValue: listAuditLogsUseCase },
       ],
     })
@@ -434,6 +467,7 @@ describe('Clinic module (e2e)', () => {
         channel: input.channel,
         expiresAt: input.expiresAt,
         economicSummary: generalEconomicSummary,
+        acceptedEconomicSnapshot: undefined,
         createdAt: new Date('2025-10-11T10:00:00.000Z'),
         updatedAt: new Date('2025-10-11T10:00:00.000Z'),
         metadata: { issuedToken: 'flow-token' },
@@ -447,6 +481,10 @@ describe('Clinic module (e2e)', () => {
         status: 'accepted',
         acceptedAt: new Date('2025-10-11T10:30:00.000Z'),
         acceptedBy: input.acceptedBy,
+        acceptedEconomicSnapshot: {
+          ...generalEconomicSummary,
+          items: generalEconomicSummary.items.map((item) => ({ ...item })),
+        },
         metadata: { source: 'dashboard' },
       };
       return state.invitation;
@@ -576,6 +614,7 @@ describe('Clinic module (e2e)', () => {
     });
     expect(acceptResponse.body.status).toBe('accepted');
     expect(acceptResponse.body.acceptedAt).toBeDefined();
+    expect(acceptResponse.body.acceptedEconomicSnapshot.items[0].payoutValue).toBe(55);
 
     // 4) Criação do hold respeitando TTL
     const holdPayload = {

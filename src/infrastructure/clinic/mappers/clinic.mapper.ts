@@ -114,6 +114,7 @@ export class ClinicMapper {
       expiresAt: entity.expiresAt,
       acceptedAt: entity.acceptedAt ?? undefined,
       acceptedBy: entity.acceptedBy ?? undefined,
+      acceptedEconomicSnapshot: entity.acceptedEconomicSnapshot ?? undefined,
       revokedAt: entity.revokedAt ?? undefined,
       revokedBy: entity.revokedBy ?? undefined,
       revocationReason: entity.revocationReason ?? undefined,

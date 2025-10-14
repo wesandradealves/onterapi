@@ -50,6 +50,12 @@ export interface IClinicAppointmentRepository {
     end: Date;
     excludeAppointmentId?: string;
   }): Promise<ClinicAppointment[]>;
+  countByProfessionalAndPaymentStatus(params: {
+    clinicId: string;
+    tenantId: string;
+    professionalId: string;
+    statuses: ClinicPaymentStatus[];
+  }): Promise<number>;
 }
 
 export const IClinicAppointmentRepository = Symbol('IClinicAppointmentRepository');

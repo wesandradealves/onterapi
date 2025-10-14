@@ -50,6 +50,7 @@ import {
 } from '../dtos/clinic-service-type-response.dto';
 import {
   ClinicInvitationEconomicExampleDto,
+  ClinicInvitationEconomicSummaryDto,
   ClinicInvitationResponseDto,
 } from '../dtos/clinic-invitation-response.dto';
 import { ClinicMemberResponseDto } from '../dtos/clinic-member-response.dto';
@@ -503,6 +504,15 @@ export class ClinicPresenter {
   }
 
   static invitation(invitation: ClinicInvitation, token?: string): ClinicInvitationResponseDto {
+    const economicSummary = ClinicPresenter.formatEconomicSummary(invitation.economicSummary);
+    const acceptedEconomicSnapshot = ClinicPresenter.formatEconomicSummary(
+      invitation.acceptedEconomicSnapshot,
+    );
+
+    if (!economicSummary) {
+      throw new Error('Convite sem resumo economico');
+    }
+
     return {
       id: invitation.id,
       clinicId: invitation.clinicId,
@@ -520,18 +530,8 @@ export class ClinicPresenter {
       revocationReason: invitation.revocationReason ?? undefined,
       declinedAt: invitation.declinedAt,
       declinedBy: invitation.declinedBy,
-      economicSummary: {
-        items: invitation.economicSummary.items.map((item) => ({
-          serviceTypeId: item.serviceTypeId,
-          price: item.price,
-          currency: item.currency,
-          payoutModel: item.payoutModel,
-          payoutValue: item.payoutValue,
-        })),
-        orderOfRemainders: invitation.economicSummary.orderOfRemainders,
-        roundingStrategy: invitation.economicSummary.roundingStrategy,
-        examples: ClinicPresenter.buildEconomicExamples(invitation.economicSummary.items),
-      },
+      economicSummary,
+      acceptedEconomicSnapshot,
       metadata: invitation.metadata,
       token,
       createdAt: invitation.createdAt,
@@ -744,6 +744,27 @@ export class ClinicPresenter {
       fieldType: field.fieldType,
       required: field.required,
       options: field.options && field.options.length > 0 ? field.options : undefined,
+    };
+  }
+
+  private static formatEconomicSummary(
+    summary?: ClinicInvitation['economicSummary'],
+  ): ClinicInvitationEconomicSummaryDto | undefined {
+    if (!summary) {
+      return undefined;
+    }
+
+    return {
+      items: summary.items.map((item) => ({
+        serviceTypeId: item.serviceTypeId,
+        price: item.price,
+        currency: item.currency,
+        payoutModel: item.payoutModel,
+        payoutValue: item.payoutValue,
+      })),
+      orderOfRemainders: summary.orderOfRemainders,
+      roundingStrategy: summary.roundingStrategy,
+      examples: ClinicPresenter.buildEconomicExamples(summary.items),
     };
   }
 
@@ -1053,6 +1074,11 @@ export class ClinicPresenter {
         ? String(team.defaultMemberStatus)
         : 'pending_invitation';
 
+    const requireFinancialClearance =
+      typeof team.requireFinancialClearance === 'boolean'
+        ? Boolean(team.requireFinancialClearance)
+        : false;
+
     const metadata =
       team.metadata &&
       typeof team.metadata === 'object' &&
@@ -1064,6 +1090,7 @@ export class ClinicPresenter {
       quotas,
       allowExternalInvitations,
       defaultMemberStatus,
+      requireFinancialClearance,
       metadata,
     };
   }

@@ -247,6 +247,7 @@ export class ClinicConfigurationTelemetryService {
       }),
       this.isNonEmptyString(team['defaultMemberStatus']),
       typeof team['allowExternalInvitations'] === 'boolean',
+      typeof team['requireFinancialClearance'] === 'boolean',
     ];
 
     return this.computeScore(checks);

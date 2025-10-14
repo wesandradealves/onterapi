@@ -63,6 +63,9 @@ export class ClinicInvitationRepository implements IClinicInvitationRepository {
       entity.channel = params.channel;
     }
 
+    entity.acceptedAt = null;
+    entity.acceptedBy = null;
+    entity.acceptedEconomicSnapshot = null;
     entity.status = 'pending';
 
     const saved = await this.repository.save(entity);
@@ -116,6 +119,7 @@ export class ClinicInvitationRepository implements IClinicInvitationRepository {
       where: { id: input.invitationId, tenantId: input.tenantId },
     });
 
+    entity.acceptedEconomicSnapshot = JSON.parse(JSON.stringify(entity.economicSummary));
     entity.status = 'accepted';
     entity.acceptedAt = new Date();
     entity.acceptedBy = input.acceptedBy;

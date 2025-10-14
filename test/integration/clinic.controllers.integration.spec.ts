@@ -556,6 +556,14 @@ describe('ClinicInvitationController (integration)', () => {
     expiresAt: overrides.expiresAt ?? new Date('2025-11-01T12:00:00.000Z'),
     acceptedAt: overrides.acceptedAt,
     acceptedBy: overrides.acceptedBy,
+    acceptedEconomicSnapshot:
+      overrides.acceptedEconomicSnapshot ??
+      (overrides.status === 'accepted'
+        ? {
+            ...economicSummary,
+            items: economicSummary.items.map((item) => ({ ...item })),
+          }
+        : undefined),
     revokedAt: overrides.revokedAt,
     revokedBy: overrides.revokedBy,
     revocationReason: overrides.revocationReason ?? null,
@@ -687,6 +695,10 @@ describe('ClinicInvitationController (integration)', () => {
       token: 'token-1234',
     });
     expect(response.body.status).toBe('accepted');
+    expect(response.body.acceptedEconomicSnapshot).toBeDefined();
+    expect(response.body.acceptedEconomicSnapshot.items[0].payoutValue).toBe(
+      economicSummary.items[0].payoutValue,
+    );
   });
 
   it('POST /clinics/invitations/:id/revoke deve revogar convite', async () => {

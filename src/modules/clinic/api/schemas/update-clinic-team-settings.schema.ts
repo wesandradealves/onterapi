@@ -13,6 +13,7 @@ export const updateClinicTeamSettingsSchema = z.object({
     defaultMemberStatus: z
       .enum(['pending_invitation', 'active', 'inactive', 'suspended'])
       .default('pending_invitation'),
+    requireFinancialClearance: z.boolean().default(false),
   }),
 });
 

@@ -95,6 +95,10 @@ export class ClinicErrorFactory {
     return new BadRequestException(this.sanitize(message));
   }
 
+  static pendingFinancialObligations(message: string): ForbiddenException {
+    return new ForbiddenException(this.sanitize(message));
+  }
+
   static invalidConfiguration(section: string, reason: string): BadRequestException {
     const safeSection = this.sanitize(section);
     const safeReason = this.sanitize(reason);

@@ -14,12 +14,21 @@ import {
   IClinicMemberRepository as IClinicMemberRepositoryToken,
 } from '../../../domain/clinic/interfaces/repositories/clinic-member.repository.interface';
 import {
+  type IClinicConfigurationRepository,
+  IClinicConfigurationRepository as IClinicConfigurationRepositoryToken,
+} from '../../../domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
+import {
+  type IClinicAppointmentRepository,
+  IClinicAppointmentRepository as IClinicAppointmentRepositoryToken,
+} from '../../../domain/clinic/interfaces/repositories/clinic-appointment.repository.interface';
+import {
   type IAcceptClinicInvitationUseCase,
   IAcceptClinicInvitationUseCase as IAcceptClinicInvitationUseCaseToken,
 } from '../../../domain/clinic/interfaces/use-cases/accept-clinic-invitation.use-case.interface';
 import {
   AcceptClinicInvitationInput,
   ClinicInvitation,
+  ClinicPaymentStatus,
 } from '../../../domain/clinic/types/clinic.types';
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
 import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
@@ -40,6 +49,10 @@ export class AcceptClinicInvitationUseCase
     private readonly clinicRepository: IClinicRepository,
     @Inject(IClinicMemberRepositoryToken)
     private readonly memberRepository: IClinicMemberRepository,
+    @Inject(IClinicConfigurationRepositoryToken)
+    private readonly configurationRepository: IClinicConfigurationRepository,
+    @Inject(IClinicAppointmentRepositoryToken)
+    private readonly appointmentRepository: IClinicAppointmentRepository,
     private readonly auditService: ClinicAuditService,
     private readonly invitationTokenService: ClinicInvitationTokenService,
   ) {
@@ -97,6 +110,26 @@ export class AcceptClinicInvitationUseCase
       throw ClinicErrorFactory.memberAlreadyExists('Profissional já vinculado à clínica');
     }
 
+    const professionalId = invitation.professionalId ?? input.acceptedBy;
+
+    if (professionalId) {
+      const requireClearance = await this.requiresFinancialClearance(invitation.clinicId);
+
+      if (requireClearance) {
+        const hasPendencies = await this.hasFinancialPendencies({
+          clinicId: invitation.clinicId,
+          tenantId: invitation.tenantId,
+          professionalId,
+        });
+
+        if (hasPendencies) {
+          throw ClinicErrorFactory.pendingFinancialObligations(
+            'Profissional possui pendencias financeiras com a clinica',
+          );
+        }
+      }
+    }
+
     await this.memberRepository.addMember({
       clinicId: invitation.clinicId,
       tenantId: invitation.tenantId,
@@ -117,10 +150,65 @@ export class AcceptClinicInvitationUseCase
       performedBy: input.acceptedBy,
       detail: {
         invitationId: invitation.id,
+        professionalId: input.acceptedBy,
+        economicSnapshot: this.cloneEconomicSnapshot(
+          accepted.acceptedEconomicSnapshot ?? accepted.economicSummary,
+        ),
       },
     });
 
     return accepted;
+  }
+
+  private async requiresFinancialClearance(clinicId: string): Promise<boolean> {
+    const version = await this.configurationRepository.findLatestAppliedVersion(
+      clinicId,
+      'team',
+    );
+
+    if (!version || !version.payload || typeof version.payload !== 'object') {
+      return false;
+    }
+
+    const payload = version.payload as Record<string, unknown>;
+    const directValue = payload.requireFinancialClearance;
+
+    if (typeof directValue === 'boolean') {
+      return directValue;
+    }
+
+    const nested = payload.teamSettings;
+    if (nested && typeof nested === 'object') {
+      const nestedValue = (nested as Record<string, unknown>).requireFinancialClearance;
+      if (typeof nestedValue === 'boolean') {
+        return nestedValue;
+      }
+    }
+
+    return false;
+  }
+
+  private async hasFinancialPendencies(params: {
+    clinicId: string;
+    tenantId: string;
+    professionalId: string;
+  }): Promise<boolean> {
+    const statuses: ClinicPaymentStatus[] = ['chargeback', 'failed'];
+
+    const count = await this.appointmentRepository.countByProfessionalAndPaymentStatus({
+      clinicId: params.clinicId,
+      tenantId: params.tenantId,
+      professionalId: params.professionalId,
+      statuses,
+    });
+
+    return count > 0;
+  }
+
+  private cloneEconomicSnapshot(
+    snapshot: ClinicInvitation['economicSummary'],
+  ): ClinicInvitation['economicSummary'] {
+    return JSON.parse(JSON.stringify(snapshot));
   }
 }
 
