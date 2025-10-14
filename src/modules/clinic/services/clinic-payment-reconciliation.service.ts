@@ -27,6 +27,7 @@ import {
   ClinicPaymentSettledEvent,
   ClinicPaymentStatusChangedEvent,
 } from './clinic-payment-event.types';
+import { ClinicPaymentNotificationService } from './clinic-payment-notification.service';
 
 interface PaymentSplitComputation {
   allocations: ClinicPaymentSplitAllocation[];
@@ -43,6 +44,7 @@ export class ClinicPaymentReconciliationService {
     @Inject(IClinicConfigurationRepositoryToken)
     private readonly clinicConfigurationRepository: IClinicConfigurationRepository,
     private readonly auditService: ClinicAuditService,
+    private readonly paymentNotificationService: ClinicPaymentNotificationService,
   ) {}
 
   async handleStatusChanged(event: ClinicPaymentStatusChangedEvent): Promise<void> {
@@ -207,6 +209,12 @@ export class ClinicPaymentReconciliationService {
         sandbox: event.payload.sandbox,
       },
     });
+
+    await this.paymentNotificationService.notifySettlement({
+      appointment,
+      event,
+      settlement,
+    });
   }
 
   private async recordRefund(event: ClinicPaymentRefundedEvent): Promise<void> {
@@ -278,6 +286,12 @@ export class ClinicPaymentReconciliationService {
         netAmountCents: refund.netAmountCents ?? null,
         sandbox: event.payload.sandbox,
       },
+    });
+
+    await this.paymentNotificationService.notifyRefund({
+      appointment,
+      event,
+      refund,
     });
   }
 
@@ -353,6 +367,12 @@ export class ClinicPaymentReconciliationService {
         netAmountCents: chargeback.netAmountCents ?? null,
         sandbox: event.payload.sandbox,
       },
+    });
+
+    await this.paymentNotificationService.notifyChargeback({
+      appointment,
+      event,
+      chargeback,
     });
   }
 

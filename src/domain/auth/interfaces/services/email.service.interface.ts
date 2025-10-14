@@ -16,6 +16,8 @@ export interface IEmailService {
   sendPasswordChangedEmail(data: PasswordChangedEmailData): Promise<Result<void>>;
 
   sendClinicAlertEmail(data: ClinicAlertEmailData): Promise<Result<void>>;
+
+  sendClinicPaymentEmail(data: ClinicPaymentEmailData): Promise<Result<void>>;
 }
 
 export interface VerificationEmailData {
@@ -84,6 +86,18 @@ export interface ClinicAlertEmailData {
   resolvedBy?: string;
   channel?: string;
   payload?: Record<string, unknown>;
+}
+
+export interface ClinicPaymentEmailData {
+  to: string;
+  clinicName: string;
+  status: 'settled' | 'refunded' | 'chargeback';
+  transactionId: string;
+  eventAt: Date;
+  serviceType?: string;
+  amountCents?: number;
+  netAmountCents?: number | null;
+  details?: Record<string, unknown>;
 }
 
 export const IEmailService = Symbol('IEmailService');

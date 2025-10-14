@@ -3,6 +3,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AuthModule } from '../auth/auth.module';
 import { UsersModule } from '../users/users.module';
+import { PatientsModule } from '../patients/patients.module';
+import { SchedulingModule } from '../scheduling/scheduling.module';
 import { ClinicConfigurationController } from './api/controllers/clinic-configuration.controller';
 import { ClinicHoldController } from './api/controllers/clinic-hold.controller';
 import { ClinicDashboardController } from './api/controllers/clinic-dashboard.controller';
@@ -94,6 +96,12 @@ import { GetClinicNotificationSettingsUseCase } from './use-cases/get-clinic-not
 import { GetClinicBrandingSettingsUseCase } from './use-cases/get-clinic-branding-settings.use-case';
 import { ListClinicAuditLogsUseCase } from './use-cases/list-clinic-audit-logs.use-case';
 import { ClinicPaymentReconciliationService } from './services/clinic-payment-reconciliation.service';
+import { ClinicPaymentNotificationService } from './services/clinic-payment-notification.service';
+import { ClinicGoogleCalendarSyncService } from './services/clinic-google-calendar-sync.service';
+import { IGoogleCalendarService } from '../../domain/integrations/interfaces/services/google-calendar.service.interface';
+import { GoogleCalendarService } from '../../infrastructure/integrations/services/google-calendar.service';
+import { IWhatsAppService } from '../../domain/integrations/interfaces/services/whatsapp.service.interface';
+import { WhatsAppService } from '../../infrastructure/integrations/services/whatsapp.service';
 import { ClinicPaymentEventsSubscriber } from './subscribers/clinic-payment-events.subscriber';
 import { IClinicRepository as IClinicRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic.repository.interface';
 import { IClinicConfigurationRepository as IClinicConfigurationRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
@@ -205,10 +213,20 @@ const serviceProviders: Provider[] = [
     provide: IClinicPaymentGatewayServiceToken,
     useClass: ClinicAsaasGatewayService,
   },
+  {
+    provide: IWhatsAppService,
+    useClass: WhatsAppService,
+  },
+  {
+    provide: IGoogleCalendarService,
+    useClass: GoogleCalendarService,
+  },
   ClinicInvitationTokenService,
   ClinicConfigurationValidator,
   ClinicAsaasWebhookGuard,
   ClinicPaymentReconciliationService,
+  ClinicPaymentNotificationService,
+  ClinicGoogleCalendarSyncService,
   ClinicAlertNotificationService,
   ClinicTemplateOverrideService,
   ClinicPaymentEventsSubscriber,
@@ -404,6 +422,8 @@ const useCaseProviders: Provider[] = [
   imports: [
     AuthModule,
     forwardRef(() => UsersModule),
+    forwardRef(() => PatientsModule),
+    SchedulingModule,
     TypeOrmModule.forFeature([
       ClinicEntity,
       ClinicConfigurationVersionEntity,

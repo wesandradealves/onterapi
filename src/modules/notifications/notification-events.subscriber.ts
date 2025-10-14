@@ -33,6 +33,9 @@ export class NotificationEventsSubscriber implements OnModuleInit, OnModuleDestr
       DomainEvents.NOTIFICATION_SCHEDULING_BOOKING_CANCELLED,
       DomainEvents.NOTIFICATION_SCHEDULING_BOOKING_NO_SHOW,
       DomainEvents.NOTIFICATION_SCHEDULING_PAYMENT_STATUS_CHANGED,
+      DomainEvents.NOTIFICATION_CLINIC_PAYMENT_SETTLED,
+      DomainEvents.NOTIFICATION_CLINIC_PAYMENT_REFUNDED,
+      DomainEvents.NOTIFICATION_CLINIC_PAYMENT_CHARGEBACK,
     ];
 
     events.forEach((eventName) => this.subscribe(eventName));

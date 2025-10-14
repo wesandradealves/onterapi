@@ -1,5 +1,10 @@
 import { ClinicPaymentReconciliationService } from '../../../src/modules/clinic/services/clinic-payment-reconciliation.service';
-import { ClinicPaymentSettledEvent } from '../../../src/modules/clinic/services/clinic-payment-event.types';
+import {
+  ClinicPaymentSettledEvent,
+  ClinicPaymentRefundedEvent,
+  ClinicPaymentChargebackEvent,
+} from '../../../src/modules/clinic/services/clinic-payment-event.types';
+import { ClinicPaymentNotificationService } from '../../../src/modules/clinic/services/clinic-payment-notification.service';
 import { IClinicAppointmentRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-appointment.repository.interface';
 import { IClinicConfigurationRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
 import { ClinicAuditService } from '../../../src/infrastructure/clinic/services/clinic-audit.service';
@@ -54,10 +59,63 @@ const createSettlementEvent = (): ClinicPaymentSettledEvent => ({
   },
 });
 
+const createRefundEvent = (): ClinicPaymentRefundedEvent => ({
+  eventId: 'evt-refund',
+  eventName: DomainEvents.CLINIC_PAYMENT_REFUNDED,
+  aggregateId: 'appointment-1',
+  occurredOn: new Date('2099-01-02T12:05:00Z'),
+  metadata: {},
+  payload: {
+    appointmentId: 'appointment-1',
+    tenantId: 'tenant-1',
+    clinicId: 'clinic-1',
+    professionalId: 'professional-1',
+    patientId: 'patient-1',
+    holdId: 'hold-1',
+    serviceTypeId: 'service-1',
+    paymentTransactionId: 'pay-123',
+    gatewayStatus: 'REFUNDED',
+    eventType: 'PAYMENT_REFUNDED',
+    sandbox: false,
+    fingerprint: 'fp-refund',
+    payloadId: 'asaas-evt-refund',
+    amount: { value: 200, netValue: 180 },
+    refundedAt: new Date('2099-01-02T12:04:00Z'),
+    processedAt: new Date('2099-01-02T12:05:00Z'),
+  },
+});
+
+const createChargebackEvent = (): ClinicPaymentChargebackEvent => ({
+  eventId: 'evt-chargeback',
+  eventName: DomainEvents.CLINIC_PAYMENT_CHARGEBACK,
+  aggregateId: 'appointment-1',
+  occurredOn: new Date('2099-01-03T12:05:00Z'),
+  metadata: {},
+  payload: {
+    appointmentId: 'appointment-1',
+    tenantId: 'tenant-1',
+    clinicId: 'clinic-1',
+    professionalId: 'professional-1',
+    patientId: 'patient-1',
+    holdId: 'hold-1',
+    serviceTypeId: 'service-1',
+    paymentTransactionId: 'pay-123',
+    gatewayStatus: 'CHARGEBACK',
+    eventType: 'PAYMENT_CHARGEBACK',
+    sandbox: false,
+    fingerprint: 'fp-chargeback',
+    payloadId: 'asaas-evt-chargeback',
+    amount: { value: 200, netValue: 180 },
+    chargebackAt: new Date('2099-01-03T12:04:00Z'),
+    processedAt: new Date('2099-01-03T12:05:00Z'),
+  },
+});
+
 describe('ClinicPaymentReconciliationService', () => {
   let appointmentRepository: Mocked<IClinicAppointmentRepository>;
   let configurationRepository: Mocked<IClinicConfigurationRepository>;
   let auditService: ClinicAuditService;
+  let paymentNotificationService: Mocked<ClinicPaymentNotificationService>;
   let service: ClinicPaymentReconciliationService;
 
   beforeEach(() => {
@@ -74,10 +132,17 @@ describe('ClinicPaymentReconciliationService', () => {
       register: jest.fn(),
     } as unknown as ClinicAuditService;
 
+    paymentNotificationService = {
+      notifySettlement: jest.fn(),
+      notifyRefund: jest.fn(),
+      notifyChargeback: jest.fn(),
+    } as unknown as Mocked<ClinicPaymentNotificationService>;
+
     service = new ClinicPaymentReconciliationService(
       appointmentRepository,
       configurationRepository,
       auditService,
+      paymentNotificationService,
     );
 
     configurationRepository.findLatestAppliedVersion.mockResolvedValue({
@@ -144,6 +209,13 @@ describe('ClinicPaymentReconciliationService', () => {
         }),
       }),
     );
+
+    expect(paymentNotificationService.notifySettlement).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appointment: expect.objectContaining({ id: 'appointment-1' }),
+        event: expect.objectContaining({ eventName: DomainEvents.CLINIC_PAYMENT_SETTLED }),
+      }),
+    );
   });
 
   it('não replica liquidação com fingerprint repetido', async () => {
@@ -179,6 +251,81 @@ describe('ClinicPaymentReconciliationService', () => {
 
     expect(appointmentRepository.updateMetadata).not.toHaveBeenCalled();
     expect(auditService.register).not.toHaveBeenCalled();
+    expect(paymentNotificationService.notifySettlement).not.toHaveBeenCalled();
+  });
+
+  it('registra reembolso e dispara notificação', async () => {
+    appointmentRepository.findById.mockResolvedValue(createAppointment());
+
+    await service.handlePaymentRefunded(createRefundEvent());
+
+    expect(appointmentRepository.updateMetadata).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appointmentId: 'appointment-1',
+        metadataPatch: expect.objectContaining({
+          paymentLedger: expect.objectContaining({
+            refund: expect.objectContaining({
+              gatewayStatus: 'REFUNDED',
+              fingerprint: 'fp-refund',
+            }),
+          }),
+        }),
+      }),
+    );
+
+    expect(auditService.register).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'clinic.payment.refund_recorded',
+        detail: expect.objectContaining({
+          appointmentId: 'appointment-1',
+          paymentTransactionId: 'pay-123',
+        }),
+      }),
+    );
+
+    expect(paymentNotificationService.notifyRefund).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appointment: expect.objectContaining({ id: 'appointment-1' }),
+        event: expect.objectContaining({ eventName: DomainEvents.CLINIC_PAYMENT_REFUNDED }),
+      }),
+    );
+  });
+
+  it('registra chargeback e dispara notificação', async () => {
+    appointmentRepository.findById.mockResolvedValue(createAppointment());
+
+    await service.handlePaymentChargeback(createChargebackEvent());
+
+    expect(appointmentRepository.updateMetadata).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appointmentId: 'appointment-1',
+        metadataPatch: expect.objectContaining({
+          paymentLedger: expect.objectContaining({
+            chargeback: expect.objectContaining({
+              gatewayStatus: 'CHARGEBACK',
+              fingerprint: 'fp-chargeback',
+            }),
+          }),
+        }),
+      }),
+    );
+
+    expect(auditService.register).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'clinic.payment.chargeback_recorded',
+        detail: expect.objectContaining({
+          appointmentId: 'appointment-1',
+          paymentTransactionId: 'pay-123',
+        }),
+      }),
+    );
+
+    expect(paymentNotificationService.notifyChargeback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appointment: expect.objectContaining({ id: 'appointment-1' }),
+        event: expect.objectContaining({ eventName: DomainEvents.CLINIC_PAYMENT_CHARGEBACK }),
+      }),
+    );
   });
 
   it('registra evento de status alterado', async () => {
@@ -240,5 +387,9 @@ describe('ClinicPaymentReconciliationService', () => {
         }),
       }),
     );
+
+    expect(paymentNotificationService.notifySettlement).not.toHaveBeenCalled();
+    expect(paymentNotificationService.notifyRefund).not.toHaveBeenCalled();
+    expect(paymentNotificationService.notifyChargeback).not.toHaveBeenCalled();
   });
 });

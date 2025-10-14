@@ -62,6 +62,9 @@ export class DomainEvents {
   static NOTIFICATION_SCHEDULING_BOOKING_NO_SHOW = 'notifications.scheduling.booking.no_show';
   static NOTIFICATION_SCHEDULING_PAYMENT_STATUS_CHANGED =
     'notifications.scheduling.payment.status_changed';
+  static NOTIFICATION_CLINIC_PAYMENT_SETTLED = 'notifications.clinic.payment.settled';
+  static NOTIFICATION_CLINIC_PAYMENT_REFUNDED = 'notifications.clinic.payment.refunded';
+  static NOTIFICATION_CLINIC_PAYMENT_CHARGEBACK = 'notifications.clinic.payment.chargeback';
   static NOTIFICATION_CLINIC_ALERT_TRIGGERED = 'notifications.clinic.alert.triggered';
   static NOTIFICATION_CLINIC_ALERT_RESOLVED = 'notifications.clinic.alert.resolved';
 
@@ -1021,6 +1024,108 @@ export class DomainEvents {
       this.NOTIFICATION_SCHEDULING_PAYMENT_STATUS_CHANGED,
       bookingId,
       { bookingId, ...data, queuedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static notificationsClinicPaymentSettled(
+    appointmentId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      serviceTypeId: string;
+      paymentTransactionId: string;
+      settledAt: Date;
+      amount: { baseAmountCents: number; netAmountCents?: number | null };
+      split: Array<Record<string, unknown>>;
+      remainderCents: number;
+      recipientIds: string[];
+      gatewayStatus: string;
+      sandbox?: boolean;
+      fingerprint?: string | null;
+      payloadId?: string | null;
+      channels?: string[];
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_CLINIC_PAYMENT_SETTLED,
+      appointmentId,
+      {
+        appointmentId,
+        status: 'settled',
+        ...data,
+        queuedAt: new Date(),
+      },
+      metadata,
+    );
+  }
+
+  static notificationsClinicPaymentRefunded(
+    appointmentId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      serviceTypeId: string;
+      paymentTransactionId: string;
+      refundedAt: Date;
+      amount: { valueCents?: number | null; netValueCents?: number | null };
+      reason?: string | null;
+      recipientIds: string[];
+      gatewayStatus: string;
+      sandbox?: boolean;
+      fingerprint?: string | null;
+      payloadId?: string | null;
+      channels?: string[];
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_CLINIC_PAYMENT_REFUNDED,
+      appointmentId,
+      {
+        appointmentId,
+        status: 'refunded',
+        ...data,
+        queuedAt: new Date(),
+      },
+      metadata,
+    );
+  }
+
+  static notificationsClinicPaymentChargeback(
+    appointmentId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      serviceTypeId: string;
+      paymentTransactionId: string;
+      chargebackAt: Date;
+      reason?: string | null;
+      recipientIds: string[];
+      gatewayStatus: string;
+      sandbox?: boolean;
+      fingerprint?: string | null;
+      payloadId?: string | null;
+      channels?: string[];
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_CLINIC_PAYMENT_CHARGEBACK,
+      appointmentId,
+      {
+        appointmentId,
+        status: 'chargeback',
+        ...data,
+        queuedAt: new Date(),
+      },
       metadata,
     );
   }

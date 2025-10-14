@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
 import {
   ClinicAlertEmailData,
+  ClinicPaymentEmailData,
   PasswordChangedEmailData,
   SuspiciousLoginData,
   WelcomeEmailData,
@@ -95,6 +96,18 @@ export class NotificationEmailService {
       html,
     });
   }
+
+  async sendClinicPaymentEmail(data: ClinicPaymentEmailData): Promise<Result<void>> {
+    const statusLabel = this.resolvePaymentStatusLabel(data.status);
+    const subject = `[Onterapi] Notificacao de pagamento - ${statusLabel}`;
+    const html = this.getClinicPaymentTemplate(data, statusLabel);
+
+    return this.sendEmail({
+      to: data.to,
+      subject,
+      html,
+    });
+  }
   private getPasswordChangedTemplate(data: PasswordChangedEmailData): string {
     const displayName = (data.name?.trim() ?? '') || data.to.split('@')[0];
     const changedAt = data.changedAt.toLocaleString('pt-BR', {
@@ -152,6 +165,108 @@ export class NotificationEmailService {
       subject,
       html,
     });
+  }
+
+  private resolvePaymentStatusLabel(status: ClinicPaymentEmailData['status']): string {
+    switch (status) {
+      case 'settled':
+        return 'Pagamento liquidado';
+      case 'refunded':
+        return 'Pagamento reembolsado';
+      case 'chargeback':
+        return 'Chargeback registrado';
+      default:
+        return 'Atualizacao de pagamento';
+    }
+  }
+
+  private getClinicPaymentTemplate(
+    data: ClinicPaymentEmailData,
+    statusLabel: string,
+  ): string {
+    const clinicName = data.clinicName || 'Clinica';
+    const eventDate = data.eventAt.toLocaleString('pt-BR', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    });
+    const amount = data.amountCents !== undefined ? this.formatCurrency(data.amountCents / 100) : 'N/D';
+    const netAmount =
+      data.netAmountCents !== undefined && data.netAmountCents !== null
+        ? this.formatCurrency(data.netAmountCents / 100)
+        : null;
+    const serviceInfo = data.serviceType ? `<li><strong>Servico:</strong> ${data.serviceType}</li>` : '';
+    const netInfo = netAmount ? `<li><strong>Valor liquido:</strong> ${netAmount}</li>` : '';
+    const details = this.renderDetails(data.details);
+
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <style>
+            body { font-family: Arial, sans-serif; background: #f5f7fa; color: #333; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 0 auto; padding: 24px; }
+            .card { background: #ffffff; border-radius: 8px; padding: 24px; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08); }
+            .header { border-bottom: 1px solid #e2e8f0; padding-bottom: 16px; margin-bottom: 24px; }
+            .header h2 { margin: 0; color: #1e293b; font-size: 20px; }
+            .content ul { list-style: none; padding: 0; margin: 0; }
+            .content li { margin: 8px 0; }
+            .footer { margin-top: 24px; font-size: 12px; color: #64748b; text-align: center; }
+            .details { margin-top: 16px; }
+            .details pre { background: #f1f5f9; padding: 12px; border-radius: 6px; overflow: auto; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="card">
+              <div class="header">
+                <h2>${statusLabel}</h2>
+                <p>${clinicName}</p>
+              </div>
+              <div class="content">
+                <ul>
+                  <li><strong>Transacao:</strong> ${data.transactionId}</li>
+                  <li><strong>Status:</strong> ${statusLabel}</li>
+                  <li><strong>Data do evento:</strong> ${eventDate}</li>
+                  <li><strong>Valor bruto:</strong> ${amount}</li>
+                  ${netInfo}
+                  ${serviceInfo}
+                </ul>
+                ${details}
+              </div>
+              <div class="footer">
+                <p>Este e-mail foi enviado automaticamente. Nao responda.</p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+  }
+
+  private renderDetails(details: Record<string, unknown> | undefined): string {
+    if (!details || Object.keys(details).length === 0) {
+      return '';
+    }
+
+    const formatted = JSON.stringify(details, null, 2);
+    return `
+      <div class="details">
+        <strong>Detalhes adicionais</strong>
+        <pre>${formatted}</pre>
+      </div>
+    `;
+  }
+
+  private formatCurrency(value: number): string {
+    try {
+      return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+      }).format(value);
+    } catch {
+      return `R$ ${value.toFixed(2)}`;
+    }
   }
   private getWelcomeEmailTemplate(data: WelcomeEmailData): string {
     const roleNames: Record<string, string> = {
