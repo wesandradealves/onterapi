@@ -2,28 +2,38 @@ import {
   Clinic,
   ClinicAlert,
   ClinicAppointment,
+  ClinicConfigurationSection,
+  ClinicConfigurationState,
+  ClinicConfigurationTelemetry,
   ClinicConfigurationVersion,
   ClinicDashboardMetric,
   ClinicDocumentType,
+  ClinicFinancialSnapshot,
   ClinicForecastProjection,
   ClinicHold,
   ClinicInvitation,
   ClinicMember,
   ClinicServiceTypeDefinition,
+  ClinicTemplateOverride,
 } from '../../../domain/clinic/types/clinic.types';
 import { ClinicEntity } from '../entities/clinic.entity';
 import { ClinicHoldEntity } from '../entities/clinic-hold.entity';
 import { ClinicAppointmentEntity } from '../entities/clinic-appointment.entity';
 import { ClinicDashboardMetricEntity } from '../entities/clinic-dashboard-metric.entity';
+import { ClinicFinancialSnapshotEntity } from '../entities/clinic-financial-snapshot.entity';
 import { ClinicForecastProjectionEntity } from '../entities/clinic-forecast-projection.entity';
 import { ClinicAlertEntity } from '../entities/clinic-alert.entity';
 import { ClinicConfigurationVersionEntity } from '../entities/clinic-configuration-version.entity';
 import { ClinicInvitationEntity } from '../entities/clinic-invitation.entity';
 import { ClinicMemberEntity } from '../entities/clinic-member.entity';
 import { ClinicServiceTypeEntity } from '../entities/clinic-service-type.entity';
+import { ClinicTemplateOverrideEntity } from '../entities/clinic-template-override.entity';
 
 export class ClinicMapper {
   static toClinic(entity: ClinicEntity): Clinic {
+    const metadata = entity.metadata ?? {};
+    const configurationTelemetry = ClinicMapper.mapConfigurationTelemetry(metadata);
+
     return {
       id: entity.id,
       tenantId: entity.tenantId,
@@ -39,6 +49,7 @@ export class ClinicMapper {
           : undefined,
       primaryOwnerId: entity.primaryOwnerId,
       configurationVersions: entity.configurationVersions ?? {},
+      configurationTelemetry,
       holdSettings: entity.holdSettings ?? {
         ttlMinutes: 30,
         minAdvanceMinutes: 60,
@@ -50,7 +61,7 @@ export class ClinicMapper {
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
       deletedAt: entity.deletedAt ?? undefined,
-      metadata: entity.metadata ?? {},
+      metadata,
     };
   }
 
@@ -213,16 +224,120 @@ export class ClinicMapper {
     };
   }
 
+  static toFinancialSnapshot(entity: ClinicFinancialSnapshotEntity): ClinicFinancialSnapshot {
+    return {
+      clinicId: entity.clinicId,
+      revenue: this.toNumber(entity.revenue),
+      expenses: this.toNumber(entity.expenses),
+      profit: this.toNumber(entity.profit),
+      margin: this.toNumber(entity.margin),
+      contributionPercentage: 0,
+    };
+  }
+
   static toAlert(entity: ClinicAlertEntity): ClinicAlert {
     return {
       id: entity.id,
       clinicId: entity.clinicId,
+      tenantId: entity.tenantId,
       type: entity.type,
       channel: entity.channel,
+      triggeredBy: entity.triggeredBy,
       triggeredAt: entity.triggeredAt,
       resolvedAt: entity.resolvedAt ?? undefined,
+      resolvedBy: entity.resolvedBy ?? undefined,
       payload: entity.payload ?? {},
     };
+  }
+
+  private static mapConfigurationTelemetry(
+    metadata: Record<string, unknown>,
+  ): Partial<Record<ClinicConfigurationSection, ClinicConfigurationTelemetry>> | undefined {
+    const telemetryRaw = metadata['configurationTelemetry'];
+
+    if (!telemetryRaw || typeof telemetryRaw !== 'object') {
+      return undefined;
+    }
+
+    const entries = Object.entries(telemetryRaw as Record<string, unknown>).reduce<
+      Partial<Record<ClinicConfigurationSection, ClinicConfigurationTelemetry>>
+    >((acc, [sectionKey, value]) => {
+      if (!value || typeof value !== 'object') {
+        return acc;
+      }
+
+      const section = sectionKey as ClinicConfigurationSection;
+      const telemetry = ClinicMapper.normalizeTelemetry(section, value as Record<string, unknown>);
+
+      if (telemetry) {
+        acc[section] = telemetry;
+      }
+
+      return acc;
+    }, {});
+
+    return Object.keys(entries).length > 0 ? entries : undefined;
+  }
+
+  private static normalizeTelemetry(
+    section: ClinicConfigurationSection,
+    raw: Record<string, unknown>,
+  ): ClinicConfigurationTelemetry | undefined {
+    const allowedStates: ClinicConfigurationState[] = ['idle', 'saving', 'saved', 'error'];
+    const rawState = typeof raw['state'] === 'string' ? (raw['state'] as string) : 'idle';
+    const state = allowedStates.includes(rawState as ClinicConfigurationState)
+      ? (rawState as ClinicConfigurationState)
+      : 'idle';
+
+    const completionScoreRaw = ClinicMapper.toOptionalNumber(raw['completionScore']);
+    const completionScore = completionScoreRaw !== undefined ? completionScoreRaw : 0;
+
+    return {
+      section,
+      state,
+      completionScore: Math.max(0, Math.min(100, Math.round(completionScore))),
+      lastAttemptAt: ClinicMapper.toDate(raw['lastAttemptAt']),
+      lastSavedAt: ClinicMapper.toDate(raw['lastSavedAt']),
+      lastErrorAt: ClinicMapper.toDate(raw['lastErrorAt']),
+      lastErrorMessage:
+        typeof raw['lastErrorMessage'] === 'string'
+          ? (raw['lastErrorMessage'] as string)
+          : undefined,
+      lastUpdatedBy:
+        typeof raw['lastUpdatedBy'] === 'string' ? (raw['lastUpdatedBy'] as string) : undefined,
+      autosaveIntervalSeconds: ClinicMapper.toOptionalNumber(raw['autosaveIntervalSeconds']),
+      pendingConflicts: ClinicMapper.toOptionalNumber(raw['pendingConflicts']),
+    };
+  }
+
+  private static toOptionalNumber(value: unknown): number | undefined {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const parsed = Number(value);
+      if (!Number.isNaN(parsed)) {
+        return parsed;
+      }
+    }
+
+    return undefined;
+  }
+
+  private static toDate(value: unknown): Date | undefined {
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const parsed = new Date(value);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed;
+      }
+    }
+
+    return undefined;
   }
 
   private static toNumber(value: number | string | null | undefined): number {
@@ -239,5 +354,25 @@ export class ClinicMapper {
     }
 
     return typeof value === 'number' ? value : Number(value);
+  }
+
+  static toTemplateOverride(entity: ClinicTemplateOverrideEntity): ClinicTemplateOverride {
+    return {
+      id: entity.id,
+      clinicId: entity.clinicId,
+      tenantId: entity.tenantId,
+      templateClinicId: entity.templateClinicId,
+      section: entity.section,
+      overrideVersion: entity.overrideVersion,
+      overridePayload: entity.overridePayload ?? {},
+      overrideHash: entity.overrideHash,
+      baseTemplateVersionId: entity.baseTemplateVersionId,
+      baseTemplateVersionNumber: entity.baseTemplateVersionNumber,
+      appliedConfigurationVersionId: entity.appliedConfigurationVersionId ?? undefined,
+      createdBy: entity.createdBy,
+      createdAt: entity.createdAt,
+      supersededAt: entity.supersededAt ?? undefined,
+      supersededBy: entity.supersededBy ?? undefined,
+    };
   }
 }

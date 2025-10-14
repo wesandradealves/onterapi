@@ -1,12 +1,14 @@
-import { PropagateClinicTemplateUseCase } from '../../../src/modules/clinic/use-cases/propagate-clinic-template.use-case';
+﻿import { PropagateClinicTemplateUseCase } from '../../../src/modules/clinic/use-cases/propagate-clinic-template.use-case';
 import { IClinicRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic.repository.interface';
 import { IClinicConfigurationRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
 import { ClinicAuditService } from '../../../src/infrastructure/clinic/services/clinic-audit.service';
 import { MessageBus } from '../../../src/shared/messaging/message-bus';
+import { ClinicTemplateOverrideService } from '../../../src/modules/clinic/services/clinic-template-override.service';
 import { DomainEvents } from '../../../src/shared/events/domain-events';
 import {
   Clinic,
   ClinicConfigurationVersion,
+  ClinicTemplateOverride,
   ClinicTemplatePropagationInput,
 } from '../../../src/domain/clinic/types/clinic.types';
 
@@ -51,12 +53,14 @@ describe('PropagateClinicTemplateUseCase', () => {
   let auditService: ClinicAuditService;
   let useCase: PropagateClinicTemplateUseCase;
   let messageBus: Mocked<MessageBus>;
+  let templateOverrideService: Mocked<ClinicTemplateOverrideService>;
 
   beforeEach(() => {
     clinicRepository = {
       findById: jest.fn(),
       setCurrentConfigurationVersion: jest.fn(),
       updateTemplatePropagationMetadata: jest.fn(),
+      updateTemplateOverrideMetadata: jest.fn(),
     } as unknown as Mocked<IClinicRepository>;
 
     configurationRepository = {
@@ -76,15 +80,28 @@ describe('PropagateClinicTemplateUseCase', () => {
       unsubscribe: jest.fn(),
     } as unknown as Mocked<MessageBus>;
 
+    templateOverrideService = {
+      mergeWithActiveOverride: jest.fn(),
+      markOverrideApplied: jest.fn(),
+    } as unknown as Mocked<ClinicTemplateOverrideService>;
+
+    (templateOverrideService.mergeWithActiveOverride as jest.Mock).mockImplementation(
+      async ({ templateVersion }) => ({
+        payload: templateVersion.payload ?? {},
+        override: null,
+      }),
+    );
+
     useCase = new PropagateClinicTemplateUseCase(
       clinicRepository,
       configurationRepository,
       auditService,
       messageBus,
+      templateOverrideService,
     );
   });
 
-  it('propaga versões para múltiplas clínicas e seções', async () => {
+  it('propaga versoes para multiplas clinicas e secoes', async () => {
     const templateClinic = createClinic({ id: 'template', tenantId: 'tenant-1' });
     const targetClinicA = createClinic({ id: 'clinic-a' });
     const targetClinicB = createClinic({ id: 'clinic-b' });
@@ -147,12 +164,16 @@ describe('PropagateClinicTemplateUseCase', () => {
     expect(clinicRepository.setCurrentConfigurationVersion).toHaveBeenCalledTimes(4);
     expect(clinicRepository.updateTemplatePropagationMetadata).toHaveBeenCalledTimes(4);
     expect(auditService.register).toHaveBeenCalledTimes(4);
+    expect(templateOverrideService.mergeWithActiveOverride).toHaveBeenCalledTimes(4);
+    expect(templateOverrideService.markOverrideApplied).not.toHaveBeenCalled();
+    expect(clinicRepository.updateTemplateOverrideMetadata).toHaveBeenCalledTimes(4);
     expect(messageBus.publish).toHaveBeenCalledTimes(4);
 
     const firstCall = (configurationRepository.createVersion as jest.Mock).mock.calls[0][0];
     expect(firstCall.section).toBe('general');
     expect(firstCall.autoApply).toBe(true);
     expect(firstCall.versionNotes).toBe('propagated');
+    expect(firstCall.payload).toEqual(templateVersionGeneral.payload);
 
     expect(result.every((version) => version.appliedAt)).toBe(true);
 
@@ -168,7 +189,80 @@ describe('PropagateClinicTemplateUseCase', () => {
     });
   });
 
-  it('lança erro quando clínica template não existe', async () => {
+  it('marca overrides aplicados quando presentes', async () => {
+    const templateClinic = createClinic({ id: 'template', tenantId: 'tenant-1' });
+    const targetClinic = createClinic({ id: 'clinic-a' });
+
+    (clinicRepository.findById as jest.Mock).mockImplementation((clinicId: string) => {
+      if (clinicId === 'template') return Promise.resolve(templateClinic);
+      if (clinicId === 'clinic-a') return Promise.resolve(targetClinic);
+      return Promise.resolve(null);
+    });
+
+    const templateVersion = createVersion({
+      id: 'version-general',
+      section: 'general',
+      payload: { general: true },
+    });
+
+    configurationRepository.findLatestAppliedVersion.mockResolvedValue(templateVersion);
+
+    configurationRepository.createVersion.mockImplementation(async (data) =>
+      createVersion({
+        id: 'propagated-version',
+        clinicId: data.clinicId,
+        tenantId: data.tenantId,
+        section: data.section,
+        payload: data.payload,
+        createdBy: data.createdBy,
+        notes: data.versionNotes ?? null,
+        appliedAt: null,
+        autoApply: data.autoApply ?? false,
+      }),
+    );
+
+    const override: ClinicTemplateOverride = {
+      id: 'override-1',
+      clinicId: targetClinic.id,
+      tenantId: targetClinic.tenantId,
+      templateClinicId: templateClinic.id,
+      section: 'general',
+      overrideVersion: 2,
+      overridePayload: { general: false },
+      overrideHash: 'hash-1',
+      baseTemplateVersionId: templateVersion.id,
+      baseTemplateVersionNumber: templateVersion.version,
+      createdBy: 'user-override',
+      createdAt: new Date('2025-01-10T00:00:00Z'),
+    };
+
+    (templateOverrideService.mergeWithActiveOverride as jest.Mock).mockResolvedValue({
+      payload: { general: false },
+      override,
+    });
+
+    const input: ClinicTemplatePropagationInput = {
+      tenantId: 'tenant-1',
+      templateClinicId: 'template',
+      targetClinicIds: ['clinic-a'],
+      sections: ['general'],
+      triggeredBy: 'user-1',
+    };
+
+    await useCase.executeOrThrow(input);
+
+    expect(templateOverrideService.markOverrideApplied).toHaveBeenCalledWith({
+      clinic: targetClinic,
+      section: 'general',
+      override,
+      appliedVersionId: 'propagated-version',
+      appliedAt: expect.any(Date),
+      updatedBy: 'user-1',
+    });
+    expect(clinicRepository.updateTemplateOverrideMetadata).not.toHaveBeenCalled();
+  });
+
+  it('lanca erro quando clinica template nao existe', async () => {
     (clinicRepository.findById as jest.Mock).mockResolvedValue(null);
 
     await expect(
@@ -179,13 +273,14 @@ describe('PropagateClinicTemplateUseCase', () => {
         sections: ['general'],
         triggeredBy: 'user-1',
       }),
-    ).rejects.toThrow('Clínica template não encontrada');
+    ).rejects.toThrow('Clinica template nao encontrada');
 
     expect(messageBus.publish).not.toHaveBeenCalled();
     expect(clinicRepository.updateTemplatePropagationMetadata).not.toHaveBeenCalled();
+    expect(clinicRepository.updateTemplateOverrideMetadata).not.toHaveBeenCalled();
   });
 
-  it('lança erro quando clínicas alvo são inválidas', async () => {
+  it('lanca erro quando clinicas alvo sao invalidas', async () => {
     const templateClinic = createClinic({ id: 'template', tenantId: 'tenant-1' });
     (clinicRepository.findById as jest.Mock).mockResolvedValue(templateClinic);
 
@@ -197,13 +292,14 @@ describe('PropagateClinicTemplateUseCase', () => {
         sections: ['general'],
         triggeredBy: 'user-1',
       }),
-    ).rejects.toThrow('Informe pelo menos uma clínica alvo válida');
+    ).rejects.toThrow('Informe pelo menos uma clinica alvo valida');
 
     expect(messageBus.publish).not.toHaveBeenCalled();
     expect(clinicRepository.updateTemplatePropagationMetadata).not.toHaveBeenCalled();
+    expect(clinicRepository.updateTemplateOverrideMetadata).not.toHaveBeenCalled();
   });
 
-  it('lança erro quando seção não possui versão aplicada', async () => {
+  it('lanca erro quando secao nao possui versao aplicada', async () => {
     const templateClinic = createClinic({ id: 'template', tenantId: 'tenant-1' });
     const targetClinic = createClinic({ id: 'clinic-a' });
 
@@ -223,13 +319,14 @@ describe('PropagateClinicTemplateUseCase', () => {
         sections: ['general'],
         triggeredBy: 'user-1',
       }),
-    ).rejects.toThrow('A clínica template não possui versão aplicada para a seção "general"');
+    ).rejects.toThrow('A clinica template nao possui versao aplicada para a secao "general"');
 
     expect(messageBus.publish).not.toHaveBeenCalled();
     expect(clinicRepository.updateTemplatePropagationMetadata).not.toHaveBeenCalled();
+    expect(clinicRepository.updateTemplateOverrideMetadata).not.toHaveBeenCalled();
   });
 
-  it('lança erro quando clínica alvo pertence a outro tenant', async () => {
+  it('lanca erro quando clinica alvo pertence a outro tenant', async () => {
     const templateClinic = createClinic({ id: 'template', tenantId: 'tenant-1' });
     const foreignClinic = createClinic({ id: 'clinic-foreign', tenantId: 'tenant-2' });
 
@@ -251,9 +348,10 @@ describe('PropagateClinicTemplateUseCase', () => {
         sections: ['general'],
         triggeredBy: 'user-1',
       }),
-    ).rejects.toThrow('Clínica alvo clinic-foreign pertence a outro tenant');
+    ).rejects.toThrow('Clinica alvo clinic-foreign pertence a outro tenant');
 
     expect(messageBus.publish).not.toHaveBeenCalled();
     expect(clinicRepository.updateTemplatePropagationMetadata).not.toHaveBeenCalled();
+    expect(clinicRepository.updateTemplateOverrideMetadata).not.toHaveBeenCalled();
   });
 });

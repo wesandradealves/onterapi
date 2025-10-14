@@ -21,6 +21,7 @@ import { ClinicAuditService } from '../../../infrastructure/clinic/services/clin
 import { MessageBus } from '../../../shared/messaging/message-bus';
 import { DomainEvents } from '../../../shared/events/domain-events';
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
+import { ClinicTemplateOverrideService } from '../services/clinic-template-override.service';
 
 @Injectable()
 export class PropagateClinicTemplateUseCase
@@ -36,6 +37,7 @@ export class PropagateClinicTemplateUseCase
     private readonly configurationRepository: IClinicConfigurationRepository,
     private readonly auditService: ClinicAuditService,
     private readonly messageBus: MessageBus,
+    private readonly templateOverrideService: ClinicTemplateOverrideService,
   ) {
     super();
   }
@@ -46,12 +48,12 @@ export class PropagateClinicTemplateUseCase
     const templateClinic = await this.clinicRepository.findById(input.templateClinicId);
 
     if (!templateClinic) {
-      throw ClinicErrorFactory.clinicNotFound('Clínica template não encontrada');
+      throw ClinicErrorFactory.clinicNotFound('Clinica template nao encontrada');
     }
 
     if (templateClinic.tenantId !== input.tenantId) {
       throw ClinicErrorFactory.invalidClinicData(
-        'Clínica template não pertence ao tenant informado',
+        'Clinica template nao pertence ao tenant informado',
       );
     }
 
@@ -60,7 +62,7 @@ export class PropagateClinicTemplateUseCase
     if (sections.length === 0) {
       throw ClinicErrorFactory.invalidConfiguration(
         'propagate',
-        'Informe pelo menos uma seção para propagação',
+        'Informe pelo menos uma secao para propagacao',
       );
     }
 
@@ -73,7 +75,7 @@ export class PropagateClinicTemplateUseCase
     if (targetClinicIds.length === 0) {
       throw ClinicErrorFactory.invalidConfiguration(
         'propagate',
-        'Informe pelo menos uma clínica alvo válida',
+        'Informe pelo menos uma clinica alvo valida',
       );
     }
 
@@ -87,7 +89,7 @@ export class PropagateClinicTemplateUseCase
 
       if (!templateVersion) {
         throw ClinicErrorFactory.configurationVersionNotFound(
-          `A clínica template não possui versão aplicada para a seção "${section}"`,
+          `A clinica template nao possui versao aplicada para a secao "${section}"`,
         );
       }
 
@@ -95,28 +97,31 @@ export class PropagateClinicTemplateUseCase
         const targetClinic = await this.clinicRepository.findById(targetClinicId);
 
         if (!targetClinic) {
-          throw ClinicErrorFactory.clinicNotFound(`Clínica alvo ${targetClinicId} não encontrada`);
+          throw ClinicErrorFactory.clinicNotFound(`Clinica alvo ${targetClinicId} nao encontrada`);
         }
 
         if (targetClinic.tenantId !== templateClinic.tenantId) {
           throw ClinicErrorFactory.invalidClinicData(
-            `Clínica alvo ${targetClinicId} pertence a outro tenant`,
+            `Clinica alvo ${targetClinicId} pertence a outro tenant`,
           );
         }
 
+        const { payload: mergedPayload, override } =
+          await this.templateOverrideService.mergeWithActiveOverride({
+            clinic: targetClinic,
+            section,
+            templateVersion,
+          });
+
         const versionNotes =
           input.versionNotes ??
-          `Propagado da clínica ${templateClinic.id} (seção ${section}, versão ${templateVersion.version})`;
-
-        const payloadCopy = templateVersion.payload
-          ? JSON.parse(JSON.stringify(templateVersion.payload))
-          : {};
+          `Propagado da clinica ${templateClinic.id} (secao ${section}, versao ${templateVersion.version})`;
 
         const createdVersion = await this.configurationRepository.createVersion({
           clinicId: targetClinic.id,
           tenantId: targetClinic.tenantId,
           section,
-          payload: payloadCopy,
+          payload: mergedPayload,
           versionNotes,
           createdBy: input.triggeredBy,
           autoApply: true,
@@ -142,12 +147,31 @@ export class PropagateClinicTemplateUseCase
           updatedBy: input.triggeredBy,
         });
 
+        if (override) {
+          await this.templateOverrideService.markOverrideApplied({
+            clinic: targetClinic,
+            section,
+            override,
+            appliedVersionId: createdVersion.id,
+            appliedAt,
+            updatedBy: input.triggeredBy,
+          });
+        } else {
+          await this.clinicRepository.updateTemplateOverrideMetadata({
+            clinicId: targetClinic.id,
+            tenantId: targetClinic.tenantId,
+            section,
+            override: null,
+          });
+        }
+
         await this.clinicRepository.updateTemplatePropagationMetadata({
           clinicId: targetClinic.id,
           tenantId: targetClinic.tenantId,
           section,
           templateClinicId: templateClinic.id,
           templateVersionId: templateVersion.id,
+          templateVersionNumber: templateVersion.version,
           propagatedVersionId: createdVersion.id,
           propagatedAt: appliedAt,
           triggeredBy: input.triggeredBy,

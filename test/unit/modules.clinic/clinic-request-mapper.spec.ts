@@ -1,5 +1,6 @@
 import {
   toClinicDashboardQuery,
+  toClinicManagementOverviewQuery,
   toConfirmClinicHoldInput,
   toCreateClinicHoldInput,
   toPropagateClinicTemplateInput,
@@ -20,6 +21,7 @@ import { CreateClinicHoldSchema } from '../../../src/modules/clinic/api/schemas/
 import { ConfirmClinicHoldSchema } from '../../../src/modules/clinic/api/schemas/confirm-clinic-hold.schema';
 import { GetClinicDashboardSchema } from '../../../src/modules/clinic/api/schemas/get-clinic-dashboard.schema';
 import { PropagateClinicTemplateSchema } from '../../../src/modules/clinic/api/schemas/propagate-clinic-template.schema';
+import { GetClinicManagementOverviewSchema } from '../../../src/modules/clinic/api/schemas/get-clinic-management-overview.schema';
 
 describe('ClinicRequestMapper - schedule settings', () => {
   const baseContext = {
@@ -510,5 +512,47 @@ describe('ClinicRequestMapper - hold flows', () => {
     const input = toConfirmClinicHoldInput('clinic-zz', 'hold-yy', body, baseContext);
 
     expect(input.tenantId).toBe(baseContext.tenantId);
+  });
+});
+describe('ClinicRequestMapper - management overview query', () => {
+  const context = { tenantId: 'tenant-context', userId: 'user-ctx' };
+
+  it('normaliza filtros e sinalizadores opcionais', () => {
+    const body: GetClinicManagementOverviewSchema = {
+      tenantId: 'tenant-body',
+      clinicIds: ['11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222'],
+      status: ['active', 'inactive'],
+      from: '2025-01-01T00:00:00Z',
+      to: '2025-01-31T23:59:59Z',
+      includeForecast: 'true',
+      includeComparisons: true,
+      includeAlerts: 'false',
+      includeTeamDistribution: 'true',
+    };
+
+    const query = toClinicManagementOverviewQuery(body, context);
+
+    expect(query.tenantId).toBe('tenant-body');
+    expect(query.filters?.clinicIds).toEqual(body.clinicIds);
+    expect(query.filters?.status).toEqual(body.status);
+    expect(query.filters?.from).toBeInstanceOf(Date);
+    expect(query.filters?.to).toBeInstanceOf(Date);
+    expect(query.includeForecast).toBe(true);
+    expect(query.includeComparisons).toBe(true);
+    expect(query.includeAlerts).toBe(false);
+    expect(query.includeTeamDistribution).toBe(true);
+  });
+
+  it('usa tenant do contexto e remove filtros vazios', () => {
+    const body: GetClinicManagementOverviewSchema = {};
+
+    const query = toClinicManagementOverviewQuery(body, context);
+
+    expect(query.tenantId).toBe(context.tenantId);
+    expect(query.filters).toBeUndefined();
+    expect(query.includeForecast).toBeUndefined();
+    expect(query.includeComparisons).toBeUndefined();
+    expect(query.includeAlerts).toBeUndefined();
+    expect(query.includeTeamDistribution).toBeUndefined();
   });
 });

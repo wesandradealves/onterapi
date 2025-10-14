@@ -4,17 +4,21 @@ import { In, IsNull, Repository } from 'typeorm';
 
 import {
   ClinicAlert,
+  ClinicAlertType,
   ClinicComparisonEntry,
   ClinicComparisonQuery,
   ClinicDashboardMetric,
   ClinicDashboardQuery,
   ClinicDashboardSnapshot,
+  ClinicFinancialSnapshot,
+  ClinicFinancialSummary,
   ClinicForecastProjection,
   TriggerClinicAlertInput,
 } from '../../../domain/clinic/types/clinic.types';
 import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
 import { IClinicMetricsRepository } from '../../../domain/clinic/interfaces/repositories/clinic-metrics.repository.interface';
 import { ClinicAlertEntity } from '../entities/clinic-alert.entity';
+import { ClinicFinancialSnapshotEntity } from '../entities/clinic-financial-snapshot.entity';
 import { ClinicDashboardMetricEntity } from '../entities/clinic-dashboard-metric.entity';
 import { ClinicForecastProjectionEntity } from '../entities/clinic-forecast-projection.entity';
 import { ClinicMemberEntity } from '../entities/clinic-member.entity';
@@ -31,6 +35,14 @@ interface AggregatedMetrics {
   periods: number;
 }
 
+interface AggregatedFinancialMetrics {
+  revenue: number;
+  expenses: number;
+  profit: number;
+  marginSum: number;
+  marginSamples: number;
+}
+
 @Injectable()
 export class ClinicMetricsRepository implements IClinicMetricsRepository {
   constructor(
@@ -40,6 +52,8 @@ export class ClinicMetricsRepository implements IClinicMetricsRepository {
     private readonly forecastRepository: Repository<ClinicForecastProjectionEntity>,
     @InjectRepository(ClinicAlertEntity)
     private readonly alertRepository: Repository<ClinicAlertEntity>,
+    @InjectRepository(ClinicFinancialSnapshotEntity)
+    private readonly financialRepository: Repository<ClinicFinancialSnapshotEntity>,
     @InjectRepository(ClinicMemberEntity)
     private readonly memberRepository: Repository<ClinicMemberEntity>,
     @InjectRepository(ClinicEntity)
@@ -230,6 +244,79 @@ export class ClinicMetricsRepository implements IClinicMetricsRepository {
     return entities.map(ClinicMapper.toForecastProjection);
   }
 
+  async getFinancialSummary(query: ClinicDashboardQuery): Promise<ClinicFinancialSummary> {
+    const periodStart = query.filters?.from ?? new Date(0);
+    const periodEnd = query.filters?.to ?? new Date();
+    const monthKeys = this.buildMonthKeys(periodStart, periodEnd);
+    const clinicFilter = query.filters?.clinicIds;
+
+    const entities = await this.financialRepository.find({
+      where: {
+        tenantId: query.tenantId,
+        ...(clinicFilter && clinicFilter.length > 0 ? { clinicId: In(clinicFilter) } : {}),
+        ...(monthKeys.length > 0 ? { month: In(monthKeys) } : {}),
+      },
+    });
+
+    if (entities.length === 0) {
+      return {
+        totalRevenue: 0,
+        totalExpenses: 0,
+        totalProfit: 0,
+        averageMargin: 0,
+        clinics: [],
+      };
+    }
+
+    const aggregated = this.aggregateFinancialSnapshots(
+      entities.map(ClinicMapper.toFinancialSnapshot),
+    );
+
+    const clinics: ClinicFinancialSnapshot[] = [];
+    let totalRevenue = 0;
+    let totalExpenses = 0;
+    let totalProfit = 0;
+    let marginAccumulator = 0;
+
+    aggregated.forEach((metrics, clinicId) => {
+      totalRevenue += metrics.revenue;
+      totalExpenses += metrics.expenses;
+      totalProfit += metrics.profit;
+
+      const margin =
+        metrics.marginSamples > 0
+          ? metrics.marginSum / metrics.marginSamples
+          : metrics.revenue > 0
+            ? (metrics.profit / metrics.revenue) * 100
+            : 0;
+
+      marginAccumulator += margin;
+
+      clinics.push({
+        clinicId,
+        revenue: metrics.revenue,
+        expenses: metrics.expenses,
+        profit: metrics.profit,
+        margin,
+        contributionPercentage: 0,
+      });
+    });
+
+    const averageMargin = clinics.length > 0 ? marginAccumulator / clinics.length : 0;
+    clinics.forEach((snapshot) => {
+      snapshot.contributionPercentage =
+        totalRevenue > 0 ? (snapshot.revenue / totalRevenue) * 100 : 0;
+    });
+
+    return {
+      totalRevenue,
+      totalExpenses,
+      totalProfit,
+      averageMargin,
+      clinics,
+    };
+  }
+
   async recordAlert(input: TriggerClinicAlertInput): Promise<ClinicAlert> {
     const entity = this.alertRepository.create({
       clinicId: input.clinicId,
@@ -248,24 +335,30 @@ export class ClinicMetricsRepository implements IClinicMetricsRepository {
     alertId: string;
     resolvedBy: string;
     resolvedAt?: Date;
-  }): Promise<void> {
+  }): Promise<ClinicAlert | null> {
     await this.alertRepository.update(
       { id: params.alertId },
       { resolvedAt: params.resolvedAt ?? new Date(), resolvedBy: params.resolvedBy },
     );
+
+    const entity = await this.alertRepository.findOne({ where: { id: params.alertId } });
+    return entity ? ClinicMapper.toAlert(entity) : null;
   }
 
   async listAlerts(params: {
-    clinicId: string;
     tenantId: string;
-    types?: string[];
+    clinicIds?: string[];
+    types?: ClinicAlertType[];
     activeOnly?: boolean;
     limit?: number;
   }): Promise<ClinicAlert[]> {
     const query = this.alertRepository
       .createQueryBuilder('alert')
-      .where('alert.clinic_id = :clinicId', { clinicId: params.clinicId })
-      .andWhere('alert.tenant_id = :tenantId', { tenantId: params.tenantId });
+      .where('alert.tenant_id = :tenantId', { tenantId: params.tenantId });
+
+    if (params.clinicIds && params.clinicIds.length > 0) {
+      query.andWhere('alert.clinic_id IN (:...clinicIds)', { clinicIds: params.clinicIds });
+    }
 
     if (params.types && params.types.length > 0) {
       query.andWhere('alert.type IN (:...types)', { types: params.types });
@@ -283,6 +376,11 @@ export class ClinicMetricsRepository implements IClinicMetricsRepository {
 
     const entities = await query.getMany();
     return entities.map(ClinicMapper.toAlert);
+  }
+
+  async findAlertById(alertId: string): Promise<ClinicAlert | null> {
+    const entity = await this.alertRepository.findOne({ where: { id: alertId } });
+    return entity ? ClinicMapper.toAlert(entity) : null;
   }
 
   private buildMonthKeys(from: Date, to: Date): string[] {
@@ -359,5 +457,28 @@ export class ClinicMetricsRepository implements IClinicMetricsRepository {
       return 0;
     }
     return ((current - previous) / previous) * 100;
+  }
+
+  private aggregateFinancialSnapshots(
+    snapshots: ClinicFinancialSnapshot[],
+  ): Map<string, AggregatedFinancialMetrics> {
+    return snapshots.reduce<Map<string, AggregatedFinancialMetrics>>((acc, snapshot) => {
+      const current = acc.get(snapshot.clinicId) ?? {
+        revenue: 0,
+        expenses: 0,
+        profit: 0,
+        marginSum: 0,
+        marginSamples: 0,
+      };
+
+      current.revenue += snapshot.revenue;
+      current.expenses += snapshot.expenses;
+      current.profit += snapshot.profit;
+      current.marginSum += snapshot.margin;
+      current.marginSamples += 1;
+
+      acc.set(snapshot.clinicId, current);
+      return acc;
+    }, new Map<string, AggregatedFinancialMetrics>());
   }
 }

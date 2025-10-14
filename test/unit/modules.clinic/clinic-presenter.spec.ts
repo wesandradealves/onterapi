@@ -1,7 +1,11 @@
-import { ClinicPresenter } from '../../../src/modules/clinic/api/presenters/clinic.presenter';
+﻿import { ClinicPresenter } from '../../../src/modules/clinic/api/presenters/clinic.presenter';
+import { RolesEnum } from '../../../src/domain/auth/enums/roles.enum';
 import {
   ClinicAppointmentConfirmationResult,
+  ClinicDashboardComparison,
+  ClinicDashboardForecast,
   ClinicInvitation,
+  ClinicManagementOverview,
   ClinicPaymentLedger,
 } from '../../../src/domain/clinic/types/clinic.types';
 
@@ -197,5 +201,140 @@ describe('ClinicPresenter.paymentLedger', () => {
     expect(dto.ledger.settlement).toBeUndefined();
     expect(dto.ledger.refund).toBeUndefined();
     expect(dto.ledger.chargeback).toBeUndefined();
+  });
+});
+
+describe('ClinicPresenter.managementOverview', () => {
+  it('converte overview de gestão em DTO', () => {
+    const overview: ClinicManagementOverview = {
+      period: {
+        start: new Date('2025-01-01T00:00:00Z'),
+        end: new Date('2025-01-31T23:59:59Z'),
+      },
+      totals: {
+        clinics: 1,
+        professionals: 3,
+        activePatients: 40,
+        revenue: 8000,
+      },
+      clinics: [
+        {
+          clinicId: 'clinic-a',
+          name: 'Clinic A',
+          slug: 'clinic-a',
+          status: 'active',
+          primaryOwnerId: 'owner-1',
+          lastActivityAt: new Date('2025-01-31T00:00:00Z'),
+          metrics: {
+            revenue: 8000,
+            appointments: 100,
+            activePatients: 40,
+            occupancyRate: 0.75,
+            satisfactionScore: 4.3,
+            contributionMargin: 0.25,
+          },
+          alerts: [
+            {
+              id: 'alert-1',
+              clinicId: 'clinic-a',
+              type: 'revenue_drop',
+              channel: 'in_app',
+              triggeredAt: new Date('2025-01-15T12:00:00Z'),
+              resolvedAt: undefined,
+              payload: { value: -8 },
+            },
+          ],
+          teamDistribution: [
+            { role: RolesEnum.CLINIC_OWNER, count: 1 },
+            { role: RolesEnum.MANAGER, count: 1 },
+            { role: RolesEnum.PROFESSIONAL, count: 2 },
+            { role: RolesEnum.SECRETARY, count: 1 },
+          ],
+          template: {
+            templateClinicId: 'template-1',
+            lastPropagationAt: new Date('2025-01-02T10:00:00Z'),
+            lastTriggeredBy: 'user-1',
+            sections: [
+              {
+                section: 'general',
+                templateVersionId: 'tv-1',
+                templateVersionNumber: 3,
+                propagatedVersionId: 'pv-1',
+                propagatedAt: new Date('2025-01-02T10:00:00Z'),
+                triggeredBy: 'user-1',
+                override: {
+                  overrideId: 'ov-1',
+                  overrideVersion: 2,
+                  overrideHash: 'hash',
+                  overrideUpdatedAt: new Date('2025-01-03T08:00:00Z'),
+                  overrideUpdatedBy: 'user-2',
+                  overrideAppliedVersionId: 'cv-1',
+                },
+              },
+            ],
+          },
+        },
+      ],
+      alerts: [],
+      comparisons: {
+        period: {
+          start: new Date('2025-01-01T00:00:00Z'),
+          end: new Date('2025-01-31T23:59:59Z'),
+        },
+        previousPeriod: {
+          start: new Date('2024-12-01T00:00:00Z'),
+          end: new Date('2024-12-31T23:59:59Z'),
+        },
+        metrics: [
+          {
+            metric: 'revenue',
+            entries: [
+              {
+                clinicId: 'clinic-a',
+                name: 'Clinic A',
+                revenue: 8000,
+                revenueVariationPercentage: 5,
+                appointments: 100,
+                appointmentsVariationPercentage: 4,
+                activePatients: 40,
+                activePatientsVariationPercentage: 3,
+                occupancyRate: 0.75,
+                occupancyVariationPercentage: 2,
+                satisfactionScore: 4.3,
+                satisfactionVariationPercentage: 1,
+                rankingPosition: 1,
+              },
+            ],
+          },
+        ],
+      } as ClinicDashboardComparison,
+      forecast: {
+        period: {
+          start: new Date('2025-02-01T00:00:00Z'),
+          end: new Date('2025-02-28T23:59:59Z'),
+        },
+        projections: [
+          {
+            clinicId: 'clinic-a',
+            month: '2025-02',
+            projectedRevenue: 8200,
+            projectedAppointments: 105,
+            projectedOccupancyRate: 0.77,
+          },
+        ],
+      } as ClinicDashboardForecast,
+    };
+
+    const dto = ClinicPresenter.managementOverview(overview);
+
+    expect(dto.clinics).toHaveLength(1);
+    expect(dto.clinics[0].metrics.revenue).toBe(8000);
+    expect(dto.clinics[0].teamDistribution?.[0]).toEqual({
+      role: RolesEnum.CLINIC_OWNER,
+      count: 1,
+    });
+    expect(dto.clinics[0].template?.sections[0].overrideId).toBe('ov-1');
+    expect(dto.comparisons?.metrics[0].entries[0].revenueVariationPercentage).toBe(5);
+    expect(dto.forecast?.projections[0].projectedRevenue).toBe(8200);
   });
 });

@@ -81,6 +81,73 @@ export class ClinicMemberRepository implements IClinicMemberRepository {
     return entity ? ClinicMapper.toMember(entity) : null;
   }
 
+  async findActiveByClinicAndUser(params: {
+    clinicId: string;
+    tenantId: string;
+    userId: string;
+  }): Promise<ClinicMember | null> {
+    const entity = await this.repository.findOne({
+      where: {
+        clinicId: params.clinicId,
+        tenantId: params.tenantId,
+        userId: params.userId,
+        endedAt: IsNull(),
+      },
+    });
+
+    return entity ? ClinicMapper.toMember(entity) : null;
+  }
+
+  async transferProfessional(params: {
+    tenantId: string;
+    professionalId: string;
+    fromClinicId: string;
+    toClinicId: string;
+    effectiveDate: Date;
+  }): Promise<{ fromMembership: ClinicMember; toMembership: ClinicMember }> {
+    return this.repository.manager.transaction(async (manager) => {
+      const repo = manager.getRepository(ClinicMemberEntity);
+
+      const activeMembership = await repo.findOne({
+        where: {
+          clinicId: params.fromClinicId,
+          tenantId: params.tenantId,
+          userId: params.professionalId,
+          endedAt: IsNull(),
+        },
+      });
+
+      if (!activeMembership) {
+        throw new Error('Active membership not found for transfer');
+      }
+
+      activeMembership.status =
+        activeMembership.status === 'suspended' ? activeMembership.status : 'inactive';
+      activeMembership.endedAt = params.effectiveDate;
+
+      await repo.save(activeMembership);
+
+      const newMembership = repo.create({
+        clinicId: params.toClinicId,
+        tenantId: params.tenantId,
+        userId: params.professionalId,
+        role: activeMembership.role,
+        status: activeMembership.status === 'suspended' ? 'suspended' : 'active',
+        scope: activeMembership.scope ?? [],
+        preferences: activeMembership.preferences ?? {},
+        joinedAt: params.effectiveDate,
+        suspendedAt: activeMembership.status === 'suspended' ? params.effectiveDate : null,
+      });
+
+      const savedNewMembership = await repo.save(newMembership);
+
+      return {
+        fromMembership: ClinicMapper.toMember(activeMembership),
+        toMembership: ClinicMapper.toMember(savedNewMembership),
+      };
+    });
+  }
+
   async listMembers(params: {
     clinicId: string;
     tenantId: string;

@@ -8,110 +8,125 @@ import {
 
 export class ClinicErrorFactory {
   static clinicNotFound(message: string): NotFoundException {
-    return new NotFoundException(message);
+    return new NotFoundException(this.sanitize(message));
   }
 
   static configurationVersionNotFound(message: string): NotFoundException {
-    return new NotFoundException(message);
+    return new NotFoundException(this.sanitize(message));
   }
 
   static serviceTypeNotFound(message: string): NotFoundException {
-    return new NotFoundException(message);
+    return new NotFoundException(this.sanitize(message));
   }
 
   static duplicateServiceType(message: string): ConflictException {
-    return new ConflictException(message);
+    return new ConflictException(this.sanitize(message));
   }
 
   static invalidHoldWindow(message: string): BadRequestException {
-    return new BadRequestException(message);
+    return new BadRequestException(this.sanitize(message));
   }
 
   static holdAlreadyExists(message: string): ConflictException {
-    return new ConflictException(message);
+    return new ConflictException(this.sanitize(message));
   }
 
   static holdNotFound(message: string): NotFoundException {
-    return new NotFoundException(message);
+    return new NotFoundException(this.sanitize(message));
   }
 
   static holdConfirmationNotAllowed(message: string): ForbiddenException {
-    return new ForbiddenException(message);
+    return new ForbiddenException(this.sanitize(message));
   }
 
   static invitationNotFound(message: string): NotFoundException {
-    return new NotFoundException(message);
+    return new NotFoundException(this.sanitize(message));
   }
 
   static invitationAlreadyProcessed(message: string): ConflictException {
-    return new ConflictException(message);
+    return new ConflictException(this.sanitize(message));
   }
 
   static invitationExpired(message: string): GoneException {
-    return new GoneException(message);
+    return new GoneException(this.sanitize(message));
   }
 
   static invitationInvalidToken(message: string): BadRequestException {
-    return new BadRequestException(message);
+    return new BadRequestException(this.sanitize(message));
   }
 
   static invitationAlreadyExists(message: string): ConflictException {
-    return new ConflictException(message);
+    return new ConflictException(this.sanitize(message));
   }
 
   static memberAlreadyExists(message: string): ConflictException {
-    return new ConflictException(message);
+    return new ConflictException(this.sanitize(message));
   }
 
   static quotaExceeded(message: string): ConflictException {
-    return new ConflictException(message);
+    return new ConflictException(this.sanitize(message));
   }
 
   static memberNotFound(message: string): NotFoundException {
-    return new NotFoundException(message);
+    return new NotFoundException(this.sanitize(message));
   }
 
   static clinicSlugInUse(message: string): ConflictException {
-    return new ConflictException(message);
+    return new ConflictException(this.sanitize(message));
   }
 
   static clinicDocumentInUse(message: string): ConflictException {
-    return new ConflictException(message);
+    return new ConflictException(this.sanitize(message));
   }
 
   static invalidClinicData(message: string): BadRequestException {
-    return new BadRequestException(message);
+    return new BadRequestException(this.sanitize(message));
   }
 
   static paymentConfigurationNotFound(message: string): NotFoundException {
-    return new NotFoundException(message);
+    return new NotFoundException(this.sanitize(message));
   }
 
   static paymentCredentialsNotFound(message: string): NotFoundException {
-    return new NotFoundException(message);
+    return new NotFoundException(this.sanitize(message));
   }
 
   static paymentCredentialsInvalid(message: string): BadRequestException {
-    return new BadRequestException(message);
+    return new BadRequestException(this.sanitize(message));
   }
 
   static invalidConfiguration(section: string, reason: string): BadRequestException {
-    return new BadRequestException(`Configuração inválida para a seção "${section}": ${reason}`);
+    const safeSection = this.sanitize(section);
+    const safeReason = this.sanitize(reason);
+    return new BadRequestException(
+      `Configuracao invalida para a secao "${safeSection}": ${safeReason}`,
+    );
   }
 
   static paymentVerificationFailed(message: string): BadRequestException {
-    return new BadRequestException(message);
+    return new BadRequestException(this.sanitize(message));
   }
 
   static paymentProviderNotSupported(message: string): BadRequestException {
-    return new BadRequestException(message);
+    return new BadRequestException(this.sanitize(message));
   }
 
   static paymentWebhookInvalid(message: string): BadRequestException {
-    return new BadRequestException(message);
+    return new BadRequestException(this.sanitize(message));
   }
 
   static paymentRecordNotFound(message: string): NotFoundException {
-    return new NotFoundException(message);
+    return new NotFoundException(this.sanitize(message));
+  }
+
+  private static sanitize(message: string): string {
+    if (!message) {
+      return '';
+    }
+
+    return message
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\x20-\x7E]/g, '');
   }
 }

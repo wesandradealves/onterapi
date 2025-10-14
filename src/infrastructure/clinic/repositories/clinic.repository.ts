@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import {
   Clinic,
   ClinicConfigurationSection,
+  ClinicConfigurationTelemetry,
   ClinicGeneralSettings,
   ClinicStatus,
   CreateClinicInput,
@@ -64,6 +65,36 @@ export class ClinicRepository implements IClinicRepository {
       where: { tenantId, slug },
     });
     return entity ? ClinicMapper.toClinic(entity) : null;
+  }
+
+  async findByIds(params: {
+    tenantId: string;
+    clinicIds: string[];
+    includeDeleted?: boolean;
+  }): Promise<Clinic[]> {
+    if (!params.clinicIds || params.clinicIds.length === 0) {
+      return [];
+    }
+
+    const entities = await this.repository.find({
+      where: {
+        tenantId: params.tenantId,
+        id: In(params.clinicIds),
+      },
+      ...(params.includeDeleted ? { withDeleted: true } : {}),
+    });
+
+    const clinics = entities.map(ClinicMapper.toClinic);
+    const order = new Map<string, number>();
+    params.clinicIds.forEach((id, index) => order.set(id, index));
+
+    clinics.sort((a, b) => {
+      const indexA = order.get(a.id) ?? 0;
+      const indexB = order.get(b.id) ?? 0;
+      return indexA - indexB;
+    });
+
+    return clinics;
   }
 
   async list(params: ListParams): Promise<{ data: Clinic[]; total: number }> {
@@ -175,6 +206,67 @@ export class ClinicRepository implements IClinicRepository {
     await this.repository.save(entity);
   }
 
+  async updateConfigurationTelemetry(params: {
+    clinicId: string;
+    tenantId: string;
+    section: ClinicConfigurationSection;
+    telemetry: ClinicConfigurationTelemetry;
+  }): Promise<void> {
+    const entity = await this.repository.findOne({
+      where: { id: params.clinicId, tenantId: params.tenantId },
+    });
+
+    if (!entity) {
+      throw new Error('Clinic not found');
+    }
+
+    const metadata = (entity.metadata ?? {}) as Record<string, unknown>;
+    const telemetryRaw = (metadata.configurationTelemetry ?? {}) as Record<string, unknown>;
+
+    const entry: Record<string, unknown> = {
+      section: params.section,
+      state: params.telemetry.state,
+      completionScore: Math.max(
+        0,
+        Math.min(100, Math.round(params.telemetry.completionScore ?? 0)),
+      ),
+    };
+
+    if (params.telemetry.lastAttemptAt) {
+      entry.lastAttemptAt = params.telemetry.lastAttemptAt.toISOString();
+    }
+
+    if (params.telemetry.lastSavedAt) {
+      entry.lastSavedAt = params.telemetry.lastSavedAt.toISOString();
+    }
+
+    if (params.telemetry.lastErrorAt) {
+      entry.lastErrorAt = params.telemetry.lastErrorAt.toISOString();
+    }
+
+    if (params.telemetry.lastErrorMessage) {
+      entry.lastErrorMessage = params.telemetry.lastErrorMessage;
+    }
+
+    if (params.telemetry.lastUpdatedBy) {
+      entry.lastUpdatedBy = params.telemetry.lastUpdatedBy;
+    }
+
+    if (params.telemetry.autosaveIntervalSeconds !== undefined) {
+      entry.autosaveIntervalSeconds = params.telemetry.autosaveIntervalSeconds;
+    }
+
+    if (params.telemetry.pendingConflicts !== undefined) {
+      entry.pendingConflicts = params.telemetry.pendingConflicts;
+    }
+
+    telemetryRaw[params.section] = entry;
+    metadata.configurationTelemetry = telemetryRaw;
+    entity.metadata = metadata;
+
+    await this.repository.save(entity);
+  }
+
   async updateGeneralProfile(params: {
     clinicId: string;
     tenantId: string;
@@ -220,6 +312,7 @@ export class ClinicRepository implements IClinicRepository {
     section: ClinicConfigurationSection;
     templateClinicId: string;
     templateVersionId: string;
+    templateVersionNumber: number;
     propagatedVersionId: string;
     propagatedAt: Date;
     triggeredBy: string;
@@ -238,6 +331,7 @@ export class ClinicRepository implements IClinicRepository {
 
     sectionsRaw[params.section] = {
       templateVersionId: params.templateVersionId,
+      templateVersionNumber: params.templateVersionNumber,
       propagatedVersionId: params.propagatedVersionId,
       propagatedAt: params.propagatedAt.toISOString(),
       triggeredBy: params.triggeredBy,
@@ -249,6 +343,53 @@ export class ClinicRepository implements IClinicRepository {
       lastTriggeredBy: params.triggeredBy,
       sections: sectionsRaw,
     };
+
+    entity.metadata = metadata;
+    await this.repository.save(entity);
+  }
+
+  async updateTemplateOverrideMetadata(params: {
+    clinicId: string;
+    tenantId: string;
+    section: ClinicConfigurationSection;
+    override?: {
+      overrideId: string;
+      overrideVersion: number;
+      overrideHash: string;
+      updatedAt: Date;
+      updatedBy: string;
+      appliedConfigurationVersionId?: string | null;
+    } | null;
+  }): Promise<void> {
+    const entity = await this.repository.findOne({
+      where: { id: params.clinicId, tenantId: params.tenantId },
+    });
+
+    if (!entity) {
+      throw new Error('Clinic not found');
+    }
+
+    const metadata = (entity.metadata ?? {}) as Record<string, unknown>;
+    const templatePropagation = (metadata.templatePropagation ?? {}) as Record<string, unknown>;
+    const sections = (templatePropagation.sections ?? {}) as Record<string, unknown>;
+    const sectionEntry = (sections[params.section] ?? {}) as Record<string, unknown>;
+
+    if (params.override) {
+      sectionEntry.override = {
+        overrideId: params.override.overrideId,
+        overrideVersion: params.override.overrideVersion,
+        overrideHash: params.override.overrideHash,
+        updatedAt: params.override.updatedAt.toISOString(),
+        updatedBy: params.override.updatedBy,
+        appliedConfigurationVersionId: params.override.appliedConfigurationVersionId ?? null,
+      };
+    } else {
+      delete sectionEntry.override;
+    }
+
+    sections[params.section] = sectionEntry;
+    templatePropagation.sections = sections;
+    metadata.templatePropagation = templatePropagation;
 
     entity.metadata = metadata;
     await this.repository.save(entity);

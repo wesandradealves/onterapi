@@ -12,6 +12,21 @@ export type ClinicConfigurationSection =
   | 'notifications'
   | 'branding';
 
+export type ClinicConfigurationState = 'idle' | 'saving' | 'saved' | 'error';
+
+export interface ClinicConfigurationTelemetry {
+  section: ClinicConfigurationSection;
+  state: ClinicConfigurationState;
+  completionScore: number;
+  lastAttemptAt?: Date;
+  lastSavedAt?: Date;
+  lastErrorAt?: Date;
+  lastErrorMessage?: string;
+  lastUpdatedBy?: string;
+  autosaveIntervalSeconds?: number;
+  pendingConflicts?: number;
+}
+
 export type ClinicStaffRole =
   | RolesEnum.CLINIC_OWNER
   | RolesEnum.MANAGER
@@ -581,6 +596,7 @@ export interface ClinicConfigurationVersion {
   appliedAt?: Date;
   notes?: string;
   autoApply: boolean;
+  telemetry?: ClinicConfigurationTelemetry;
 }
 
 export interface Clinic {
@@ -592,6 +608,9 @@ export interface Clinic {
   document?: ClinicDocument;
   primaryOwnerId: string;
   configurationVersions?: Partial<Record<ClinicConfigurationSection, string>>;
+  configurationTelemetry?: Partial<
+    Record<ClinicConfigurationSection, ClinicConfigurationTelemetry>
+  >;
   holdSettings: ClinicHoldSettings;
   createdAt: Date;
   updatedAt: Date;
@@ -759,10 +778,13 @@ export interface ClinicForecastProjection {
 export interface ClinicAlert {
   id: string;
   clinicId: string;
+  tenantId: string;
   type: ClinicAlertType;
   channel: ClinicAlertChannel;
+  triggeredBy: string;
   triggeredAt: Date;
   resolvedAt?: Date;
+  resolvedBy?: string;
   payload: Record<string, unknown>;
 }
 
@@ -780,6 +802,106 @@ export interface ClinicDashboardComparison {
 export interface ClinicDashboardForecast {
   period: { start: Date; end: Date };
   projections: ClinicForecastProjection[];
+}
+
+export interface ClinicManagementOverviewQuery {
+  tenantId: string;
+  filters?: {
+    clinicIds?: string[];
+    status?: ClinicStatus[];
+    from?: Date;
+    to?: Date;
+  };
+  includeForecast?: boolean;
+  includeComparisons?: boolean;
+  includeAlerts?: boolean;
+  includeTeamDistribution?: boolean;
+  includeFinancials?: boolean;
+}
+
+export interface ClinicManagementAlertsQuery {
+  tenantId: string;
+  clinicIds?: string[];
+  types?: ClinicAlertType[];
+  activeOnly?: boolean;
+  limit?: number;
+}
+
+export interface ClinicManagementTeamDistributionEntry {
+  role: ClinicStaffRole;
+  count: number;
+}
+
+export interface ClinicManagementTemplateSectionInfo {
+  section: ClinicConfigurationSection;
+  templateVersionId: string;
+  templateVersionNumber?: number;
+  propagatedVersionId?: string;
+  propagatedAt?: Date;
+  triggeredBy?: string;
+  override?: {
+    overrideId: string;
+    overrideVersion: number;
+    overrideHash?: string;
+    overrideUpdatedAt?: Date;
+    overrideUpdatedBy?: string;
+    overrideAppliedVersionId?: string | null;
+  };
+}
+
+export interface ClinicManagementTemplateInfo {
+  templateClinicId?: string;
+  lastPropagationAt?: Date;
+  lastTriggeredBy?: string;
+  sections: ClinicManagementTemplateSectionInfo[];
+}
+
+export interface ClinicFinancialSnapshot {
+  clinicId: string;
+  revenue: number;
+  expenses: number;
+  profit: number;
+  margin: number;
+  contributionPercentage: number;
+}
+
+export interface ClinicFinancialSummary {
+  totalRevenue: number;
+  totalExpenses: number;
+  totalProfit: number;
+  averageMargin: number;
+  clinics: ClinicFinancialSnapshot[];
+}
+
+export interface ClinicManagementClinicSummary {
+  clinicId: string;
+  name: string;
+  slug?: string;
+  status: ClinicStatus;
+  primaryOwnerId?: string;
+  lastActivityAt?: Date;
+  metrics: {
+    revenue: number;
+    appointments: number;
+    activePatients: number;
+    occupancyRate: number;
+    satisfactionScore?: number;
+    contributionMargin?: number;
+  };
+  financials?: ClinicFinancialSnapshot;
+  alerts: ClinicAlert[];
+  teamDistribution?: ClinicManagementTeamDistributionEntry[];
+  template?: ClinicManagementTemplateInfo;
+}
+
+export interface ClinicManagementOverview {
+  period: { start: Date; end: Date };
+  totals: ClinicDashboardSnapshot['totals'];
+  clinics: ClinicManagementClinicSummary[];
+  alerts: ClinicAlert[];
+  comparisons?: ClinicDashboardComparison;
+  forecast?: ClinicDashboardForecast;
+  financials?: ClinicFinancialSummary;
 }
 
 export interface CreateClinicInput {
@@ -1023,6 +1145,84 @@ export interface ClinicTemplatePropagationInput {
   sections: ClinicConfigurationSection[];
   versionNotes?: string;
   triggeredBy: string;
+}
+
+export interface ClinicProfessionalTransferResult {
+  fromMembership: ClinicMember;
+  toMembership: ClinicMember;
+  effectiveDate: Date;
+  transferPatients: boolean;
+}
+
+export interface TransferClinicProfessionalInput {
+  tenantId: string;
+  professionalId: string;
+  fromClinicId: string;
+  toClinicId: string;
+  effectiveDate: Date;
+  transferPatients: boolean;
+  performedBy: string;
+}
+
+export interface ClinicTemplateOverride {
+  id: string;
+  clinicId: string;
+  tenantId: string;
+  templateClinicId: string;
+  section: ClinicConfigurationSection;
+  overrideVersion: number;
+  overridePayload: Record<string, unknown>;
+  overrideHash: string;
+  baseTemplateVersionId: string;
+  baseTemplateVersionNumber: number;
+  appliedConfigurationVersionId?: string;
+  createdBy: string;
+  createdAt: Date;
+  supersededAt?: Date;
+  supersededBy?: string;
+}
+
+export interface CreateClinicTemplateOverrideInput {
+  clinicId: string;
+  tenantId: string;
+  templateClinicId: string;
+  section: ClinicConfigurationSection;
+  baseTemplateVersionId: string;
+  baseTemplateVersionNumber: number;
+  overridePayload: Record<string, unknown>;
+  overrideHash: string;
+  createdBy: string;
+}
+
+export interface FindClinicTemplateOverrideParams {
+  clinicId: string;
+  tenantId: string;
+  section: ClinicConfigurationSection;
+}
+
+export interface SupersedeClinicTemplateOverrideInput {
+  overrideId: string;
+  supersededBy: string;
+  supersededAt?: Date;
+}
+
+export interface UpdateClinicTemplateOverrideAppliedInput {
+  overrideId: string;
+  appliedConfigurationVersionId: string | null;
+  appliedAt: Date;
+}
+
+export interface UpdateClinicTemplateOverrideBaseVersionInput {
+  overrideId: string;
+  baseTemplateVersionId: string;
+  baseTemplateVersionNumber: number;
+}
+
+export interface ResolveClinicAlertInput {
+  tenantId: string;
+  alertId: string;
+  resolvedBy: string;
+  resolvedAt?: Date;
 }
 
 export interface TriggerClinicAlertInput {

@@ -1,22 +1,35 @@
 import {
   Clinic,
+  ClinicAlert,
   ClinicAppointmentConfirmationResult,
+  ClinicConfigurationTelemetry,
   ClinicConfigurationVersion,
+  ClinicDashboardComparison,
+  ClinicDashboardForecast,
   ClinicDashboardSnapshot,
   ClinicEconomicAgreement,
+  ClinicFinancialSnapshot,
+  ClinicFinancialSummary,
   ClinicHold,
   ClinicInvitation,
+  ClinicManagementClinicSummary,
+  ClinicManagementOverview,
+  ClinicManagementTemplateInfo,
   ClinicMember,
   ClinicPaymentLedger,
   ClinicPaymentLedgerEventEntry,
   ClinicPaymentSplitAllocation,
+  ClinicProfessionalTransferResult,
   ClinicServiceCustomField,
   ClinicServiceTypeDefinition,
   ClinicPaymentLedgerChargeback as DomainClinicPaymentLedgerChargeback,
   ClinicPaymentLedgerRefund as DomainClinicPaymentLedgerRefund,
   ClinicPaymentLedgerSettlement as DomainClinicPaymentLedgerSettlement,
 } from '../../../../domain/clinic/types/clinic.types';
-import { ClinicConfigurationVersionResponseDto } from '../dtos/clinic-configuration-response.dto';
+import {
+  ClinicConfigurationTelemetryResponseDto,
+  ClinicConfigurationVersionResponseDto,
+} from '../dtos/clinic-configuration-response.dto';
 import { ClinicHoldResponseDto } from '../dtos/clinic-hold-response.dto';
 import { ClinicAppointmentConfirmationResponseDto } from '../dtos/clinic-appointment-confirmation-response.dto';
 import { ClinicSummaryDto } from '../dtos/clinic-summary.dto';
@@ -25,7 +38,10 @@ import {
   ClinicGeneralSettingsResponseDto,
 } from '../dtos/clinic-general-settings-response.dto';
 import { ClinicDetailsDto } from '../dtos/clinic-details.dto';
-import { ClinicDashboardResponseDto } from '../dtos/clinic-dashboard-response.dto';
+import {
+  ClinicDashboardAlertDto,
+  ClinicDashboardResponseDto,
+} from '../dtos/clinic-dashboard-response.dto';
 import {
   ClinicServiceCancellationPolicyDto,
   ClinicServiceCustomFieldDto,
@@ -76,6 +92,15 @@ import {
   ClinicTemplatePropagationResponseDto,
   ClinicTemplatePropagationSectionDto,
 } from '../dtos/clinic-template-propagation-response.dto';
+import { ClinicProfessionalTransferResponseDto } from '../dtos/clinic-professional-transfer-response.dto';
+import {
+  ClinicManagementClinicFinancialsDto,
+  ClinicManagementClinicMetricsDto,
+  ClinicManagementClinicSummaryDto,
+  ClinicManagementFinancialSummaryDto,
+  ClinicManagementOverviewResponseDto,
+  ClinicManagementTeamDistributionDto,
+} from '../dtos/clinic-management-overview-response.dto';
 
 export class ClinicPresenter {
   static configuration(version: ClinicConfigurationVersion): ClinicConfigurationVersionResponseDto {
@@ -90,7 +115,22 @@ export class ClinicPresenter {
       notes: version.notes,
       state: ClinicPresenter.resolveConfigurationState(version),
       autoApply: version.autoApply,
+      telemetry: ClinicPresenter.mapTelemetry(version.telemetry),
       payload: version.payload,
+    };
+  }
+
+  static managementOverview(
+    overview: ClinicManagementOverview,
+  ): ClinicManagementOverviewResponseDto {
+    return {
+      period: overview.period,
+      totals: overview.totals,
+      clinics: overview.clinics.map((clinic) => ClinicPresenter.mapManagementClinicSummary(clinic)),
+      alerts: overview.alerts.map((alert) => ClinicPresenter.alert(alert)),
+      comparisons: ClinicPresenter.mapDashboardComparison(overview.comparisons),
+      forecast: ClinicPresenter.mapDashboardForecast(overview.forecast),
+      financials: ClinicPresenter.mapManagementFinancialSummary(overview.financials),
     };
   }
 
@@ -132,6 +172,17 @@ export class ClinicPresenter {
       const propagatedVersionId = sectionData.propagatedVersionId;
       const propagatedAt = ClinicPresenter.toDate(sectionData.propagatedAt);
       const triggeredBy = sectionData.triggeredBy;
+      const templateVersionNumber =
+        typeof sectionData.templateVersionNumber === 'number'
+          ? Number(sectionData.templateVersionNumber)
+          : undefined;
+      const overrideRaw =
+        sectionData.override && typeof sectionData.override === 'object'
+          ? (sectionData.override as Record<string, unknown>)
+          : undefined;
+      const overrideUpdatedAt = overrideRaw
+        ? ClinicPresenter.toDate(overrideRaw.updatedAt)
+        : undefined;
 
       if (
         typeof templateVersionId !== 'string' ||
@@ -145,9 +196,31 @@ export class ClinicPresenter {
       sections.push({
         section,
         templateVersionId,
+        templateVersionNumber,
         propagatedVersionId,
         propagatedAt,
         triggeredBy,
+        overrideId:
+          overrideRaw && typeof overrideRaw.overrideId === 'string'
+            ? overrideRaw.overrideId
+            : undefined,
+        overrideVersion:
+          overrideRaw && typeof overrideRaw.overrideVersion === 'number'
+            ? Number(overrideRaw.overrideVersion)
+            : undefined,
+        overrideHash:
+          overrideRaw && typeof overrideRaw.overrideHash === 'string'
+            ? overrideRaw.overrideHash
+            : undefined,
+        overrideUpdatedAt,
+        overrideUpdatedBy:
+          overrideRaw && typeof overrideRaw.updatedBy === 'string'
+            ? overrideRaw.updatedBy
+            : undefined,
+        overrideAppliedVersionId:
+          overrideRaw && typeof overrideRaw.appliedConfigurationVersionId === 'string'
+            ? overrideRaw.appliedConfigurationVersionId
+            : undefined,
       });
     });
 
@@ -238,6 +311,7 @@ export class ClinicPresenter {
       notes: version.notes ?? undefined,
       state: ClinicPresenter.resolveConfigurationState(version),
       autoApply: version.autoApply,
+      telemetry: ClinicPresenter.mapTelemetry(version.telemetry),
       payload: ClinicPresenter.mapTeamSettingsPayload(version.payload ?? {}),
     };
   }
@@ -254,6 +328,7 @@ export class ClinicPresenter {
       notes: version.notes ?? undefined,
       state: ClinicPresenter.resolveConfigurationState(version),
       autoApply: version.autoApply,
+      telemetry: ClinicPresenter.mapTelemetry(version.telemetry),
       payload: ClinicPresenter.mapScheduleSettingsPayload(version.payload ?? {}),
     };
   }
@@ -270,6 +345,7 @@ export class ClinicPresenter {
       notes: version.notes ?? undefined,
       state: ClinicPresenter.resolveConfigurationState(version),
       autoApply: version.autoApply,
+      telemetry: ClinicPresenter.mapTelemetry(version.telemetry),
       services: ClinicPresenter.mapServiceSettingsPayload(version.payload ?? {}),
     };
   }
@@ -286,6 +362,7 @@ export class ClinicPresenter {
       notes: version.notes ?? undefined,
       state: ClinicPresenter.resolveConfigurationState(version),
       autoApply: version.autoApply,
+      telemetry: ClinicPresenter.mapTelemetry(version.telemetry),
       payload: ClinicPresenter.mapPaymentSettingsPayload(version.payload ?? {}),
     };
   }
@@ -304,6 +381,7 @@ export class ClinicPresenter {
       notes: version.notes ?? undefined,
       state: ClinicPresenter.resolveConfigurationState(version),
       autoApply: version.autoApply,
+      telemetry: ClinicPresenter.mapTelemetry(version.telemetry),
       payload: ClinicPresenter.mapIntegrationSettingsPayload(version.payload ?? {}),
     };
   }
@@ -322,6 +400,7 @@ export class ClinicPresenter {
       notes: version.notes ?? undefined,
       state: ClinicPresenter.resolveConfigurationState(version),
       autoApply: version.autoApply,
+      telemetry: ClinicPresenter.mapTelemetry(version.telemetry),
       payload: ClinicPresenter.mapNotificationSettingsPayload(version.payload ?? {}),
     };
   }
@@ -338,6 +417,7 @@ export class ClinicPresenter {
       notes: version.notes ?? undefined,
       state: ClinicPresenter.resolveConfigurationState(version),
       autoApply: version.autoApply,
+      telemetry: ClinicPresenter.mapTelemetry(version.telemetry),
       payload: ClinicPresenter.mapBrandingSettingsPayload(version.payload ?? {}),
     };
   }
@@ -388,22 +468,8 @@ export class ClinicPresenter {
       totals: snapshot.totals,
       metrics: snapshot.metrics.map((metric) => ({ ...metric })),
       alerts: snapshot.alerts.map((alert) => ({ ...alert })),
-      comparisons: snapshot.comparisons
-        ? {
-            period: { ...snapshot.comparisons.period },
-            previousPeriod: { ...snapshot.comparisons.previousPeriod },
-            metrics: snapshot.comparisons.metrics.map((metric) => ({
-              metric: metric.metric,
-              entries: metric.entries.map((entry) => ({ ...entry })),
-            })),
-          }
-        : undefined,
-      forecast: snapshot.forecast
-        ? {
-            period: { ...snapshot.forecast.period },
-            projections: snapshot.forecast.projections.map((projection) => ({ ...projection })),
-          }
-        : undefined,
+      comparisons: ClinicPresenter.mapDashboardComparison(snapshot.comparisons),
+      forecast: ClinicPresenter.mapDashboardForecast(snapshot.forecast),
     };
   }
 
@@ -488,6 +554,32 @@ export class ClinicPresenter {
       endedAt: member.endedAt ?? undefined,
       createdAt: member.createdAt,
       updatedAt: member.updatedAt,
+    };
+  }
+
+  static alert(alert: ClinicAlert): ClinicDashboardAlertDto {
+    return {
+      id: alert.id,
+      clinicId: alert.clinicId,
+      tenantId: alert.tenantId,
+      type: alert.type,
+      channel: alert.channel,
+      triggeredBy: alert.triggeredBy,
+      triggeredAt: alert.triggeredAt,
+      resolvedAt: alert.resolvedAt ?? undefined,
+      resolvedBy: alert.resolvedBy ?? undefined,
+      payload: alert.payload ?? {},
+    };
+  }
+
+  static professionalTransfer(
+    result: ClinicProfessionalTransferResult,
+  ): ClinicProfessionalTransferResponseDto {
+    return {
+      fromMembership: ClinicPresenter.member(result.fromMembership),
+      toMembership: ClinicPresenter.member(result.toMembership),
+      effectiveDate: result.effectiveDate,
+      transferPatients: result.transferPatients,
     };
   }
 
@@ -690,6 +782,161 @@ export class ClinicPresenter {
     }
 
     return Math.round(scaled) / multiplier;
+  }
+
+  private static mapManagementClinicSummary(
+    summary: ClinicManagementClinicSummary,
+  ): ClinicManagementClinicSummaryDto {
+    return {
+      clinicId: summary.clinicId,
+      name: summary.name,
+      slug: summary.slug,
+      status: summary.status,
+      primaryOwnerId: summary.primaryOwnerId,
+      lastActivityAt: summary.lastActivityAt,
+      metrics: ClinicPresenter.mapManagementMetrics(summary.metrics),
+      financials: ClinicPresenter.mapClinicFinancials(summary.financials),
+      alerts: summary.alerts.map((alert) => ClinicPresenter.alert(alert)),
+      teamDistribution: ClinicPresenter.mapTeamDistribution(summary.teamDistribution),
+      template: ClinicPresenter.mapManagementTemplateInfo(summary.template),
+    };
+  }
+
+  private static mapManagementMetrics(
+    metrics: ClinicManagementClinicSummary['metrics'],
+  ): ClinicManagementClinicMetricsDto {
+    return {
+      revenue: metrics.revenue,
+      appointments: metrics.appointments,
+      activePatients: metrics.activePatients,
+      occupancyRate: metrics.occupancyRate,
+      satisfactionScore: metrics.satisfactionScore,
+      contributionMargin: metrics.contributionMargin,
+    };
+  }
+
+  private static mapClinicFinancials(
+    financials?: ClinicFinancialSnapshot,
+  ): ClinicManagementClinicFinancialsDto | undefined {
+    if (!financials) {
+      return undefined;
+    }
+
+    return {
+      revenue: financials.revenue,
+      expenses: financials.expenses,
+      profit: financials.profit,
+      margin: financials.margin,
+      contributionPercentage: financials.contributionPercentage,
+    };
+  }
+
+  private static mapTeamDistribution(
+    distribution: ClinicManagementClinicSummary['teamDistribution'],
+  ): ClinicManagementTeamDistributionDto[] | undefined {
+    if (!distribution) {
+      return undefined;
+    }
+
+    return distribution.map((entry) => ({
+      role: entry.role,
+      count: entry.count,
+    }));
+  }
+
+  private static mapManagementTemplateInfo(
+    template?: ClinicManagementTemplateInfo,
+  ): ClinicTemplatePropagationResponseDto | undefined {
+    if (!template) {
+      return undefined;
+    }
+
+    const sections: ClinicTemplatePropagationSectionDto[] = [];
+
+    template.sections.forEach((section) => {
+      if (
+        !section.templateVersionId ||
+        !section.propagatedVersionId ||
+        !section.triggeredBy ||
+        !section.propagatedAt
+      ) {
+        return;
+      }
+
+      sections.push({
+        section: section.section,
+        templateVersionId: section.templateVersionId,
+        templateVersionNumber: section.templateVersionNumber,
+        propagatedVersionId: section.propagatedVersionId,
+        propagatedAt: section.propagatedAt,
+        triggeredBy: section.triggeredBy,
+        overrideId: section.override?.overrideId,
+        overrideVersion: section.override?.overrideVersion,
+        overrideHash: section.override?.overrideHash,
+        overrideUpdatedAt: section.override?.overrideUpdatedAt,
+        overrideUpdatedBy: section.override?.overrideUpdatedBy,
+        overrideAppliedVersionId: section.override?.overrideAppliedVersionId ?? undefined,
+      });
+    });
+
+    if (sections.length === 0 && !template.templateClinicId) {
+      return undefined;
+    }
+
+    return {
+      templateClinicId: template.templateClinicId,
+      lastPropagationAt: template.lastPropagationAt,
+      lastTriggeredBy: template.lastTriggeredBy,
+      sections,
+    };
+  }
+
+  private static mapManagementFinancialSummary(
+    summary?: ClinicFinancialSummary,
+  ): ClinicManagementFinancialSummaryDto | undefined {
+    if (!summary) {
+      return undefined;
+    }
+
+    return {
+      totalRevenue: summary.totalRevenue,
+      totalExpenses: summary.totalExpenses,
+      totalProfit: summary.totalProfit,
+      averageMargin: summary.averageMargin,
+      clinics: summary.clinics
+        .map((clinic) => ClinicPresenter.mapClinicFinancials(clinic))
+        .filter((clinic): clinic is ClinicManagementClinicFinancialsDto => clinic !== undefined),
+    };
+  }
+
+  private static mapDashboardComparison(
+    comparison?: ClinicDashboardComparison,
+  ): ClinicDashboardResponseDto['comparisons'] {
+    if (!comparison) {
+      return undefined;
+    }
+
+    return {
+      period: { ...comparison.period },
+      previousPeriod: { ...comparison.previousPeriod },
+      metrics: comparison.metrics.map((metric) => ({
+        metric: metric.metric,
+        entries: metric.entries.map((entry) => ({ ...entry })),
+      })),
+    };
+  }
+
+  private static mapDashboardForecast(
+    forecast?: ClinicDashboardForecast,
+  ): ClinicDashboardResponseDto['forecast'] {
+    if (!forecast) {
+      return undefined;
+    }
+
+    return {
+      period: { ...forecast.period },
+      projections: forecast.projections.map((projection) => ({ ...projection })),
+    };
   }
 
   private static mapHoldSettings(clinic: Clinic): ClinicSummaryDto['holdSettings'] {
@@ -1542,6 +1789,26 @@ export class ClinicPresenter {
       preview,
       versionLabel: branding.versionLabel !== undefined ? String(branding.versionLabel) : undefined,
       metadata,
+    };
+  }
+
+  private static mapTelemetry(
+    telemetry: ClinicConfigurationTelemetry | undefined,
+  ): ClinicConfigurationTelemetryResponseDto | undefined {
+    if (!telemetry) {
+      return undefined;
+    }
+
+    return {
+      state: telemetry.state,
+      completionScore: telemetry.completionScore,
+      lastAttemptAt: telemetry.lastAttemptAt ?? undefined,
+      lastSavedAt: telemetry.lastSavedAt ?? undefined,
+      lastErrorAt: telemetry.lastErrorAt ?? undefined,
+      lastErrorMessage: telemetry.lastErrorMessage ?? undefined,
+      lastUpdatedBy: telemetry.lastUpdatedBy ?? undefined,
+      autosaveIntervalSeconds: telemetry.autosaveIntervalSeconds ?? undefined,
+      pendingConflicts: telemetry.pendingConflicts ?? undefined,
     };
   }
 

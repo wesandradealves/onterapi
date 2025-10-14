@@ -7,6 +7,9 @@ export class ClinicTemplatePropagationSectionDto {
   @ApiProperty()
   templateVersionId!: string;
 
+  @ApiPropertyOptional()
+  templateVersionNumber?: number;
+
   @ApiProperty()
   propagatedVersionId!: string;
 
@@ -15,6 +18,24 @@ export class ClinicTemplatePropagationSectionDto {
 
   @ApiProperty()
   triggeredBy!: string;
+
+  @ApiPropertyOptional()
+  overrideId?: string;
+
+  @ApiPropertyOptional()
+  overrideVersion?: number;
+
+  @ApiPropertyOptional()
+  overrideHash?: string;
+
+  @ApiPropertyOptional({ type: String })
+  overrideUpdatedAt?: Date;
+
+  @ApiPropertyOptional()
+  overrideUpdatedBy?: string;
+
+  @ApiPropertyOptional()
+  overrideAppliedVersionId?: string;
 }
 
 export class ClinicTemplatePropagationResponseDto {

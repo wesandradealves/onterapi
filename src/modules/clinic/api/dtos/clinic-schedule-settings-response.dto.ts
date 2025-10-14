@@ -1,5 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+import { ClinicConfigurationTelemetryResponseDto } from './clinic-configuration-response.dto';
+
 export class ClinicScheduleIntervalDto {
   @ApiProperty()
   start!: string;
@@ -101,8 +103,15 @@ export class ClinicScheduleSettingsResponseDto {
   @ApiProperty({ enum: ['idle', 'saving', 'saved', 'error'] })
   state!: 'idle' | 'saving' | 'saved' | 'error';
 
-  @ApiProperty({ description: 'Indica se a configuração é aplicada automaticamente' })
+  @ApiProperty({ description: 'Indica se a configuracao e aplicada automaticamente' })
   autoApply!: boolean;
+
+  @ApiProperty({
+    description: 'Telemetria da configuracao',
+    type: ClinicConfigurationTelemetryResponseDto,
+    required: false,
+  })
+  telemetry?: ClinicConfigurationTelemetryResponseDto;
 
   @ApiProperty({ type: ClinicScheduleSettingsPayloadDto })
   payload!: ClinicScheduleSettingsPayloadDto;

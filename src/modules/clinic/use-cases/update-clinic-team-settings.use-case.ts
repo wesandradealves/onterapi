@@ -19,6 +19,9 @@ import {
 } from '../../../domain/clinic/types/clinic.types';
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
 import { ClinicConfigurationValidator } from '../services/clinic-configuration-validator.service';
+import { ClinicTemplateOverrideService } from '../services/clinic-template-override.service';
+import { ClinicConfigurationTelemetryService } from '../services/clinic-configuration-telemetry.service';
+import { ClinicConfigurationCacheService } from '../services/clinic-configuration-cache.service';
 
 @Injectable()
 export class UpdateClinicTeamSettingsUseCase
@@ -33,6 +36,9 @@ export class UpdateClinicTeamSettingsUseCase
     @Inject(IClinicConfigurationRepositoryToken)
     private readonly configurationRepository: IClinicConfigurationRepository,
     private readonly configurationValidator: ClinicConfigurationValidator,
+    private readonly templateOverrideService: ClinicTemplateOverrideService,
+    private readonly telemetryService: ClinicConfigurationTelemetryService,
+    private readonly configurationCache: ClinicConfigurationCacheService,
   ) {
     super();
   }
@@ -46,38 +52,79 @@ export class UpdateClinicTeamSettingsUseCase
       throw ClinicErrorFactory.clinicNotFound('Clínica não encontrada');
     }
 
-    await this.configurationValidator.validateTeamSettings(clinic, input.teamSettings);
-
     const payload = JSON.parse(JSON.stringify(input.teamSettings ?? {}));
 
-    const version = await this.configurationRepository.createVersion({
-      clinicId: input.clinicId,
-      tenantId: input.tenantId,
+    await this.telemetryService.markSaving({
+      clinic,
       section: 'team',
+      requestedBy: input.requestedBy,
       payload,
-      createdBy: input.requestedBy,
-      autoApply: true,
     });
 
-    await this.configurationRepository.applyVersion({
-      clinicId: input.clinicId,
-      tenantId: input.tenantId,
-      section: 'team',
-      versionId: version.id,
-      appliedBy: input.requestedBy,
-    });
+    try {
+      await this.configurationValidator.validateTeamSettings(clinic, input.teamSettings);
 
-    version.appliedAt = new Date();
+      const version = await this.configurationRepository.createVersion({
+        clinicId: input.clinicId,
+        tenantId: input.tenantId,
+        section: 'team',
+        payload,
+        createdBy: input.requestedBy,
+        autoApply: true,
+      });
 
-    await this.clinicRepository.setCurrentConfigurationVersion({
-      clinicId: input.clinicId,
-      tenantId: input.tenantId,
-      section: 'team',
-      versionId: version.id,
-      updatedBy: input.requestedBy,
-    });
+      await this.configurationRepository.applyVersion({
+        clinicId: input.clinicId,
+        tenantId: input.tenantId,
+        section: 'team',
+        versionId: version.id,
+        appliedBy: input.requestedBy,
+      });
 
-    return version;
+      version.appliedAt = new Date();
+
+      await this.clinicRepository.setCurrentConfigurationVersion({
+        clinicId: input.clinicId,
+        tenantId: input.tenantId,
+        section: 'team',
+        versionId: version.id,
+        updatedBy: input.requestedBy,
+      });
+
+      await this.templateOverrideService.upsertManualOverride({
+        clinic,
+        section: 'team',
+        payload,
+        appliedVersionId: version.id,
+        updatedBy: input.requestedBy,
+      });
+
+      const telemetry = await this.telemetryService.markSaved({
+        clinic,
+        section: 'team',
+        requestedBy: input.requestedBy,
+        payload,
+      });
+
+      version.telemetry = telemetry;
+
+      this.configurationCache.set({
+        tenantId: input.tenantId,
+        clinicId: input.clinicId,
+        section: 'team',
+        version,
+      });
+
+      return version;
+    } catch (error) {
+      await this.telemetryService.markError({
+        clinic,
+        section: 'team',
+        requestedBy: input.requestedBy,
+        error,
+      });
+      throw error;
+    }
   }
 }
 

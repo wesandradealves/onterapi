@@ -19,6 +19,9 @@ import {
 } from '../../../domain/clinic/types/clinic.types';
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
 import { ClinicConfigurationValidator } from '../services/clinic-configuration-validator.service';
+import { ClinicTemplateOverrideService } from '../services/clinic-template-override.service';
+import { ClinicConfigurationTelemetryService } from '../services/clinic-configuration-telemetry.service';
+import { ClinicConfigurationCacheService } from '../services/clinic-configuration-cache.service';
 
 @Injectable()
 export class UpdateClinicPaymentSettingsUseCase
@@ -33,6 +36,9 @@ export class UpdateClinicPaymentSettingsUseCase
     @Inject(IClinicConfigurationRepositoryToken)
     private readonly configurationRepository: IClinicConfigurationRepository,
     private readonly configurationValidator: ClinicConfigurationValidator,
+    private readonly templateOverrideService: ClinicTemplateOverrideService,
+    private readonly telemetryService: ClinicConfigurationTelemetryService,
+    private readonly configurationCache: ClinicConfigurationCacheService,
   ) {
     super();
   }
@@ -48,36 +54,77 @@ export class UpdateClinicPaymentSettingsUseCase
 
     const payload = JSON.parse(JSON.stringify(input.paymentSettings ?? {}));
 
-    await this.configurationValidator.validatePaymentSettings(clinic, input.paymentSettings);
-
-    const version = await this.configurationRepository.createVersion({
-      clinicId: input.clinicId,
-      tenantId: input.tenantId,
+    await this.telemetryService.markSaving({
+      clinic,
       section: 'payments',
+      requestedBy: input.requestedBy,
       payload,
-      createdBy: input.requestedBy,
-      autoApply: true,
     });
 
-    await this.configurationRepository.applyVersion({
-      clinicId: input.clinicId,
-      tenantId: input.tenantId,
-      section: 'payments',
-      versionId: version.id,
-      appliedBy: input.requestedBy,
-    });
+    try {
+      await this.configurationValidator.validatePaymentSettings(clinic, input.paymentSettings);
 
-    version.appliedAt = new Date();
+      const version = await this.configurationRepository.createVersion({
+        clinicId: input.clinicId,
+        tenantId: input.tenantId,
+        section: 'payments',
+        payload,
+        createdBy: input.requestedBy,
+        autoApply: true,
+      });
 
-    await this.clinicRepository.setCurrentConfigurationVersion({
-      clinicId: input.clinicId,
-      tenantId: input.tenantId,
-      section: 'payments',
-      versionId: version.id,
-      updatedBy: input.requestedBy,
-    });
+      await this.configurationRepository.applyVersion({
+        clinicId: input.clinicId,
+        tenantId: input.tenantId,
+        section: 'payments',
+        versionId: version.id,
+        appliedBy: input.requestedBy,
+      });
 
-    return version;
+      version.appliedAt = new Date();
+
+      await this.clinicRepository.setCurrentConfigurationVersion({
+        clinicId: input.clinicId,
+        tenantId: input.tenantId,
+        section: 'payments',
+        versionId: version.id,
+        updatedBy: input.requestedBy,
+      });
+
+      await this.templateOverrideService.upsertManualOverride({
+        clinic,
+        section: 'payments',
+        payload,
+        appliedVersionId: version.id,
+        updatedBy: input.requestedBy,
+      });
+
+      const telemetry = await this.telemetryService.markSaved({
+        clinic,
+        section: 'payments',
+        requestedBy: input.requestedBy,
+        payload,
+      });
+
+      version.telemetry = telemetry;
+
+      this.configurationCache.set({
+        tenantId: input.tenantId,
+        clinicId: input.clinicId,
+        section: 'payments',
+        version,
+      });
+
+      return version;
+    } catch (error) {
+      await this.telemetryService.markError({
+        clinic,
+        section: 'payments',
+        requestedBy: input.requestedBy,
+        error,
+      });
+      throw error;
+    }
   }
 }
 

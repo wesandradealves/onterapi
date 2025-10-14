@@ -1,5 +1,6 @@
 import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
 import {
+  ClinicAlertType,
   ClinicBrandingSettingsConfig,
   ClinicDashboardQuery,
   ClinicGeneralSettings,
@@ -8,6 +9,8 @@ import {
   ClinicHoldSettings,
   ClinicInadimplencyAction,
   ClinicIntegrationSettingsConfig,
+  ClinicManagementAlertsQuery,
+  ClinicManagementOverviewQuery,
   ClinicNotificationSettingsConfig,
   ClinicPaymentSettings,
   ClinicScheduleSettings,
@@ -15,6 +18,8 @@ import {
   ClinicStaffRole,
   ClinicTeamSettings,
   ClinicTemplatePropagationInput,
+  ResolveClinicAlertInput,
+  TransferClinicProfessionalInput,
   UpdateClinicBrandingSettingsInput,
   UpdateClinicGeneralSettingsInput,
   UpdateClinicHoldSettingsInput,
@@ -38,6 +43,10 @@ import { CreateClinicHoldSchema } from '../schemas/create-clinic-hold.schema';
 import { GetClinicDashboardSchema } from '../schemas/get-clinic-dashboard.schema';
 import { ConfirmClinicHoldSchema } from '../schemas/confirm-clinic-hold.schema';
 import { PropagateClinicTemplateSchema } from '../schemas/propagate-clinic-template.schema';
+import { TransferClinicProfessionalSchema } from '../schemas/clinic-professional-transfer.schema';
+import { GetClinicManagementOverviewSchema } from '../schemas/get-clinic-management-overview.schema';
+import { GetClinicManagementAlertsSchema } from '../schemas/get-clinic-management-alerts.schema';
+import { ResolveClinicAlertSchema } from '../schemas/resolve-clinic-alert.schema';
 
 export interface ClinicRequestContext {
   tenantId: string;
@@ -418,6 +427,61 @@ export const toClinicDashboardQuery = (
   };
 };
 
+const normalizeBooleanFlag = (value: unknown): boolean | undefined => {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true') {
+      return true;
+    }
+    if (normalized === 'false') {
+      return false;
+    }
+  }
+
+  return undefined;
+};
+
+export const toClinicManagementOverviewQuery = (
+  body: GetClinicManagementOverviewSchema,
+  context: ClinicRequestContext,
+): ClinicManagementOverviewQuery => {
+  const filters: ClinicManagementOverviewQuery['filters'] | undefined = (() => {
+    const result: ClinicManagementOverviewQuery['filters'] = {};
+
+    if (body.clinicIds && body.clinicIds.length > 0) {
+      result.clinicIds = body.clinicIds;
+    }
+
+    if (body.status && body.status.length > 0) {
+      result.status = body.status;
+    }
+
+    if (body.from) {
+      result.from = new Date(body.from);
+    }
+
+    if (body.to) {
+      result.to = new Date(body.to);
+    }
+
+    return Object.keys(result).length > 0 ? result : undefined;
+  })();
+
+  return {
+    tenantId: body.tenantId ?? context.tenantId,
+    filters,
+    includeForecast: normalizeBooleanFlag(body.includeForecast),
+    includeComparisons: normalizeBooleanFlag(body.includeComparisons),
+    includeAlerts: normalizeBooleanFlag(body.includeAlerts),
+    includeTeamDistribution: normalizeBooleanFlag(body.includeTeamDistribution),
+    includeFinancials: normalizeBooleanFlag(body.includeFinancials),
+  };
+};
+
 export const toPropagateClinicTemplateInput = (
   templateClinicId: string,
   body: PropagateClinicTemplateSchema,
@@ -436,3 +500,53 @@ export const toPropagateClinicTemplateInput = (
     triggeredBy: context.userId,
   };
 };
+
+export const toTransferClinicProfessionalInput = (
+  body: TransferClinicProfessionalSchema,
+  context: ClinicRequestContext,
+): TransferClinicProfessionalInput => ({
+  tenantId: body.tenantId ?? context.tenantId,
+  professionalId: body.professionalId,
+  fromClinicId: body.fromClinicId,
+  toClinicId: body.toClinicId,
+  effectiveDate: new Date(body.effectiveDate),
+  transferPatients: body.transferPatients ?? false,
+  performedBy: context.userId,
+});
+
+export const toClinicManagementAlertsQuery = (
+  body: GetClinicManagementAlertsSchema,
+  context: ClinicRequestContext,
+): ClinicManagementAlertsQuery => {
+  const clinicIds = new Set<string>();
+
+  if (body.clinicId) {
+    clinicIds.add(body.clinicId);
+  }
+
+  if (body.clinicIds && body.clinicIds.length > 0) {
+    body.clinicIds.forEach((id) => clinicIds.add(id));
+  }
+
+  return {
+    tenantId: body.tenantId ?? context.tenantId,
+    clinicIds: clinicIds.size > 0 ? Array.from(clinicIds) : undefined,
+    types:
+      body.types && body.types.length > 0
+        ? Array.from(new Set(body.types.map((type) => type as ClinicAlertType)))
+        : undefined,
+    activeOnly: normalizeBooleanFlag(body.activeOnly),
+    limit: body.limit,
+  };
+};
+
+export const toResolveClinicAlertInput = (
+  alertId: string,
+  body: ResolveClinicAlertSchema,
+  context: ClinicRequestContext,
+): ResolveClinicAlertInput => ({
+  tenantId: context.tenantId,
+  alertId,
+  resolvedBy: context.userId,
+  resolvedAt: body.resolvedAt ? new Date(body.resolvedAt) : undefined,
+});

@@ -20,6 +20,9 @@ import {
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
 import { ClinicAuditService } from '../../../infrastructure/clinic/services/clinic-audit.service';
 import { ClinicConfigurationValidator } from '../services/clinic-configuration-validator.service';
+import { ClinicTemplateOverrideService } from '../services/clinic-template-override.service';
+import { ClinicConfigurationTelemetryService } from '../services/clinic-configuration-telemetry.service';
+import { ClinicConfigurationCacheService } from '../services/clinic-configuration-cache.service';
 
 @Injectable()
 export class UpdateClinicGeneralSettingsUseCase
@@ -35,6 +38,9 @@ export class UpdateClinicGeneralSettingsUseCase
     private readonly configurationRepository: IClinicConfigurationRepository,
     private readonly auditService: ClinicAuditService,
     private readonly configurationValidator: ClinicConfigurationValidator,
+    private readonly templateOverrideService: ClinicTemplateOverrideService,
+    private readonly telemetryService: ClinicConfigurationTelemetryService,
+    private readonly configurationCache: ClinicConfigurationCacheService,
   ) {
     super();
   }
@@ -50,53 +56,94 @@ export class UpdateClinicGeneralSettingsUseCase
 
     const payload = JSON.parse(JSON.stringify(input.settings ?? {}));
 
-    await this.configurationValidator.validateGeneralSettings(clinic, input.settings);
-
-    await this.clinicRepository.updateGeneralProfile({
-      clinicId: clinic.id,
-      tenantId: clinic.tenantId,
+    await this.telemetryService.markSaving({
+      clinic,
+      section: 'general',
       requestedBy: input.requestedBy,
-      settings: input.settings,
-    });
-
-    const version = await this.configurationRepository.createVersion({
-      clinicId: input.clinicId,
-      tenantId: input.tenantId,
-      section: 'general',
       payload,
-      createdBy: input.requestedBy,
-      autoApply: true,
     });
 
-    await this.configurationRepository.applyVersion({
-      clinicId: input.clinicId,
-      tenantId: input.tenantId,
-      section: 'general',
-      versionId: version.id,
-      appliedBy: input.requestedBy,
-    });
+    try {
+      await this.configurationValidator.validateGeneralSettings(clinic, input.settings);
 
-    version.appliedAt = new Date();
+      const updatedClinic = await this.clinicRepository.updateGeneralProfile({
+        clinicId: clinic.id,
+        tenantId: clinic.tenantId,
+        requestedBy: input.requestedBy,
+        settings: input.settings,
+      });
 
-    await this.clinicRepository.setCurrentConfigurationVersion({
-      clinicId: input.clinicId,
-      tenantId: input.tenantId,
-      section: 'general',
-      versionId: version.id,
-      updatedBy: input.requestedBy,
-    });
+      const version = await this.configurationRepository.createVersion({
+        clinicId: input.clinicId,
+        tenantId: input.tenantId,
+        section: 'general',
+        payload,
+        createdBy: input.requestedBy,
+        autoApply: true,
+      });
 
-    await this.auditService.register({
-      event: 'clinic.general_settings.updated',
-      clinicId: input.clinicId,
-      tenantId: input.tenantId,
-      performedBy: input.requestedBy,
-      detail: {
+      await this.configurationRepository.applyVersion({
+        clinicId: input.clinicId,
+        tenantId: input.tenantId,
+        section: 'general',
         versionId: version.id,
-      },
-    });
+        appliedBy: input.requestedBy,
+      });
 
-    return version;
+      version.appliedAt = new Date();
+
+      await this.clinicRepository.setCurrentConfigurationVersion({
+        clinicId: input.clinicId,
+        tenantId: input.tenantId,
+        section: 'general',
+        versionId: version.id,
+        updatedBy: input.requestedBy,
+      });
+
+      await this.auditService.register({
+        event: 'clinic.general_settings.updated',
+        clinicId: input.clinicId,
+        tenantId: input.tenantId,
+        performedBy: input.requestedBy,
+        detail: {
+          versionId: version.id,
+        },
+      });
+
+      await this.templateOverrideService.upsertManualOverride({
+        clinic: updatedClinic,
+        section: 'general',
+        payload,
+        appliedVersionId: version.id,
+        updatedBy: input.requestedBy,
+      });
+
+      const telemetry = await this.telemetryService.markSaved({
+        clinic,
+        section: 'general',
+        requestedBy: input.requestedBy,
+        payload,
+      });
+
+      version.telemetry = telemetry;
+
+      this.configurationCache.set({
+        tenantId: input.tenantId,
+        clinicId: input.clinicId,
+        section: 'general',
+        version,
+      });
+
+      return version;
+    } catch (error) {
+      await this.telemetryService.markError({
+        clinic,
+        section: 'general',
+        requestedBy: input.requestedBy,
+        error,
+      });
+      throw error;
+    }
   }
 }
 

@@ -16,6 +16,8 @@ import {
 } from '../../../domain/clinic/interfaces/use-cases/get-clinic-integration-settings.use-case.interface';
 import { ClinicConfigurationVersion } from '../../../domain/clinic/types/clinic.types';
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
+import { ClinicConfigurationTelemetryService } from '../services/clinic-configuration-telemetry.service';
+import { ClinicConfigurationCacheService } from '../services/clinic-configuration-cache.service';
 
 @Injectable()
 export class GetClinicIntegrationSettingsUseCase
@@ -29,6 +31,8 @@ export class GetClinicIntegrationSettingsUseCase
     private readonly clinicRepository: IClinicRepository,
     @Inject(IClinicConfigurationRepositoryToken)
     private readonly configurationRepository: IClinicConfigurationRepository,
+    private readonly telemetryService: ClinicConfigurationTelemetryService,
+    private readonly configurationCache: ClinicConfigurationCacheService,
   ) {
     super();
   }
@@ -36,6 +40,16 @@ export class GetClinicIntegrationSettingsUseCase
   protected async handle(
     input: GetClinicIntegrationSettingsInput,
   ): Promise<ClinicConfigurationVersion> {
+    const cached = this.configurationCache.get({
+      tenantId: input.tenantId,
+      clinicId: input.clinicId,
+      section: 'integrations',
+    });
+
+    if (cached) {
+      return cached;
+    }
+
     const clinic = await this.clinicRepository.findByTenant(input.tenantId, input.clinicId);
 
     if (!clinic) {
@@ -52,6 +66,22 @@ export class GetClinicIntegrationSettingsUseCase
         'Configurações de integrações não encontradas para a clínica',
       );
     }
+
+    version.telemetry = this.telemetryService.ensureTelemetry({
+      clinic,
+      section: 'integrations',
+      payload: version.payload ?? {},
+      appliedAt: version.appliedAt,
+      createdBy: version.createdBy,
+      autoApply: version.autoApply,
+    });
+
+    this.configurationCache.set({
+      tenantId: input.tenantId,
+      clinicId: input.clinicId,
+      section: 'integrations',
+      version,
+    });
 
     return version;
   }

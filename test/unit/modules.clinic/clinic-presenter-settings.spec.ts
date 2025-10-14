@@ -15,6 +15,38 @@ describe('ClinicPresenter configuration settings mapping', () => {
     autoApply: true,
   };
 
+  it('maps telemetry metadata when present', () => {
+    const telemetryVersion: ClinicConfigurationVersion = {
+      ...versionBase,
+      telemetry: {
+        section: 'general',
+        state: 'saved',
+        completionScore: 85,
+        lastAttemptAt: new Date('2025-10-11T09:59:00Z'),
+        lastSavedAt: new Date('2025-10-11T10:00:00Z'),
+        lastErrorAt: undefined,
+        lastErrorMessage: undefined,
+        lastUpdatedBy: 'user-2',
+        autosaveIntervalSeconds: 120,
+        pendingConflicts: 0,
+      },
+    };
+
+    const dto = ClinicPresenter.configuration(telemetryVersion);
+
+    expect(dto.telemetry).toEqual({
+      state: 'saved',
+      completionScore: 85,
+      lastAttemptAt: telemetryVersion.telemetry?.lastAttemptAt,
+      lastSavedAt: telemetryVersion.telemetry?.lastSavedAt,
+      lastErrorAt: undefined,
+      lastErrorMessage: undefined,
+      lastUpdatedBy: 'user-2',
+      autosaveIntervalSeconds: 120,
+      pendingConflicts: 0,
+    });
+  });
+
   it('maps schedule settings payload with intervals, exceptions and holidays', () => {
     const version: ClinicConfigurationVersion = {
       ...versionBase,
@@ -72,6 +104,7 @@ describe('ClinicPresenter configuration settings mapping', () => {
     });
     expect(dto.state).toBe('saved');
     expect(dto.autoApply).toBe(true);
+    expect(dto.telemetry).toBeUndefined();
   });
 
   it('maps service settings payload with eligibility and cancellation policy', () => {
@@ -125,6 +158,7 @@ describe('ClinicPresenter configuration settings mapping', () => {
     });
     expect(dto.services[0].instructions).toBe('Chegar 10 minutos antes.');
     expect(dto.services[0].requiredDocuments).toEqual(['RG']);
+    expect(dto.telemetry).toBeUndefined();
   });
 
   it('maps payment settings payload, including split rules and policies', () => {
@@ -179,6 +213,7 @@ describe('ClinicPresenter configuration settings mapping', () => {
     expect(dto.payload.inadimplencyRule.penaltyPercentage).toBe(2);
     expect(dto.payload.refundPolicy.allowPartialRefund).toBe(true);
     expect(dto.payload.cancellationPolicies[0].message).toContain('Cancelamento');
+    expect(dto.telemetry).toBeUndefined();
   });
 
   it('maps integration settings payload including whatsApp templates and webhooks', () => {
@@ -244,6 +279,7 @@ describe('ClinicPresenter configuration settings mapping', () => {
     expect(dto.payload.webhooks).toHaveLength(1);
     expect(dto.payload.googleCalendar.hidePatientName).toBe(true);
     expect(dto.payload.metadata).toEqual({ integrationKey: 'abc' });
+    expect(dto.telemetry).toBeUndefined();
   });
 
   it('maps notification settings payload including templates and rules', () => {
@@ -292,6 +328,7 @@ describe('ClinicPresenter configuration settings mapping', () => {
     expect(dto.payload.templates[0].variables[0]).toEqual({ name: 'patient_name', required: true });
     expect(dto.payload.rules[0].channels).toEqual(['email', 'whatsapp']);
     expect(dto.payload.events).toEqual(['booking.confirmed']);
+    expect(dto.telemetry).toBeUndefined();
   });
 
   it('maps branding settings payload with palette, typography and preview', () => {
@@ -333,5 +370,6 @@ describe('ClinicPresenter configuration settings mapping', () => {
     expect(dto.payload.typography?.secondaryFont).toBe('Roboto');
     expect(dto.payload.preview?.previewUrl).toBe('https://cdn/preview.png');
     expect(dto.payload.metadata).toEqual({ theme: 'default' });
+    expect(dto.telemetry).toBeUndefined();
   });
 });

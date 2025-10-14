@@ -13,6 +13,18 @@ export interface IClinicMemberRepository {
   removeMember(input: RemoveClinicMemberInput): Promise<void>;
   findById(memberId: string): Promise<ClinicMember | null>;
   findByUser(clinicId: string, userId: string): Promise<ClinicMember | null>;
+  findActiveByClinicAndUser(params: {
+    clinicId: string;
+    tenantId: string;
+    userId: string;
+  }): Promise<ClinicMember | null>;
+  transferProfessional(params: {
+    tenantId: string;
+    professionalId: string;
+    fromClinicId: string;
+    toClinicId: string;
+    effectiveDate: Date;
+  }): Promise<{ fromMembership: ClinicMember; toMembership: ClinicMember }>;
   listMembers(params: {
     clinicId: string;
     tenantId: string;

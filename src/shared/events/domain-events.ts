@@ -46,6 +46,9 @@ export class DomainEvents {
   static CLINIC_PAYMENT_REFUNDED = 'clinic.payment.refunded';
   static CLINIC_PAYMENT_CHARGEBACK = 'clinic.payment.chargeback';
   static CLINIC_TEMPLATE_PROPAGATED = 'clinic.template.propagated';
+  static CLINIC_ALERT_TRIGGERED = 'clinic.alert.triggered';
+  static CLINIC_ALERT_RESOLVED = 'clinic.alert.resolved';
+  static CLINIC_PROFESSIONAL_TRANSFERRED = 'clinic.professional.transferred';
   static BILLING_INVOICE_REQUESTED = 'billing.invoice.requested';
   static BILLING_INVOICE_CANCELLATION_REQUESTED = 'billing.invoice.cancellation_requested';
   static BILLING_PAYMENT_STATUS_SYNC_REQUESTED = 'billing.payment.status_sync_requested';
@@ -822,6 +825,74 @@ export class DomainEvents {
       this.CLINIC_TEMPLATE_PROPAGATED,
       templateClinicId,
       { templateClinicId, ...data, propagatedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static clinicAlertTriggered(
+    alertId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      type: string;
+      channel: string;
+      triggeredBy: string;
+      payload: Record<string, unknown>;
+      triggeredAt?: Date;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.CLINIC_ALERT_TRIGGERED,
+      alertId,
+      {
+        alertId,
+        ...data,
+        triggeredAt: data.triggeredAt ?? new Date(),
+      },
+      metadata,
+    );
+  }
+
+  static clinicAlertResolved(
+    alertId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      type: string;
+      resolvedBy: string;
+      resolvedAt: Date;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.CLINIC_ALERT_RESOLVED,
+      alertId,
+      {
+        alertId,
+        ...data,
+      },
+      metadata,
+    );
+  }
+
+  static clinicProfessionalTransferred(
+    professionalId: string,
+    data: {
+      tenantId: string;
+      fromClinicId: string;
+      toClinicId: string;
+      effectiveDate: Date;
+      transferPatients: boolean;
+      fromMembershipId: string;
+      toMembershipId: string;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.CLINIC_PROFESSIONAL_TRANSFERRED,
+      professionalId,
+      { professionalId, ...data },
       metadata,
     );
   }

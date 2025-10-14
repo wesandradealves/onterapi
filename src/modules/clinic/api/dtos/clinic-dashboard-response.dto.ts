@@ -34,16 +34,25 @@ export class ClinicDashboardAlertDto {
   clinicId!: string;
 
   @ApiProperty()
+  tenantId!: string;
+
+  @ApiProperty()
   type!: string;
 
   @ApiProperty()
   channel!: string;
+
+  @ApiProperty()
+  triggeredBy!: string;
 
   @ApiProperty({ type: String })
   triggeredAt!: Date;
 
   @ApiPropertyOptional({ type: String })
   resolvedAt?: Date;
+
+  @ApiPropertyOptional()
+  resolvedBy?: string;
 
   @ApiProperty()
   payload!: Record<string, unknown>;
