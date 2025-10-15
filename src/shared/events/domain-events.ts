@@ -2,6 +2,10 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { DomainEvent, DomainEventMetadata } from './domain-event.interface';
 import { AnamnesisAIRequestedEventPayload } from '../../domain/anamnesis/types/anamnesis.types';
+import {
+  ClinicCurrency,
+  ClinicPaymentSplitAllocation,
+} from '../../domain/clinic/types/clinic.types';
 
 export class DomainEvents {
   static USER_CREATED = 'user.created';
@@ -54,6 +58,8 @@ export class DomainEvents {
   static BILLING_INVOICE_REQUESTED = 'billing.invoice.requested';
   static BILLING_INVOICE_CANCELLATION_REQUESTED = 'billing.invoice.cancellation_requested';
   static BILLING_PAYMENT_STATUS_SYNC_REQUESTED = 'billing.payment.status_sync_requested';
+  static BILLING_CLINIC_PAYMENT_PAYOUT_REQUESTED =
+    'billing.clinic.payment_payout.requested';
   static ANALYTICS_SCHEDULING_METRIC_INCREMENTED = 'analytics.scheduling.metric.incremented';
   static NOTIFICATION_SCHEDULING_HOLD_CREATED = 'notifications.scheduling.hold.created';
   static NOTIFICATION_SCHEDULING_BOOKING_CREATED = 'notifications.scheduling.booking.created';
@@ -774,6 +780,46 @@ export class DomainEvents {
       this.BILLING_PAYMENT_STATUS_SYNC_REQUESTED,
       bookingId,
       { bookingId, ...data, requestedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static billingClinicPaymentPayoutRequested(
+    appointmentId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      holdId: string;
+      serviceTypeId: string;
+      paymentTransactionId: string;
+      provider: string;
+      credentialsId: string;
+      sandboxMode: boolean;
+      bankAccountId?: string;
+      settledAt: Date;
+      baseAmountCents: number;
+      netAmountCents?: number | null;
+      split: ClinicPaymentSplitAllocation[];
+      remainderCents: number;
+      currency: ClinicCurrency;
+      gatewayStatus: string;
+      eventType?: string;
+      fingerprint?: string;
+      payloadId?: string;
+      sandbox: boolean;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.BILLING_CLINIC_PAYMENT_PAYOUT_REQUESTED,
+      appointmentId,
+      {
+        appointmentId,
+        ...data,
+        requestedAt: new Date(),
+      },
       metadata,
     );
   }

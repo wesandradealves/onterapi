@@ -28,6 +28,7 @@ import {
   ClinicPaymentStatusChangedEvent,
 } from './clinic-payment-event.types';
 import { ClinicPaymentNotificationService } from './clinic-payment-notification.service';
+import { ClinicPaymentPayoutService } from './clinic-payment-payout.service';
 
 interface PaymentSplitComputation {
   allocations: ClinicPaymentSplitAllocation[];
@@ -45,6 +46,7 @@ export class ClinicPaymentReconciliationService {
     private readonly clinicConfigurationRepository: IClinicConfigurationRepository,
     private readonly auditService: ClinicAuditService,
     private readonly paymentNotificationService: ClinicPaymentNotificationService,
+    private readonly paymentPayoutService: ClinicPaymentPayoutService,
   ) {}
 
   async handleStatusChanged(event: ClinicPaymentStatusChangedEvent): Promise<void> {
@@ -206,6 +208,36 @@ export class ClinicPaymentReconciliationService {
         remainderCents: computation.remainderCents,
         split: computation.allocations,
         settledAt: settledAtIso,
+        sandbox: event.payload.sandbox,
+      },
+    });
+
+    await this.paymentPayoutService.requestPayout({
+      appointmentId: appointment.id,
+      tenantId: appointment.tenantId,
+      clinicId: appointment.clinicId,
+      professionalId: appointment.professionalId,
+      patientId: appointment.patientId,
+      holdId: appointment.holdId,
+      serviceTypeId: appointment.serviceTypeId,
+      paymentTransactionId: event.payload.paymentTransactionId,
+      provider: paymentSettings.provider,
+      credentialsId: paymentSettings.credentialsId,
+      sandboxMode: paymentSettings.sandboxMode,
+      bankAccountId: paymentSettings.bankAccountId,
+      settlement: {
+        settledAt: event.payload.settledAt,
+        baseAmountCents: baseCents,
+        netAmountCents: netCents ?? null,
+        split: computation.allocations,
+        remainderCents: computation.remainderCents,
+      },
+      currency: ledger.currency,
+      gateway: {
+        status: event.payload.gatewayStatus,
+        eventType: event.payload.eventType,
+        fingerprint: event.payload.fingerprint,
+        payloadId: event.payload.payloadId,
         sandbox: event.payload.sandbox,
       },
     });

@@ -10,6 +10,10 @@ import {
   IClinicHoldRepository as IClinicHoldRepositoryToken,
 } from '../../../domain/clinic/interfaces/repositories/clinic-hold.repository.interface';
 import {
+  type IClinicPaymentWebhookEventRepository,
+  IClinicPaymentWebhookEventRepositoryToken,
+} from '../../../domain/clinic/interfaces/repositories/clinic-payment-webhook-event.repository.interface';
+import {
   type IProcessClinicPaymentWebhookUseCase,
   IProcessClinicPaymentWebhookUseCase as IProcessClinicPaymentWebhookUseCaseToken,
 } from '../../../domain/clinic/interfaces/use-cases/process-clinic-payment-webhook.use-case.interface';
@@ -31,6 +35,8 @@ export class ProcessClinicPaymentWebhookUseCase
   extends BaseUseCase<ProcessClinicPaymentWebhookInput, void>
   implements IProcessClinicPaymentWebhookUseCase
 {
+  private static readonly EVENT_TTL_DAYS = 180;
+
   protected readonly logger = new Logger(ProcessClinicPaymentWebhookUseCase.name);
 
   constructor(
@@ -38,6 +44,8 @@ export class ProcessClinicPaymentWebhookUseCase
     private readonly clinicAppointmentRepository: IClinicAppointmentRepository,
     @Inject(IClinicHoldRepositoryToken)
     private readonly clinicHoldRepository: IClinicHoldRepository,
+    @Inject(IClinicPaymentWebhookEventRepositoryToken)
+    private readonly webhookEventRepository: IClinicPaymentWebhookEventRepository,
     private readonly auditService: ClinicAuditService,
     private readonly messageBus: MessageBus,
   ) {
@@ -90,6 +98,23 @@ export class ProcessClinicPaymentWebhookUseCase
       gatewayStatus,
       payloadId: typeof input.payload.id === 'string' ? input.payload.id : undefined,
     });
+
+    const alreadyStored = await this.webhookEventRepository.exists({
+      tenantId: appointment.tenantId,
+      clinicId: appointment.clinicId,
+      provider: input.provider,
+      fingerprint,
+    });
+
+    if (alreadyStored) {
+      this.logger.log('Webhook ASAAS ignorado: evento ja persistido anteriormente', {
+        paymentId,
+        eventType,
+        gatewayStatus,
+        fingerprint,
+      });
+      return;
+    }
 
     if (this.eventAlreadyProcessed(appointment.metadata, fingerprint)) {
       this.logger.log('Webhook ASAAS ignorado: evento duplicado', {
@@ -237,6 +262,20 @@ export class ProcessClinicPaymentWebhookUseCase
         receivedAt: input.receivedAt.toISOString(),
       },
     });
+
+    await this.recordWebhookEvent({
+      appointmentId: appointment.id,
+      clinicId: appointment.clinicId,
+      tenantId: appointment.tenantId,
+      provider: input.provider,
+      paymentId,
+      fingerprint,
+      eventType,
+      gatewayStatus,
+      payloadId,
+      sandbox,
+      receivedAt: input.receivedAt,
+    });
   }
 
   private isValidPaymentPayload(
@@ -372,6 +411,44 @@ export class ProcessClinicPaymentWebhookUseCase
     }
 
     return undefined;
+  }
+
+  private async recordWebhookEvent(params: {
+    tenantId: string;
+    clinicId: string;
+    provider: string;
+    paymentId: string;
+    fingerprint: string;
+    appointmentId: string;
+    eventType?: string;
+    gatewayStatus?: string;
+    payloadId?: string;
+    sandbox?: boolean;
+    receivedAt: Date;
+  }): Promise<void> {
+    const expiresAt = this.calculateExpiration(params.receivedAt);
+
+    await this.webhookEventRepository.record({
+      tenantId: params.tenantId,
+      clinicId: params.clinicId,
+      provider: params.provider,
+      paymentTransactionId: params.paymentId,
+      fingerprint: params.fingerprint,
+      appointmentId: params.appointmentId,
+      eventType: params.eventType ?? null,
+      gatewayStatus: params.gatewayStatus ?? null,
+      payloadId: params.payloadId ?? null,
+      sandbox: params.sandbox ?? false,
+      receivedAt: params.receivedAt,
+      processedAt: new Date(),
+      expiresAt,
+    });
+  }
+
+  private calculateExpiration(receivedAt: Date): Date {
+    const ttlMs = ProcessClinicPaymentWebhookUseCase.EVENT_TTL_DAYS * 24 * 60 * 60 * 1000;
+    const expires = new Date(receivedAt.getTime() + ttlMs);
+    return expires;
   }
 }
 

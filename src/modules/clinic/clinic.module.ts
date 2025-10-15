@@ -29,6 +29,8 @@ import { ClinicAppointmentEntity } from '../../infrastructure/clinic/entities/cl
 import { ClinicAuditLogEntity } from '../../infrastructure/clinic/entities/clinic-audit-log.entity';
 import { ClinicTemplateOverrideEntity } from '../../infrastructure/clinic/entities/clinic-template-override.entity';
 import { ClinicFinancialSnapshotEntity } from '../../infrastructure/clinic/entities/clinic-financial-snapshot.entity';
+import { ClinicPaymentWebhookEventEntity } from '../../infrastructure/clinic/entities/clinic-payment-webhook-event.entity';
+import { ClinicPaymentPayoutRequestEntity } from '../../infrastructure/clinic/entities/clinic-payment-payout-request.entity';
 import { ClinicRepository } from '../../infrastructure/clinic/repositories/clinic.repository';
 import { ClinicConfigurationRepository } from '../../infrastructure/clinic/repositories/clinic-configuration.repository';
 import { ClinicServiceTypeRepository } from '../../infrastructure/clinic/repositories/clinic-service-type.repository';
@@ -39,6 +41,8 @@ import { ClinicInvitationRepository } from '../../infrastructure/clinic/reposito
 import { ClinicMemberRepository } from '../../infrastructure/clinic/repositories/clinic-member.repository';
 import { ClinicAuditLogRepository } from '../../infrastructure/clinic/repositories/clinic-audit-log.repository';
 import { ClinicTemplateOverrideRepository } from '../../infrastructure/clinic/repositories/clinic-template-override.repository';
+import { ClinicPaymentWebhookEventRepository } from '../../infrastructure/clinic/repositories/clinic-payment-webhook-event.repository';
+import { ClinicPaymentPayoutRequestRepository } from '../../infrastructure/clinic/repositories/clinic-payment-payout-request.repository';
 import { ClinicAuditService } from '../../infrastructure/clinic/services/clinic-audit.service';
 import { ClinicPaymentCredentialsService } from '../../infrastructure/clinic/services/clinic-payment-credentials.service';
 import { ClinicAsaasGatewayService } from '../../infrastructure/clinic/services/clinic-asaas-gateway.service';
@@ -102,18 +106,23 @@ import { GetClinicBrandingSettingsUseCase } from './use-cases/get-clinic-brandin
 import { ListClinicAuditLogsUseCase } from './use-cases/list-clinic-audit-logs.use-case';
 import { ClinicPaymentReconciliationService } from './services/clinic-payment-reconciliation.service';
 import { ClinicPaymentNotificationService } from './services/clinic-payment-notification.service';
+import { ClinicPaymentPayoutService } from './services/clinic-payment-payout.service';
+import { ClinicPaymentPayoutProcessorService } from './services/clinic-payment-payout-processor.service';
 import { ClinicGoogleCalendarSyncService } from './services/clinic-google-calendar-sync.service';
 import { IGoogleCalendarService } from '../../domain/integrations/interfaces/services/google-calendar.service.interface';
 import { GoogleCalendarService } from '../../infrastructure/integrations/services/google-calendar.service';
 import { IWhatsAppService } from '../../domain/integrations/interfaces/services/whatsapp.service.interface';
 import { WhatsAppService } from '../../infrastructure/integrations/services/whatsapp.service';
 import { ClinicPaymentEventsSubscriber } from './subscribers/clinic-payment-events.subscriber';
+import { ClinicPaymentPayoutEventsSubscriber } from './subscribers/clinic-payment-payout-events.subscriber';
 import { IClinicRepository as IClinicRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic.repository.interface';
 import { IClinicConfigurationRepository as IClinicConfigurationRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
 import { IClinicServiceTypeRepository as IClinicServiceTypeRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-service-type.repository.interface';
 import { IClinicHoldRepository as IClinicHoldRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-hold.repository.interface';
 import { IClinicAppointmentRepository as IClinicAppointmentRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-appointment.repository.interface';
 import { IClinicMetricsRepository as IClinicMetricsRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-metrics.repository.interface';
+import { IClinicPaymentWebhookEventRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-payment-webhook-event.repository.interface';
+import { IClinicPaymentPayoutRequestRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-payment-payout-request.repository.interface';
 import { IClinicInvitationRepository as IClinicInvitationRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-invitation.repository.interface';
 import { IClinicMemberRepository as IClinicMemberRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-member.repository.interface';
 import { IClinicAuditLogRepository as IClinicAuditLogRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-audit-log.repository.interface';
@@ -193,6 +202,14 @@ const repositoryProviders: Provider[] = [
     useClass: ClinicMetricsRepository,
   },
   {
+    provide: IClinicPaymentWebhookEventRepositoryToken,
+    useClass: ClinicPaymentWebhookEventRepository,
+  },
+  {
+    provide: IClinicPaymentPayoutRequestRepositoryToken,
+    useClass: ClinicPaymentPayoutRequestRepository,
+  },
+  {
     provide: IClinicInvitationRepositoryToken,
     useClass: ClinicInvitationRepository,
   },
@@ -232,6 +249,8 @@ const serviceProviders: Provider[] = [
   ClinicAsaasWebhookGuard,
   ClinicPaymentReconciliationService,
   ClinicPaymentNotificationService,
+  ClinicPaymentPayoutService,
+  ClinicPaymentPayoutProcessorService,
   ClinicGoogleCalendarSyncService,
   ClinicAlertNotificationService,
   ClinicTemplateOverrideService,
@@ -239,6 +258,7 @@ const serviceProviders: Provider[] = [
   ClinicOverbookingEvaluatorService,
   ClinicOverbookingNotificationService,
   ClinicPaymentEventsSubscriber,
+  ClinicPaymentPayoutEventsSubscriber,
   ClinicAlertEventsSubscriber,
   ClinicOverbookingEventsSubscriber,
   ClinicConfigurationCacheService,
@@ -452,6 +472,8 @@ const useCaseProviders: Provider[] = [
       ClinicAuditLogEntity,
       ClinicTemplateOverrideEntity,
       ClinicFinancialSnapshotEntity,
+      ClinicPaymentWebhookEventEntity,
+      ClinicPaymentPayoutRequestEntity,
     ]),
   ],
   controllers: [

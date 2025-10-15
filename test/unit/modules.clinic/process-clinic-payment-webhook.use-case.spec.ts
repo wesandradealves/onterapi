@@ -3,6 +3,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ProcessClinicPaymentWebhookUseCase } from '../../../src/modules/clinic/use-cases/process-clinic-payment-webhook.use-case';
 import { IClinicAppointmentRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-appointment.repository.interface';
 import { IClinicHoldRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-hold.repository.interface';
+import { IClinicPaymentWebhookEventRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-payment-webhook-event.repository.interface';
 import { ClinicAuditService } from '../../../src/infrastructure/clinic/services/clinic-audit.service';
 import {
   ClinicAppointment,
@@ -73,6 +74,7 @@ const createInput = (
 describe('ProcessClinicPaymentWebhookUseCase', () => {
   let appointmentRepository: Mocked<IClinicAppointmentRepository>;
   let holdRepository: Mocked<IClinicHoldRepository>;
+  let webhookEventRepository: Mocked<IClinicPaymentWebhookEventRepository>;
   let auditService: ClinicAuditService;
   let messageBus: Mocked<MessageBus>;
   let useCase: ProcessClinicPaymentWebhookUseCase;
@@ -86,6 +88,28 @@ describe('ProcessClinicPaymentWebhookUseCase', () => {
     holdRepository = {
       updatePaymentStatus: jest.fn(),
     } as unknown as Mocked<IClinicHoldRepository>;
+
+    webhookEventRepository = {
+      exists: jest.fn().mockResolvedValue(false),
+      record: jest.fn().mockResolvedValue({
+        id: 'event-1',
+        tenantId: 'tenant-1',
+        clinicId: 'clinic-1',
+        provider: 'asaas',
+        paymentTransactionId: 'pay-123',
+        fingerprint: 'fingerprint-1',
+        appointmentId: 'appointment-1',
+        eventType: 'PAYMENT_CONFIRMED',
+        gatewayStatus: 'CONFIRMED',
+        payloadId: 'payload-1',
+        sandbox: false,
+        receivedAt: new Date(),
+        processedAt: new Date(),
+        expiresAt: new Date(),
+        createdAt: new Date(),
+      }),
+      purgeExpired: jest.fn().mockResolvedValue(0),
+    } as unknown as Mocked<IClinicPaymentWebhookEventRepository>;
 
     auditService = {
       register: jest.fn(),
@@ -101,6 +125,7 @@ describe('ProcessClinicPaymentWebhookUseCase', () => {
     useCase = new ProcessClinicPaymentWebhookUseCase(
       appointmentRepository,
       holdRepository,
+      webhookEventRepository,
       auditService,
       messageBus,
     );
@@ -167,6 +192,14 @@ describe('ProcessClinicPaymentWebhookUseCase', () => {
     const eventNames = messageBus.publish.mock.calls.map(([event]) => event.eventName);
     expect(eventNames).toContain(DomainEvents.CLINIC_PAYMENT_STATUS_CHANGED);
     expect(eventNames).toContain(DomainEvents.CLINIC_PAYMENT_SETTLED);
+    expect(webhookEventRepository.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: appointment.tenantId,
+        clinicId: appointment.clinicId,
+        paymentTransactionId: 'pay-123',
+        fingerprint: expect.any(String),
+      }),
+    );
   });
 
   it('deve falhar quando status ASAAS for desconhecido', async () => {
@@ -309,6 +342,21 @@ describe('ProcessClinicPaymentWebhookUseCase', () => {
     expect(chargebackEventNames).toContain(DomainEvents.CLINIC_PAYMENT_STATUS_CHANGED);
     expect(chargebackEventNames).toContain(DomainEvents.CLINIC_PAYMENT_CHARGEBACK);
   });
+
+  it('ignora webhook ja persistido em armazenamento dedicado', async () => {
+    const appointment = createAppointment();
+    appointmentRepository.findByPaymentTransactionId.mockResolvedValue(appointment);
+    webhookEventRepository.exists.mockResolvedValue(true);
+
+    await expect(useCase.executeOrThrow(createInput())).resolves.toBeUndefined();
+
+    expect(appointmentRepository.updatePaymentStatus).not.toHaveBeenCalled();
+    expect(holdRepository.updatePaymentStatus).not.toHaveBeenCalled();
+    expect(webhookEventRepository.record).not.toHaveBeenCalled();
+    expect(auditService.register).not.toHaveBeenCalled();
+    expect(messageBus.publish).not.toHaveBeenCalled();
+  });
+
   it('ignora evento duplicado ja processado', async () => {
     const appointment = createAppointment({
       metadata: {

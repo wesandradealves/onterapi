@@ -5,6 +5,7 @@ import {
   ClinicPaymentSettledEvent,
 } from '../../../src/modules/clinic/services/clinic-payment-event.types';
 import { ClinicPaymentNotificationService } from '../../../src/modules/clinic/services/clinic-payment-notification.service';
+import { ClinicPaymentPayoutService } from '../../../src/modules/clinic/services/clinic-payment-payout.service';
 import { IClinicAppointmentRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-appointment.repository.interface';
 import { IClinicConfigurationRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
 import { ClinicAuditService } from '../../../src/infrastructure/clinic/services/clinic-audit.service';
@@ -116,6 +117,7 @@ describe('ClinicPaymentReconciliationService', () => {
   let configurationRepository: Mocked<IClinicConfigurationRepository>;
   let auditService: ClinicAuditService;
   let paymentNotificationService: Mocked<ClinicPaymentNotificationService>;
+  let paymentPayoutService: Mocked<ClinicPaymentPayoutService>;
   let service: ClinicPaymentReconciliationService;
 
   beforeEach(() => {
@@ -138,11 +140,16 @@ describe('ClinicPaymentReconciliationService', () => {
       notifyChargeback: jest.fn(),
     } as unknown as Mocked<ClinicPaymentNotificationService>;
 
+    paymentPayoutService = {
+      requestPayout: jest.fn(),
+    } as unknown as Mocked<ClinicPaymentPayoutService>;
+
     service = new ClinicPaymentReconciliationService(
       appointmentRepository,
       configurationRepository,
       auditService,
       paymentNotificationService,
+      paymentPayoutService,
     );
 
     configurationRepository.findLatestAppliedVersion.mockResolvedValue({
@@ -210,6 +217,24 @@ describe('ClinicPaymentReconciliationService', () => {
       }),
     );
 
+    expect(paymentPayoutService.requestPayout).toHaveBeenCalledTimes(1);
+    expect(paymentPayoutService.requestPayout).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appointmentId: 'appointment-1',
+        tenantId: 'tenant-1',
+        clinicId: 'clinic-1',
+        paymentTransactionId: 'pay-123',
+        provider: 'asaas',
+        settlement: expect.objectContaining({
+          baseAmountCents: 20000,
+          split: expect.arrayContaining([
+            expect.objectContaining({ recipient: 'clinic' }),
+            expect.objectContaining({ recipient: 'professional' }),
+          ]),
+        }),
+      }),
+    );
+
     expect(paymentNotificationService.notifySettlement).toHaveBeenCalledWith(
       expect.objectContaining({
         appointment: expect.objectContaining({ id: 'appointment-1' }),
@@ -251,6 +276,7 @@ describe('ClinicPaymentReconciliationService', () => {
 
     expect(appointmentRepository.updateMetadata).not.toHaveBeenCalled();
     expect(auditService.register).not.toHaveBeenCalled();
+    expect(paymentPayoutService.requestPayout).not.toHaveBeenCalled();
     expect(paymentNotificationService.notifySettlement).not.toHaveBeenCalled();
   });
 
@@ -289,6 +315,7 @@ describe('ClinicPaymentReconciliationService', () => {
         event: expect.objectContaining({ eventName: DomainEvents.CLINIC_PAYMENT_REFUNDED }),
       }),
     );
+    expect(paymentPayoutService.requestPayout).not.toHaveBeenCalled();
   });
 
   it('registra chargeback e dispara notificação', async () => {
@@ -326,6 +353,7 @@ describe('ClinicPaymentReconciliationService', () => {
         event: expect.objectContaining({ eventName: DomainEvents.CLINIC_PAYMENT_CHARGEBACK }),
       }),
     );
+    expect(paymentPayoutService.requestPayout).not.toHaveBeenCalled();
   });
 
   it('registra evento de status alterado', async () => {
@@ -391,5 +419,6 @@ describe('ClinicPaymentReconciliationService', () => {
     expect(paymentNotificationService.notifySettlement).not.toHaveBeenCalled();
     expect(paymentNotificationService.notifyRefund).not.toHaveBeenCalled();
     expect(paymentNotificationService.notifyChargeback).not.toHaveBeenCalled();
+    expect(paymentPayoutService.requestPayout).not.toHaveBeenCalled();
   });
 });

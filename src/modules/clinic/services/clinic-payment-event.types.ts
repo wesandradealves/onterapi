@@ -1,4 +1,5 @@
-import { DomainEvent } from '../../../shared/events/domain-event.interface';
+﻿import { DomainEvent } from '../../../shared/events/domain-event.interface';
+import { ClinicCurrency, ClinicPaymentPayoutSplitAllocation } from '../../../domain/clinic/types/clinic.types';
 
 export interface ClinicPaymentAmountSnapshot {
   value?: number | null;
@@ -84,7 +85,34 @@ export interface ClinicPaymentChargebackPayload {
   processedAt: Date;
 }
 
+export interface ClinicPaymentPayoutRequestedPayload {
+  appointmentId: string;
+  tenantId: string;
+  clinicId: string;
+  professionalId: string;
+  patientId: string;
+  holdId: string;
+  serviceTypeId: string;
+  paymentTransactionId: string;
+  provider: string;
+  credentialsId: string;
+  sandboxMode: boolean;
+  bankAccountId?: string | null;
+  baseAmountCents: number;
+  netAmountCents?: number | null;
+  remainderCents: number;
+  split: ClinicPaymentPayoutSplitAllocation[];
+  currency: ClinicCurrency;
+  gatewayStatus: string;
+  eventType?: string | null;
+  fingerprint?: string | null;
+  payloadId?: string | null;
+  sandbox: boolean;
+  requestedAt: Date;
+}
+
 export type ClinicPaymentStatusChangedEvent = DomainEvent<ClinicPaymentStatusChangedPayload>;
 export type ClinicPaymentSettledEvent = DomainEvent<ClinicPaymentSettledPayload>;
 export type ClinicPaymentRefundedEvent = DomainEvent<ClinicPaymentRefundedPayload>;
 export type ClinicPaymentChargebackEvent = DomainEvent<ClinicPaymentChargebackPayload>;
+export type ClinicPaymentPayoutRequestedEvent = DomainEvent<ClinicPaymentPayoutRequestedPayload>;

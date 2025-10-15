@@ -268,6 +268,70 @@ export interface ClinicPaymentCredentials {
   sandboxApiKey?: string;
 }
 
+export type ClinicPaymentPayoutStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+export interface ClinicPaymentPayoutSplitAllocation extends ClinicPaymentSplitAllocation {}
+
+export interface ClinicPaymentPayoutRequest {
+  id: string;
+  appointmentId: string;
+  tenantId: string;
+  clinicId: string;
+  professionalId: string;
+  patientId: string;
+  holdId: string;
+  serviceTypeId: string;
+  paymentTransactionId: string;
+  provider: string;
+  credentialsId: string;
+  sandboxMode: boolean;
+  bankAccountId?: string | null;
+  baseAmountCents: number;
+  netAmountCents?: number | null;
+  remainderCents: number;
+  split: ClinicPaymentPayoutSplitAllocation[];
+  currency: ClinicCurrency;
+  gatewayStatus: string;
+  eventType?: string | null;
+  fingerprint?: string | null;
+  payloadId?: string | null;
+  sandbox: boolean;
+  status: ClinicPaymentPayoutStatus;
+  attempts: number;
+  lastError?: string | null;
+  requestedAt: Date;
+  lastAttemptedAt?: Date | null;
+  processedAt?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface EnqueueClinicPaymentPayoutRequestInput {
+  appointmentId: string;
+  tenantId: string;
+  clinicId: string;
+  professionalId: string;
+  patientId: string;
+  holdId: string;
+  serviceTypeId: string;
+  paymentTransactionId: string;
+  provider: string;
+  credentialsId: string;
+  sandboxMode: boolean;
+  bankAccountId?: string | null;
+  baseAmountCents: number;
+  netAmountCents?: number | null;
+  remainderCents: number;
+  split: ClinicPaymentPayoutSplitAllocation[];
+  currency: ClinicCurrency;
+  gatewayStatus: string;
+  eventType?: string | null;
+  fingerprint?: string | null;
+  payloadId?: string | null;
+  sandbox: boolean;
+  requestedAt: Date;
+}
+
 export interface ClinicPaymentWebhookPayload {
   event: string;
   id?: string;
@@ -720,6 +784,24 @@ export interface ClinicPaymentLedger {
   refund?: ClinicPaymentLedgerRefund;
   chargeback?: ClinicPaymentLedgerChargeback;
   metadata?: Record<string, unknown>;
+}
+
+export interface ClinicPaymentWebhookEventRecord {
+  id: string;
+  tenantId: string;
+  clinicId: string;
+  provider: string;
+  paymentTransactionId: string;
+  fingerprint: string;
+  appointmentId?: string | null;
+  eventType?: string | null;
+  gatewayStatus?: string | null;
+  payloadId?: string | null;
+  sandbox?: boolean | null;
+  receivedAt: Date;
+  processedAt: Date;
+  expiresAt?: Date | null;
+  createdAt: Date;
 }
 
 export interface ClinicAppointment {
