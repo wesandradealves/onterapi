@@ -20,6 +20,7 @@ import {
   ClinicHoldConfirmationInput,
   ClinicInvitation,
   ClinicInvitationEconomicSummary,
+  ClinicOverbookingReviewInput,
   ClinicProfessionalFinancialClearanceStatus,
   ClinicTemplatePropagationInput,
 } from '@domain/clinic/types/clinic.types';
@@ -118,6 +119,7 @@ import {
   ICreateClinicHoldUseCase as ICreateClinicHoldUseCaseToken,
 } from '@domain/clinic/interfaces/use-cases/create-clinic-hold.use-case.interface';
 import { IConfirmClinicAppointmentUseCase as IConfirmClinicAppointmentUseCaseToken } from '@domain/clinic/interfaces/use-cases/confirm-clinic-appointment.use-case.interface';
+import { IProcessClinicOverbookingUseCase as IProcessClinicOverbookingUseCaseToken } from '@domain/clinic/interfaces/use-cases/process-clinic-overbooking.use-case.interface';
 import {
   IListClinicAuditLogsUseCase as IListClinicAuditLogsUseCaseToken,
   ListClinicAuditLogsUseCaseInput,
@@ -763,6 +765,7 @@ describe('ClinicHoldController (integration)', () => {
     ClinicHoldConfirmationInput,
     ClinicAppointmentConfirmationResult
   >();
+  const processOverbookingUseCase = createUseCaseMock<ClinicOverbookingReviewInput, ClinicHold>();
 
   beforeAll(async () => {
     const moduleRef: TestingModule = await Test.createTestingModule({
@@ -770,6 +773,7 @@ describe('ClinicHoldController (integration)', () => {
       providers: [
         { provide: ICreateClinicHoldUseCaseToken, useValue: createHoldUseCase },
         { provide: IConfirmClinicAppointmentUseCaseToken, useValue: confirmHoldUseCase },
+        { provide: IProcessClinicOverbookingUseCaseToken, useValue: processOverbookingUseCase },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -787,6 +791,8 @@ describe('ClinicHoldController (integration)', () => {
     createHoldUseCase.executeOrThrow.mockReset();
     confirmHoldUseCase.execute.mockReset();
     confirmHoldUseCase.executeOrThrow.mockReset();
+    processOverbookingUseCase.execute.mockReset();
+    processOverbookingUseCase.executeOrThrow.mockReset();
   });
 
   afterAll(async () => {
@@ -850,6 +856,59 @@ describe('ClinicHoldController (integration)', () => {
     expect(response.body.id).toBe(hold.id);
     expect(response.body.start).toBe(hold.start.toISOString());
     expect(response.body.ttlExpiresAt).toBe(hold.ttlExpiresAt.toISOString());
+  });
+
+  it('PUT /clinics/:clinicId/holds/:holdId/overbooking decide sobre solicitações pendentes', async () => {
+    const payload = {
+      tenantId: FIXTURES.tenant,
+      approve: false,
+      justification: 'Risco elevado de sobreposição',
+    };
+
+    const hold: ClinicHold = {
+      id: 'hold-2',
+      clinicId: FIXTURES.clinic,
+      tenantId: FIXTURES.tenant,
+      professionalId: FIXTURES.professional,
+      patientId: FIXTURES.patient,
+      serviceTypeId: 'service-1',
+      start: new Date('2025-12-01T12:00:00.000Z'),
+      end: new Date('2025-12-01T13:00:00.000Z'),
+      ttlExpiresAt: new Date('2025-12-01T11:40:00.000Z'),
+      status: 'cancelled',
+      idempotencyKey: 'hold-2-key',
+      createdBy: currentUser.id,
+      createdAt: new Date('2025-11-30T12:00:00.000Z'),
+      updatedAt: new Date('2025-11-30T12:00:00.000Z'),
+      metadata: {
+        overbooking: {
+          status: 'rejected',
+          riskScore: 55,
+          justification: payload.justification,
+        },
+      },
+    };
+
+    processOverbookingUseCase.executeOrThrow.mockResolvedValue(hold);
+
+    const response = await request(app.getHttpServer())
+      .put(`/clinics/${FIXTURES.clinic}/holds/${hold.id}/overbooking`)
+      .set('x-tenant-id', FIXTURES.tenant)
+      .send(payload)
+      .expect(200);
+
+    expect(processOverbookingUseCase.executeOrThrow).toHaveBeenCalledWith({
+      clinicId: FIXTURES.clinic,
+      holdId: hold.id,
+      tenantId: FIXTURES.tenant,
+      approve: payload.approve,
+      justification: payload.justification,
+      performedBy: currentUser.id,
+    });
+
+    expect(response.body.id).toBe(hold.id);
+    expect(response.body.status).toBe('cancelled');
+    expect(response.body.metadata.overbooking.status).toBe('rejected');
   });
 });
 

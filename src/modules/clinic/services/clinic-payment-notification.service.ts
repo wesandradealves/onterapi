@@ -7,18 +7,8 @@ import {
   ClinicPaymentLedgerChargeback,
   ClinicPaymentLedgerRefund,
   ClinicPaymentLedgerSettlement,
-  ClinicNotificationChannelConfig,
-  ClinicNotificationSettingsConfig,
   ClinicStaffRole,
 } from '../../../domain/clinic/types/clinic.types';
-import {
-  IClinicMemberRepository,
-  IClinicMemberRepository as IClinicMemberRepositoryToken,
-} from '../../../domain/clinic/interfaces/repositories/clinic-member.repository.interface';
-import {
-  IClinicConfigurationRepository,
-  IClinicConfigurationRepository as IClinicConfigurationRepositoryToken,
-} from '../../../domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
 import {
   IClinicRepository,
   IClinicRepository as IClinicRepositoryToken,
@@ -26,7 +16,6 @@ import {
 import { IEmailService } from '../../../domain/auth/interfaces/services/email.service.interface';
 import { MessageBus } from '../../../shared/messaging/message-bus';
 import { DomainEvents } from '../../../shared/events/domain-events';
-import { IUserRepository } from '../../../domain/users/interfaces/repositories/user.repository.interface';
 import {
   IWhatsAppService,
   WhatsAppMessagePayload,
@@ -36,6 +25,7 @@ import {
   ClinicPaymentRefundedEvent,
   ClinicPaymentSettledEvent,
 } from './clinic-payment-event.types';
+import { ClinicNotificationContextService } from './clinic-notification-context.service';
 
 const NOTIFICATION_CHANNEL_FALLBACK: string[] = ['system'];
 const RECIPIENT_ROLES: ClinicStaffRole[] = [RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER];
@@ -44,35 +34,15 @@ const PAYMENT_SETTLED_EVENT = 'clinic.payment.settled';
 const PAYMENT_REFUNDED_EVENT = 'clinic.payment.refunded';
 const PAYMENT_CHARGEBACK_EVENT = 'clinic.payment.chargeback';
 
-type ClinicWhatsAppIntegrationSettings = {
-  enabled: boolean;
-  provider?: string;
-  businessNumber?: string;
-  quietHours?: {
-    start: string;
-    end: string;
-    timezone?: string;
-  };
-  templates?: Array<{
-    name: string;
-    status?: string;
-  }>;
-};
-
 @Injectable()
 export class ClinicPaymentNotificationService {
   private readonly logger = new Logger(ClinicPaymentNotificationService.name);
 
   constructor(
     private readonly messageBus: MessageBus,
-    @Inject(IClinicMemberRepositoryToken)
-    private readonly clinicMemberRepository: IClinicMemberRepository,
-    @Inject(IClinicConfigurationRepositoryToken)
-    private readonly clinicConfigurationRepository: IClinicConfigurationRepository,
+    private readonly notificationContext: ClinicNotificationContextService,
     @Inject(IClinicRepositoryToken)
     private readonly clinicRepository: IClinicRepository,
-    @Inject('IUserRepository')
-    private readonly userRepository: IUserRepository,
     @Inject(IEmailService)
     private readonly emailService: IEmailService,
     @Inject(IWhatsAppService)
@@ -84,11 +54,13 @@ export class ClinicPaymentNotificationService {
     event: ClinicPaymentSettledEvent;
     settlement: ClinicPaymentLedgerSettlement;
   }): Promise<void> {
-    const recipients = await this.resolveRecipients(
-      input.appointment.tenantId,
-      input.appointment.clinicId,
-      input.appointment.professionalId,
-    );
+    const recipients = await this.notificationContext.resolveRecipients({
+      tenantId: input.appointment.tenantId,
+      clinicId: input.appointment.clinicId,
+      includeProfessionalId: input.appointment.professionalId,
+      roles: RECIPIENT_ROLES,
+      statuses: ACTIVE_STATUS,
+    });
 
     if (recipients.length === 0) {
       this.logger.debug('Liquidação sem destinatários elegíveis para notificação', {
@@ -98,15 +70,17 @@ export class ClinicPaymentNotificationService {
       return;
     }
 
-    const settings = await this.resolveNotificationSettings(
+    const settings = await this.notificationContext.resolveNotificationSettings(
       input.appointment.tenantId,
       input.appointment.clinicId,
     );
-    const channels = this.resolveChannels(
+    const channels = this.notificationContext.resolveChannels({
       settings,
-      PAYMENT_SETTLED_EVENT,
-      new Date(input.settlement.settledAt),
-    );
+      eventKey: PAYMENT_SETTLED_EVENT,
+      eventDate: new Date(input.settlement.settledAt),
+      fallbackChannels: NOTIFICATION_CHANNEL_FALLBACK,
+      logScope: 'payments',
+    });
 
     if (channels.length === 0) {
       this.logger.debug('Liquidacao de pagamento sem canais habilitados para notificacao', {
@@ -190,11 +164,13 @@ export class ClinicPaymentNotificationService {
     event: ClinicPaymentRefundedEvent;
     refund: ClinicPaymentLedgerRefund;
   }): Promise<void> {
-    const recipients = await this.resolveRecipients(
-      input.appointment.tenantId,
-      input.appointment.clinicId,
-      input.appointment.professionalId,
-    );
+    const recipients = await this.notificationContext.resolveRecipients({
+      tenantId: input.appointment.tenantId,
+      clinicId: input.appointment.clinicId,
+      includeProfessionalId: input.appointment.professionalId,
+      roles: RECIPIENT_ROLES,
+      statuses: ACTIVE_STATUS,
+    });
 
     if (recipients.length === 0) {
       this.logger.debug('Reembolso sem destinatários elegíveis para notificação', {
@@ -204,15 +180,17 @@ export class ClinicPaymentNotificationService {
       return;
     }
 
-    const settings = await this.resolveNotificationSettings(
+    const settings = await this.notificationContext.resolveNotificationSettings(
       input.appointment.tenantId,
       input.appointment.clinicId,
     );
-    const channels = this.resolveChannels(
+    const channels = this.notificationContext.resolveChannels({
       settings,
-      PAYMENT_REFUNDED_EVENT,
-      new Date(input.refund.refundedAt),
-    );
+      eventKey: PAYMENT_REFUNDED_EVENT,
+      eventDate: new Date(input.refund.refundedAt),
+      fallbackChannels: NOTIFICATION_CHANNEL_FALLBACK,
+      logScope: 'payments',
+    });
 
     if (channels.length === 0) {
       this.logger.debug('Reembolso sem canais habilitados para notificacao', {
@@ -292,11 +270,13 @@ export class ClinicPaymentNotificationService {
     event: ClinicPaymentChargebackEvent;
     chargeback: ClinicPaymentLedgerChargeback;
   }): Promise<void> {
-    const recipients = await this.resolveRecipients(
-      input.appointment.tenantId,
-      input.appointment.clinicId,
-      input.appointment.professionalId,
-    );
+    const recipients = await this.notificationContext.resolveRecipients({
+      tenantId: input.appointment.tenantId,
+      clinicId: input.appointment.clinicId,
+      includeProfessionalId: input.appointment.professionalId,
+      roles: RECIPIENT_ROLES,
+      statuses: ACTIVE_STATUS,
+    });
 
     if (recipients.length === 0) {
       this.logger.debug('Chargeback sem destinatários elegíveis para notificação', {
@@ -306,15 +286,17 @@ export class ClinicPaymentNotificationService {
       return;
     }
 
-    const settings = await this.resolveNotificationSettings(
+    const settings = await this.notificationContext.resolveNotificationSettings(
       input.appointment.tenantId,
       input.appointment.clinicId,
     );
-    const channels = this.resolveChannels(
+    const channels = this.notificationContext.resolveChannels({
       settings,
-      PAYMENT_CHARGEBACK_EVENT,
-      new Date(input.chargeback.chargebackAt),
-    );
+      eventKey: PAYMENT_CHARGEBACK_EVENT,
+      eventDate: new Date(input.chargeback.chargebackAt),
+      fallbackChannels: NOTIFICATION_CHANNEL_FALLBACK,
+      logScope: 'payments',
+    });
 
     if (channels.length === 0) {
       this.logger.debug('Chargeback sem canais habilitados para notificacao', {
@@ -383,278 +365,6 @@ export class ClinicPaymentNotificationService {
       channels,
       transactionId: input.event.payload.paymentTransactionId,
     });
-  }
-
-  private async resolveRecipients(
-    tenantId: string,
-    clinicId: string,
-    professionalId: string,
-  ): Promise<string[]> {
-    const uniqueRecipients = new Set<string>();
-
-    if (professionalId) {
-      uniqueRecipients.add(professionalId);
-    }
-
-    const { data } = await this.clinicMemberRepository.listMembers({
-      clinicId,
-      tenantId,
-      status: ACTIVE_STATUS,
-      roles: RECIPIENT_ROLES,
-      limit: 100,
-    });
-
-    for (const member of data) {
-      if (member.userId) {
-        uniqueRecipients.add(member.userId);
-      }
-    }
-
-    return Array.from(uniqueRecipients);
-  }
-
-  private async resolveNotificationSettings(
-    tenantId: string,
-    clinicId: string,
-  ): Promise<ClinicNotificationSettingsConfig | null> {
-    try {
-      const version = await this.clinicConfigurationRepository.findLatestAppliedVersion(
-        clinicId,
-        'notifications',
-      );
-
-      if (!version) {
-        return null;
-      }
-
-      const payload = version.payload ?? {};
-      const settings =
-        payload && typeof payload === 'object' && 'notificationSettings' in payload
-          ? (payload as Record<string, unknown>).notificationSettings
-          : payload;
-
-      if (!settings || typeof settings !== 'object') {
-        return null;
-      }
-
-      return this.castNotificationSettings(settings as Record<string, unknown>);
-    } catch (error) {
-      this.logger.error(
-        'Falha ao carregar configurações de notificações para a clínica',
-        error as Error,
-        { tenantId, clinicId },
-      );
-      return null;
-    }
-  }
-
-  private async resolveWhatsAppSettings(
-    clinicId: string,
-  ): Promise<ClinicWhatsAppIntegrationSettings | null> {
-    try {
-      const version = await this.clinicConfigurationRepository.findLatestAppliedVersion(
-        clinicId,
-        'integrations',
-      );
-
-      if (!version) {
-        return null;
-      }
-
-      const payload = version.payload ?? {};
-      const integrationRoot =
-        payload && typeof payload === 'object' && 'integrationSettings' in payload
-          ? (payload as Record<string, unknown>).integrationSettings
-          : payload;
-
-      const whatsappSection =
-        integrationRoot && typeof integrationRoot === 'object' && 'whatsapp' in integrationRoot
-          ? (integrationRoot as Record<string, unknown>).whatsapp
-          : integrationRoot;
-
-      if (!whatsappSection || typeof whatsappSection !== 'object') {
-        return null;
-      }
-
-      const raw = whatsappSection as Record<string, unknown>;
-      const templates = Array.isArray(raw.templates) ? raw.templates : [];
-
-      return {
-        enabled: raw.enabled === true,
-        provider: typeof raw.provider === 'string' ? raw.provider : undefined,
-        businessNumber:
-          typeof raw.businessNumber === 'string' ? raw.businessNumber : undefined,
-        quietHours:
-          raw.quietHours && typeof raw.quietHours === 'object'
-            ? (raw.quietHours as { start: string; end: string; timezone?: string })
-            : undefined,
-        templates: templates
-          .filter((item) => item && typeof item === 'object')
-          .map((item) => {
-            const reference = item as Record<string, unknown>;
-            return {
-              name: typeof reference.name === 'string' ? reference.name : '',
-              status: typeof reference.status === 'string' ? reference.status : undefined,
-            };
-          }),
-      };
-    } catch (error) {
-      this.logger.error('Falha ao carregar integracao WhatsApp da clinica', error as Error, {
-        clinicId,
-      });
-      return null;
-    }
-  }
-
-  private castNotificationSettings(
-    raw: Record<string, unknown>,
-  ): ClinicNotificationSettingsConfig | null {
-    if (!raw) {
-      return null;
-    }
-
-    const channels = Array.isArray(raw.channels) ? raw.channels : [];
-    const templates = Array.isArray(raw.templates) ? raw.templates : [];
-    const rules = Array.isArray(raw.rules) ? raw.rules : [];
-
-    return {
-      channels: channels as ClinicNotificationSettingsConfig['channels'],
-      templates: templates as ClinicNotificationSettingsConfig['templates'],
-      rules: rules as ClinicNotificationSettingsConfig['rules'],
-      quietHours:
-        raw.quietHours && typeof raw.quietHours === 'object'
-          ? (raw.quietHours as ClinicNotificationSettingsConfig['quietHours'])
-          : undefined,
-      events: Array.isArray(raw.events) ? (raw.events as string[]) : undefined,
-      metadata:
-        raw.metadata && typeof raw.metadata === 'object'
-          ? (raw.metadata as Record<string, unknown>)
-          : undefined,
-    };
-  }
-
-  private resolveChannels(
-    settings: ClinicNotificationSettingsConfig | null,
-    eventKey: string,
-    eventDate: Date,
-  ): string[] {
-    const selectedChannels = this.selectChannels(settings, eventKey);
-    if (selectedChannels.length === 0) {
-      return [];
-    }
-
-    const filtered = selectedChannels.filter((channel) => {
-      if (channel === 'system') {
-        return true;
-      }
-
-      if (this.isInQuietHours(eventDate, channel, settings)) {
-        this.logger.debug('Canal suprimido por quiet hours', {
-          channel,
-          event: eventKey,
-        });
-        return false;
-      }
-
-      if (!this.isChannelEnabled(settings, channel)) {
-        this.logger.debug('Canal desabilitado para notificações de pagamento', {
-          channel,
-          event: eventKey,
-        });
-        return false;
-      }
-
-      return true;
-    });
-
-    if (filtered.length === 0) {
-      return [];
-    }
-
-    return filtered;
-  }
-
-  private selectChannels(
-    settings: ClinicNotificationSettingsConfig | null,
-    eventKey: string,
-  ): string[] {
-    if (!settings) {
-      return [...NOTIFICATION_CHANNEL_FALLBACK];
-    }
-
-    if (settings.events && !settings.events.includes(eventKey)) {
-      return [];
-    }
-
-    const matchingRules = settings.rules?.filter((rule) => rule.event === eventKey) ?? [];
-    const eligibleRules = matchingRules.filter((rule) => rule.enabled !== false);
-
-    if (matchingRules.length > 0 && eligibleRules.length === 0) {
-      return [];
-    }
-
-    if (eligibleRules.length > 0) {
-      const channels = new Set<string>();
-      eligibleRules.forEach((rule) => {
-        (rule.channels ?? []).forEach((channel) => channels.add(String(channel)));
-      });
-      return Array.from(channels);
-    }
-
-    const defaults =
-      settings.channels
-        ?.filter((channel) => channel.defaultEnabled)
-        .map((channel) => String(channel.type)) ?? [];
-
-    if (defaults.length > 0) {
-      return Array.from(new Set(defaults));
-    }
-
-    return [...NOTIFICATION_CHANNEL_FALLBACK];
-  }
-
-  private isChannelEnabled(
-    settings: ClinicNotificationSettingsConfig | null,
-    channel: string,
-  ): boolean {
-    if (!settings) {
-      return channel === 'system';
-    }
-
-    const config = this.findChannelConfig(settings, channel);
-    if (!config) {
-      return false;
-    }
-
-    return config.enabled !== false;
-  }
-
-  private findChannelConfig(
-    settings: ClinicNotificationSettingsConfig,
-    channel: string,
-  ): ClinicNotificationChannelConfig | undefined {
-    return settings.channels?.find((item) => String(item.type) === channel);
-  }
-
-  private isInQuietHours(
-    date: Date,
-    channel: string,
-    settings: ClinicNotificationSettingsConfig | null,
-  ): boolean {
-    if (!settings) {
-      return false;
-    }
-
-    const channelConfig = this.findChannelConfig(settings, channel);
-    if (channelConfig?.quietHours && this.matchesQuietHours(date, channelConfig.quietHours)) {
-      return true;
-    }
-
-    if (settings.quietHours && this.matchesQuietHours(date, settings.quietHours)) {
-      return true;
-    }
-
-    return false;
   }
 
   private matchesQuietHours(
@@ -755,7 +465,7 @@ export class ClinicPaymentNotificationService {
     netAmountCents?: number | null;
     details?: Record<string, unknown>;
   }): Promise<void> {
-    const emails = await this.resolveRecipientEmails(input.recipientIds);
+    const emails = await this.notificationContext.resolveRecipientEmails(input.recipientIds);
     if (emails.length === 0) {
       this.logger.warn('Pagamentos: nenhum e-mail encontrado para destinatarios', {
         clinicId: input.clinicId,
@@ -805,7 +515,7 @@ export class ClinicPaymentNotificationService {
     netAmountCents?: number | null;
     details?: Record<string, unknown>;
   }): Promise<void> {
-    const settings = await this.resolveWhatsAppSettings(input.clinicId);
+    const settings = await this.notificationContext.resolveWhatsAppSettings(input.clinicId);
     if (!settings || settings.enabled !== true) {
       this.logger.debug('WhatsApp desabilitado para a clinica. Ignorando envio.', {
         clinicId: input.clinicId,
@@ -821,7 +531,8 @@ export class ClinicPaymentNotificationService {
       return;
     }
 
-    const phones = await this.resolveRecipientPhones(input.recipientIds);
+    const phoneContacts = await this.notificationContext.resolveRecipientPhones(input.recipientIds);
+    const phones = phoneContacts.map((contact) => contact.phone);
     const uniquePhones = Array.from(new Set(phones));
     if (uniquePhones.length === 0) {
       this.logger.warn('Pagamentos: nenhum telefone encontrado para destinatarios', {
@@ -869,47 +580,6 @@ export class ClinicPaymentNotificationService {
         }
       }),
     );
-  }
-
-  private async resolveRecipientContacts(
-    userIds: string[],
-  ): Promise<Array<{ email?: string; phone?: string }>> {
-    const uniqueIds = Array.from(new Set(userIds));
-    if (uniqueIds.length === 0) {
-      return [];
-    }
-
-    const users = await Promise.all(uniqueIds.map((id) => this.userRepository.findById(id)));
-    const contacts: Array<{ email?: string; phone?: string }> = [];
-
-    for (const user of users) {
-      if (!user || user.isActive === false) {
-        continue;
-      }
-
-      contacts.push({
-        email: typeof user.email === 'string' ? user.email : undefined,
-        phone: typeof user.phone === 'string' ? user.phone : undefined,
-      });
-    }
-
-    return contacts;
-  }
-
-  private async resolveRecipientEmails(userIds: string[]): Promise<Array<{ email: string }>> {
-    const contacts = await this.resolveRecipientContacts(userIds);
-    return contacts
-      .filter((contact) => Boolean(contact.email))
-      .map((contact) => ({ email: contact.email as string }));
-  }
-
-  private async resolveRecipientPhones(userIds: string[]): Promise<string[]> {
-    const contacts = await this.resolveRecipientContacts(userIds);
-    const phones = contacts
-      .map((contact) => contact.phone)
-      .filter((phone): phone is string => Boolean(phone));
-
-    return phones;
   }
 
   private normalizePhone(value: string): string {
@@ -975,9 +645,7 @@ export class ClinicPaymentNotificationService {
     return (lines as string[]).join('\n');
   }
 
-  private resolvePaymentStatusLabel(
-    status: 'settled' | 'refunded' | 'chargeback',
-  ): string {
+  private resolvePaymentStatusLabel(status: 'settled' | 'refunded' | 'chargeback'): string {
     switch (status) {
       case 'settled':
         return 'Pagamento liquidado';

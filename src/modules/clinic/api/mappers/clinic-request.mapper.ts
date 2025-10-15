@@ -12,6 +12,7 @@ import {
   ClinicManagementAlertsQuery,
   ClinicManagementOverviewQuery,
   ClinicNotificationSettingsConfig,
+  ClinicOverbookingReviewInput,
   ClinicPaymentSettings,
   ClinicScheduleSettings,
   ClinicServiceSettings,
@@ -47,6 +48,7 @@ import { TransferClinicProfessionalSchema } from '../schemas/clinic-professional
 import { GetClinicManagementOverviewSchema } from '../schemas/get-clinic-management-overview.schema';
 import { GetClinicManagementAlertsSchema } from '../schemas/get-clinic-management-alerts.schema';
 import { ResolveClinicAlertSchema } from '../schemas/resolve-clinic-alert.schema';
+import { ReviewClinicOverbookingSchema } from '../schemas/review-clinic-overbooking.schema';
 
 export interface ClinicRequestContext {
   tenantId: string;
@@ -130,6 +132,20 @@ export const toUpdateClinicHoldSettingsInput = (
     holdSettings,
   };
 };
+
+export const toClinicOverbookingReviewInput = (
+  clinicId: string,
+  holdId: string,
+  body: ReviewClinicOverbookingSchema,
+  context: ClinicRequestContext,
+): ClinicOverbookingReviewInput => ({
+  clinicId,
+  holdId,
+  tenantId: body.tenantId ?? context.tenantId,
+  approve: body.approve,
+  justification: body.justification?.trim() || undefined,
+  performedBy: context.userId,
+});
 
 export const toUpdateClinicScheduleSettingsInput = (
   clinicId: string,

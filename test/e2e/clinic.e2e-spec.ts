@@ -21,6 +21,7 @@ import {
   ClinicHoldSettings,
   ClinicInvitation,
   ClinicInvitationEconomicSummary,
+  ClinicOverbookingReviewInput,
   ClinicTemplatePropagationInput,
   CreateClinicInput,
 } from '@domain/clinic/types/clinic.types';
@@ -95,6 +96,7 @@ import {
   ICreateClinicHoldUseCase as ICreateClinicHoldUseCaseToken,
 } from '@domain/clinic/interfaces/use-cases/create-clinic-hold.use-case.interface';
 import { IConfirmClinicAppointmentUseCase as IConfirmClinicAppointmentUseCaseToken } from '@domain/clinic/interfaces/use-cases/confirm-clinic-appointment.use-case.interface';
+import { IProcessClinicOverbookingUseCase as IProcessClinicOverbookingUseCaseToken } from '@domain/clinic/interfaces/use-cases/process-clinic-overbooking.use-case.interface';
 import {
   IListClinicAuditLogsUseCase as IListClinicAuditLogsUseCaseToken,
   ListClinicAuditLogsUseCaseInput,
@@ -270,6 +272,7 @@ describe('Clinic module (e2e)', () => {
   >();
 
   const createHoldUseCase = createUseCaseMock<ClinicHoldRequestInput, ClinicHold>();
+  const processOverbookingUseCase = createUseCaseMock<ClinicOverbookingReviewInput, ClinicHold>();
   const confirmAppointmentUseCase = createUseCaseMock<
     ClinicHoldConfirmationInput,
     ClinicAppointmentConfirmationResult
@@ -332,6 +335,7 @@ describe('Clinic module (e2e)', () => {
         { provide: IRevokeClinicInvitationUseCaseToken, useValue: revokeInvitationUseCase },
         { provide: IReissueClinicInvitationUseCaseToken, useValue: reissueInvitationUseCase },
         { provide: ICreateClinicHoldUseCaseToken, useValue: createHoldUseCase },
+        { provide: IProcessClinicOverbookingUseCaseToken, useValue: processOverbookingUseCase },
         { provide: IConfirmClinicAppointmentUseCaseToken, useValue: confirmAppointmentUseCase },
         { provide: IListClinicAuditLogsUseCaseToken, useValue: listAuditLogsUseCase },
       ],
@@ -378,7 +382,10 @@ describe('Clinic module (e2e)', () => {
       listInvitationsUseCase,
       acceptInvitationUseCase,
       revokeInvitationUseCase,
+      reissueInvitationUseCase,
       createHoldUseCase,
+      processOverbookingUseCase,
+      confirmAppointmentUseCase,
       listAuditLogsUseCase,
     ].forEach((mock) => {
       mock.execute.mockReset();

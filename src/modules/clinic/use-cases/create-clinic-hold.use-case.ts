@@ -20,6 +20,20 @@ import {
 } from '../../../domain/clinic/interfaces/use-cases/create-clinic-hold.use-case.interface';
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
 import { ClinicAuditService } from '../../../infrastructure/clinic/services/clinic-audit.service';
+import {
+  type ClinicOverbookingEvaluation,
+  ClinicOverbookingEvaluatorService,
+} from '../services/clinic-overbooking-evaluator.service';
+import { MessageBus } from '../../../shared/messaging/message-bus';
+import { DomainEvents } from '../../../shared/events/domain-events';
+
+type OverbookingMetadata = ClinicOverbookingEvaluation & {
+  status: 'approved' | 'pending_review';
+  threshold: number;
+  evaluatedAt: string;
+  autoApproved?: boolean;
+  requiresManualApproval?: boolean;
+};
 
 @Injectable()
 export class CreateClinicHoldUseCase
@@ -36,6 +50,8 @@ export class CreateClinicHoldUseCase
     @Inject(IClinicServiceTypeRepositoryToken)
     private readonly clinicServiceTypeRepository: IClinicServiceTypeRepository,
     private readonly auditService: ClinicAuditService,
+    private readonly messageBus: MessageBus,
+    private readonly overbookingEvaluator: ClinicOverbookingEvaluatorService,
   ) {
     super();
   }
@@ -124,11 +140,90 @@ export class CreateClinicHoldUseCase
       );
     }
 
+    const metadata: Record<string, unknown> =
+      input.metadata && typeof input.metadata === 'object' ? { ...input.metadata } : {};
+
+    let overbookingMetadata: OverbookingMetadata | undefined;
+
+    if (overlappingHolds.length > 0) {
+      const evaluation = await this.overbookingEvaluator.evaluate({
+        tenantId: input.tenantId,
+        clinicId: input.clinicId,
+        professionalId: input.professionalId,
+        serviceTypeId: input.serviceTypeId,
+        start,
+        overlaps: overlappingHolds.length,
+      });
+
+      const threshold = clinic.holdSettings?.overbookingThreshold ?? 70;
+      const evaluatedAt = now.toISOString();
+
+      if (evaluation.riskScore < threshold) {
+        overbookingMetadata = {
+          ...evaluation,
+          status: 'pending_review',
+          threshold,
+          evaluatedAt,
+          requiresManualApproval: true,
+        };
+      } else {
+        overbookingMetadata = {
+          ...evaluation,
+          status: 'approved',
+          threshold,
+          evaluatedAt,
+          autoApproved: true,
+        };
+      }
+    }
+
+    const normalizedLocationId =
+      typeof input.locationId === 'string' && input.locationId.trim().length > 0
+        ? input.locationId.trim()
+        : undefined;
+    const enforceResourceIsolation = clinic.holdSettings?.resourceMatchingStrict ?? true;
+    const normalizedResources =
+      input.resources
+        ?.map((resource) => resource.trim())
+        .filter((resource) => resource.length > 0) ?? [];
+
+    if (normalizedLocationId || (enforceResourceIsolation && normalizedResources.length > 0)) {
+      const resourceConflicts = await this.clinicHoldRepository.findActiveOverlapByResources({
+        tenantId: input.tenantId,
+        clinicId: input.clinicId,
+        start,
+        end,
+        locationId: normalizedLocationId,
+        resources: enforceResourceIsolation ? normalizedResources : undefined,
+      });
+
+      if (resourceConflicts.length > 0) {
+        throw ClinicErrorFactory.holdAlreadyExists(
+          'Sala ou recurso já reservado para o período solicitado',
+        );
+      }
+    }
+
+    if (overbookingMetadata) {
+      const currentOverbooking =
+        metadata.overbooking && typeof metadata.overbooking === 'object'
+          ? (metadata.overbooking as Record<string, unknown>)
+          : undefined;
+
+      metadata.overbooking = {
+        ...(currentOverbooking ?? {}),
+        ...overbookingMetadata,
+      };
+    }
+
     const hold = await this.clinicHoldRepository.create({
       ...input,
       start,
       end,
       ttlExpiresAt,
+      locationId: normalizedLocationId,
+      resources: normalizedResources,
+      metadata,
     });
 
     await this.auditService.register({
@@ -143,8 +238,60 @@ export class CreateClinicHoldUseCase
         start,
         end,
         ttlExpiresAt,
+        overbooking: overbookingMetadata ?? null,
       },
     });
+
+    if (overbookingMetadata?.status === 'pending_review') {
+      await this.auditService.register({
+        event: 'clinic.overbooking.review_requested',
+        clinicId: input.clinicId,
+        tenantId: input.tenantId,
+        performedBy: input.requestedBy,
+        detail: {
+          holdId: hold.id,
+          riskScore: overbookingMetadata.riskScore,
+          threshold: overbookingMetadata.threshold,
+          reasons: overbookingMetadata.reasons,
+        },
+      });
+    }
+
+    if (overbookingMetadata) {
+      const baseEventPayload = {
+        tenantId: input.tenantId,
+        clinicId: input.clinicId,
+        professionalId: input.professionalId,
+        patientId: input.patientId,
+        serviceTypeId: input.serviceTypeId,
+        riskScore: overbookingMetadata.riskScore,
+        threshold: overbookingMetadata.threshold,
+        reasons: overbookingMetadata.reasons,
+        context: overbookingMetadata.context,
+      };
+
+      if (overbookingMetadata.status === 'pending_review') {
+        await this.messageBus.publish(
+          DomainEvents.clinicOverbookingReviewRequested(hold.id, {
+            ...baseEventPayload,
+            requestedBy: input.requestedBy,
+            requestedAt: now,
+            autoApproved: overbookingMetadata.autoApproved ?? false,
+          }),
+        );
+      } else if (overbookingMetadata.status === 'approved') {
+        await this.messageBus.publish(
+          DomainEvents.clinicOverbookingReviewed(hold.id, {
+            ...baseEventPayload,
+            reviewedBy: input.requestedBy,
+            reviewedAt: now,
+            status: 'approved',
+            justification: undefined,
+            autoApproved: true,
+          }),
+        );
+      }
+    }
 
     return hold;
   }

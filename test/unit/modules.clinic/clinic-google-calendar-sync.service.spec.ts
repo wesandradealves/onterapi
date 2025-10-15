@@ -3,15 +3,11 @@ import { MessageBus } from '../../../src/shared/messaging/message-bus';
 import { IClinicConfigurationRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
 import { IClinicRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic.repository.interface';
 import { IExternalCalendarEventsRepository } from '../../../src/domain/scheduling/interfaces/repositories/external-calendar-events.repository.interface';
-import {
-  IGoogleCalendarService,
-  GoogleCalendarEventPayload,
-} from '../../../src/domain/integrations/interfaces/services/google-calendar.service.interface';
+import { IGoogleCalendarService } from '../../../src/domain/integrations/interfaces/services/google-calendar.service.interface';
 import { IPatientRepository } from '../../../src/domain/patients/interfaces/repositories/patient.repository.interface';
 import {
-  SchedulingBookingCreatedEvent,
-  SchedulingBookingRescheduledEvent,
   SchedulingBookingCancelledEvent,
+  SchedulingBookingCreatedEvent,
 } from '../../../src/modules/scheduling/services/scheduling-event.types';
 import { DomainEvent } from '../../../src/shared/events/domain-event.interface';
 import { DomainEvents } from '../../../src/shared/events/domain-events';

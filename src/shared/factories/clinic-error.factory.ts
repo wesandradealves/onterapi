@@ -39,6 +39,10 @@ export class ClinicErrorFactory {
     return new ForbiddenException(this.sanitize(message));
   }
 
+  static overbookingReviewNotAllowed(message: string): ForbiddenException {
+    return new ForbiddenException(this.sanitize(message));
+  }
+
   static invitationNotFound(message: string): NotFoundException {
     return new NotFoundException(this.sanitize(message));
   }

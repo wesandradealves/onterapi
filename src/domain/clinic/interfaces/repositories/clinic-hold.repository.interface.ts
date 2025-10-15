@@ -47,6 +47,19 @@ export interface IClinicHoldRepository {
     end: Date;
     excludeHoldId?: string;
   }): Promise<ClinicHold[]>;
+  findActiveOverlapByResources(params: {
+    tenantId: string;
+    clinicId?: string;
+    start: Date;
+    end: Date;
+    locationId?: string;
+    resources?: string[];
+    excludeHoldId?: string;
+  }): Promise<ClinicHold[]>;
+  updateMetadata(params: {
+    holdId: string;
+    metadata: Record<string, unknown>;
+  }): Promise<ClinicHold>;
 }
 
 export const IClinicHoldRepository = Symbol('IClinicHoldRepository');

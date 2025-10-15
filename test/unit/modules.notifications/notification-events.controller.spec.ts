@@ -1,14 +1,12 @@
 ﻿import { NotificationEventsController } from '../../../src/modules/notifications/api/controllers/notification-events.controller';
-import {
-  IListNotificationEventsUseCase,
-} from '../../../src/domain/notifications/interfaces/use-cases/list-notification-events.use-case.interface';
+import { IListNotificationEventsUseCase } from '../../../src/domain/notifications/interfaces/use-cases/list-notification-events.use-case.interface';
 import { NotificationEvent } from '../../../src/domain/notifications/types/notification.types';
 
 const createUseCaseMock = (): jest.Mocked<IListNotificationEventsUseCase> =>
   ({
     execute: jest.fn(),
     executeOrThrow: jest.fn(),
-  } as unknown as jest.Mocked<IListNotificationEventsUseCase>);
+  }) as unknown as jest.Mocked<IListNotificationEventsUseCase>;
 
 describe('NotificationEventsController', () => {
   let controller: NotificationEventsController;

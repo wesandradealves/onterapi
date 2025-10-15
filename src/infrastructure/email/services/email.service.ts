@@ -3,6 +3,7 @@ import { AuthEmailService } from './auth-email.service';
 import { NotificationEmailService } from './notification-email.service';
 import {
   ClinicAlertEmailData,
+  ClinicOverbookingEmailData,
   ClinicPaymentEmailData,
   IEmailService,
   LoginAlertData,
@@ -48,6 +49,10 @@ export class EmailService implements IEmailService {
 
   async sendClinicPaymentEmail(data: ClinicPaymentEmailData): Promise<Result<void>> {
     return this.notificationEmailService.sendClinicPaymentEmail(data);
+  }
+
+  async sendClinicOverbookingEmail(data: ClinicOverbookingEmailData): Promise<Result<void>> {
+    return this.notificationEmailService.sendClinicOverbookingEmail(data);
   }
 
   async sendSuspiciousLoginEmail(data: SuspiciousLoginData): Promise<Result<void>> {

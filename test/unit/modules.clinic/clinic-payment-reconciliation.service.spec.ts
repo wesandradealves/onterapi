@@ -1,8 +1,8 @@
 import { ClinicPaymentReconciliationService } from '../../../src/modules/clinic/services/clinic-payment-reconciliation.service';
 import {
-  ClinicPaymentSettledEvent,
-  ClinicPaymentRefundedEvent,
   ClinicPaymentChargebackEvent,
+  ClinicPaymentRefundedEvent,
+  ClinicPaymentSettledEvent,
 } from '../../../src/modules/clinic/services/clinic-payment-event.types';
 import { ClinicPaymentNotificationService } from '../../../src/modules/clinic/services/clinic-payment-notification.service';
 import { IClinicAppointmentRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-appointment.repository.interface';

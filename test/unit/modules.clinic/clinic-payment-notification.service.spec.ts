@@ -11,13 +11,11 @@ import {
   ClinicPaymentSettledEvent,
 } from '../../../src/modules/clinic/services/clinic-payment-event.types';
 import { DomainEvents } from '../../../src/shared/events/domain-events';
-import { IClinicMemberRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-member.repository.interface';
-import { IClinicConfigurationRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
 import { IClinicRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic.repository.interface';
 import { IEmailService } from '../../../src/domain/auth/interfaces/services/email.service.interface';
-import { IUserRepository } from '../../../src/domain/users/interfaces/repositories/user.repository.interface';
 import { IWhatsAppService } from '../../../src/domain/integrations/interfaces/services/whatsapp.service.interface';
 import { MessageBus } from '../../../src/shared/messaging/message-bus';
+import { ClinicNotificationContextService } from '../../../src/modules/clinic/services/clinic-notification-context.service';
 
 type Mocked<T> = jest.Mocked<T>;
 
@@ -146,16 +144,11 @@ const createChargebackEvent = (): ClinicPaymentChargebackEvent => ({
 
 describe('ClinicPaymentNotificationService', () => {
   let messageBus: Mocked<MessageBus>;
-  let memberRepository: Mocked<IClinicMemberRepository>;
-  let configurationRepository: Mocked<IClinicConfigurationRepository>;
+  let notificationContext: Mocked<ClinicNotificationContextService>;
   let clinicRepository: Mocked<IClinicRepository>;
-  let userRepository: Mocked<IUserRepository>;
   let emailService: Mocked<IEmailService>;
   let whatsappService: Mocked<IWhatsAppService>;
   let service: ClinicPaymentNotificationService;
-
-  let notificationSettings: Record<string, unknown> | null;
-  let integrationSettings: Record<string, unknown> | null;
 
   beforeEach(() => {
     messageBus = {
@@ -164,21 +157,22 @@ describe('ClinicPaymentNotificationService', () => {
       unsubscribe: jest.fn(),
     } as unknown as Mocked<MessageBus>;
 
-    memberRepository = {
-      listMembers: jest.fn(),
-    } as unknown as Mocked<IClinicMemberRepository>;
-
-    configurationRepository = {
-      findLatestAppliedVersion: jest.fn(),
-    } as unknown as Mocked<IClinicConfigurationRepository>;
+    notificationContext = {
+      resolveRecipients: jest.fn().mockResolvedValue(['professional-1']),
+      resolveNotificationSettings: jest.fn().mockResolvedValue(null),
+      resolveChannels: jest.fn().mockReturnValue(['system']),
+      resolveRecipientEmails: jest
+        .fn()
+        .mockResolvedValue([{ userId: 'professional-1', email: 'pro@example.com' }]),
+      resolveRecipientPhones: jest
+        .fn()
+        .mockResolvedValue([{ userId: 'professional-1', phone: '+5511999999999' }]),
+      resolveWhatsAppSettings: jest.fn().mockResolvedValue({ enabled: false }),
+    } as unknown as Mocked<ClinicNotificationContextService>;
 
     clinicRepository = {
       findById: jest.fn(),
     } as unknown as Mocked<IClinicRepository>;
-
-    userRepository = {
-      findById: jest.fn(),
-    } as unknown as Mocked<IUserRepository>;
 
     emailService = {
       sendClinicPaymentEmail: jest.fn(),
@@ -188,84 +182,24 @@ describe('ClinicPaymentNotificationService', () => {
       sendMessage: jest.fn(),
     } as unknown as Mocked<IWhatsAppService>;
 
-    memberRepository.listMembers.mockResolvedValue({ data: [], total: 0 });
     clinicRepository.findById.mockResolvedValue({ id: 'clinic-1', name: 'Clinica XPTO' } as any);
-    userRepository.findById.mockResolvedValue({
-      id: 'professional-1',
-      email: 'pro@example.com',
-      phone: '+5511999999999',
-      isActive: true,
-    } as any);
     messageBus.publish.mockResolvedValue(undefined);
     emailService.sendClinicPaymentEmail.mockResolvedValue({ data: undefined });
     whatsappService.sendMessage.mockResolvedValue({ data: undefined });
 
-    notificationSettings = {
-      channels: [{ type: 'system', enabled: true, defaultEnabled: true }],
-      templates: [],
-      rules: [],
-    };
-
-    integrationSettings = {
-      whatsapp: {
-        enabled: false,
-      },
-    };
-
-    configurationRepository.findLatestAppliedVersion.mockImplementation(
-      async (_clinicId: string, section: string) => {
-        if (section === 'notifications') {
-          if (!notificationSettings) {
-            return null;
-          }
-
-          return {
-            id: 'notif-version',
-            clinicId: 'clinic-1',
-            section: 'notifications',
-            version: 1,
-            payload: {
-              notificationSettings,
-            },
-            createdBy: 'user-1',
-            createdAt: new Date(),
-          } as any;
-        }
-
-        if (section === 'integrations') {
-          if (!integrationSettings) {
-            return null;
-          }
-
-          return {
-            id: 'integration-version',
-            clinicId: 'clinic-1',
-            section: 'integrations',
-            version: 1,
-            payload: integrationSettings,
-            createdBy: 'user-1',
-            createdAt: new Date(),
-          } as any;
-        }
-
-        return null;
-      },
-    );
-
     service = new ClinicPaymentNotificationService(
       messageBus,
-      memberRepository,
-      configurationRepository,
+      notificationContext,
       clinicRepository,
-      userRepository,
       emailService,
       whatsappService,
     );
   });
 
   it('usa canal system quando nao ha configuracao especifica', async () => {
-    notificationSettings = null;
-    integrationSettings = null;
+    notificationContext.resolveNotificationSettings.mockResolvedValueOnce(null);
+    notificationContext.resolveChannels.mockReturnValueOnce(['system']);
+    notificationContext.resolveWhatsAppSettings.mockResolvedValueOnce(null);
 
     await service.notifySettlement({
       appointment: createAppointment(),
@@ -273,6 +207,9 @@ describe('ClinicPaymentNotificationService', () => {
       settlement: createSettlement(),
     });
 
+    expect(notificationContext.resolveChannels).toHaveBeenCalledWith(
+      expect.objectContaining({ eventKey: 'clinic.payment.settled' }),
+    );
     expect(messageBus.publish).toHaveBeenCalledTimes(1);
     const eventPublished = messageBus.publish.mock.calls[0][0];
     expect(eventPublished.payload.channels).toEqual(['system']);
@@ -280,13 +217,8 @@ describe('ClinicPaymentNotificationService', () => {
     expect(whatsappService.sendMessage).not.toHaveBeenCalled();
   });
 
-  it('nao publica evento quando o evento esta desabilitado na configuracao', async () => {
-    notificationSettings = {
-      events: ['clinic.payment.refunded'],
-      channels: [],
-      templates: [],
-      rules: [],
-    };
+  it('nao publica evento quando nenhum canal esta habilitado', async () => {
+    notificationContext.resolveChannels.mockReturnValueOnce([]);
 
     await service.notifySettlement({
       appointment: createAppointment(),
@@ -299,19 +231,8 @@ describe('ClinicPaymentNotificationService', () => {
     expect(whatsappService.sendMessage).not.toHaveBeenCalled();
   });
 
-  it('suprime canais em quiet hours', async () => {
-    notificationSettings = {
-      channels: [
-        {
-          type: 'email',
-          enabled: true,
-          defaultEnabled: true,
-          quietHours: { start: '00:00', end: '23:59', timezone: 'UTC' },
-        },
-      ],
-      templates: [],
-      rules: [],
-    };
+  it('suprime canais em quiet hours quando contexto retorna vazio', async () => {
+    notificationContext.resolveChannels.mockReturnValueOnce([]);
 
     await service.notifySettlement({
       appointment: createAppointment(),
@@ -325,18 +246,7 @@ describe('ClinicPaymentNotificationService', () => {
   });
 
   it('mantem canal system mesmo em quiet hours e publica evento', async () => {
-    notificationSettings = {
-      channels: [
-        {
-          type: 'system',
-          enabled: true,
-          defaultEnabled: true,
-          quietHours: { start: '00:00', end: '23:59', timezone: 'UTC' },
-        },
-      ],
-      templates: [],
-      rules: [],
-    };
+    notificationContext.resolveChannels.mockReturnValueOnce(['system']);
 
     await service.notifySettlement({
       appointment: createAppointment(),
@@ -351,14 +261,7 @@ describe('ClinicPaymentNotificationService', () => {
   });
 
   it('envia email quando canal email esta habilitado', async () => {
-    notificationSettings = {
-      channels: [
-        { type: 'system', enabled: true, defaultEnabled: true },
-        { type: 'email', enabled: true, defaultEnabled: true },
-      ],
-      templates: [],
-      rules: [],
-    };
+    notificationContext.resolveChannels.mockReturnValueOnce(['system', 'email']);
 
     await service.notifySettlement({
       appointment: createAppointment(),
@@ -372,20 +275,11 @@ describe('ClinicPaymentNotificationService', () => {
   });
 
   it('envia notificacao por whatsapp quando canal habilitado e integracao ativa', async () => {
-    notificationSettings = {
-      channels: [
-        { type: 'system', enabled: true, defaultEnabled: true },
-        { type: 'whatsapp', enabled: true, defaultEnabled: true },
-      ],
-      templates: [],
-      rules: [],
-    };
-
-    integrationSettings = {
-      whatsapp: {
-        enabled: true,
-      },
-    };
+    notificationContext.resolveChannels.mockReturnValueOnce(['system', 'whatsapp']);
+    notificationContext.resolveRecipientPhones.mockResolvedValueOnce([
+      { userId: 'professional-1', phone: '+5511999999999' },
+    ]);
+    notificationContext.resolveWhatsAppSettings.mockResolvedValueOnce({ enabled: true });
 
     await service.notifySettlement({
       appointment: createAppointment(),
@@ -402,11 +296,7 @@ describe('ClinicPaymentNotificationService', () => {
   });
 
   it('publica notificacoes de reembolso e chargeback com canais configurados', async () => {
-    notificationSettings = {
-      channels: [{ type: 'system', enabled: true, defaultEnabled: true }],
-      templates: [],
-      rules: [],
-    };
+    notificationContext.resolveChannels.mockReturnValue(['system']);
 
     await service.notifyRefund({
       appointment: createAppointment(),

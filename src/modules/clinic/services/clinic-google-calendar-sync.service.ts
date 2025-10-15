@@ -1,4 +1,3 @@
-
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 import {
@@ -212,14 +211,10 @@ export class ClinicGoogleCalendarSyncService implements OnModuleInit, OnModuleDe
     });
 
     if (result.error) {
-      this.logger.error(
-        'Failed to sync booking with Google Calendar',
-        result.error,
-        {
-          bookingId: input.bookingId,
-          professionalId: input.professionalId,
-        },
-      );
+      this.logger.error('Failed to sync booking with Google Calendar', result.error, {
+        bookingId: input.bookingId,
+        professionalId: input.professionalId,
+      });
     } else {
       this.logger.debug('Booking synced with Google Calendar', {
         bookingId: input.bookingId,

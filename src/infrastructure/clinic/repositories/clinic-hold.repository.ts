@@ -182,6 +182,81 @@ export class ClinicHoldRepository implements IClinicHoldRepository {
     return entities.map(ClinicMapper.toHold);
   }
 
+  async findActiveOverlapByResources(params: {
+    tenantId: string;
+    clinicId?: string;
+    start: Date;
+    end: Date;
+    locationId?: string;
+    resources?: string[];
+    excludeHoldId?: string;
+  }): Promise<ClinicHold[]> {
+    const hasLocation = Boolean(params.locationId);
+    const resourceIds =
+      params.resources
+        ?.map((resource) => resource.trim())
+        .filter((resource) => resource.length > 0) ?? [];
+
+    if (!hasLocation && resourceIds.length === 0) {
+      return [];
+    }
+
+    const query = this.repository
+      .createQueryBuilder('hold')
+      .where('hold.tenant_id = :tenantId', { tenantId: params.tenantId })
+      .andWhere('hold.status IN (:...statuses)', { statuses: ['pending', 'confirmed'] })
+      .andWhere('hold.start_at < :end', { end: params.end })
+      .andWhere('hold.end_at > :start', { start: params.start });
+
+    if (params.clinicId) {
+      query.andWhere('hold.clinic_id = :clinicId', { clinicId: params.clinicId });
+    }
+
+    if (params.excludeHoldId) {
+      query.andWhere('hold.id <> :excludeHoldId', { excludeHoldId: params.excludeHoldId });
+    }
+
+    const conditions: string[] = [];
+    const conditionParams: Record<string, unknown> = {};
+
+    if (hasLocation) {
+      conditions.push('hold.location_id = :locationId');
+      conditionParams.locationId = params.locationId;
+    }
+
+    if (resourceIds.length > 0) {
+      conditions.push(
+        `EXISTS (
+          SELECT 1
+          FROM jsonb_array_elements_text(hold.resources) resource
+          WHERE resource = ANY(:resourceIds)
+        )`,
+      );
+      conditionParams.resourceIds = resourceIds;
+    }
+
+    if (conditions.length === 0) {
+      return [];
+    }
+
+    const whereClause = conditions.map((condition) => `(${condition})`).join(' OR ');
+    query.andWhere(whereClause, conditionParams);
+
+    const entities = await query.getMany();
+    return entities.map(ClinicMapper.toHold);
+  }
+
+  async updateMetadata(params: {
+    holdId: string;
+    metadata: Record<string, unknown>;
+  }): Promise<ClinicHold> {
+    const entity = await this.repository.findOneOrFail({ where: { id: params.holdId } });
+    entity.metadata = { ...(params.metadata ?? {}) };
+
+    const saved = await this.repository.save(entity);
+    return ClinicMapper.toHold(saved);
+  }
+
   async updatePaymentStatus(params: {
     holdId: string;
     clinicId: string;

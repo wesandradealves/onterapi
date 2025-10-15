@@ -18,6 +18,8 @@ export interface IEmailService {
   sendClinicAlertEmail(data: ClinicAlertEmailData): Promise<Result<void>>;
 
   sendClinicPaymentEmail(data: ClinicPaymentEmailData): Promise<Result<void>>;
+
+  sendClinicOverbookingEmail(data: ClinicOverbookingEmailData): Promise<Result<void>>;
 }
 
 export interface VerificationEmailData {
@@ -98,6 +100,25 @@ export interface ClinicPaymentEmailData {
   amountCents?: number;
   netAmountCents?: number | null;
   details?: Record<string, unknown>;
+}
+
+export interface ClinicOverbookingEmailData {
+  to: string;
+  clinicName: string;
+  status: 'review_requested' | 'approved' | 'rejected';
+  holdId: string;
+  professionalId: string;
+  patientId: string;
+  serviceTypeId: string;
+  riskScore: number;
+  threshold: number;
+  requestedBy?: string;
+  requestedAt?: Date;
+  reviewedBy?: string;
+  reviewedAt?: Date;
+  justification?: string;
+  reasons?: string[] | null;
+  context?: Record<string, unknown> | null;
 }
 
 export const IEmailService = Symbol('IEmailService');

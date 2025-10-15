@@ -113,6 +113,7 @@ describe('ConfirmClinicAppointmentUseCase', () => {
     clinicHoldRepository = {
       findById: jest.fn(),
       findActiveOverlapByProfessional: jest.fn(),
+      findActiveOverlapByResources: jest.fn(),
       confirmHold: jest.fn(),
       expireHold: jest.fn(),
     } as unknown as Mocked<IClinicHoldRepository>;

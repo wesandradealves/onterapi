@@ -16,11 +16,15 @@ export class GoogleCalendarService implements IGoogleCalendarService {
   private readonly apiKey?: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.baseUrl = this.normalizeUrl(this.configService.get<string>('GOOGLE_CALENDAR_API_BASE_URL'));
+    this.baseUrl = this.normalizeUrl(
+      this.configService.get<string>('GOOGLE_CALENDAR_API_BASE_URL'),
+    );
     this.apiKey = this.configService.get<string>('GOOGLE_CALENDAR_API_KEY');
   }
 
-  async upsertEvent(payload: GoogleCalendarEventPayload): Promise<Result<GoogleCalendarSyncResult>> {
+  async upsertEvent(
+    payload: GoogleCalendarEventPayload,
+  ): Promise<Result<GoogleCalendarSyncResult>> {
     if (!this.baseUrl || !this.apiKey) {
       this.logger.warn('Google Calendar integration not configured. Skipping sync.', {
         hasBaseUrl: Boolean(this.baseUrl),
@@ -92,14 +96,10 @@ export class GoogleCalendarService implements IGoogleCalendarService {
 
       return { data: { externalEventId } };
     } catch (error) {
-      this.logger.error(
-        'Unexpected error while upserting Google Calendar event',
-        error as Error,
-        {
-          bookingId: payload.bookingId,
-          professionalId: payload.professionalId,
-        },
-      );
+      this.logger.error('Unexpected error while upserting Google Calendar event', error as Error, {
+        bookingId: payload.bookingId,
+        professionalId: payload.professionalId,
+      });
       return { error: error as Error };
     }
   }
@@ -147,14 +147,10 @@ export class GoogleCalendarService implements IGoogleCalendarService {
 
       return { data: undefined };
     } catch (error) {
-      this.logger.error(
-        'Unexpected error while deleting Google Calendar event',
-        error as Error,
-        {
-          externalEventId: payload.externalEventId,
-          professionalId: payload.professionalId,
-        },
-      );
+      this.logger.error('Unexpected error while deleting Google Calendar event', error as Error, {
+        externalEventId: payload.externalEventId,
+        professionalId: payload.professionalId,
+      });
       return { error: error as Error };
     }
   }

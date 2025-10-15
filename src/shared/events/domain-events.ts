@@ -48,6 +48,8 @@ export class DomainEvents {
   static CLINIC_TEMPLATE_PROPAGATED = 'clinic.template.propagated';
   static CLINIC_ALERT_TRIGGERED = 'clinic.alert.triggered';
   static CLINIC_ALERT_RESOLVED = 'clinic.alert.resolved';
+  static CLINIC_OVERBOOKING_REVIEW_REQUESTED = 'clinic.overbooking.review_requested';
+  static CLINIC_OVERBOOKING_REVIEWED = 'clinic.overbooking.reviewed';
   static CLINIC_PROFESSIONAL_TRANSFERRED = 'clinic.professional.transferred';
   static BILLING_INVOICE_REQUESTED = 'billing.invoice.requested';
   static BILLING_INVOICE_CANCELLATION_REQUESTED = 'billing.invoice.cancellation_requested';
@@ -67,6 +69,9 @@ export class DomainEvents {
   static NOTIFICATION_CLINIC_PAYMENT_CHARGEBACK = 'notifications.clinic.payment.chargeback';
   static NOTIFICATION_CLINIC_ALERT_TRIGGERED = 'notifications.clinic.alert.triggered';
   static NOTIFICATION_CLINIC_ALERT_RESOLVED = 'notifications.clinic.alert.resolved';
+  static NOTIFICATION_CLINIC_OVERBOOKING_REVIEW_REQUESTED =
+    'notifications.clinic.overbooking.review_requested';
+  static NOTIFICATION_CLINIC_OVERBOOKING_REVIEWED = 'notifications.clinic.overbooking.reviewed';
 
   static createEvent<
     TPayload = Record<string, unknown>,
@@ -885,6 +890,81 @@ export class DomainEvents {
     );
   }
 
+  static clinicOverbookingReviewRequested(
+    holdId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      serviceTypeId: string;
+      riskScore: number;
+      threshold: number;
+      reasons?: string[] | null;
+      context?: Record<string, unknown> | null;
+      requestedBy: string;
+      requestedAt?: Date;
+      autoApproved?: boolean;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    const { requestedAt, autoApproved = false, reasons, context, ...rest } = data;
+
+    return this.createEvent(
+      this.CLINIC_OVERBOOKING_REVIEW_REQUESTED,
+      holdId,
+      {
+        holdId,
+        ...rest,
+        reasons: reasons ?? null,
+        context: context ?? null,
+        requestedAt: requestedAt ?? new Date(),
+        autoApproved,
+      },
+      metadata,
+    );
+  }
+
+  static clinicOverbookingReviewed(
+    holdId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      serviceTypeId: string;
+      riskScore: number;
+      threshold: number;
+      status: 'approved' | 'rejected';
+      reviewedBy: string;
+      reviewedAt?: Date;
+      justification?: string | null;
+      reasons?: string[] | null;
+      context?: Record<string, unknown> | null;
+      autoApproved?: boolean;
+      requestedBy?: string;
+      requestedAt?: Date;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    const { reviewedAt, justification, reasons, context, autoApproved = false, ...rest } = data;
+
+    return this.createEvent(
+      this.CLINIC_OVERBOOKING_REVIEWED,
+      holdId,
+      {
+        holdId,
+        ...rest,
+        reviewedAt: reviewedAt ?? new Date(),
+        justification: justification ?? null,
+        reasons: reasons ?? null,
+        context: context ?? null,
+        autoApproved,
+      },
+      metadata,
+    );
+  }
+
   static clinicProfessionalTransferred(
     professionalId: string,
     data: {
@@ -1123,6 +1203,75 @@ export class DomainEvents {
       {
         appointmentId,
         status: 'chargeback',
+        ...data,
+        queuedAt: new Date(),
+      },
+      metadata,
+    );
+  }
+
+  static notificationsClinicOverbookingReviewRequested(
+    holdId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      serviceTypeId: string;
+      riskScore: number;
+      threshold: number;
+      requestedBy: string;
+      requestedAt: Date;
+      reasons?: string[] | null;
+      context?: Record<string, unknown> | null;
+      autoApproved?: boolean;
+      recipientIds: string[];
+      channels: string[];
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_CLINIC_OVERBOOKING_REVIEW_REQUESTED,
+      holdId,
+      {
+        holdId,
+        status: 'pending_review',
+        ...data,
+        queuedAt: new Date(),
+      },
+      metadata,
+    );
+  }
+
+  static notificationsClinicOverbookingReviewed(
+    holdId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      serviceTypeId: string;
+      status: 'approved' | 'rejected';
+      riskScore: number;
+      threshold: number;
+      reviewedBy: string;
+      reviewedAt: Date;
+      justification?: string | null;
+      reasons?: string[] | null;
+      context?: Record<string, unknown> | null;
+      autoApproved?: boolean;
+      requestedBy?: string;
+      requestedAt?: Date;
+      recipientIds: string[];
+      channels: string[];
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_CLINIC_OVERBOOKING_REVIEWED,
+      holdId,
+      {
+        holdId,
         ...data,
         queuedAt: new Date(),
       },

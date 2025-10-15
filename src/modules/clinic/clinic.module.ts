@@ -50,6 +50,10 @@ import { ClinicConfigurationTelemetryService } from './services/clinic-configura
 import { ClinicAsaasWebhookGuard } from './guards/clinic-asaas-webhook.guard';
 import { ClinicAlertNotificationService } from './services/clinic-alert-notification.service';
 import { ClinicAlertEventsSubscriber } from './subscribers/clinic-alert-events.subscriber';
+import { ClinicOverbookingEvaluatorService } from './services/clinic-overbooking-evaluator.service';
+import { ClinicNotificationContextService } from './services/clinic-notification-context.service';
+import { ClinicOverbookingNotificationService } from './services/clinic-overbooking-notification.service';
+import { ClinicOverbookingEventsSubscriber } from './subscribers/clinic-overbooking-events.subscriber';
 import { UpdateClinicGeneralSettingsUseCase } from './use-cases/update-clinic-general-settings.use-case';
 import { UpdateClinicHoldSettingsUseCase } from './use-cases/update-clinic-hold-settings.use-case';
 import { UpdateClinicServiceSettingsUseCase } from './use-cases/update-clinic-service-settings.use-case';
@@ -62,6 +66,7 @@ import { UpdateClinicTeamSettingsUseCase } from './use-cases/update-clinic-team-
 import { PropagateClinicTemplateUseCase } from './use-cases/propagate-clinic-template.use-case';
 import { CreateClinicUseCase } from './use-cases/create-clinic.use-case';
 import { CreateClinicHoldUseCase } from './use-cases/create-clinic-hold.use-case';
+import { ProcessClinicOverbookingUseCase } from './use-cases/process-clinic-overbooking.use-case';
 import { ConfirmClinicAppointmentUseCase } from './use-cases/confirm-clinic-appointment.use-case';
 import { TransferClinicProfessionalUseCase } from './use-cases/transfer-clinic-professional.use-case';
 import { CheckClinicProfessionalFinancialClearanceUseCase } from './use-cases/check-clinic-professional-financial-clearance.use-case';
@@ -137,6 +142,7 @@ import { IGetClinicNotificationSettingsUseCase as IGetClinicNotificationSettings
 import { IGetClinicBrandingSettingsUseCase as IGetClinicBrandingSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic-branding-settings.use-case.interface';
 import { ICreateClinicUseCase as ICreateClinicUseCaseToken } from '../../domain/clinic/interfaces/use-cases/create-clinic.use-case.interface';
 import { ICreateClinicHoldUseCase as ICreateClinicHoldUseCaseToken } from '../../domain/clinic/interfaces/use-cases/create-clinic-hold.use-case.interface';
+import { IProcessClinicOverbookingUseCase as IProcessClinicOverbookingUseCaseToken } from '../../domain/clinic/interfaces/use-cases/process-clinic-overbooking.use-case.interface';
 import { IConfirmClinicAppointmentUseCase as IConfirmClinicAppointmentUseCaseToken } from '../../domain/clinic/interfaces/use-cases/confirm-clinic-appointment.use-case.interface';
 import { IProcessClinicPaymentWebhookUseCase as IProcessClinicPaymentWebhookUseCaseToken } from '../../domain/clinic/interfaces/use-cases/process-clinic-payment-webhook.use-case.interface';
 import { IGetClinicDashboardUseCase as IGetClinicDashboardUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic-dashboard.use-case.interface';
@@ -229,8 +235,12 @@ const serviceProviders: Provider[] = [
   ClinicGoogleCalendarSyncService,
   ClinicAlertNotificationService,
   ClinicTemplateOverrideService,
+  ClinicNotificationContextService,
+  ClinicOverbookingEvaluatorService,
+  ClinicOverbookingNotificationService,
   ClinicPaymentEventsSubscriber,
   ClinicAlertEventsSubscriber,
+  ClinicOverbookingEventsSubscriber,
   ClinicConfigurationCacheService,
   ClinicConfigurationTelemetryService,
 ];
@@ -323,6 +333,10 @@ const useCaseProviders: Provider[] = [
   {
     provide: ICreateClinicHoldUseCaseToken,
     useClass: CreateClinicHoldUseCase,
+  },
+  {
+    provide: IProcessClinicOverbookingUseCaseToken,
+    useClass: ProcessClinicOverbookingUseCase,
   },
   {
     provide: IConfirmClinicAppointmentUseCaseToken,
