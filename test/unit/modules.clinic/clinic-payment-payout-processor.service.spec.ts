@@ -4,7 +4,9 @@ import { ClinicAuditService } from '../../../src/infrastructure/clinic/services/
 import { ClinicPaymentPayoutRequestedEvent } from '../../../src/modules/clinic/services/clinic-payment-event.types';
 import { DomainEvents } from '../../../src/shared/events/domain-events';
 
-const createEvent = (overrides: Partial<ClinicPaymentPayoutRequestedEvent['payload']> = {}): ClinicPaymentPayoutRequestedEvent => ({
+const createEvent = (
+  overrides: Partial<ClinicPaymentPayoutRequestedEvent['payload']> = {},
+): ClinicPaymentPayoutRequestedEvent => ({
   eventId: 'evt-1',
   eventName: DomainEvents.BILLING_CLINIC_PAYMENT_PAYOUT_REQUESTED,
   aggregateId: 'appointment-1',
@@ -23,6 +25,7 @@ const createEvent = (overrides: Partial<ClinicPaymentPayoutRequestedEvent['paylo
     credentialsId: 'cred-1',
     sandboxMode: false,
     bankAccountId: 'bank-1',
+    settledAt: new Date('2099-01-01T12:00:00Z'),
     baseAmountCents: 20000,
     netAmountCents: 18000,
     remainderCents: 0,
@@ -69,6 +72,7 @@ describe('ClinicPaymentPayoutProcessorService', () => {
       lastAttemptedAt: null,
       processedAt: null,
       status: 'pending',
+      settledAt: input.settledAt,
       ...input,
     }));
   });
@@ -84,6 +88,7 @@ describe('ClinicPaymentPayoutProcessorService', () => {
       expect.objectContaining({
         appointmentId: 'appointment-1',
         paymentTransactionId: 'pay-123',
+        settledAt: new Date('2099-01-01T12:00:00Z'),
         split: expect.arrayContaining([
           expect.objectContaining({ recipient: 'clinic', amountCents: 10400 }),
           expect.objectContaining({ recipient: 'professional', amountCents: 8000 }),

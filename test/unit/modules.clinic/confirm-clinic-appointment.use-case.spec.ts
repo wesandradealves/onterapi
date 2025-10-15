@@ -138,6 +138,7 @@ describe('ConfirmClinicAppointmentUseCase', () => {
 
     clinicPaymentGatewayService = {
       verifyPayment: jest.fn(),
+      executePayout: jest.fn(),
     } as unknown as Mocked<IClinicPaymentGatewayService>;
 
     auditService = {

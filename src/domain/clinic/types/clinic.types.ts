@@ -296,6 +296,11 @@ export interface ClinicPaymentPayoutRequest {
   fingerprint?: string | null;
   payloadId?: string | null;
   sandbox: boolean;
+  settledAt: Date;
+  providerPayoutId?: string | null;
+  providerStatus?: string | null;
+  providerPayload?: Record<string, unknown> | null;
+  executedAt?: Date | null;
   status: ClinicPaymentPayoutStatus;
   attempts: number;
   lastError?: string | null;
@@ -329,6 +334,7 @@ export interface EnqueueClinicPaymentPayoutRequestInput {
   fingerprint?: string | null;
   payloadId?: string | null;
   sandbox: boolean;
+  settledAt: Date;
   requestedAt: Date;
 }
 

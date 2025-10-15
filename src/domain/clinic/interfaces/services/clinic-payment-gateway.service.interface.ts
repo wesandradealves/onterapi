@@ -18,8 +18,27 @@ export interface VerifyClinicPaymentResult {
   metadata?: Record<string, unknown>;
 }
 
+export interface ExecuteClinicPaymentPayoutInput {
+  provider: ClinicPaymentSettings['provider'];
+  credentials: ClinicPaymentCredentials;
+  sandboxMode: boolean;
+  bankAccountId: string;
+  amountCents: number;
+  description: string;
+  externalReference: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ExecuteClinicPaymentPayoutResult {
+  payoutId: string;
+  status: 'processing' | 'completed';
+  executedAt?: Date;
+  providerResponse?: Record<string, unknown>;
+}
+
 export interface IClinicPaymentGatewayService {
   verifyPayment(input: VerifyClinicPaymentInput): Promise<VerifyClinicPaymentResult>;
+  executePayout(input: ExecuteClinicPaymentPayoutInput): Promise<ExecuteClinicPaymentPayoutResult>;
 }
 
 export const IClinicPaymentGatewayService = Symbol('IClinicPaymentGatewayService');

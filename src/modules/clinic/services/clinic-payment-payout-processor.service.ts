@@ -65,6 +65,7 @@ export class ClinicPaymentPayoutProcessorService {
       credentialsId: payload.credentialsId,
       sandboxMode: payload.sandboxMode,
       bankAccountId: payload.bankAccountId ?? null,
+      settledAt: payload.settledAt,
       baseAmountCents: payload.baseAmountCents,
       netAmountCents: payload.netAmountCents ?? null,
       remainderCents: payload.remainderCents,
@@ -110,6 +111,7 @@ export class ClinicPaymentPayoutProcessorService {
       fingerprint: record.fingerprint ?? null,
       payloadId: record.payloadId ?? null,
       sandbox: record.sandbox,
+      settledAt: record.settledAt.toISOString(),
       requestedAt: record.requestedAt.toISOString(),
     };
   }

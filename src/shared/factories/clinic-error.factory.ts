@@ -115,6 +115,10 @@ export class ClinicErrorFactory {
     return new BadRequestException(this.sanitize(message));
   }
 
+  static paymentPayoutFailed(message: string): BadRequestException {
+    return new BadRequestException(this.sanitize(message));
+  }
+
   static paymentProviderNotSupported(message: string): BadRequestException {
     return new BadRequestException(this.sanitize(message));
   }

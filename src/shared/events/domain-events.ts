@@ -58,8 +58,7 @@ export class DomainEvents {
   static BILLING_INVOICE_REQUESTED = 'billing.invoice.requested';
   static BILLING_INVOICE_CANCELLATION_REQUESTED = 'billing.invoice.cancellation_requested';
   static BILLING_PAYMENT_STATUS_SYNC_REQUESTED = 'billing.payment.status_sync_requested';
-  static BILLING_CLINIC_PAYMENT_PAYOUT_REQUESTED =
-    'billing.clinic.payment_payout.requested';
+  static BILLING_CLINIC_PAYMENT_PAYOUT_REQUESTED = 'billing.clinic.payment_payout.requested';
   static ANALYTICS_SCHEDULING_METRIC_INCREMENTED = 'analytics.scheduling.metric.incremented';
   static NOTIFICATION_SCHEDULING_HOLD_CREATED = 'notifications.scheduling.hold.created';
   static NOTIFICATION_SCHEDULING_BOOKING_CREATED = 'notifications.scheduling.booking.created';

@@ -114,14 +114,8 @@ export class CreateClinicPaymentWebhookEvents20251015113000 implements Migration
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.dropIndex(
-      this.tableName,
-      'IDX_clinic_payment_webhook_events_expires_at',
-    );
-    await queryRunner.dropIndex(
-      this.tableName,
-      'IDX_clinic_payment_webhook_events_fingerprint',
-    );
+    await queryRunner.dropIndex(this.tableName, 'IDX_clinic_payment_webhook_events_expires_at');
+    await queryRunner.dropIndex(this.tableName, 'IDX_clinic_payment_webhook_events_fingerprint');
     await queryRunner.dropTable(this.tableName);
   }
 }

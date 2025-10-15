@@ -17,15 +17,12 @@ export class ClinicPaymentPayoutEventsSubscriber implements OnModuleInit, OnModu
   ) {}
 
   onModuleInit(): void {
-    this.registerHandler(
-      DomainEvents.BILLING_CLINIC_PAYMENT_PAYOUT_REQUESTED,
-      async (event) => {
-        const typed = event as unknown as ClinicPaymentPayoutRequestedEvent;
-        await this.executeSafely(event, 'payoutProcessor.handleEvent', () =>
-          this.payoutProcessor.handleEvent(typed),
-        );
-      },
-    );
+    this.registerHandler(DomainEvents.BILLING_CLINIC_PAYMENT_PAYOUT_REQUESTED, async (event) => {
+      const typed = event as unknown as ClinicPaymentPayoutRequestedEvent;
+      await this.executeSafely(event, 'payoutProcessor.handleEvent', () =>
+        this.payoutProcessor.handleEvent(typed),
+      );
+    });
   }
 
   onModuleDestroy(): void {

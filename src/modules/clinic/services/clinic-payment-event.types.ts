@@ -1,5 +1,8 @@
 ﻿import { DomainEvent } from '../../../shared/events/domain-event.interface';
-import { ClinicCurrency, ClinicPaymentPayoutSplitAllocation } from '../../../domain/clinic/types/clinic.types';
+import {
+  ClinicCurrency,
+  ClinicPaymentPayoutSplitAllocation,
+} from '../../../domain/clinic/types/clinic.types';
 
 export interface ClinicPaymentAmountSnapshot {
   value?: number | null;
@@ -98,6 +101,7 @@ export interface ClinicPaymentPayoutRequestedPayload {
   credentialsId: string;
   sandboxMode: boolean;
   bankAccountId?: string | null;
+  settledAt: Date;
   baseAmountCents: number;
   netAmountCents?: number | null;
   remainderCents: number;

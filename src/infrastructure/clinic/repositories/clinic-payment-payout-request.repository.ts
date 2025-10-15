@@ -1,21 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 
 import {
-  EnqueueClinicPaymentPayoutRequestInput,
   ClinicPaymentPayoutRequest,
   ClinicPaymentPayoutStatus,
+  EnqueueClinicPaymentPayoutRequestInput,
 } from '../../../domain/clinic/types/clinic.types';
 import {
   IClinicPaymentPayoutRequestRepository,
+  LeaseClinicPaymentPayoutRequestsParams,
 } from '../../../domain/clinic/interfaces/repositories/clinic-payment-payout-request.repository.interface';
 import { ClinicPaymentPayoutRequestEntity } from '../entities/clinic-payment-payout-request.entity';
 
 @Injectable()
-export class ClinicPaymentPayoutRequestRepository
-  implements IClinicPaymentPayoutRequestRepository
-{
+export class ClinicPaymentPayoutRequestRepository implements IClinicPaymentPayoutRequestRepository {
   constructor(
     @InjectRepository(ClinicPaymentPayoutRequestEntity)
     private readonly repository: Repository<ClinicPaymentPayoutRequestEntity>,
@@ -37,6 +37,7 @@ export class ClinicPaymentPayoutRequestRepository
       credentialsId: input.credentialsId,
       sandboxMode: input.sandboxMode,
       bankAccountId: input.bankAccountId ?? null,
+      settledAt: input.settledAt,
       baseAmountCents: input.baseAmountCents,
       netAmountCents: input.netAmountCents ?? null,
       remainderCents: input.remainderCents,
@@ -47,12 +48,68 @@ export class ClinicPaymentPayoutRequestRepository
       fingerprint: input.fingerprint ?? null,
       payloadId: input.payloadId ?? null,
       sandbox: input.sandbox,
+      providerPayoutId: null,
+      providerStatus: null,
+      providerPayload: null,
+      executedAt: null,
       status: 'pending',
       requestedAt: input.requestedAt,
     });
 
     const saved = await this.repository.save(entity);
     return this.toDomain(saved);
+  }
+
+  async leasePending(
+    params: LeaseClinicPaymentPayoutRequestsParams,
+  ): Promise<ClinicPaymentPayoutRequest[]> {
+    if (params.limit <= 0) {
+      return [];
+    }
+
+    const now = new Date();
+    const retryThreshold = new Date(now.getTime() - params.retryAfterMs);
+    const stuckThreshold = new Date(now.getTime() - params.stuckAfterMs);
+
+    return this.repository.manager.transaction(async (manager) => {
+      const qb = manager
+        .createQueryBuilder(ClinicPaymentPayoutRequestEntity, 'payout')
+        .setLock('pessimistic_write')
+        .setOnLocked('skip_locked')
+        .where('payout.status = :pending', { pending: 'pending' })
+        .orWhere(
+          `(payout.status = :failed AND payout.attempts < :maxAttempts AND (payout.last_attempted_at IS NULL OR payout.last_attempted_at <= :retryThreshold))`,
+        )
+        .orWhere(
+          `(payout.status = :processing AND payout.last_attempted_at IS NOT NULL AND payout.last_attempted_at <= :stuckThreshold)`,
+        )
+        .setParameters({
+          failed: 'failed',
+          processing: 'processing',
+          maxAttempts: params.maxAttempts,
+          retryThreshold,
+          stuckThreshold,
+        })
+        .orderBy('payout.requested_at', 'ASC')
+        .limit(params.limit);
+
+      const entities = await qb.getMany();
+
+      if (entities.length === 0) {
+        return [];
+      }
+
+      const acquired = entities.map((entity) => {
+        entity.status = 'processing';
+        entity.attempts = (entity.attempts ?? 0) + 1;
+        entity.lastAttemptedAt = now;
+        entity.lastError = null;
+        return entity;
+      });
+
+      const saved = await manager.save(acquired);
+      return saved.map((entity) => this.toDomain(entity));
+    });
   }
 
   async existsByFingerprint(
@@ -94,22 +151,34 @@ export class ClinicPaymentPayoutRequestRepository
     lastError?: string | null;
     lastAttemptedAt?: Date | null;
     processedAt?: Date | null;
+    providerPayoutId?: string | null;
+    providerStatus?: string | null;
+    providerPayload?: Record<string, unknown> | null;
+    executedAt?: Date | null;
   }): Promise<void> {
-    await this.repository.update(
-      { id: params.payoutId },
-      {
-        status: params.status,
-        attempts: params.attempts,
-        lastError: params.lastError ?? null,
-        lastAttemptedAt: params.lastAttemptedAt ?? null,
-        processedAt: params.processedAt ?? null,
-      },
-    );
+    const updatePayload: QueryDeepPartialEntity<ClinicPaymentPayoutRequestEntity> = {
+      status: params.status,
+      attempts: params.attempts,
+      lastError: params.lastError ?? null,
+      lastAttemptedAt: params.lastAttemptedAt ?? null,
+      processedAt: params.processedAt ?? null,
+      providerPayoutId:
+        params.providerPayoutId === undefined ? undefined : (params.providerPayoutId ?? null),
+      providerStatus:
+        params.providerStatus === undefined ? undefined : (params.providerStatus ?? null),
+      providerPayload:
+        params.providerPayload === undefined
+          ? undefined
+          : ((params.providerPayload ?? null) as QueryDeepPartialEntity<
+              ClinicPaymentPayoutRequestEntity['providerPayload']
+            >),
+      executedAt: params.executedAt === undefined ? undefined : (params.executedAt ?? null),
+    };
+
+    await this.repository.update({ id: params.payoutId }, updatePayload);
   }
 
-  private toDomain(
-    entity: ClinicPaymentPayoutRequestEntity,
-  ): ClinicPaymentPayoutRequest {
+  private toDomain(entity: ClinicPaymentPayoutRequestEntity): ClinicPaymentPayoutRequest {
     return {
       id: entity.id,
       appointmentId: entity.appointmentId,
@@ -134,6 +203,11 @@ export class ClinicPaymentPayoutRequestRepository
       fingerprint: entity.fingerprint ?? null,
       payloadId: entity.payloadId ?? null,
       sandbox: entity.sandbox,
+      settledAt: entity.settledAt,
+      providerPayoutId: entity.providerPayoutId ?? null,
+      providerStatus: entity.providerStatus ?? null,
+      providerPayload: entity.providerPayload ?? null,
+      executedAt: entity.executedAt ?? null,
       status: entity.status,
       attempts: entity.attempts,
       lastError: entity.lastError ?? null,

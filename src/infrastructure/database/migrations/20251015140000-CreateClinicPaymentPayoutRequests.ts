@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm';
 
-export class CreateClinicPaymentPayoutRequests20251015140000
-  implements MigrationInterface
-{
+export class CreateClinicPaymentPayoutRequests20251015140000 implements MigrationInterface {
   private readonly tableName = 'clinic_payment_payout_requests';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -44,6 +42,11 @@ export class CreateClinicPaymentPayoutRequests20251015140000
             length: '128',
             isNullable: true,
           },
+          {
+            name: 'settled_at',
+            type: 'timestamp with time zone',
+            isNullable: false,
+          },
           { name: 'base_amount_cents', type: 'integer', isNullable: false },
           { name: 'net_amount_cents', type: 'integer', isNullable: true },
           { name: 'remainder_cents', type: 'integer', default: 0 },
@@ -74,6 +77,28 @@ export class CreateClinicPaymentPayoutRequests20251015140000
             isNullable: true,
           },
           { name: 'sandbox', type: 'boolean', default: false },
+          {
+            name: 'provider_payout_id',
+            type: 'varchar',
+            length: '128',
+            isNullable: true,
+          },
+          {
+            name: 'provider_status',
+            type: 'varchar',
+            length: '64',
+            isNullable: true,
+          },
+          {
+            name: 'provider_payload',
+            type: 'jsonb',
+            isNullable: true,
+          },
+          {
+            name: 'executed_at',
+            type: 'timestamp with time zone',
+            isNullable: true,
+          },
           { name: 'status', type: 'varchar', length: '20', default: `'pending'` },
           { name: 'attempts', type: 'integer', default: 0 },
           { name: 'last_error', type: 'text', isNullable: true },
@@ -126,14 +151,8 @@ export class CreateClinicPaymentPayoutRequests20251015140000
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.dropIndex(
-      this.tableName,
-      'IDX_clinic_payment_payout_requests_fingerprint',
-    );
-    await queryRunner.dropIndex(
-      this.tableName,
-      'IDX_clinic_payment_payout_requests_transaction',
-    );
+    await queryRunner.dropIndex(this.tableName, 'IDX_clinic_payment_payout_requests_fingerprint');
+    await queryRunner.dropIndex(this.tableName, 'IDX_clinic_payment_payout_requests_transaction');
     await queryRunner.dropTable(this.tableName);
   }
 }

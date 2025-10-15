@@ -25,9 +25,7 @@ export interface FindClinicPaymentWebhookEventInput {
 
 export interface IClinicPaymentWebhookEventRepository {
   exists(params: FindClinicPaymentWebhookEventInput): Promise<boolean>;
-  record(
-    params: RecordClinicPaymentWebhookEventInput,
-  ): Promise<ClinicPaymentWebhookEventRecord>;
+  record(params: RecordClinicPaymentWebhookEventInput): Promise<ClinicPaymentWebhookEventRecord>;
   purgeExpired(reference: Date): Promise<number>;
 }
 

@@ -108,6 +108,7 @@ import { ClinicPaymentReconciliationService } from './services/clinic-payment-re
 import { ClinicPaymentNotificationService } from './services/clinic-payment-notification.service';
 import { ClinicPaymentPayoutService } from './services/clinic-payment-payout.service';
 import { ClinicPaymentPayoutProcessorService } from './services/clinic-payment-payout-processor.service';
+import { ClinicPaymentPayoutWorkerService } from './services/clinic-payment-payout-worker.service';
 import { ClinicGoogleCalendarSyncService } from './services/clinic-google-calendar-sync.service';
 import { IGoogleCalendarService } from '../../domain/integrations/interfaces/services/google-calendar.service.interface';
 import { GoogleCalendarService } from '../../infrastructure/integrations/services/google-calendar.service';
@@ -251,6 +252,7 @@ const serviceProviders: Provider[] = [
   ClinicPaymentNotificationService,
   ClinicPaymentPayoutService,
   ClinicPaymentPayoutProcessorService,
+  ClinicPaymentPayoutWorkerService,
   ClinicGoogleCalendarSyncService,
   ClinicAlertNotificationService,
   ClinicTemplateOverrideService,

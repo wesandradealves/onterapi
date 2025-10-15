@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { ClinicCurrency, ClinicPaymentSplitAllocation } from '../../../domain/clinic/types/clinic.types';
+import {
+  ClinicCurrency,
+  ClinicPaymentSplitAllocation,
+} from '../../../domain/clinic/types/clinic.types';
 import { DomainEvents } from '../../../shared/events/domain-events';
 import { MessageBus } from '../../../shared/messaging/message-bus';
 
@@ -65,7 +68,6 @@ export class ClinicPaymentPayoutService {
         fingerprint: request.gateway.fingerprint,
         payloadId: request.gateway.payloadId,
         sandbox: request.gateway.sandbox,
-        requestedAt: new Date(),
       }),
     );
 
@@ -77,8 +79,8 @@ export class ClinicPaymentPayoutService {
       splitCount: request.settlement.split.length,
       remainderCents: request.settlement.remainderCents,
       sandbox: request.gateway.sandbox,
-        requestedAt: new Date(),
+      requestedAt: new Date().toISOString(),
+      settledAt: request.settlement.settledAt.toISOString(),
     });
   }
 }
-

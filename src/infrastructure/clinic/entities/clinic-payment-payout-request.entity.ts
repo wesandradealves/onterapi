@@ -55,6 +55,9 @@ export class ClinicPaymentPayoutRequestEntity {
   @Column({ name: 'bank_account_id', type: 'varchar', length: 128, nullable: true })
   bankAccountId?: string | null;
 
+  @Column({ name: 'settled_at', type: 'timestamp with time zone' })
+  settledAt!: Date;
+
   @Column({ name: 'base_amount_cents', type: 'integer' })
   baseAmountCents!: number;
 
@@ -84,6 +87,18 @@ export class ClinicPaymentPayoutRequestEntity {
 
   @Column({ name: 'sandbox', type: 'boolean', default: false })
   sandbox!: boolean;
+
+  @Column({ name: 'provider_payout_id', type: 'varchar', length: 128, nullable: true })
+  providerPayoutId?: string | null;
+
+  @Column({ name: 'provider_status', type: 'varchar', length: 64, nullable: true })
+  providerStatus?: string | null;
+
+  @Column({ name: 'provider_payload', type: 'jsonb', nullable: true })
+  providerPayload?: Record<string, unknown> | null;
+
+  @Column({ name: 'executed_at', type: 'timestamp with time zone', nullable: true })
+  executedAt?: Date | null;
 
   @Column({ name: 'status', type: 'varchar', length: 20, default: 'pending' })
   status!: ClinicPaymentPayoutStatus;
