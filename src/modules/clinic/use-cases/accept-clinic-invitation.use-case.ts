@@ -65,11 +65,11 @@ export class AcceptClinicInvitationUseCase
     const invitation = await this.invitationRepository.findById(input.invitationId);
 
     if (!invitation || invitation.tenantId !== input.tenantId) {
-      throw ClinicErrorFactory.invitationNotFound('Convite não encontrado');
+      throw ClinicErrorFactory.invitationNotFound('Convite nao encontrado');
     }
 
     if (invitation.status !== 'pending') {
-      throw ClinicErrorFactory.invitationAlreadyProcessed('Convite já processado');
+      throw ClinicErrorFactory.invitationAlreadyProcessed('Convite ja processado');
     }
 
     if (invitation.expiresAt < new Date()) {
@@ -79,19 +79,19 @@ export class AcceptClinicInvitationUseCase
     const decodedToken = this.invitationTokenService.verifyToken(input.token);
 
     if (decodedToken.invitationId !== invitation.id) {
-      throw ClinicErrorFactory.invitationInvalidToken('Token não corresponde ao convite fornecido');
+      throw ClinicErrorFactory.invitationInvalidToken('Token nao corresponde ao convite fornecido');
     }
 
     if (decodedToken.clinicId !== invitation.clinicId) {
-      throw ClinicErrorFactory.invitationInvalidToken('Token não pertence à clínica informada');
+      throw ClinicErrorFactory.invitationInvalidToken('Token nao pertence a clinica informada');
     }
 
     if (decodedToken.tenantId !== invitation.tenantId) {
-      throw ClinicErrorFactory.invitationInvalidToken('Token não pertence ao tenant informado');
+      throw ClinicErrorFactory.invitationInvalidToken('Token nao pertence ao tenant informado');
     }
 
     if (decodedToken.hash !== invitation.tokenHash) {
-      throw ClinicErrorFactory.invitationInvalidToken('Token inválido para o convite');
+      throw ClinicErrorFactory.invitationInvalidToken('Token invalido para o convite');
     }
 
     const clinic = await this.clinicRepository.findByTenant(
@@ -99,7 +99,7 @@ export class AcceptClinicInvitationUseCase
       invitation.clinicId,
     );
     if (!clinic) {
-      throw ClinicErrorFactory.clinicNotFound('Clínica não encontrada');
+      throw ClinicErrorFactory.clinicNotFound('Clinica nao encontrada');
     }
 
     const existingMember = await this.memberRepository.findByUser(
@@ -107,7 +107,7 @@ export class AcceptClinicInvitationUseCase
       input.acceptedBy,
     );
     if (existingMember) {
-      throw ClinicErrorFactory.memberAlreadyExists('Profissional já vinculado à clínica');
+      throw ClinicErrorFactory.memberAlreadyExists('Profissional ja vinculado a clinica');
     }
 
     const professionalId = invitation.professionalId ?? input.acceptedBy;

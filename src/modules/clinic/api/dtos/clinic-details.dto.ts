@@ -35,7 +35,7 @@ export class ClinicDetailsDto {
   @ApiProperty({ type: ClinicHoldSettingsDto })
   holdSettings!: ClinicHoldSettingsDto;
 
-  @ApiProperty({ type: Object, description: 'Versões de configuração aplicadas por seção' })
+  @ApiProperty({ type: Object, description: 'Versoes de configuracao aplicadas por secao' })
   configurationVersions!: Record<string, string>;
 
   @ApiPropertyOptional({ type: Object })

@@ -49,7 +49,7 @@ export class UpdateClinicTeamSettingsUseCase
     const clinic = await this.clinicRepository.findByTenant(input.tenantId, input.clinicId);
 
     if (!clinic) {
-      throw ClinicErrorFactory.clinicNotFound('Clínica não encontrada');
+      throw ClinicErrorFactory.clinicNotFound('Clinica nao encontrada');
     }
 
     const payload = JSON.parse(JSON.stringify(input.teamSettings ?? {}));

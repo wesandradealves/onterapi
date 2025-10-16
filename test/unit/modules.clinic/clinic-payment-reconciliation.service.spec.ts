@@ -184,7 +184,7 @@ describe('ClinicPaymentReconciliationService', () => {
     });
   });
 
-  it('registra liquidação com split financeiro e auditoria', async () => {
+  it('registra liquidacao com split financeiro e auditoria', async () => {
     appointmentRepository.findById.mockResolvedValue(createAppointment());
 
     await service.handlePaymentSettled(createSettlementEvent());
@@ -243,7 +243,7 @@ describe('ClinicPaymentReconciliationService', () => {
     );
   });
 
-  it('não replica liquidação com fingerprint repetido', async () => {
+  it('nao replica liquidacao com fingerprint repetido', async () => {
     appointmentRepository.findById.mockResolvedValue(
       createAppointment({
         metadata: {
@@ -280,7 +280,7 @@ describe('ClinicPaymentReconciliationService', () => {
     expect(paymentNotificationService.notifySettlement).not.toHaveBeenCalled();
   });
 
-  it('registra reembolso e dispara notificação', async () => {
+  it('registra reembolso e dispara notificacao', async () => {
     appointmentRepository.findById.mockResolvedValue(createAppointment());
 
     await service.handlePaymentRefunded(createRefundEvent());
@@ -318,7 +318,7 @@ describe('ClinicPaymentReconciliationService', () => {
     expect(paymentPayoutService.requestPayout).not.toHaveBeenCalled();
   });
 
-  it('registra chargeback e dispara notificação', async () => {
+  it('registra chargeback e dispara notificacao', async () => {
     appointmentRepository.findById.mockResolvedValue(createAppointment());
 
     await service.handlePaymentChargeback(createChargebackEvent());

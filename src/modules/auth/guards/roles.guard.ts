@@ -25,21 +25,21 @@ export class RolesGuard extends BaseGuard {
 
     const user = this.getUser(context);
 
-    this.logger.log(`Verificando permissões para usuário: ${user.email}, Role: ${user.role}`);
+    this.logger.log(`Verificando permiss es para usu rio: ${user.email}, Role: ${user.role}`);
     this.logger.log(`Roles requeridas: ${requiredRoles.join(', ')}`);
 
     const userLevel = ROLE_HIERARCHY[user.role as RolesEnum] ?? 0;
-    this.logger.log(`Nível do usuário: ${userLevel}`);
+    this.logger.log(`N vel do usu rio: ${userLevel}`);
 
     const hasPermission = requiredRoles.some((role) => {
       const requiredLevel = ROLE_HIERARCHY[role] ?? 100;
-      this.logger.log(`Verificando role ${role} (nível ${requiredLevel})`);
+      this.logger.log(`Verificando role ${role} (n vel ${requiredLevel})`);
       return userLevel >= requiredLevel;
     });
 
     if (!hasPermission) {
       this.logger.warn(
-        `Acesso negado para ${user.email} - Role: ${user.role} (nível ${userLevel})`,
+        `Acesso negado para ${user.email} - Role: ${user.role} (n vel ${userLevel})`,
       );
       throw AuthErrorFactory.create(AuthErrorType.INSUFFICIENT_PERMISSIONS);
     }

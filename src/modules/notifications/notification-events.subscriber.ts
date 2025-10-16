@@ -1,4 +1,4 @@
-﻿import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 import { DomainEvent } from '../../shared/events/domain-event.interface';
 import { DomainEvents } from '../../shared/events/domain-events';

@@ -10,8 +10,8 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ### Changed
 
-- Ajusta `BookingValidationService` para aceitar holds nos estados `active` e `confirmed` durante a confirmaÃ§Ã£o, evitando conflitos 409 indevidos.
-- RepositÃ³rio de booking passa a atualizar `updatedAt` e recarregar os registros apÃ³s cada mutaÃ§Ã£o, retornando sempre `startAtUtc`, `endAtUtc` e `version` sincronizados nas rotas de reagendamento/cancelamento.
+- Ajusta `BookingValidationService` para aceitar holds nos estados `active` e `confirmed` durante a confirmacao, evitando conflitos 409 indevidos.
+- Repositorio de booking passa a atualizar `updatedAt` e recarregar os registros apos cada mutacao, retornando sempre `startAtUtc`, `endAtUtc` e `version` sincronizados nas rotas de reagendamento/cancelamento.
 - Remove import duplicado em `scheduling.mapper` sinalizado pelo lint.
 
 ### Testing
@@ -22,39 +22,39 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ### Added
 
-- Casos de uso `CreateHoldUseCase`, `CreateBookingUseCase`, `ConfirmBookingUseCase`, `RescheduleBookingUseCase`, `CancelBookingUseCase`, `MarkBookingNoShowUseCase` e `RecordPaymentStatusUseCase`, com respectivos DTOs/interfaces e publicação dos eventos `scheduling.hold.created`, `scheduling.booking.created`, `scheduling.booking.confirmed`, `scheduling.booking.rescheduled`, `scheduling.booking.cancelled`, `scheduling.booking.no_show` e `scheduling.payment.status_changed`.
+- Casos de uso `CreateHoldUseCase`, `CreateBookingUseCase`, `ConfirmBookingUseCase`, `RescheduleBookingUseCase`, `CancelBookingUseCase`, `MarkBookingNoShowUseCase` e `RecordPaymentStatusUseCase`, com respectivos DTOs/interfaces e publica  o dos eventos `scheduling.hold.created`, `scheduling.booking.created`, `scheduling.booking.confirmed`, `scheduling.booking.rescheduled`, `scheduling.booking.cancelled`, `scheduling.booking.no_show` e `scheduling.payment.status_changed`.
 - Endpoints HTTP `POST /scheduling/holds`, `POST /scheduling/bookings`, `POST /scheduling/bookings/:bookingId/confirm`, `POST /scheduling/bookings/:bookingId/reschedule`, `POST /scheduling/bookings/:bookingId/cancel`, `POST /scheduling/bookings/:bookingId/no-show` e `PATCH /scheduling/bookings/:bookingId/payment-status` no `SchedulingController`, com mappers/presenters dedicados.
-- `SchedulingEventsSubscriber` com serviços específicos de billing, métricas e notificações, publicando eventos `billing.*`, `analytics.scheduling.metric.incremented` e `notifications.scheduling.*` para consumo downstream.
-- Suíte de integração `test/integration/scheduling.controller.integration.spec.ts` cobrindo o fluxo HTTP completo (hold → booking → confirm → cancel/reschedule/no-show/pagamento).
-- Migração `1738700000000-CreateSchedulingTables` criando as tabelas `scheduling_*` (holds, bookings, políticas de convite, recorrências e eventos externos) necessárias para persistir o módulo.
+- `SchedulingEventsSubscriber` com servi os espec ficos de billing, m tricas e notifica  es, publicando eventos `billing.*`, `analytics.scheduling.metric.incremented` e `notifications.scheduling.*` para consumo downstream.
+- Su te de integra  o `test/integration/scheduling.controller.integration.spec.ts` cobrindo o fluxo HTTP completo (hold   booking   confirm   cancel/reschedule/no-show/pagamento).
+- Migra  o `1738700000000-CreateSchedulingTables` criando as tabelas `scheduling_*` (holds, bookings, pol ticas de convite, recorr ncias e eventos externos) necess rias para persistir o m dulo.
 
 ### Changed
 
-- `SchedulingModule` agora expõe o `SchedulingController`, registra o `RecordPaymentStatusUseCase` e mantém os repositórios alinhados aos novos fluxos; o `jest.config.js` passou a coletar cobertura do módulo de agendamento.
-- `DomainEvents` registra os novos eventos de agendamento e o Jest foi configurado para ignorar `onterarapi-v4/` e limitar coletor de cobertura ao módulo.
-- `RecordPaymentStatusUseCase` bloqueia transições financeiras quando o agendamento está `completed`, alinhado às regras de negócio originais.
-- Código de domínio/HTTP do módulo passou a utilizar os aliases (`@domain/*`, `@shared/*`, `@modules/*`) para evitar caminhos relativos profundos.
+- `SchedulingModule` agora exp e o `SchedulingController`, registra o `RecordPaymentStatusUseCase` e mant m os reposit rios alinhados aos novos fluxos; o `jest.config.js` passou a coletar cobertura do m dulo de agendamento.
+- `DomainEvents` registra os novos eventos de agendamento e o Jest foi configurado para ignorar `onterarapi-v4/` e limitar coletor de cobertura ao m dulo.
+- `RecordPaymentStatusUseCase` bloqueia transi  es financeiras quando o agendamento est  `completed`, alinhado  s regras de neg cio originais.
+- C digo de dom nio/HTTP do m dulo passou a utilizar os aliases (`@domain/*`, `@shared/*`, `@modules/*`) para evitar caminhos relativos profundos.
 
 ### Testing
 
-- Suites unitárias adicionadas para criação, cancelamento, atualização de pagamento, hold, confirmação, reagendamento e marcação de no-show no módulo de scheduling (`npm run test:unit -- --runTestsByPath ...`).
-- Novos testes unitários para os serviços de billing/métricas/notificações (`scheduling-billing.service.spec.ts`, `scheduling-metrics.service.spec.ts`, `scheduling-notification.service.spec.ts`) e para o controlador de scheduling em integração (`npm run test:int -- --runTestsByPath test/integration/scheduling.controller.integration.spec.ts`).
+- Suites unit rias adicionadas para cria  o, cancelamento, atualiza  o de pagamento, hold, confirma  o, reagendamento e marca  o de no-show no m dulo de scheduling (`npm run test:unit -- --runTestsByPath ...`).
+- Novos testes unit rios para os servi os de billing/m tricas/notifica  es (`scheduling-billing.service.spec.ts`, `scheduling-metrics.service.spec.ts`, `scheduling-notification.service.spec.ts`) e para o controlador de scheduling em integra  o (`npm run test:int -- --runTestsByPath test/integration/scheduling.controller.integration.spec.ts`).
 
 ### Documentation
 
-- README aponta para o módulo de agendamento, detalha os consumidores recém-criados e `docs/app/agendamento.md` documenta o comportamento consolidado.
+- README aponta para o m dulo de agendamento, detalha os consumidores rec m-criados e `docs/app/agendamento.md` documenta o comportamento consolidado.
 
 ## [0.17.3] - 2025-10-08
 
 ### Changed
 
-- Centraliza o `MessageBus` em módulo global (`MessagingModule`) garantindo instância única via `CoreModule`.
-- Normaliza paginação em listagens (usuários/pacientes/plan access logs) com clamps padrão e utilitário `clampLimit`.
-- Cria helper `isoStringOrNow` para serialização consistente de datas e adiciona contexto aos logs sensíveis.
+- Centraliza o `MessageBus` em m dulo global (`MessagingModule`) garantindo inst ncia  nica via `CoreModule`.
+- Normaliza pagina  o em listagens (usu rios/pacientes/plan access logs) com clamps padr o e utilit rio `clampLimit`.
+- Cria helper `isoStringOrNow` para serializa  o consistente de datas e adiciona contexto aos logs sens veis.
 
 ### Testing
 
-- Adiciona testes unitários para `LegalTermPresenter` e amplia cobertura do `AnamnesisPresenter`, garantindo serializações opcionais.
+- Adiciona testes unit rios para `LegalTermPresenter` e amplia cobertura do `AnamnesisPresenter`, garantindo serializa  es opcionais.
 
 - `npm run test:cov`
 
@@ -62,21 +62,21 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ### Added
 
-- Tabela `anamnesis_metrics` + `AnamnesisMetricsRepository`, permitindo agregados por tenant/dia com contadores de passos, submissões, tokens, custo e feedback.
+- Tabela `anamnesis_metrics` + `AnamnesisMetricsRepository`, permitindo agregados por tenant/dia com contadores de passos, submiss es, tokens, custo e feedback.
 
-- Serviço `AnamnesisAIWebhookReplayService` com repositório dedicado (`anamnesis_ai_webhook_requests`) para bloquear replays entre instâncias.
+- Servi o `AnamnesisAIWebhookReplayService` com reposit rio dedicado (`anamnesis_ai_webhook_requests`) para bloquear replays entre inst ncias.
 
-- Migração `1738608000000-UpdateLegalTermsGovernance` adiciona status (`draft/published/retired`) e auditoria (`createdBy/publishedBy/retiredBy`) aos termos legais.
+- Migra  o `1738608000000-UpdateLegalTermsGovernance` adiciona status (`draft/published/retired`) e auditoria (`createdBy/publishedBy/retiredBy`) aos termos legais.
 
 - Endpoint `GET /anamneses/metrics` com controller dedicado, DTOs e testes E2E garantindo o snapshot multi-tenant.
 
 - Supabase Edge Function `supabase/functions/anamnesis-worker` espelha o worker Express e pode ser deployado via CLI (`--no-verify-jwt`).
 
-- `/legal/terms` expõe status e responsáveis nas respostas (`LegalTermResponseDto`) e exige o usuário autenticado ao publicar/desativar.
+- `/legal/terms` exp e status e respons veis nas respostas (`LegalTermResponseDto`) e exige o usu rio autenticado ao publicar/desativar.
 
 ### Security
 
-- Replays do webhook agora são bloqueados por chave persistida (`analysisId` + assinatura) ao invés de cache volátil.
+- Replays do webhook agora s o bloqueados por chave persistida (`analysisId` + assinatura) ao inv s de cache vol til.
 
 ### Testing
 
@@ -108,9 +108,9 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 - Script `npm run worker:start` sobe o worker externo de IA (Express) com suporte a OpenAI/local e retorno assinado ao webhook.
 
-- Endpoints `/legal/terms` permitem criar, publicar e desativar termos legais versionados por tenant, com validação de acesso multi-tenant.
+- Endpoints `/legal/terms` permitem criar, publicar e desativar termos legais versionados por tenant, com valida  o de acesso multi-tenant.
 
-- Observabilidade reforçada: logs de acesso ao plano terapêutico, métricas de turnaround/tokens/custo e alerta de latência configurável.
+- Observabilidade refor ada: logs de acesso ao plano terap utico, m tricas de turnaround/tokens/custo e alerta de lat ncia configur vel.
 
 ### Changed
 
@@ -124,7 +124,7 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ### Security
 
-- Webhook `/anamneses/:id/ai-result` agora exige assinatura HMAC (`x-anamnesis-ai-signature` + `x-anamnesis-ai-timestamp`) com janela configurável (`ANAMNESIS_AI_WEBHOOK_MAX_SKEW_MS`).
+- Webhook `/anamneses/:id/ai-result` agora exige assinatura HMAC (`x-anamnesis-ai-signature` + `x-anamnesis-ai-timestamp`) com janela configur vel (`ANAMNESIS_AI_WEBHOOK_MAX_SKEW_MS`).
 
 ### Testing
 
@@ -146,15 +146,15 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ### Changed
 
-- BaseUseCase e UseCaseWrapper passam a lançar exceções diretamente e expõem executeOrThrow, eliminando a dependência de unwrapResult nos controllers e garantindo propagação uniforme de erros.
+- BaseUseCase e UseCaseWrapper passam a lan ar exce  es diretamente e exp em executeOrThrow, eliminando a depend ncia de unwrapResult nos controllers e garantindo propaga  o uniforme de erros.
 
-- Controllers e casos de uso de Auth, Users, Patients e Anamnesis atualizados para o novo contrato; suites unitárias, de integração e E2E ajustadas para refletir o comportamento.
+- Controllers e casos de uso de Auth, Users, Patients e Anamnesis atualizados para o novo contrato; suites unit rias, de integra  o e E2E ajustadas para refletir o comportamento.
 
-- .gitignore agora ignora a pasta payloads, evitando sujar o repositório com artefatos dos fluxos manuais de anamnese.
+- .gitignore agora ignora a pasta payloads, evitando sujar o reposit rio com artefatos dos fluxos manuais de anamnese.
 
 ### Documentation
 
-- README atualizado com as métricas da bateria manual de 29/09, novo total de 248 testes automatizados (~18 s) e referência de cobertura preservada em 100%.
+- README atualizado com as m tricas da bateria manual de 29/09, novo total de 248 testes automatizados (~18 s) e refer ncia de cobertura preservada em 100%.
 
 ## [0.16.6] - 2025-09-26
 

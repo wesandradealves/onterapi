@@ -10,7 +10,7 @@ $Green = "Green"
 $Yellow = "Yellow"
 $Red = "Red"
 
-Write-Host "🚀 OnTerapi Docker Production Simulation" -ForegroundColor $Green
+Write-Host "[OnTerapi] Docker Production Simulation" -ForegroundColor $Green
 Write-Host "==========================================" -ForegroundColor $Green
 
 function Show-Usage {
@@ -52,9 +52,9 @@ switch ($Command) {
     "up" {
         Write-Host "Starting containers..." -ForegroundColor $Yellow
         Invoke-Expression "$dockerCompose up -d"
-        Write-Host "✅ Application is running at http://localhost:3000" -ForegroundColor $Green
-        Write-Host "✅ Health check at http://localhost:3000/health" -ForegroundColor $Green
-        Write-Host "✅ Swagger docs at http://localhost:3000/api" -ForegroundColor $Green
+        Write-Host "[OK] Application is running at http://localhost:3000" -ForegroundColor $Green
+        Write-Host "[OK] Health check at http://localhost:3000/health" -ForegroundColor $Green
+        Write-Host "[OK] Swagger docs at http://localhost:3000/api" -ForegroundColor $Green
     }
     "down" {
         Write-Host "Stopping containers..." -ForegroundColor $Yellow
@@ -75,7 +75,7 @@ switch ($Command) {
         Write-Host "Cleaning up containers and images..." -ForegroundColor $Yellow
         Invoke-Expression "$dockerCompose down -v"
         docker rmi onterarapi-v4_app 2>$null
-        Write-Host "✅ Cleanup complete" -ForegroundColor $Green
+        Write-Host "[OK] Cleanup complete" -ForegroundColor $Green
     }
     default {
         Show-Usage

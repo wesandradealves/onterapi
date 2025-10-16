@@ -1,4 +1,4 @@
-﻿import { ClinicPresenter } from '../../../src/modules/clinic/api/presenters/clinic.presenter';
+import { ClinicPresenter } from '../../../src/modules/clinic/api/presenters/clinic.presenter';
 import { RolesEnum } from '../../../src/domain/auth/enums/roles.enum';
 import {
   ClinicAppointmentConfirmationResult,
@@ -206,7 +206,7 @@ describe('ClinicPresenter.paymentLedger', () => {
 });
 
 describe('ClinicPresenter.managementOverview', () => {
-  it('converte overview de gestão em DTO', () => {
+  it('converte overview de gestao em DTO', () => {
     const overview: ClinicManagementOverview = {
       period: {
         start: new Date('2025-01-01T00:00:00Z'),

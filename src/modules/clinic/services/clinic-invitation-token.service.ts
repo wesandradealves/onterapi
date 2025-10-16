@@ -24,7 +24,7 @@ export class ClinicInvitationTokenService {
 
     if (!configuredSecret || configuredSecret.trim().length === 0) {
       this.logger.warn(
-        'CLINIC_INVITATION_TOKEN_SECRET não configurado. Utilizando segredo padrão apenas para desenvolvimento.',
+        'CLINIC_INVITATION_TOKEN_SECRET nao configurado. Utilizando segredo padrao apenas para desenvolvimento.',
       );
       this.secret = 'clinic-invitation-secret';
     } else {
@@ -70,12 +70,12 @@ export class ClinicInvitationTokenService {
     const [payloadPart, signature] = token.split('.');
 
     if (!payloadPart || !signature) {
-      throw ClinicErrorFactory.invitationInvalidToken('Token de convite inválido');
+      throw ClinicErrorFactory.invitationInvalidToken('Token de convite invalido');
     }
 
     const expectedSignature = this.sign(payloadPart);
     if (!secureCompare(expectedSignature, signature)) {
-      throw ClinicErrorFactory.invitationInvalidToken('Assinatura do token de convite inválida');
+      throw ClinicErrorFactory.invitationInvalidToken('Assinatura do token de convite invalida');
     }
 
     const decoded = this.base64UrlDecode(payloadPart);
@@ -84,12 +84,12 @@ export class ClinicInvitationTokenService {
     try {
       payload = JSON.parse(decoded) as InvitationTokenPayload;
     } catch (error) {
-      throw ClinicErrorFactory.invitationInvalidToken('Payload do token de convite inválido');
+      throw ClinicErrorFactory.invitationInvalidToken('Payload do token de convite invalido');
     }
 
     const expiresAt = new Date(payload.exp);
     if (Number.isNaN(expiresAt.getTime())) {
-      throw ClinicErrorFactory.invitationInvalidToken('Token de convite sem expiração válida');
+      throw ClinicErrorFactory.invitationInvalidToken('Token de convite sem expiracao valida');
     }
 
     if (expiresAt.getTime() <= Date.now()) {
@@ -98,7 +98,7 @@ export class ClinicInvitationTokenService {
 
     const issuedAt = new Date(payload.iat);
     if (Number.isNaN(issuedAt.getTime())) {
-      throw ClinicErrorFactory.invitationInvalidToken('Token de convite sem emissão válida');
+      throw ClinicErrorFactory.invitationInvalidToken('Token de convite sem emissao valida');
     }
 
     return {

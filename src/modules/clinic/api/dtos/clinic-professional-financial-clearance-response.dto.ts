@@ -9,7 +9,7 @@ export class ClinicProfessionalFinancialClearanceResponseDto {
   @ApiProperty()
   hasPendencies!: boolean;
 
-  @ApiProperty({ description: 'Quantidade de agendamentos com pendência financeira' })
+  @ApiProperty({ description: 'Quantidade de agendamentos com pendencia financeira' })
   pendingCount!: number;
 
   @ApiProperty({

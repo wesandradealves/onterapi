@@ -1,4 +1,4 @@
-﻿import { z } from 'zod';
+import { z } from 'zod';
 
 export const listNotificationEventsSchema = z.object({
   eventName: z.string().max(150).optional(),

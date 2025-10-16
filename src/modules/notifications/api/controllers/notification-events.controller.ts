@@ -1,4 +1,4 @@
-﻿import { Controller, Get, Inject, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Inject, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
@@ -30,7 +30,7 @@ export class NotificationEventsController {
 
   @Get()
   @Roles(RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Listar eventos de notificações' })
+  @ApiOperation({ summary: 'Listar eventos de notifica  es' })
   async list(
     @Query(new ZodValidationPipe(listNotificationEventsSchema))
     query: ListNotificationEventsSchema,

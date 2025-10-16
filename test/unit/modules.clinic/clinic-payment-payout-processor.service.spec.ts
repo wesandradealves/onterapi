@@ -1,4 +1,4 @@
-﻿import { ClinicPaymentPayoutProcessorService } from '../../../src/modules/clinic/services/clinic-payment-payout-processor.service';
+import { ClinicPaymentPayoutProcessorService } from '../../../src/modules/clinic/services/clinic-payment-payout-processor.service';
 import { IClinicPaymentPayoutRequestRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-payment-payout-request.repository.interface';
 import { ClinicAuditService } from '../../../src/infrastructure/clinic/services/clinic-audit.service';
 import { ClinicPaymentPayoutRequestedEvent } from '../../../src/modules/clinic/services/clinic-payment-event.types';

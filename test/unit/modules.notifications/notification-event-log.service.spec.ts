@@ -1,4 +1,4 @@
-﻿import { NotificationEventLogService } from '../../../src/modules/notifications/notification-event-log.service';
+import { NotificationEventLogService } from '../../../src/modules/notifications/notification-event-log.service';
 import { INotificationEventRepository } from '../../../src/domain/notifications/interfaces/notification-event.repository.interface';
 
 const createRepositoryMock = (): jest.Mocked<INotificationEventRepository> =>

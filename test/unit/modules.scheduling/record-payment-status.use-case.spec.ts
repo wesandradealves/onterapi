@@ -105,7 +105,7 @@ describe('RecordPaymentStatusUseCase', () => {
     expect(messageBus.publish).not.toHaveBeenCalled();
   });
 
-  it('lança not found quando o agendamento não existe', async () => {
+  it('lan a not found quando o agendamento n o existe', async () => {
     bookingRepository.findById.mockResolvedValue(null);
 
     await expect(
@@ -123,7 +123,7 @@ describe('RecordPaymentStatusUseCase', () => {
   });
 
   it.each(['cancelled', 'no_show', 'completed'])(
-    'lança erro de estado inválido quando o agendamento está %s',
+    'lanca erro de estado invalido quando o agendamento esta %s',
     async (status) => {
       const bookingWithBlockedStatus = baseBooking({ status, paymentStatus: 'pending' });
       bookingRepository.findById.mockResolvedValue(bookingWithBlockedStatus);

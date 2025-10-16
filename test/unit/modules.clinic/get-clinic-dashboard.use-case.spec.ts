@@ -81,7 +81,7 @@ describe('GetClinicDashboardUseCase', () => {
     useCase = new GetClinicDashboardUseCase(metricsRepository);
   });
 
-  it('retorna snapshot básico quando sem flags adicionais', async () => {
+  it('retorna snapshot basico quando sem flags adicionais', async () => {
     const snapshot = createSnapshot({
       alerts: [createAlert()],
     });

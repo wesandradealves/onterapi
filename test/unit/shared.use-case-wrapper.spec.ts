@@ -13,7 +13,7 @@ describe('UseCaseWrapper', () => {
     expect(result).toEqual({ success: true });
   });
 
-  it('lança erro e registra log quando handler falha', async () => {
+  it('lan a erro e registra log quando handler falha', async () => {
     const logger = { error: jest.fn() } as unknown as Logger;
     const failure = new Error('failure');
     const handler = jest.fn().mockRejectedValue(failure);

@@ -36,7 +36,7 @@ export class RemoveClinicServiceTypeUseCase
     const clinic = await this.clinicRepository.findByTenant(input.tenantId, input.clinicId);
 
     if (!clinic) {
-      throw ClinicErrorFactory.clinicNotFound('Clínica não encontrada');
+      throw ClinicErrorFactory.clinicNotFound('Clinica nao encontrada');
     }
 
     const serviceType = await this.serviceTypeRepository.findById(
@@ -45,7 +45,7 @@ export class RemoveClinicServiceTypeUseCase
     );
 
     if (!serviceType) {
-      throw ClinicErrorFactory.serviceTypeNotFound('Tipo de serviço não encontrado');
+      throw ClinicErrorFactory.serviceTypeNotFound('Tipo de servico nao encontrado');
     }
 
     await this.serviceTypeRepository.remove(input);

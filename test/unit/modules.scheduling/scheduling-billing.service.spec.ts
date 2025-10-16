@@ -19,7 +19,7 @@ describe('SchedulingBillingService', () => {
     service = new SchedulingBillingService(messageBus);
   });
 
-  it('publica evento de billing para confirma��o de agendamento', async () => {
+  it('publica evento de billing para confirmacao de agendamento', async () => {
     const event: SchedulingBookingConfirmedEvent = {
       eventId: 'evt-1',
       eventName: DomainEvents.SCHEDULING_BOOKING_CONFIRMED,
@@ -78,7 +78,7 @@ describe('SchedulingBillingService', () => {
     );
   });
 
-  it('publica evento de sincroniza��o de pagamento', async () => {
+  it('publica evento de sincronizacao de pagamento', async () => {
     const event: SchedulingPaymentStatusChangedEvent = {
       eventId: 'evt-3',
       eventName: DomainEvents.SCHEDULING_PAYMENT_STATUS_CHANGED,

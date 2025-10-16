@@ -41,16 +41,16 @@ export class RevokeClinicInvitationUseCase
     const invitation = await this.invitationRepository.findById(input.invitationId);
 
     if (!invitation || invitation.tenantId !== input.tenantId) {
-      throw ClinicErrorFactory.invitationNotFound('Convite não encontrado');
+      throw ClinicErrorFactory.invitationNotFound('Convite nao encontrado');
     }
 
     if (invitation.status !== 'pending') {
-      throw ClinicErrorFactory.invitationAlreadyProcessed('Convite já processado');
+      throw ClinicErrorFactory.invitationAlreadyProcessed('Convite ja processado');
     }
 
     const clinic = await this.clinicRepository.findByTenant(input.tenantId, invitation.clinicId);
     if (!clinic) {
-      throw ClinicErrorFactory.clinicNotFound('Clínica não encontrada');
+      throw ClinicErrorFactory.clinicNotFound('Clinica nao encontrada');
     }
 
     const revoked = await this.invitationRepository.markRevoked(input);

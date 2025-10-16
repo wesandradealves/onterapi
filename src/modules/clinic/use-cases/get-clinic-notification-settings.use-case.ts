@@ -53,7 +53,7 @@ export class GetClinicNotificationSettingsUseCase
     const clinic = await this.clinicRepository.findByTenant(input.tenantId, input.clinicId);
 
     if (!clinic) {
-      throw ClinicErrorFactory.clinicNotFound('Clínica não encontrada');
+      throw ClinicErrorFactory.clinicNotFound('Clinica nao encontrada');
     }
 
     const version = await this.configurationRepository.findLatestAppliedVersion(
@@ -63,7 +63,7 @@ export class GetClinicNotificationSettingsUseCase
 
     if (!version) {
       throw ClinicErrorFactory.configurationVersionNotFound(
-        'Configurações de notificações não encontradas para a clínica',
+        'Configuracoes de notificacoes nao encontradas para a clinica',
       );
     }
 

@@ -51,12 +51,12 @@ export class PatientAnamnesisRollupService {
     if (plan.summary) {
       segments.push(`Resumo do plano: ${plan.summary}`);
     } else if (plan.planText) {
-      segments.push(`Plano terapÃªutico: ${plan.planText}`);
+      segments.push(`Plano terapAautico: ${plan.planText}`);
     }
 
     const reasoning = plan.reasoningText ?? plan.clinicalReasoning;
     if (reasoning) {
-      segments.push(`RaciocÃ­nio clÃ­nico: ${reasoning}`);
+      segments.push(`RaciocA nio clA nico: ${reasoning}`);
     }
 
     if (Array.isArray(plan.recommendations) && plan.recommendations.length > 0) {
@@ -66,7 +66,7 @@ export class PatientAnamnesisRollupService {
           return `${item.description}${priority}`;
         })
         .join('; ');
-      segments.push(`RecomendaÃ§Ãµes principais: ${recommendations}`);
+      segments.push(`RecomendaASAues principais: ${recommendations}`);
     }
 
     if (Array.isArray(plan.riskFactors) && plan.riskFactors.length > 0) {

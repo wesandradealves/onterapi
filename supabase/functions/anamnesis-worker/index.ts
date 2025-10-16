@@ -694,7 +694,7 @@ function resolveSystemPrompt(job: AiWorkerRequestBody): string {
     return candidate.trim();
   }
 
-  return "Você é um agente clínico assistivo. Responda exclusivamente em JSON com campos plan_text, reasoning_text, evidence_map e confidence.";
+  return 'Voce e um agente clinico assistivo. Responda exclusivamente em JSON com campos plan_text, reasoning_text, evidence_map e confidence.';
 }
 
 function resolveUserPrompt(job: AiWorkerRequestBody, compact: AnamnesisCompactSummary): string {
@@ -843,7 +843,7 @@ function extractChiefComplaint(request: AnamnesisAIRequestPayload): string | und
   const description = toSentence((node as Record<string, unknown>)["description"]);
   const duration = toSentence((node as Record<string, unknown>)["duration"]);
   if (description && duration) {
-    return `${description} (há ${duration})`;
+    return `${description} (ha ${duration})`;
   }
   return description ?? duration ?? undefined;
 }

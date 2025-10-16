@@ -50,7 +50,7 @@ export class InviteClinicProfessionalUseCase
     const clinic = await this.clinicRepository.findByTenant(input.tenantId, input.clinicId);
 
     if (!clinic) {
-      throw ClinicErrorFactory.clinicNotFound('Clínica não encontrada');
+      throw ClinicErrorFactory.clinicNotFound('Clinica nao encontrada');
     }
 
     if (!input.professionalId && !input.email) {
@@ -65,7 +65,7 @@ export class InviteClinicProfessionalUseCase
         input.professionalId,
       );
       if (existingMember) {
-        throw ClinicErrorFactory.memberAlreadyExists('Profissional já faz parte da clínica');
+        throw ClinicErrorFactory.memberAlreadyExists('Profissional ja faz parte da clinica');
       }
     }
 
@@ -78,12 +78,12 @@ export class InviteClinicProfessionalUseCase
 
     if (hasInvitation) {
       throw ClinicErrorFactory.invitationAlreadyExists(
-        'Já existe um convite ativo para este profissional',
+        'Ja existe um convite ativo para este profissional',
       );
     }
 
     if (input.expiresAt <= new Date()) {
-      throw ClinicErrorFactory.invalidClinicData('Data de expiração do convite deve ser futura');
+      throw ClinicErrorFactory.invalidClinicData('Data de expiracao do convite deve ser futura');
     }
 
     const placeholderHash = this.invitationTokenService.hash(

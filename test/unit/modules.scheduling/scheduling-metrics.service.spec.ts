@@ -171,7 +171,7 @@ describe('SchedulingMetricsService', () => {
           metadata: {},
         } as SchedulingPaymentStatusChangedEvent),
     },
-  ])('publica m�trica quando $description', async ({ invoke, expectedMetric }) => {
+  ])('publica metrica quando $description', async ({ invoke, expectedMetric }) => {
     messageBus.publish.mockClear();
 
     await invoke();

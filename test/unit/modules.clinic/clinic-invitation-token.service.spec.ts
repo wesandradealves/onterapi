@@ -63,7 +63,7 @@ describe('ClinicInvitationTokenService', () => {
     const tampered = `${token.split('.')[0]}.invalidsignature`;
 
     expect(() => service.verifyToken(tampered)).toThrow(
-      ClinicErrorFactory.invitationInvalidToken('Assinatura do token de convite inválida')
+      ClinicErrorFactory.invitationInvalidToken('Assinatura do token de convite invalida')
         .constructor,
     );
   });

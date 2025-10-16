@@ -171,7 +171,7 @@ describe('SchedulingNotificationService', () => {
           metadata: {},
         } as SchedulingPaymentStatusChangedEvent),
     },
-  ])('publica evento de notifica��o quando $description', async ({ invoke, expectedEventName }) => {
+  ])('publica evento de notificacao quando $description', async ({ invoke, expectedEventName }) => {
     messageBus.publish.mockClear();
 
     await invoke();

@@ -198,7 +198,7 @@ describe('ClinicPresenter configuration settings mapping', () => {
               type: 'percentage',
               windowMinutes: 180,
               percentage: 100,
-              message: 'Cancelamento sem custo em at� 3h',
+              message: 'Cancelamento sem custo em ate 3h',
             },
           ],
           bankAccountId: 'bank-1',
@@ -251,7 +251,7 @@ describe('ClinicPresenter configuration settings mapping', () => {
           email: {
             enabled: true,
             provider: 'sendgrid',
-            fromName: 'Cl�nica On',
+            fromName: 'Clinica On',
             fromEmail: 'contato@on.com',
             replyTo: 'suporte@on.com',
             tracking: {

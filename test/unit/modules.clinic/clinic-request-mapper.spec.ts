@@ -129,7 +129,7 @@ describe('ClinicRequestMapper - integration settings', () => {
         email: {
           enabled: true,
           provider: 'sendgrid',
-          fromName: 'Clínica On',
+          fromName: 'Clinica On',
           fromEmail: 'contato@on.com',
           tracking: { open: true, click: true, bounce: false },
           templates: ['booking_confirmation'],
@@ -250,7 +250,7 @@ describe('ClinicRequestMapper - service settings', () => {
               type: 'percentage',
               windowMinutes: 120,
               percentage: 50,
-              message: 'Cancelar com 2h de antecedência',
+              message: 'Cancelar com 2h de antecedencia',
             },
             eligibility: {
               allowNewPatients: true,
@@ -260,7 +260,7 @@ describe('ClinicRequestMapper - service settings', () => {
               allowedTags: ['adult'],
             },
             color: '#123456',
-            instructions: 'Chegar com antecedência',
+            instructions: 'Chegar com antecedencia',
             requiredDocuments: ['RG'],
           },
         ],
@@ -339,7 +339,7 @@ describe('ClinicRequestMapper - payment settings', () => {
           allowPartialRefund: true,
         },
         cancellationPolicies: [
-          { type: 'percentage', windowMinutes: 120, percentage: 50, message: 'Até 2h sem custo' },
+          { type: 'percentage', windowMinutes: 120, percentage: 50, message: 'Ate 2h sem custo' },
         ],
         bankAccountId: 'bank-1',
       },
@@ -351,7 +351,7 @@ describe('ClinicRequestMapper - payment settings', () => {
     expect(input.paymentSettings.splitRules).toHaveLength(2);
     expect(input.paymentSettings.antifraud?.provider).toBe('clearsale');
     expect(input.paymentSettings.inadimplencyRule.penaltyPercentage).toBe(2);
-    expect(input.paymentSettings.cancellationPolicies[0].message).toContain('Até 2h');
+    expect(input.paymentSettings.cancellationPolicies[0].message).toContain('Ate 2h');
     expect(input.paymentSettings.bankAccountId).toBe('bank-1');
   });
 

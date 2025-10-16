@@ -22,18 +22,18 @@ describe('RolesGuard', () => {
     guard = new RolesGuard(reflector);
   });
 
-  it('permite acesso quando handler n�o especifica roles', () => {
+  it('permite acesso quando handler nao especifica roles', () => {
     reflector.getAllAndOverride.mockReturnValue(undefined);
     expect(guard.canActivate(buildContext({ role: RolesEnum.PROFESSIONAL }))).toBe(true);
   });
 
-  it('permite acesso quando role est� autorizada', () => {
+  it('permite acesso quando role esta autorizada', () => {
     reflector.getAllAndOverride.mockReturnValue([RolesEnum.SUPER_ADMIN]);
     const context = buildContext({ role: RolesEnum.SUPER_ADMIN });
     expect(guard.canActivate(context)).toBe(true);
   });
 
-  it('bloqueia acesso para role n�o autorizada', () => {
+  it('bloqueia acesso para role nao autorizada', () => {
     reflector.getAllAndOverride.mockReturnValue([RolesEnum.SUPER_ADMIN]);
     const context = buildContext({ role: RolesEnum.PROFESSIONAL, email: 'u@example.com' });
     expect(() => guard.canActivate(context)).toThrow(/insuficiente/);

@@ -78,7 +78,7 @@ export class ClinicHoldController {
     RolesEnum.PROFESSIONAL,
     RolesEnum.SUPER_ADMIN,
   )
-  @ApiOperation({ summary: 'Criar hold clínico' })
+  @ApiOperation({ summary: 'Criar hold clinico' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 201, type: ClinicHoldResponseDto })
   @ZodApiBody({ schema: createClinicHoldSchema })
@@ -104,7 +104,7 @@ export class ClinicHoldController {
     RolesEnum.PROFESSIONAL,
     RolesEnum.SUPER_ADMIN,
   )
-  @ApiOperation({ summary: 'Confirmar hold clÃ­nico' })
+  @ApiOperation({ summary: 'Confirmar hold clinico' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiParam({ name: 'holdId', type: String })
   @ApiResponse({ status: 200, type: ClinicAppointmentConfirmationResponseDto })
@@ -127,7 +127,7 @@ export class ClinicHoldController {
   @Put(':holdId/overbooking')
   @HttpCode(HttpStatus.OK)
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Avaliar solicitaÃ§Ã£o de overbooking para um hold' })
+  @ApiOperation({ summary: 'Avaliar solicitacao de overbooking para um hold' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiParam({ name: 'holdId', type: String })
   @ApiResponse({ status: 200, type: ClinicHoldResponseDto })
@@ -151,7 +151,7 @@ export class ClinicHoldController {
     const resolvedTenantId = tenantId ?? currentUser.tenantId;
 
     if (!resolvedTenantId) {
-      throw new BadRequestException('Tenant não informado');
+      throw new BadRequestException('Tenant nao informado');
     }
 
     return {

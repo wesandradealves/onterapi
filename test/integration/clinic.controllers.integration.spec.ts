@@ -288,21 +288,21 @@ describe('ClinicConfigurationController (integration)', () => {
     await app.close();
   });
 
-  it('GET /clinics/:id/settings/general deve retornar versão atual', async () => {
+  it('GET /clinics/:id/settings/general deve retornar versao atual', async () => {
     const version: ClinicConfigurationVersion = {
       id: 'version-1',
       clinicId: FIXTURES.clinic,
       section: 'general',
       version: 3,
       payload: {
-        tradeName: 'Clínica Onterapi',
-        address: { city: 'São Paulo', state: 'SP', zipCode: '01000-000', street: 'Rua A' },
+        tradeName: 'Clinica Onterapi',
+        address: { city: 'Sao Paulo', state: 'SP', zipCode: '01000-000', street: 'Rua A' },
         contact: { email: 'contato@onterapi.com' },
       },
       createdBy: currentUser.id,
       createdAt: new Date('2025-10-10T10:00:00.000Z'),
       appliedAt: new Date('2025-10-10T10:05:00.000Z'),
-      notes: 'Primeira versão',
+      notes: 'Primeira versao',
       autoApply: true,
     };
     useCases.getGeneral.executeOrThrow.mockResolvedValue(version);
@@ -330,12 +330,12 @@ describe('ClinicConfigurationController (integration)', () => {
     expect(response.body.autoApply).toBe(true);
   });
 
-  it('PATCH /clinics/:id/settings/general deve mapear payload e aplicar versão', async () => {
+  it('PATCH /clinics/:id/settings/general deve mapear payload e aplicar versao', async () => {
     const requestPayload = {
       tenantId: FIXTURES.tenant,
       generalSettings: {
-        tradeName: 'Clínica Atualizada',
-        legalName: 'Clínica Atualizada LTDA',
+        tradeName: 'Clinica Atualizada',
+        legalName: 'Clinica Atualizada LTDA',
         document: { type: 'cnpj', value: '12345678000199' },
         foundationDate: '2025-01-15T00:00:00.000Z',
         address: {
@@ -349,7 +349,7 @@ describe('ClinicConfigurationController (integration)', () => {
           phone: '+55 11 99999-0000',
           email: 'nova@clinca.com',
         },
-        notes: 'Observação importante',
+        notes: 'Observacao importante',
       },
     };
 
@@ -396,7 +396,7 @@ describe('ClinicConfigurationController (integration)', () => {
     expect(response.body.autoApply).toBe(true);
   });
 
-  it('PATCH /clinics/:id/settings/propagate deve propagar template para as clínicas alvo', async () => {
+  it('PATCH /clinics/:id/settings/propagate deve propagar template para as clinicas alvo', async () => {
     const targetClinicA = '77777777-7777-7777-7777-777777777771';
     const targetClinicB = '77777777-7777-7777-7777-777777777772';
     const requestPayload = {
@@ -465,7 +465,7 @@ describe('ClinicConfigurationController (integration)', () => {
     });
   });
 
-  it('GET /clinics/:id/settings/propagation deve retornar snapshot da última propagação', async () => {
+  it('GET /clinics/:id/settings/propagation deve retornar snapshot da ultima propagacao', async () => {
     const clinicMetadata = {
       templatePropagation: {
         templateClinicId: 'template-uuid',
@@ -715,14 +715,14 @@ describe('ClinicInvitationController (integration)', () => {
 
     const response = await request(app.getHttpServer())
       .post(`/clinics/invitations/${FIXTURES.invitation}/revoke`)
-      .send({ tenantId: FIXTURES.tenant, reason: 'Atualização econômica' })
+      .send({ tenantId: FIXTURES.tenant, reason: 'Atualizacao economica' })
       .expect(201);
 
     expect(useCases.revoke.executeOrThrow).toHaveBeenCalledWith({
       invitationId: FIXTURES.invitation,
       tenantId: FIXTURES.tenant,
       revokedBy: currentUser.id,
-      reason: 'Atualização econômica',
+      reason: 'Atualizacao economica',
     });
     expect(response.body.status).toBe('revoked');
     expect(response.body.revokedBy).toBe(currentUser.id);
@@ -799,7 +799,7 @@ describe('ClinicHoldController (integration)', () => {
     await app.close();
   });
 
-  it('POST /clinics/:id/holds deve criar hold respeitando tenant e conversão de datas', async () => {
+  it('POST /clinics/:id/holds deve criar hold respeitando tenant e conversao de datas', async () => {
     const payload = {
       tenantId: FIXTURES.tenant,
       professionalId: FIXTURES.professional,
@@ -858,11 +858,11 @@ describe('ClinicHoldController (integration)', () => {
     expect(response.body.ttlExpiresAt).toBe(hold.ttlExpiresAt.toISOString());
   });
 
-  it('PUT /clinics/:clinicId/holds/:holdId/overbooking decide sobre solicitações pendentes', async () => {
+  it('PUT /clinics/:clinicId/holds/:holdId/overbooking decide sobre solicitacoes pendentes', async () => {
     const payload = {
       tenantId: FIXTURES.tenant,
       approve: false,
-      justification: 'Risco elevado de sobreposição',
+      justification: 'Risco elevado de sobreposicao',
     };
 
     const hold: ClinicHold = {

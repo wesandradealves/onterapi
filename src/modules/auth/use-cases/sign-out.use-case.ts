@@ -84,7 +84,7 @@ export class SignOutUseCase
     });
     await this.messageBus.publish(event);
 
-    this.logger.log(`Logout realizado para usuário ${input.userId}`);
+    this.logger.log(`Logout realizado para usu rio ${input.userId}`);
     return output;
   }
 }

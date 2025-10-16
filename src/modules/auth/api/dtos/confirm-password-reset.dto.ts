@@ -7,11 +7,11 @@ export class ConfirmPasswordResetDto {
   })
   accessToken!: string;
 
-  @ApiProperty({ description: 'Nova senha que será definida', example: 'SenhaForte123!' })
+  @ApiProperty({ description: 'Nova senha que ser  definida', example: 'SenhaForte123!' })
   newPassword!: string;
 
   @ApiProperty({
-    description: 'Refresh token associado, se disponível',
+    description: 'Refresh token associado, se dispon vel',
     required: false,
     example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
   })

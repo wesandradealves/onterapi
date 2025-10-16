@@ -46,11 +46,11 @@ export class ClinicDashboardController {
     RolesEnum.PROFESSIONAL,
     RolesEnum.SUPER_ADMIN,
   )
-  @ApiOperation({ summary: 'Obter métricas consolidadas das clínicas' })
+  @ApiOperation({ summary: 'Obter metricas consolidadas das clinicas' })
   @ApiQuery({
     name: 'clinicIds',
     required: false,
-    description: 'Lista de IDs separados por vírgula',
+    description: 'Lista de IDs separados por virgula',
   })
   @ApiQuery({ name: 'from', required: false, description: 'Data inicial (ISO)' })
   @ApiQuery({ name: 'to', required: false, description: 'Data final (ISO)' })
@@ -60,7 +60,7 @@ export class ClinicDashboardController {
     name: 'comparisonMetrics',
     required: false,
     description:
-      'Métricas para o comparativo (valores aceitos: revenue, appointments, patients, occupancy, satisfaction)',
+      'Metricas para o comparativo (valores aceitos: revenue, appointments, patients, occupancy, satisfaction)',
     enum: ['revenue', 'appointments', 'patients', 'occupancy', 'satisfaction'],
     isArray: true,
   })
@@ -81,7 +81,7 @@ export class ClinicDashboardController {
     const resolvedTenantId = tenantId ?? currentUser.tenantId;
 
     if (!resolvedTenantId) {
-      throw new BadRequestException('Tenant não informado');
+      throw new BadRequestException('Tenant nao informado');
     }
 
     return {

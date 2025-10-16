@@ -1,4 +1,4 @@
-﻿import { GetClinicManagementOverviewUseCase } from '../../../src/modules/clinic/use-cases/get-clinic-management-overview.use-case';
+import { GetClinicManagementOverviewUseCase } from '../../../src/modules/clinic/use-cases/get-clinic-management-overview.use-case';
 import { IClinicRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic.repository.interface';
 import { IClinicMetricsRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-metrics.repository.interface';
 import { IClinicMemberRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-member.repository.interface';
@@ -67,7 +67,7 @@ describe('GetClinicManagementOverviewUseCase', () => {
     );
   });
 
-  it('nÃ£o carrega resumo financeiro quando includeFinancials Ã© falso', async () => {
+  it('nio carrega resumo financeiro quando includeFinancials i falso', async () => {
     const snapshot: ClinicDashboardSnapshot = {
       period: {
         start: new Date('2025-03-01T00:00:00Z'),
@@ -121,7 +121,7 @@ describe('GetClinicManagementOverviewUseCase', () => {
     expect(overview.alerts).toHaveLength(0);
   });
 
-  it('produz overview consolidado com mÃ©tricas, comparativos, forecast e metadados de template', async () => {
+  it('produz overview consolidado com mitricas, comparativos, forecast e metadados de template', async () => {
     const snapshot: ClinicDashboardSnapshot = {
       period: {
         start: new Date('2025-01-01T00:00:00Z'),
@@ -343,7 +343,7 @@ describe('GetClinicManagementOverviewUseCase', () => {
     expect(clinicMetricsRepository.getForecast).toHaveBeenCalled();
   });
 
-  it('aplica filtro de clÃ­nicas, recalcula totais e filtra comparativos/forecast/alertas', async () => {
+  it('aplica filtro de clinicas, recalcula totais e filtra comparativos/forecast/alertas', async () => {
     const snapshot: ClinicDashboardSnapshot = {
       period: {
         start: new Date('2025-01-01T00:00:00Z'),

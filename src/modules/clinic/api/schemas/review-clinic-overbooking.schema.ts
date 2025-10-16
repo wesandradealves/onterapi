@@ -8,7 +8,7 @@ export const reviewClinicOverbookingSchema = z
       .string()
       .trim()
       .min(3, { message: 'Justificativa deve conter ao menos 3 caracteres' })
-      .max(500, { message: 'Justificativa deve conter no máximo 500 caracteres' })
+      .max(500, { message: 'Justificativa deve conter no maximo 500 caracteres' })
       .optional()
       .nullable(),
   })
@@ -17,7 +17,7 @@ export const reviewClinicOverbookingSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['justification'],
-        message: 'Justificativa obrigatória quando o overbooking é rejeitado',
+        message: 'Justificativa obrigatoria quando o overbooking e rejeitado',
       });
     }
   });

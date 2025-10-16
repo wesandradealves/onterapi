@@ -1,4 +1,4 @@
-﻿import { NotFoundException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 
 import { IClinicMetricsRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-metrics.repository.interface';
 import { IClinicRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic.repository.interface';

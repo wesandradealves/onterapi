@@ -133,13 +133,13 @@ describe('ConfirmBookingUseCase', () => {
     );
   });
 
-  it('lança not found quando o agendamento não existe', async () => {
+  it('lan a not found quando o agendamento n o existe', async () => {
     bookingRepository.findById.mockResolvedValue(null);
 
     await expect(useCase.executeOrThrow(createInput())).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('lança gone quando o hold expirou', async () => {
+  it('lan a gone quando o hold expirou', async () => {
     const booking = createBooking();
     bookingRepository.findById.mockResolvedValue(booking);
     holdRepository.findById.mockResolvedValue({
@@ -165,7 +165,7 @@ describe('ConfirmBookingUseCase', () => {
     ).rejects.toBeInstanceOf(GoneException);
   });
 
-  it('lança erro de pagamento quando o status informado não é aprovado', async () => {
+  it('lan a erro de pagamento quando o status informado n o   aprovado', async () => {
     const booking = createBooking({ paymentStatus: 'pending' });
     bookingRepository.findById.mockResolvedValue(booking);
     holdRepository.findById.mockResolvedValue({

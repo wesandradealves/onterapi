@@ -129,7 +129,7 @@ describe('ClinicPaymentController (integration)', () => {
     });
   });
 
-  it('usa tenant do usuário autenticado quando cabeçalho não é informado', async () => {
+  it('usa tenant do usuario autenticado quando cabecalho nao e informado', async () => {
     getLedgerUseCase.executeOrThrow.mockResolvedValue({
       appointmentId: 'appointment-2',
       clinicId: 'clinic-1',

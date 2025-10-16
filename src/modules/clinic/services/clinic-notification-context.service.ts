@@ -123,7 +123,7 @@ export class ClinicNotificationContextService {
       return this.castNotificationSettings(settings as Record<string, unknown>);
     } catch (error) {
       this.logger.error(
-        'Falha ao carregar configurações de notificações da clínica',
+        'Falha ao carregar configuracoes de notificacoes da clinica',
         error as Error,
         { tenantId, clinicId },
       );
@@ -211,7 +211,7 @@ export class ClinicNotificationContextService {
       }
 
       if (!this.isChannelEnabled(params.settings, channel)) {
-        this.logger.debug('Canal desabilitado para notificações da clínica', {
+        this.logger.debug('Canal desabilitado para notificacoes da clinica', {
           channel,
           event: params.eventKey,
           scope: params.logScope ?? 'clinic-notifications',

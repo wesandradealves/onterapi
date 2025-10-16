@@ -172,7 +172,7 @@ describe('ClinicPaymentPayoutWorkerService', () => {
 
   it('marca payout como falho quando ocorre erro', async () => {
     const request = buildRequest();
-    const failure = new Error('Credenciais inválidas');
+    const failure = new Error('Credenciais invalidas');
     credentialsService.resolveCredentials.mockRejectedValueOnce(failure);
 
     await (
@@ -183,7 +183,7 @@ describe('ClinicPaymentPayoutWorkerService', () => {
       expect.objectContaining({
         payoutId: request.id,
         status: 'failed',
-        lastError: expect.stringContaining('Credenciais inválidas'),
+        lastError: expect.stringContaining('Credenciais invalidas'),
         attempts: request.attempts,
         providerStatus: 'failed',
       }),

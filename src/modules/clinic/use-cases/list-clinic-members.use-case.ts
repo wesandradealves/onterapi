@@ -51,7 +51,7 @@ export class ListClinicMembersUseCase
     const clinic = await this.clinicRepository.findByTenant(input.tenantId, input.clinicId);
 
     if (!clinic) {
-      throw ClinicErrorFactory.clinicNotFound('Clínica não encontrada');
+      throw ClinicErrorFactory.clinicNotFound('Clinica nao encontrada');
     }
 
     return this.memberRepository.listMembers(input);

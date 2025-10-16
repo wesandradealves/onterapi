@@ -46,9 +46,9 @@ export class ClinicAuditController {
 
   @Get()
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Listar logs de auditoria da clínica' })
+  @ApiOperation({ summary: 'Listar logs de auditoria da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
-  @ApiQuery({ name: 'events', required: false, description: 'Eventos separados por vírgula' })
+  @ApiQuery({ name: 'events', required: false, description: 'Eventos separados por virgula' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
   @ApiResponse({ status: 200, type: ClinicAuditLogListResponseDto })
@@ -61,7 +61,7 @@ export class ClinicAuditController {
     const tenantId = tenantHeader ?? query.tenantId ?? currentUser.tenantId;
 
     if (!tenantId) {
-      throw new BadRequestException('Tenant não informado');
+      throw new BadRequestException('Tenant nao informado');
     }
 
     const result = await this.listAuditLogsUseCase.executeOrThrow({

@@ -17,7 +17,7 @@ const context: SchedulingRequestContext = {
 };
 
 describe('booking-request.mapper', () => {
-  it('mapeia criação de agendamento', () => {
+  it('mapeia cria  o de agendamento', () => {
     const input = toCreateBookingInput(
       {
         holdId: 'hold-1',
@@ -47,7 +47,7 @@ describe('booking-request.mapper', () => {
     expect(input.requestedAtUtc).toBeInstanceOf(Date);
   });
 
-  it('mapeia criação de hold', () => {
+  it('mapeia cria  o de hold', () => {
     const input = toCreateHoldInput(
       {
         clinicId: 'clinic-1',
@@ -78,7 +78,7 @@ describe('booking-request.mapper', () => {
     expect(input.cancelledAtUtc).toBeInstanceOf(Date);
   });
 
-  it('mapeia confirmação', () => {
+  it('mapeia confirma  o', () => {
     const input = toConfirmBookingInput(
       'booking-1',
       {
@@ -93,7 +93,7 @@ describe('booking-request.mapper', () => {
     expect(input.confirmationAtUtc).toBeInstanceOf(Date);
   });
 
-  it('mapeia atualização de pagamento', () => {
+  it('mapeia atualiza  o de pagamento', () => {
     const input = toRecordPaymentStatusInput(
       'booking-1',
       { expectedVersion: 3, paymentStatus: 'settled' },
@@ -119,7 +119,7 @@ describe('booking-request.mapper', () => {
     expect(input.reason).toBe('patient request');
   });
 
-  it('mapeia marcação de no-show', () => {
+  it('mapeia marca  o de no-show', () => {
     const input = toMarkBookingNoShowInput(
       'booking-1',
       {

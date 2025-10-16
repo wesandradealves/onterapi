@@ -37,7 +37,7 @@ export class ListClinicsUseCase
 
   protected async handle(input: ListClinicsInput): Promise<{ data: Clinic[]; total: number }> {
     if (!input.tenantId) {
-      throw ClinicErrorFactory.invalidHoldWindow('Tenant não informado');
+      throw ClinicErrorFactory.invalidHoldWindow('Tenant nao informado');
     }
 
     return this.clinicRepository.list({

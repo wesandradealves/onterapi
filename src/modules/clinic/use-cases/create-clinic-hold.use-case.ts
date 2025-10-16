@@ -60,7 +60,7 @@ export class CreateClinicHoldUseCase
     const clinic = await this.clinicRepository.findByTenant(input.tenantId, input.clinicId);
 
     if (!clinic) {
-      throw ClinicErrorFactory.clinicNotFound('Clínica não encontrada');
+      throw ClinicErrorFactory.clinicNotFound('Clinica nao encontrada');
     }
 
     const existing = await this.clinicHoldRepository.findByIdempotencyKey(
@@ -79,7 +79,7 @@ export class CreateClinicHoldUseCase
     );
 
     if (!serviceType) {
-      throw ClinicErrorFactory.serviceTypeNotFound('Tipo de serviço não encontrado');
+      throw ClinicErrorFactory.serviceTypeNotFound('Tipo de servico nao encontrado');
     }
 
     const now = new Date();
@@ -87,11 +87,11 @@ export class CreateClinicHoldUseCase
     const end = new Date(input.end);
 
     if (end <= start) {
-      throw ClinicErrorFactory.invalidHoldWindow('Horário final deve ser posterior ao inicial');
+      throw ClinicErrorFactory.invalidHoldWindow('Horario final deve ser posterior ao inicial');
     }
 
     if (start <= now) {
-      throw ClinicErrorFactory.invalidHoldWindow('Não é possível criar holds no passado');
+      throw ClinicErrorFactory.invalidHoldWindow('Nao e possivel criar holds no passado');
     }
 
     const diffMinutes = Math.floor((start.getTime() - now.getTime()) / 60000);
@@ -102,12 +102,12 @@ export class CreateClinicHoldUseCase
 
     if (diffMinutes < minAdvance) {
       throw ClinicErrorFactory.invalidHoldWindow(
-        'Antecedência mínima para criação de holds não respeitada',
+        'Antecedencia minima para criacao de holds nao respeitada',
       );
     }
 
     if (serviceType.maxAdvanceMinutes && diffMinutes > serviceType.maxAdvanceMinutes) {
-      throw ClinicErrorFactory.invalidHoldWindow('Antecedência máxima excedida para este serviço');
+      throw ClinicErrorFactory.invalidHoldWindow('Antecedencia maxima excedida para este servico');
     }
 
     const ttlMinutes = clinic.holdSettings?.ttlMinutes ?? 30;
@@ -130,13 +130,13 @@ export class CreateClinicHoldUseCase
 
     if (hasConfirmedOverlap) {
       throw ClinicErrorFactory.holdAlreadyExists(
-        'Profissional já possui atendimento confirmado para este período',
+        'Profissional ja possui atendimento confirmado para este periodo',
       );
     }
 
     if (!allowOverbooking && overlappingHolds.length > 0) {
       throw ClinicErrorFactory.holdAlreadyExists(
-        'Já existe um compromisso ativo para este profissional no período solicitado',
+        'Ja existe um compromisso ativo para este profissional no periodo solicitado',
       );
     }
 
@@ -199,7 +199,7 @@ export class CreateClinicHoldUseCase
 
       if (resourceConflicts.length > 0) {
         throw ClinicErrorFactory.holdAlreadyExists(
-          'Sala ou recurso já reservado para o período solicitado',
+          'Sala ou recurso ja reservado para o periodo solicitado',
         );
       }
     }

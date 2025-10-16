@@ -1,4 +1,4 @@
-﻿import { NotificationEvent } from '../../../../domain/notifications/types/notification.types';
+import { NotificationEvent } from '../../../../domain/notifications/types/notification.types';
 import {
   NotificationEventDto,
   NotificationEventListResponseDto,

@@ -111,7 +111,7 @@ export class ClinicInvitationResponseDto {
   @ApiPropertyOptional({ type: Object })
   metadata?: Record<string, unknown>;
 
-  @ApiPropertyOptional({ description: 'Token bruto do convite (apenas na criação)' })
+  @ApiPropertyOptional({ description: 'Token bruto do convite (apenas na criacao)' })
   token?: string;
 
   @ApiProperty({ type: String })

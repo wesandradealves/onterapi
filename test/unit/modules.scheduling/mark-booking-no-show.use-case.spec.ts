@@ -82,7 +82,7 @@ describe('MarkBookingNoShowUseCase', () => {
     expect(messageBus.publish).toHaveBeenCalled();
   });
 
-  it('lan�a not found quando o agendamento n�o existe', async () => {
+  it('lanca not found quando o agendamento nao existe', async () => {
     bookingRepository.findById.mockResolvedValue(null);
 
     await expect(
@@ -99,7 +99,7 @@ describe('MarkBookingNoShowUseCase', () => {
     expect(bookingRepository.markNoShow).not.toHaveBeenCalled();
   });
 
-  it('lan�a conflito quando o agendamento j� est� marcado como no-show', async () => {
+  it('lanca conflito quando o agendamento ja esta marcado como no-show', async () => {
     const booking = baseBooking({ status: 'no_show', noShowMarkedAtUtc: new Date() });
     bookingRepository.findById.mockResolvedValue(booking);
 
@@ -117,7 +117,7 @@ describe('MarkBookingNoShowUseCase', () => {
     expect(bookingRepository.markNoShow).not.toHaveBeenCalled();
   });
 
-  it('lan�a conflito quando a toler�ncia ainda n�o expirou', async () => {
+  it('lanca conflito quando a tolerancia ainda nao expirou', async () => {
     const booking = baseBooking({
       startAtUtc: new Date('2025-10-10T10:00:00Z'),
       lateToleranceMinutes: 30,

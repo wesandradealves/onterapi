@@ -124,7 +124,7 @@ export class ClinicPaymentReconciliationService {
     const appointment = await this.appointmentRepository.findById(event.payload.appointmentId);
 
     if (!appointment) {
-      this.logger.warn('Liquidação de pagamento ignorada: agendamento inexistente', {
+      this.logger.warn('Liquidacao de pagamento ignorada: agendamento inexistente', {
         appointmentId: event.payload.appointmentId,
       });
       return;
@@ -133,7 +133,7 @@ export class ClinicPaymentReconciliationService {
     const ledger = extractClinicPaymentLedger(appointment.metadata);
 
     if (event.payload.fingerprint && this.hasEvent(ledger, 'settled', event.payload.fingerprint)) {
-      this.logger.log('Liquidação de pagamento ignorada (evento duplicado)', {
+      this.logger.log('Liquidacao de pagamento ignorada (evento duplicado)', {
         appointmentId: appointment.id,
         fingerprint: event.payload.fingerprint,
       });
@@ -144,7 +144,7 @@ export class ClinicPaymentReconciliationService {
     const baseAmount = this.resolveAmountValue(event.payload.amount, appointment.metadata, 'value');
 
     if (baseAmount == null) {
-      this.logger.error('Liquidação sem valor bruto identificado', {
+      this.logger.error('Liquidacao sem valor bruto identificado', {
         appointmentId: appointment.id,
         paymentTransactionId: event.payload.paymentTransactionId,
       });
@@ -449,7 +449,7 @@ export class ClinicPaymentReconciliationService {
     );
 
     if (!version) {
-      throw new Error(`Configurações de pagamento não encontradas para a clínica ${clinicId}`);
+      throw new Error(`Configuracoes de pagamento nao encontradas para a clinica ${clinicId}`);
     }
 
     const rawPayload = version.payload ?? {};

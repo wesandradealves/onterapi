@@ -30,14 +30,14 @@ export class UpdateClinicHoldSettingsUseCase
     const clinic = await this.clinicRepository.findByTenant(input.tenantId, input.clinicId);
 
     if (!clinic) {
-      throw ClinicErrorFactory.clinicNotFound('Clínica não encontrada');
+      throw ClinicErrorFactory.clinicNotFound('Clinica nao encontrada');
     }
 
     const ttlMinutes = input.holdSettings.ttlMinutes;
     const minAdvance = input.holdSettings.minAdvanceMinutes;
 
     if (ttlMinutes <= 0 || minAdvance < 0) {
-      throw ClinicErrorFactory.invalidHoldWindow('Configurações de hold inválidas');
+      throw ClinicErrorFactory.invalidHoldWindow('Configuracoes de hold invalidas');
     }
 
     return this.clinicRepository.updateHoldSettings(input);

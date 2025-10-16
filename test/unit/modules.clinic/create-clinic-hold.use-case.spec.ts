@@ -160,7 +160,7 @@ describe('CreateClinicHoldUseCase', () => {
     );
   });
 
-  it('lança conflito quando local ou recurso já estão reservados', async () => {
+  it('lanca conflito quando local ou recurso ja estao reservados', async () => {
     clinicRepository.findByTenant.mockResolvedValue(buildClinic());
     clinicHoldRepository.findByIdempotencyKey.mockResolvedValue(null);
     clinicServiceTypeRepository.findById.mockResolvedValue(buildServiceType());
@@ -175,7 +175,7 @@ describe('CreateClinicHoldUseCase', () => {
     expect(messageBus.publish).not.toHaveBeenCalled();
   });
 
-  it('cria hold quando não há conflito de recursos e registra auditoria', async () => {
+  it('cria hold quando nao ha conflito de recursos e registra auditoria', async () => {
     clinicRepository.findByTenant.mockResolvedValue(buildClinic());
     clinicHoldRepository.findByIdempotencyKey.mockResolvedValue(null);
     clinicServiceTypeRepository.findById.mockResolvedValue(buildServiceType());

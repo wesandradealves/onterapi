@@ -63,7 +63,7 @@ export class ClinicPaymentNotificationService {
     });
 
     if (recipients.length === 0) {
-      this.logger.debug('Liquidação sem destinatários elegíveis para notificação', {
+      this.logger.debug('Liquidacao sem destinatarios elegiveis para notificacao', {
         appointmentId: input.appointment.id,
         clinicId: input.appointment.clinicId,
       });
@@ -173,7 +173,7 @@ export class ClinicPaymentNotificationService {
     });
 
     if (recipients.length === 0) {
-      this.logger.debug('Reembolso sem destinatários elegíveis para notificação', {
+      this.logger.debug('Reembolso sem destinatarios elegiveis para notificacao', {
         appointmentId: input.appointment.id,
         clinicId: input.appointment.clinicId,
       });
@@ -279,7 +279,7 @@ export class ClinicPaymentNotificationService {
     });
 
     if (recipients.length === 0) {
-      this.logger.debug('Chargeback sem destinatários elegíveis para notificação', {
+      this.logger.debug('Chargeback sem destinatarios elegiveis para notificacao', {
         appointmentId: input.appointment.id,
         clinicId: input.appointment.clinicId,
       });

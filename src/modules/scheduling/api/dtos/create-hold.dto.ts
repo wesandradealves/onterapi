@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsISO8601, IsUUID } from 'class-validator';
 
 export class CreateHoldDto {
-  @ApiProperty({ description: 'Identificador da clínica', format: 'uuid' })
+  @ApiProperty({ description: 'Identificador da cl nica', format: 'uuid' })
   @IsUUID()
   clinicId!: string;
 
@@ -15,7 +15,7 @@ export class CreateHoldDto {
   patientId!: string;
 
   @ApiProperty({
-    description: 'Início do atendimento em UTC (ISO 8601)',
+    description: 'In cio do atendimento em UTC (ISO 8601)',
     example: '2025-10-10T10:00:00Z',
   })
   @IsISO8601()

@@ -23,7 +23,7 @@ describe('ClinicAuditService', () => {
     service = new ClinicAuditService(repository);
   });
 
-  it('deve persistir o log de auditoria com detalhe padrão', async () => {
+  it('deve persistir o log de auditoria com detalhe padrao', async () => {
     createMock.mockResolvedValueOnce({
       id: 'log-1',
       tenantId: 'tenant-1',
@@ -53,7 +53,7 @@ describe('ClinicAuditService', () => {
     });
   });
 
-  it('não deve lançar erro se o repositório falhar', async () => {
+  it('nao deve lancar erro se o repositorio falhar', async () => {
     const logSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation();
     createMock.mockRejectedValueOnce(new Error('db down'));
 

@@ -1,4 +1,4 @@
-﻿import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { ClinicPaymentPayoutRequest } from '../../../domain/clinic/types/clinic.types';
 import {

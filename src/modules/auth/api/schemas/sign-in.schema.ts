@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 export const signInInputSchema = z.object({
-  email: z.string().email('Email inválido'),
-  password: z.string().min(1, 'Senha é obrigatória'),
+  email: z.string().email('Email invalido'),
+  password: z.string().min(1, 'Senha e obrigatoria'),
   rememberMe: z.boolean().default(false),
   deviceInfo: z
     .object({

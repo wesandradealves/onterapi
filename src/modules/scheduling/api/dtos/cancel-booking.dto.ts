@@ -13,7 +13,7 @@ const CANCELLATION_REASONS = [
 
 export class CancelBookingDto {
   @ApiProperty({
-    description: 'Versão esperada do agendamento para controle otimista',
+    description: 'Vers o esperada do agendamento para controle otimista',
     example: 1,
   })
   @IsInt()

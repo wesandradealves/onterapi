@@ -138,9 +138,9 @@ export class ClinicInvitationController {
 
   @Get(':clinicId/invitations')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SECRETARY, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Listar convites da clínica' })
+  @ApiOperation({ summary: 'Listar convites da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
-  @ApiQuery({ name: 'status', required: false, description: 'Status separados por vírgula' })
+  @ApiQuery({ name: 'status', required: false, description: 'Status separados por virgula' })
   @ApiResponse({ status: 200, type: ClinicInvitationListResponseDto })
   async listInvitations(
     @Param('clinicId') clinicId: string,
@@ -172,7 +172,7 @@ export class ClinicInvitationController {
     RolesEnum.SECRETARY,
     RolesEnum.SUPER_ADMIN,
   )
-  @ApiOperation({ summary: 'Aceitar convite de clínica' })
+  @ApiOperation({ summary: 'Aceitar convite de clinica' })
   @ApiParam({ name: 'invitationId', type: String })
   @ApiResponse({ status: 200, type: ClinicInvitationResponseDto })
   @ZodApiBody({ schema: acceptClinicInvitationSchema })
@@ -183,7 +183,7 @@ export class ClinicInvitationController {
   ): Promise<ClinicInvitationResponseDto> {
     const tenantId = body.tenantId ?? currentUser.tenantId;
     if (!tenantId) {
-      throw new BadRequestException('Tenant não informado');
+      throw new BadRequestException('Tenant nao informado');
     }
 
     const invitation = await this.acceptInvitationUseCase.executeOrThrow({
@@ -198,7 +198,7 @@ export class ClinicInvitationController {
 
   @Post('invitations/:invitationId/revoke')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Revogar convite de clínica' })
+  @ApiOperation({ summary: 'Revogar convite de clinica' })
   @ApiParam({ name: 'invitationId', type: String })
   @ApiResponse({ status: 200, type: ClinicInvitationResponseDto })
   @ZodApiBody({ schema: revokeClinicInvitationSchema })
@@ -209,7 +209,7 @@ export class ClinicInvitationController {
   ): Promise<ClinicInvitationResponseDto> {
     const tenantId = body.tenantId ?? currentUser.tenantId;
     if (!tenantId) {
-      throw new BadRequestException('Tenant não informado');
+      throw new BadRequestException('Tenant nao informado');
     }
 
     const invitation = await this.revokeInvitationUseCase.executeOrThrow({
@@ -224,7 +224,7 @@ export class ClinicInvitationController {
 
   @Post('invitations/:invitationId/reissue')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SECRETARY, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Reemitir convite de clínica com novo token' })
+  @ApiOperation({ summary: 'Reemitir convite de clinica com novo token' })
   @ApiParam({ name: 'invitationId', type: String })
   @ApiResponse({ status: 200, type: ClinicInvitationResponseDto })
   @ZodApiBody({ schema: reissueClinicInvitationSchema })
@@ -236,7 +236,7 @@ export class ClinicInvitationController {
     const tenantId = body.tenantId ?? currentUser.tenantId;
 
     if (!tenantId) {
-      throw new BadRequestException('Tenant não informado');
+      throw new BadRequestException('Tenant nao informado');
     }
 
     const invitation = await this.reissueInvitationUseCase.executeOrThrow({
@@ -260,7 +260,7 @@ export class ClinicInvitationController {
     const resolvedTenantId = tenantId ?? currentUser.tenantId;
 
     if (!resolvedTenantId) {
-      throw new BadRequestException('Tenant não informado');
+      throw new BadRequestException('Tenant nao informado');
     }
 
     return {

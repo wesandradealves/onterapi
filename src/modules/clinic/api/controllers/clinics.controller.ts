@@ -73,7 +73,7 @@ export class ClinicsController {
 
   @Post()
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Cadastrar nova clínica' })
+  @ApiOperation({ summary: 'Cadastrar nova clinica' })
   @ApiResponse({ status: 201, type: ClinicSummaryDto })
   @ZodApiBody({ schema: createClinicSchema })
   async createClinic(
@@ -82,7 +82,7 @@ export class ClinicsController {
   ): Promise<ClinicSummaryDto> {
     const tenantId = body.tenantId ?? currentUser.tenantId;
     if (!tenantId) {
-      throw new BadRequestException('Tenant não informado');
+      throw new BadRequestException('Tenant nao informado');
     }
 
     const clinic = await this.createClinicUseCase.executeOrThrow({
@@ -100,8 +100,8 @@ export class ClinicsController {
 
   @Get()
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Listar clínicas do tenant' })
-  @ApiQuery({ name: 'status', required: false, description: 'Status separados por vírgula' })
+  @ApiOperation({ summary: 'Listar clinicas do tenant' })
+  @ApiQuery({ name: 'status', required: false, description: 'Status separados por virgula' })
   @ApiQuery({ name: 'search', required: false })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
@@ -114,7 +114,7 @@ export class ClinicsController {
   ): Promise<ClinicListResponseDto> {
     const tenantId = tenantHeader ?? query.tenantId ?? currentUser.tenantId;
     if (!tenantId) {
-      throw new BadRequestException('Tenant não informado');
+      throw new BadRequestException('Tenant nao informado');
     }
 
     const result = await this.listClinicsUseCase.executeOrThrow({
@@ -140,7 +140,7 @@ export class ClinicsController {
     RolesEnum.SECRETARY,
     RolesEnum.SUPER_ADMIN,
   )
-  @ApiOperation({ summary: 'Obter detalhes de uma clínica' })
+  @ApiOperation({ summary: 'Obter detalhes de uma clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: ClinicDetailsDto })
   async getClinic(
@@ -150,7 +150,7 @@ export class ClinicsController {
   ): Promise<ClinicDetailsDto> {
     const tenantId = tenantHeader ?? currentUser.tenantId;
     if (!tenantId) {
-      throw new BadRequestException('Tenant não informado');
+      throw new BadRequestException('Tenant nao informado');
     }
 
     const clinic = await this.getClinicUseCase.executeOrThrow({ clinicId, tenantId });
@@ -159,7 +159,7 @@ export class ClinicsController {
 
   @Patch(':clinicId/status')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Atualizar status da clínica' })
+  @ApiOperation({ summary: 'Atualizar status da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: ClinicSummaryDto })
   @ZodApiBody({ schema: updateClinicStatusSchema })
@@ -171,7 +171,7 @@ export class ClinicsController {
   ): Promise<ClinicSummaryDto> {
     const tenantId = tenantHeader ?? body.tenantId ?? currentUser.tenantId;
     if (!tenantId) {
-      throw new BadRequestException('Tenant não informado');
+      throw new BadRequestException('Tenant nao informado');
     }
 
     const clinic = await this.updateClinicStatusUseCase.executeOrThrow({

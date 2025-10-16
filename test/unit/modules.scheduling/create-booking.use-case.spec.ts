@@ -83,7 +83,7 @@ describe('CreateBookingUseCase', () => {
     useCase = new CreateBookingUseCase(bookingRepository, holdRepository, messageBus);
   });
 
-  it('cria um agendamento quando o hold está ativo e disponível', async () => {
+  it('cria um agendamento quando o hold est  ativo e dispon vel', async () => {
     const hold = baseHold();
     const booking = baseBooking();
 
@@ -120,14 +120,14 @@ describe('CreateBookingUseCase', () => {
     );
   });
 
-  it('lança not found quando o hold não é encontrado', async () => {
+  it('lan a not found quando o hold n o   encontrado', async () => {
     holdRepository.findById.mockResolvedValue(null);
 
     await expect(useCase.executeOrThrow(createInput())).rejects.toBeInstanceOf(NotFoundException);
     expect(holdRepository.updateStatus).not.toHaveBeenCalled();
   });
 
-  it('lança gone quando o hold está expirado', async () => {
+  it('lan a gone quando o hold est  expirado', async () => {
     const hold = baseHold();
     hold.ttlExpiresAtUtc = new Date('2025-10-08T09:30:00Z');
 
@@ -137,7 +137,7 @@ describe('CreateBookingUseCase', () => {
     expect(holdRepository.updateStatus).not.toHaveBeenCalled();
   });
 
-  it('lança conflito quando o hold já foi utilizado', async () => {
+  it('lan a conflito quando o hold j  foi utilizado', async () => {
     const hold = baseHold();
     holdRepository.findById.mockResolvedValue(hold);
     bookingRepository.findByHold.mockResolvedValue(baseBooking());

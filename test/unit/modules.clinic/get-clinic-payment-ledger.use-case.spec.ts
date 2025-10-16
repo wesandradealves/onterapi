@@ -89,7 +89,7 @@ describe('GetClinicPaymentLedgerUseCase', () => {
     expect(result.ledger.currency).toBe('BRL');
   });
 
-  it('lança erro quando agendamento nao pertence a clinica/tenant', async () => {
+  it('lanca erro quando agendamento nao pertence a clinica/tenant', async () => {
     appointmentRepository.findById.mockResolvedValue(
       createAppointment({ clinicId: 'other-clinic' }),
     );

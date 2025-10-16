@@ -60,7 +60,7 @@ export class BookingResponseDto {
   @ApiProperty({ description: 'Fuso horario IANA' })
   timezone!: string;
 
-  @ApiProperty({ description: 'Tolerância de atraso em minutos' })
+  @ApiProperty({ description: 'Tolerancia de atraso em minutos' })
   lateToleranceMinutes!: number;
 
   @ApiPropertyOptional({

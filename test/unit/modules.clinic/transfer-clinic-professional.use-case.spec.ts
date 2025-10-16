@@ -1,4 +1,4 @@
-﻿import { TransferClinicProfessionalUseCase } from '../../../src/modules/clinic/use-cases/transfer-clinic-professional.use-case';
+import { TransferClinicProfessionalUseCase } from '../../../src/modules/clinic/use-cases/transfer-clinic-professional.use-case';
 import { IClinicRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic.repository.interface';
 import { IClinicMemberRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-member.repository.interface';
 import { IClinicConfigurationRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
@@ -77,7 +77,7 @@ describe('TransferClinicProfessionalUseCase', () => {
     );
   });
 
-  it('transfere profissional entre clínicas com sucesso', async () => {
+  it('transfere profissional entre clinicas com sucesso', async () => {
     const fromClinic = createClinic({ id: 'clinic-from' });
     const toClinic = createClinic({ id: 'clinic-to' });
 
@@ -146,7 +146,7 @@ describe('TransferClinicProfessionalUseCase', () => {
     expect(auditService.register).toHaveBeenCalledTimes(2);
   });
 
-  it('lança erro quando profissional não está na clínica de origem', async () => {
+  it('lanca erro quando profissional nao esta na clinica de origem', async () => {
     (clinicRepository.findById as jest.Mock).mockResolvedValue(createClinic());
     (clinicRepository.findById as jest.Mock).mockResolvedValueOnce(createClinic());
 
@@ -165,7 +165,7 @@ describe('TransferClinicProfessionalUseCase', () => {
     ).rejects.toThrow(/Profissional/);
   });
 
-  it('respeita quota da clínica de destino', async () => {
+  it('respeita quota da clinica de destino', async () => {
     const fromClinic = createClinic({ id: 'clinic-from' });
     const toClinic = createClinic({ id: 'clinic-to' });
 

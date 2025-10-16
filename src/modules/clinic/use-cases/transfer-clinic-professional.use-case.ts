@@ -53,7 +53,7 @@ export class TransferClinicProfessionalUseCase
   ): Promise<ClinicProfessionalTransferResult> {
     if (input.fromClinicId === input.toClinicId) {
       throw ClinicErrorFactory.invalidClinicData(
-        'Cl�nica de origem e destino devem ser diferentes',
+        'Clinica de origem e destino devem ser diferentes',
       );
     }
 
@@ -63,11 +63,11 @@ export class TransferClinicProfessionalUseCase
     ]);
 
     if (!fromClinic) {
-      throw ClinicErrorFactory.clinicNotFound('Cl�nica de origem n�o encontrada');
+      throw ClinicErrorFactory.clinicNotFound('Clinica de origem nao encontrada');
     }
 
     if (!toClinic) {
-      throw ClinicErrorFactory.clinicNotFound('Cl�nica de destino n�o encontrada');
+      throw ClinicErrorFactory.clinicNotFound('Clinica de destino nao encontrada');
     }
 
     this.ensureSameTenant(fromClinic, toClinic, input.tenantId);
@@ -79,7 +79,7 @@ export class TransferClinicProfessionalUseCase
     });
 
     if (!activeMembership) {
-      throw ClinicErrorFactory.memberNotFound('Profissional n�o vinculado � cl�nica de origem');
+      throw ClinicErrorFactory.memberNotFound('Profissional nao vinculado a clinica de origem');
     }
 
     const existingTargetMembership = await this.memberRepository.findActiveByClinicAndUser({
@@ -90,7 +90,7 @@ export class TransferClinicProfessionalUseCase
 
     if (existingTargetMembership) {
       throw ClinicErrorFactory.invalidClinicData(
-        'Profissional j� est� ativo na cl�nica de destino',
+        'Profissional ja esta ativo na clinica de destino',
       );
     }
 
@@ -135,7 +135,7 @@ export class TransferClinicProfessionalUseCase
 
   private ensureSameTenant(fromClinic: Clinic, toClinic: Clinic, tenantId: string): void {
     if (fromClinic.tenantId !== tenantId || toClinic.tenantId !== tenantId) {
-      throw ClinicErrorFactory.invalidClinicData('Cl�nicas n�o pertencem ao tenant informado');
+      throw ClinicErrorFactory.invalidClinicData('Clinicas nao pertencem ao tenant informado');
     }
   }
 
@@ -163,7 +163,7 @@ export class TransferClinicProfessionalUseCase
 
     if (!hasSlot) {
       throw ClinicErrorFactory.invalidClinicData(
-        'Quota de profissionais atingida na cl�nica de destino',
+        'Quota de profissionais atingida na clinica de destino',
       );
     }
   }

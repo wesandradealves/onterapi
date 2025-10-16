@@ -154,7 +154,7 @@ describe('ProcessClinicOverbookingUseCase', () => {
     );
   });
 
-  it('lança erro quando hold não existe', async () => {
+  it('lanca erro quando hold nao existe', async () => {
     clinicHoldRepository.findById.mockResolvedValue(null);
 
     await expect(useCase.executeOrThrow({ ...baseInput, approve: true })).rejects.toBeInstanceOf(
@@ -163,7 +163,7 @@ describe('ProcessClinicOverbookingUseCase', () => {
     expect(messageBus.publish).not.toHaveBeenCalled();
   });
 
-  it('lança erro quando sobreaviso já foi processado', async () => {
+  it('lanca erro quando sobreaviso ja foi processado', async () => {
     const approvedHold = buildHold('approved');
     clinicHoldRepository.findById.mockResolvedValue(approvedHold);
 

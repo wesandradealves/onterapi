@@ -75,7 +75,7 @@ export class ClinicServiceTypeController {
 
   @Get()
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SECRETARY, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Listar tipos de serviço da clínica' })
+  @ApiOperation({ summary: 'Listar tipos de servico da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiQuery({ name: 'includeInactive', required: false, type: Boolean })
   @ApiResponse({ status: 200, type: [ClinicServiceTypeResponseDto] })
@@ -98,7 +98,7 @@ export class ClinicServiceTypeController {
 
   @Post()
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Criar ou atualizar tipo de serviço da clínica' })
+  @ApiOperation({ summary: 'Criar ou atualizar tipo de servico da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: ClinicServiceTypeResponseDto })
   @ZodApiBody({ schema: upsertClinicServiceTypeSchema })
@@ -154,10 +154,10 @@ export class ClinicServiceTypeController {
 
   @Delete(':serviceTypeId')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Arquivar tipo de serviço da clínica' })
+  @ApiOperation({ summary: 'Arquivar tipo de servico da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiParam({ name: 'serviceTypeId', type: String })
-  @ApiResponse({ status: 204, description: 'Tipo de serviço arquivado' })
+  @ApiResponse({ status: 204, description: 'Tipo de servico arquivado' })
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(
     @Param('clinicId') clinicId: string,
@@ -179,7 +179,7 @@ export class ClinicServiceTypeController {
     const resolvedTenantId = tenantId ?? currentUser.tenantId;
 
     if (!resolvedTenantId) {
-      throw new BadRequestException('Tenant não informado');
+      throw new BadRequestException('Tenant nao informado');
     }
 
     return {
@@ -193,6 +193,6 @@ export class ClinicServiceTypeController {
       return rawCurrency;
     }
 
-    throw new BadRequestException(`Moeda inválida: ${rawCurrency}`);
+    throw new BadRequestException(`Moeda invalida: ${rawCurrency}`);
   }
 }

@@ -22,7 +22,7 @@ describe('ActiveAccountGuard', () => {
     );
   });
 
-  it('bloqueia conta banida at� data futura', async () => {
+  it('bloqueia conta banida ate data futura', async () => {
     const future = new Date(Date.now() + 60_000).toISOString();
     await expect(
       guard.canActivate(buildContext({ isActive: true, bannedUntil: future })),

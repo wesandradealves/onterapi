@@ -41,7 +41,7 @@ export class UpsertClinicServiceTypeUseCase
     const clinic = await this.clinicRepository.findByTenant(input.tenantId, input.clinicId);
 
     if (!clinic) {
-      throw ClinicErrorFactory.clinicNotFound('Clínica não encontrada');
+      throw ClinicErrorFactory.clinicNotFound('Clinica nao encontrada');
     }
 
     const servicePayload = {
@@ -62,7 +62,7 @@ export class UpsertClinicServiceTypeUseCase
     } catch (error) {
       if (error instanceof Error && error.message.includes('slug')) {
         throw ClinicErrorFactory.duplicateServiceType(
-          'Slug de tipo de serviço já está em uso na clínica',
+          'Slug de tipo de servico ja esta em uso na clinica',
         );
       }
 

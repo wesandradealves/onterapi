@@ -210,7 +210,7 @@ export class ClinicConfigurationController {
 
   @Get('general')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Obter configurações gerais atuais da clínica' })
+  @ApiOperation({ summary: 'Obter configuracoes gerais atuais da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: ClinicGeneralSettingsResponseDto })
   async getGeneralSettings(
@@ -230,7 +230,7 @@ export class ClinicConfigurationController {
 
   @Patch('services')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Atualizar configurações de serviços da clínica' })
+  @ApiOperation({ summary: 'Atualizar configuracoes de servicos da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: ClinicServiceSettingsResponseDto })
   @ZodApiBody({ schema: updateClinicServiceSettingsSchema })
@@ -251,7 +251,7 @@ export class ClinicConfigurationController {
 
   @Patch('payments')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Atualizar configurações financeiras da clínica' })
+  @ApiOperation({ summary: 'Atualizar configuracoes financeiras da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: ClinicPaymentSettingsResponseDto })
   @ZodApiBody({ schema: updateClinicPaymentSettingsSchema })
@@ -272,7 +272,7 @@ export class ClinicConfigurationController {
 
   @Patch('integrations')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Atualizar configurações de integrações da clínica' })
+  @ApiOperation({ summary: 'Atualizar configuracoes de integracoes da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: ClinicIntegrationSettingsResponseDto })
   @ZodApiBody({ schema: updateClinicIntegrationSettingsSchema })
@@ -293,7 +293,7 @@ export class ClinicConfigurationController {
 
   @Patch('notifications')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Atualizar configurações de notificações da clínica' })
+  @ApiOperation({ summary: 'Atualizar configuracoes de notificacoes da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: ClinicNotificationSettingsResponseDto })
   @ZodApiBody({ schema: updateClinicNotificationSettingsSchema })
@@ -314,7 +314,7 @@ export class ClinicConfigurationController {
 
   @Patch('branding')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Atualizar identidade visual da clínica' })
+  @ApiOperation({ summary: 'Atualizar identidade visual da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: ClinicBrandingSettingsResponseDto })
   @ZodApiBody({ schema: updateClinicBrandingSettingsSchema })
@@ -335,7 +335,7 @@ export class ClinicConfigurationController {
 
   @Get('hold')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Obter configurações de hold da clínica' })
+  @ApiOperation({ summary: 'Obter configuracoes de hold da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: ClinicHoldSettingsResponseDto })
   async getHoldSettings(
@@ -355,7 +355,7 @@ export class ClinicConfigurationController {
 
   @Get('team')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Obter configurações de equipe da clínica' })
+  @ApiOperation({ summary: 'Obter configuracoes de equipe da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: ClinicTeamSettingsResponseDto })
   async getTeamSettings(
@@ -375,7 +375,7 @@ export class ClinicConfigurationController {
 
   @Get('schedule')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Obter configurações de agenda da clínica' })
+  @ApiOperation({ summary: 'Obter configuracoes de agenda da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: ClinicScheduleSettingsResponseDto })
   async getScheduleSettings(
@@ -395,7 +395,7 @@ export class ClinicConfigurationController {
 
   @Get('services')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Obter configurações de serviços da clínica' })
+  @ApiOperation({ summary: 'Obter configuracoes de servicos da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: ClinicServiceSettingsResponseDto })
   async getServiceSettings(
@@ -415,7 +415,7 @@ export class ClinicConfigurationController {
 
   @Get('payments')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Obter configurações financeiras da clínica' })
+  @ApiOperation({ summary: 'Obter configuracoes financeiras da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: ClinicPaymentSettingsResponseDto })
   async getPaymentSettings(
@@ -435,7 +435,7 @@ export class ClinicConfigurationController {
 
   @Get('integrations')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Obter configurações de integrações da clínica' })
+  @ApiOperation({ summary: 'Obter configuracoes de integracoes da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: ClinicIntegrationSettingsResponseDto })
   async getIntegrationSettings(
@@ -455,7 +455,7 @@ export class ClinicConfigurationController {
 
   @Get('notifications')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Obter configurações de notificações da clínica' })
+  @ApiOperation({ summary: 'Obter configuracoes de notificacoes da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: ClinicNotificationSettingsResponseDto })
   async getNotificationSettings(
@@ -475,7 +475,7 @@ export class ClinicConfigurationController {
 
   @Get('branding')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Obter configurações de identidade visual da clínica' })
+  @ApiOperation({ summary: 'Obter configuracoes de identidade visual da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: ClinicBrandingSettingsResponseDto })
   async getBrandingSettings(
@@ -495,7 +495,7 @@ export class ClinicConfigurationController {
 
   @Get('propagation')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Obter últimos dados de propagação de template da clínica' })
+  @ApiOperation({ summary: 'Obter ultimos dados de propagacao de template da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: ClinicTemplatePropagationResponseDto })
   async getTemplatePropagation(
@@ -515,7 +515,7 @@ export class ClinicConfigurationController {
 
   @Patch('general')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Atualizar configurações gerais da clínica' })
+  @ApiOperation({ summary: 'Atualizar configuracoes gerais da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: ClinicConfigurationVersionResponseDto })
   @ZodApiBody({ schema: updateClinicGeneralSettingsSchema })
@@ -536,7 +536,7 @@ export class ClinicConfigurationController {
 
   @Patch('team')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Atualizar configurações de equipe da clínica' })
+  @ApiOperation({ summary: 'Atualizar configuracoes de equipe da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: ClinicTeamSettingsResponseDto })
   @ZodApiBody({ schema: updateClinicTeamSettingsSchema })
@@ -557,7 +557,7 @@ export class ClinicConfigurationController {
 
   @Patch('hold')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Atualizar configurações de hold da clínica' })
+  @ApiOperation({ summary: 'Atualizar configuracoes de hold da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: ClinicSummaryDto })
   @ZodApiBody({ schema: updateClinicHoldSettingsSchema })
@@ -578,7 +578,7 @@ export class ClinicConfigurationController {
 
   @Patch('schedule')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Atualizar configurações de agenda da clínica' })
+  @ApiOperation({ summary: 'Atualizar configuracoes de agenda da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: ClinicConfigurationVersionResponseDto })
   @ZodApiBody({ schema: updateClinicScheduleSettingsSchema })
@@ -599,7 +599,7 @@ export class ClinicConfigurationController {
 
   @Patch('propagate')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Propagar configurações para clínicas alvo' })
+  @ApiOperation({ summary: 'Propagar configuracoes para clinicas alvo' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: [ClinicConfigurationVersionResponseDto] })
   @ZodApiBody({ schema: propagateClinicTemplateSchema })
@@ -622,7 +622,7 @@ export class ClinicConfigurationController {
     const resolvedTenantId = tenantId ?? currentUser.tenantId;
 
     if (!resolvedTenantId) {
-      throw new BadRequestException('Tenant não informado');
+      throw new BadRequestException('Tenant nao informado');
     }
 
     return {

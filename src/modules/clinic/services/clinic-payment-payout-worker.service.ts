@@ -54,7 +54,7 @@ export class ClinicPaymentPayoutWorkerService implements OnModuleInit, OnModuleD
 
     if (this.options.intervalMs <= 0) {
       this.logger.error(
-        `Clinic payment payout worker interval inválido: ${this.options.intervalMs}`,
+        `Clinic payment payout worker interval invalido: ${this.options.intervalMs}`,
       );
       return;
     }
@@ -122,7 +122,7 @@ export class ClinicPaymentPayoutWorkerService implements OnModuleInit, OnModuleD
 
   private async executeCycle(): Promise<void> {
     if (this.running) {
-      this.logger.warn('Ciclo de payout ignorado (execução anterior em andamento)');
+      this.logger.warn('Ciclo de payout ignorado (execucao anterior em andamento)');
       return;
     }
 
@@ -208,7 +208,7 @@ export class ClinicPaymentPayoutWorkerService implements OnModuleInit, OnModuleD
 
       if (!request.bankAccountId) {
         throw ClinicErrorFactory.paymentPayoutFailed(
-          'Conta bancária destino não configurada para o payout',
+          'Conta bancaria destino nao configurada para o payout',
         );
       }
 

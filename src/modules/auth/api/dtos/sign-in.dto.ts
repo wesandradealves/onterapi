@@ -3,13 +3,13 @@ import { DeviceInfo } from '../../../../shared/types/device.types';
 
 export class SignInDto {
   @ApiProperty({
-    description: 'Email do usuário',
+    description: 'Email do usu rio',
     example: 'user@example.com',
   })
   email!: string;
 
   @ApiProperty({
-    description: 'Senha do usuário',
+    description: 'Senha do usu rio',
     example: 'SenhaForte123!',
   })
   password!: string;
@@ -23,7 +23,7 @@ export class SignInDto {
   rememberMe?: boolean;
 
   @ApiProperty({
-    description: 'Informações do dispositivo',
+    description: 'Informa  es do dispositivo',
     required: false,
   })
   deviceInfo?: DeviceInfo;
@@ -45,28 +45,28 @@ export class SignInResponseDto {
   refreshToken?: string;
 
   @ApiProperty({
-    description: 'Tempo de expiração em segundos',
+    description: 'Tempo de expira  o em segundos',
     example: 900,
     required: false,
   })
   expiresIn?: number;
 
   @ApiProperty({
-    description: 'Se requer autenticação de dois fatores',
+    description: 'Se requer autentica  o de dois fatores',
     example: false,
     required: false,
   })
   requiresTwoFactor?: boolean;
 
   @ApiProperty({
-    description: 'Token temporário para 2FA',
+    description: 'Token tempor rio para 2FA',
     example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
     required: false,
   })
   tempToken?: string;
 
   @ApiProperty({
-    description: 'Dados do usuário autenticado',
+    description: 'Dados do usu rio autenticado',
     required: false,
   })
   user?: {

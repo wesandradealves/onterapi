@@ -1,4 +1,4 @@
-﻿import { MigrationInterface, QueryRunner, Table } from 'typeorm';
+import { MigrationInterface, QueryRunner, Table } from 'typeorm';
 
 export class CreateNotificationEventsTable20251014160349 implements MigrationInterface {
   private readonly tableName = 'notification_events';

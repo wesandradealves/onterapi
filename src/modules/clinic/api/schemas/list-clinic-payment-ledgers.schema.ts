@@ -20,20 +20,20 @@ export const listClinicPaymentLedgersSchema = z.object({
         ),
       {
         message:
-          'paymentStatus deve conter valores válidos (approved, settled, refunded, chargeback, failed)',
+          'paymentStatus deve conter valores validos (approved, settled, refunded, chargeback, failed)',
       },
     ),
   from: z
     .string()
     .refine((value) => !Number.isNaN(Date.parse(value)), {
-      message: 'from deve ser uma data válida',
+      message: 'from deve ser uma data valida',
     })
     .transform((value) => new Date(value))
     .optional(),
   to: z
     .string()
     .refine((value) => !Number.isNaN(Date.parse(value)), {
-      message: 'to deve ser uma data válida',
+      message: 'to deve ser uma data valida',
     })
     .transform((value) => new Date(value))
     .optional(),
@@ -44,7 +44,7 @@ export const listClinicPaymentLedgersSchema = z.object({
     .refine(
       (value) => value === undefined || (Number.isInteger(value) && value > 0 && value <= 100),
       {
-        message: 'limit deve ser um inteiro positivo até 100',
+        message: 'limit deve ser um inteiro positivo ate 100',
       },
     )
     .optional(),

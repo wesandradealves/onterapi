@@ -509,7 +509,7 @@ describe('AnamnesisController (integration)', () => {
       riskFactors: [{ id: 'risk-1', description: 'Fator', severity: 'high' }],
       recommendations: [{ id: 'rec-1', description: 'Recomendacao', priority: 'medium' }],
       planText: 'Plano IA',
-      reasoningText: 'Raciocínio IA',
+      reasoningText: 'Racioc nio IA',
       evidenceMap: [{ recommendation: 'rec-1', evidence: ['dados'], confidence: 0.8 }],
       confidence: 0.8,
       reviewRequired: false,
@@ -532,7 +532,7 @@ describe('AnamnesisController (integration)', () => {
         termsVersion: 'v1',
         termsTextSnapshot: 'Termos de teste',
         planText: 'Plano IA',
-        reasoningText: 'Raciocínio IA',
+        reasoningText: 'Racioc nio IA',
         evidenceMap: expect.any(Array),
       }),
     );

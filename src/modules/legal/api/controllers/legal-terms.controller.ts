@@ -168,11 +168,11 @@ export class LegalTermsController {
     const userTenant = user.tenantId?.toString();
 
     if (!userTenant) {
-      throw new BadRequestException('Usuário não possui tenant associado.');
+      throw new BadRequestException('Usuario nao possui tenant associado.');
     }
 
     if (tenantId && tenantId !== userTenant) {
-      throw new BadRequestException('tenantId informado não pertence ao usuário autenticado.');
+      throw new BadRequestException('tenantId informado nao pertence ao usuario autenticado.');
     }
 
     return userTenant;
@@ -185,11 +185,11 @@ export class LegalTermsController {
 
     const userTenant = user.tenantId?.toString();
     if (!userTenant) {
-      throw new BadRequestException('Usuário não possui tenant associado.');
+      throw new BadRequestException('Usuario nao possui tenant associado.');
     }
 
     if (term.tenantId && term.tenantId !== userTenant) {
-      throw new BadRequestException('Usuário não possui permissão para gerenciar este termo.');
+      throw new BadRequestException('Usuario nao possui permissao para gerenciar este termo.');
     }
 
     if (!term.tenantId && userTenant) {

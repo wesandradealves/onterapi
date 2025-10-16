@@ -53,7 +53,7 @@ export class GetClinicIntegrationSettingsUseCase
     const clinic = await this.clinicRepository.findByTenant(input.tenantId, input.clinicId);
 
     if (!clinic) {
-      throw ClinicErrorFactory.clinicNotFound('Clínica não encontrada');
+      throw ClinicErrorFactory.clinicNotFound('Clinica nao encontrada');
     }
 
     const version = await this.configurationRepository.findLatestAppliedVersion(
@@ -63,7 +63,7 @@ export class GetClinicIntegrationSettingsUseCase
 
     if (!version) {
       throw ClinicErrorFactory.configurationVersionNotFound(
-        'Configurações de integrações não encontradas para a clínica',
+        'Configuracoes de integracoes nao encontradas para a clinica',
       );
     }
 

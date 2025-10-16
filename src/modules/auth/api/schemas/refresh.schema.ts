@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const refreshTokenInputSchema = z.object({
-  refreshToken: z.string().min(1, 'Refresh token é obrigatório'),
+  refreshToken: z.string().min(1, 'Refresh token   obrigat rio'),
   deviceInfo: z
     .object({
       userAgent: z.string().optional(),

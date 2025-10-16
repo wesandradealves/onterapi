@@ -25,7 +25,7 @@ export class SignOutResponseDto {
   message!: string;
 
   @ApiProperty({
-    description: 'Número de sessões revogadas',
+    description: 'N mero de sess es revogadas',
     example: 1,
   })
   revokedSessions!: number;
@@ -33,38 +33,38 @@ export class SignOutResponseDto {
 
 export class MeResponseDto {
   @ApiProperty({
-    description: 'ID do usuário',
+    description: 'ID do usu rio',
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
   id!: string;
 
   @ApiProperty({
-    description: 'Email do usuário',
+    description: 'Email do usu rio',
     example: 'usuario@example.com',
   })
   email!: string;
 
   @ApiProperty({
-    description: 'Nome completo do usuário',
-    example: 'João Silva',
+    description: 'Nome completo do usu rio',
+    example: 'Jo o Silva',
   })
   name!: string;
 
   @ApiProperty({
-    description: 'Role do usuário',
+    description: 'Role do usu rio',
     example: 'PROFESSIONAL',
   })
   role!: string;
 
   @ApiProperty({
-    description: 'ID do tenant (clínica)',
+    description: 'ID do tenant (cl nica)',
     example: 'clinic-123',
     required: false,
   })
   tenantId?: string;
 
   @ApiProperty({
-    description: 'Data de criação da conta',
+    description: 'Data de cria  o da conta',
     example: '2024-01-01T00:00:00Z',
   })
   createdAt!: string;

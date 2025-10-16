@@ -397,7 +397,7 @@ describe('Clinic module (e2e)', () => {
     await app.close();
   });
 
-  it('deve realizar onboarding da clínica e preparar agendamento sem quebrar invariantes', async () => {
+  it('deve realizar onboarding da cl nica e preparar agendamento sem quebrar invariantes', async () => {
     const holdSettings: ClinicHoldSettings = {
       ttlMinutes: 25,
       minAdvanceMinutes: 120,
@@ -517,10 +517,10 @@ describe('Clinic module (e2e)', () => {
       return state.hold;
     });
 
-    // 1) Criação da clínica
+    // 1) Cria  o da cl nica
     const createPayload = {
       tenantId: FIXTURES.tenant,
-      name: 'Clínica Central',
+      name: 'Cl nica Central',
       slug: 'clinica-central',
       primaryOwnerId: FIXTURES.owner,
       document: { type: 'cnpj', value: '12345678000199' },
@@ -538,15 +538,15 @@ describe('Clinic module (e2e)', () => {
     expect(createResponse.body.id).toBe(FIXTURES.clinic);
     expect(createResponse.body.holdSettings.ttlMinutes).toBe(holdSettings.ttlMinutes);
 
-    // 2) Atualização e leitura das configurações gerais
+    // 2) Atualiza  o e leitura das configura  es gerais
     const updatePayload = {
       tenantId: FIXTURES.tenant,
       generalSettings: {
-        tradeName: 'Clínica Central Atualizada',
+        tradeName: 'Cl nica Central Atualizada',
         address: {
           zipCode: '01000-000',
           street: 'Av. Onterapi',
-          city: 'São Paulo',
+          city: 'S o Paulo',
           state: 'SP',
         },
         contact: {
@@ -566,11 +566,11 @@ describe('Clinic module (e2e)', () => {
       expect.objectContaining({
         clinicId: FIXTURES.clinic,
         tenantId: FIXTURES.tenant,
-        settings: expect.objectContaining({ tradeName: 'Clínica Central Atualizada' }),
+        settings: expect.objectContaining({ tradeName: 'Cl nica Central Atualizada' }),
       }),
     );
     expect(updateResponse.body.version).toBe(1);
-    expect(updateResponse.body.payload.tradeName).toBe('Clínica Central Atualizada');
+    expect(updateResponse.body.payload.tradeName).toBe('Cl nica Central Atualizada');
 
     const generalResponse = await request(app.getHttpServer())
       .get(`/clinics/${FIXTURES.clinic}/settings/general`)
@@ -623,7 +623,7 @@ describe('Clinic module (e2e)', () => {
     expect(acceptResponse.body.acceptedAt).toBeDefined();
     expect(acceptResponse.body.acceptedEconomicSnapshot.items[0].payoutValue).toBe(55);
 
-    // 4) Criação do hold respeitando TTL
+    // 4) Cria  o do hold respeitando TTL
     const holdPayload = {
       tenantId: FIXTURES.tenant,
       professionalId: FIXTURES.professional,

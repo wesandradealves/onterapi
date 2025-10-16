@@ -1,4 +1,4 @@
-﻿import { PropagateClinicTemplateUseCase } from '../../../src/modules/clinic/use-cases/propagate-clinic-template.use-case';
+import { PropagateClinicTemplateUseCase } from '../../../src/modules/clinic/use-cases/propagate-clinic-template.use-case';
 import { IClinicRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic.repository.interface';
 import { IClinicConfigurationRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
 import { ClinicAuditService } from '../../../src/infrastructure/clinic/services/clinic-audit.service';

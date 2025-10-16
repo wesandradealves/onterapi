@@ -1,4 +1,4 @@
-﻿import { ListNotificationEventsUseCase } from '../../../src/modules/notifications/use-cases/list-notification-events.use-case';
+import { ListNotificationEventsUseCase } from '../../../src/modules/notifications/use-cases/list-notification-events.use-case';
 import type { INotificationEventRepository } from '../../../src/domain/notifications/interfaces/notification-event.repository.interface';
 import type { NotificationEvent } from '../../../src/domain/notifications/types/notification.types';
 

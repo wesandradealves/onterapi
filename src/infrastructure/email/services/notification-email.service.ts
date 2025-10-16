@@ -65,7 +65,7 @@ export class NotificationEmailService {
   }
 
   async sendWelcomeEmail(data: WelcomeEmailData): Promise<Result<void>> {
-    const subject = 'Bem-vindo Ã  Onterapi!';
+    const subject = 'Bem-vindo a Onterapi!';
     const html = this.getWelcomeEmailTemplate(data);
 
     return this.sendEmail({
@@ -244,20 +244,20 @@ export class NotificationEmailService {
             <div class="header">
               <h2>Sua senha foi atualizada</h2>
             </div>
-            <p>Olá, ${displayName}!</p>
+            <p>Ol , ${displayName}!</p>
             <p>Confirmamos que a sua senha foi alterada com sucesso.</p>
             <div class="details">
-              <h3>Detalhes da alteração</h3>
+              <h3>Detalhes da altera  o</h3>
               <ul>
                 <li><strong>Data e hora:</strong> ${changedAt}</li>
                 ${deviceInfo}
                 ${ipInfo}
               </ul>
             </div>
-            <p>Se você não reconhece esta alteração, recomendamos redefinir a senha imediatamente ou entrar em contato com o suporte.</p>
+            <p>Se voc  n o reconhece esta altera  o, recomendamos redefinir a senha imediatamente ou entrar em contato com o suporte.</p>
             <div class="footer">
               <p>Equipe Onterapi</p>
-              <p>© ${new Date().getFullYear()} Onterapi. Todos os direitos reservados.</p>
+              <p>  ${new Date().getFullYear()} Onterapi. Todos os direitos reservados.</p>
             </div>
           </div>
         </body>
@@ -394,7 +394,7 @@ export class NotificationEmailService {
   }
   private getWelcomeEmailTemplate(data: WelcomeEmailData): string {
     const roleNames: Record<string, string> = {
-      USER: 'UsuÃ¡rio',
+      USER: 'Usuario',
       ADJUNCT: 'Auxiliar',
       CONSULTANT: 'Consultor',
       MANAGER: 'Gerente',
@@ -444,35 +444,35 @@ export class NotificationEmailService {
         <body>
           <div class="container">
             <div class="header">
-              <h1>ðŸŽ‰ Bem-vindo Ã  Onterapi!</h1>
+              <h1> x}0 Bem-vindo a Onterapi!</h1>
             </div>
             <div class="content">
-              <h2>OlÃ¡, ${data.name}!</h2>
-              <p>Ã‰ com grande prazer que damos as boas-vindas Ã  plataforma Onterapi.</p>
+              <h2>Ola, ${data.name}!</h2>
+              <p> 0 com grande prazer que damos as boas-vindas a plataforma Onterapi.</p>
               <p>Sua conta foi criada com sucesso com o perfil: <strong>${roleName}</strong></p>
               
               <div class="features">
-                <h3>O que vocÃª pode fazer agora:</h3>
-                <div class="feature-item">âœ… Acessar o painel de controle</div>
-                <div class="feature-item">âœ… Configurar seu perfil</div>
-                <div class="feature-item">âœ… Explorar os recursos disponÃ­veis</div>
-                <div class="feature-item">âœ… Personalizar suas preferÃªncias</div>
+                <h3>O que voce pode fazer agora:</h3>
+                <div class="feature-item"> S& Acessar o painel de controle</div>
+                <div class="feature-item"> S& Configurar seu perfil</div>
+                <div class="feature-item"> S& Explorar os recursos disponiveis</div>
+                <div class="feature-item"> S& Personalizar suas preferencias</div>
               </div>
               
               <div style="text-align: center;">
                 <a href="https://app.onterapi.com/dashboard" class="cta-button">Acessar Plataforma</a>
               </div>
               
-              <p><strong>Dicas para comeÃ§ar:</strong></p>
+              <p><strong>Dicas para comecar:</strong></p>
               <ul>
-                <li>Complete seu perfil para uma experiÃªncia personalizada</li>
-                <li>Explore a documentaÃ§Ã£o para conhecer todos os recursos</li>
-                <li>Configure as notificaÃ§Ãµes de acordo com suas preferÃªncias</li>
+                <li>Complete seu perfil para uma experiencia personalizada</li>
+                <li>Explore a documentacao para conhecer todos os recursos</li>
+                <li>Configure as notificacoes de acordo com suas preferencias</li>
               </ul>
             </div>
             <div class="footer">
               <p>Precisa de ajuda? Entre em contato conosco: suporte@onterapi.com</p>
-              <p>Â© 2024 Onterapi. Todos os direitos reservados.</p>
+              <p>C 2024 Onterapi. Todos os direitos reservados.</p>
             </div>
           </div>
         </body>
@@ -526,7 +526,7 @@ export class NotificationEmailService {
         <body>
           <div class="container">
             <div class="alert-header">
-              <div class="warning-icon">âš ï¸</div>
+              <div class="warning-icon"> a  </div>
               <h2>Atividade Suspeita Detectada</h2>
             </div>
             <div class="alert-content">
@@ -536,7 +536,7 @@ export class NotificationEmailService {
                 <h3>Detalhes da Tentativa:</h3>
                 <ul>
                   <li><strong>Data/Hora:</strong> ${new Date().toLocaleString('pt-BR')}</li>
-                  <li><strong>LocalizaÃ§Ã£o:</strong> ${data.location}</li>
+                  <li><strong>Localizacao:</strong> ${data.location}</li>
                   <li><strong>Dispositivo:</strong> ${data.device}</li>
                   <li><strong>IP:</strong> ${data.ip}</li>
                   <li><strong>Tentativas falhas:</strong> 3</li>
@@ -545,23 +545,23 @@ export class NotificationEmailService {
               
               <p><strong>O que fazer agora?</strong></p>
               <ul>
-                <li>Se foi vocÃª tentando acessar, vocÃª pode ignorar este e-mail</li>
-                <li>Se NÃƒO foi vocÃª, sua conta pode estar comprometida</li>
+                <li>Se foi voce tentando acessar, voce pode ignorar este e-mail</li>
+                <li>Se NOO foi voce, sua conta pode estar comprometida</li>
               </ul>
               
               <div class="action-buttons">
                 <a href="https://app.onterapi.com/security/review" class="button button-success">Foi eu mesmo</a>
-                <a href="https://app.onterapi.com/security/lock" class="button button-danger">NÃ£o fui eu - Bloquear conta</a>
+                <a href="https://app.onterapi.com/security/lock" class="button button-danger">Nao fui eu - Bloquear conta</a>
               </div>
               
               <p style="background-color: #ffeaa7; padding: 15px; border-radius: 4px;">
-                <strong>âš¡ AÃ§Ã£o recomendada:</strong> Se vocÃª nÃ£o reconhece esta atividade, 
-                altere sua senha imediatamente e ative a autenticaÃ§Ã£o de dois fatores.
+                <strong> a  Acao recomendada:</strong> Se voce nao reconhece esta atividade, 
+                altere sua senha imediatamente e ative a autenticacao de dois fatores.
               </p>
             </div>
             <div class="footer">
-              <p>Esta Ã© uma mensagem automÃ¡tica de seguranÃ§a. NÃ£o responda a este e-mail.</p>
-              <p>Â© 2024 Onterapi. Todos os direitos reservados.</p>
+              <p>Esta e uma mensagem automatica de seguranca. Nao responda a este e-mail.</p>
+              <p>C 2024 Onterapi. Todos os direitos reservados.</p>
             </div>
           </div>
         </body>

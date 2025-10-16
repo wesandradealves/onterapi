@@ -67,21 +67,21 @@ export class ClinicConfigurationValidator {
     if (!settings.tradeName || settings.tradeName.trim().length === 0) {
       throw ClinicErrorFactory.invalidConfiguration(
         CONFIG_SECTIONS.GENERAL,
-        'nome fantasia é obrigatório',
+        'nome fantasia e obrigatorio',
       );
     }
 
     if (!settings.address) {
       throw ClinicErrorFactory.invalidConfiguration(
         CONFIG_SECTIONS.GENERAL,
-        'endereço é obrigatório',
+        'endereco e obrigatorio',
       );
     }
 
     if (!isValidCep(settings.address.zipCode ?? '')) {
       throw ClinicErrorFactory.invalidConfiguration(
         CONFIG_SECTIONS.GENERAL,
-        'CEP inválido. Utilize 8 dígitos numéricos',
+        'CEP invalido. Utilize 8 digitos numericos',
       );
     }
 
@@ -95,14 +95,14 @@ export class ClinicConfigurationValidator {
     if (settings.contact?.phone && !isValidPhone(settings.contact.phone)) {
       throw ClinicErrorFactory.invalidConfiguration(
         CONFIG_SECTIONS.GENERAL,
-        'telefone inválido. Utilize DDD + número com 10 a 14 dígitos',
+        'telefone invalido. Utilize DDD + numero com 10 a 14 digitos',
       );
     }
 
     if (settings.contact?.whatsapp && !isValidPhone(settings.contact.whatsapp)) {
       throw ClinicErrorFactory.invalidConfiguration(
         CONFIG_SECTIONS.GENERAL,
-        'whatsapp inválido. Utilize DDD + número com 10 a 14 dígitos',
+        'whatsapp invalido. Utilize DDD + numero com 10 a 14 digitos',
       );
     }
 
@@ -112,14 +112,14 @@ export class ClinicConfigurationValidator {
       if (Number.isNaN(foundation.getTime())) {
         throw ClinicErrorFactory.invalidConfiguration(
           CONFIG_SECTIONS.GENERAL,
-          'data de fundação inválida',
+          'data de fundacao invalida',
         );
       }
 
       if (foundation > now) {
         throw ClinicErrorFactory.invalidConfiguration(
           CONFIG_SECTIONS.GENERAL,
-          'data de fundação não pode ser futura',
+          'data de fundacao nao pode ser futura',
         );
       }
     }
@@ -130,11 +130,11 @@ export class ClinicConfigurationValidator {
 
       if (settings.document.type === 'cnpj' || settings.document.type === 'mei') {
         if (!isValidCnpj(digits)) {
-          throw ClinicErrorFactory.invalidConfiguration(CONFIG_SECTIONS.GENERAL, 'CNPJ inválido');
+          throw ClinicErrorFactory.invalidConfiguration(CONFIG_SECTIONS.GENERAL, 'CNPJ invalido');
         }
       } else if (settings.document.type === 'cpf') {
         if (!isValidCpf(digits)) {
-          throw ClinicErrorFactory.invalidConfiguration(CONFIG_SECTIONS.GENERAL, 'CPF inválido');
+          throw ClinicErrorFactory.invalidConfiguration(CONFIG_SECTIONS.GENERAL, 'CPF invalido');
         }
       }
 
@@ -149,7 +149,7 @@ export class ClinicConfigurationValidator {
 
         if (alreadyExists) {
           throw ClinicErrorFactory.clinicDocumentInUse(
-            'Documento já cadastrado para outra clínica no mesmo tenant',
+            'Documento ja cadastrado para outra clinica no mesmo tenant',
           );
         }
       }
@@ -205,7 +205,7 @@ export class ClinicConfigurationValidator {
 
     if (!seenRoles.has(RolesEnum.CLINIC_OWNER)) {
       this.logger.warn(
-        `Configuração de equipe sem cota explícita para Owner na clínica ${clinic.id}`,
+        `Configuracao de equipe sem cota explicita para Owner na clinica ${clinic.id}`,
       );
     }
   }
@@ -214,14 +214,14 @@ export class ClinicConfigurationValidator {
     if (!settings.timezone || settings.timezone.trim().length === 0) {
       throw ClinicErrorFactory.invalidConfiguration(
         CONFIG_SECTIONS.SCHEDULE,
-        'timezone é obrigatório',
+        'timezone e obrigatorio',
       );
     }
 
     try {
       new Intl.DateTimeFormat('en-US', { timeZone: settings.timezone });
     } catch (error) {
-      throw ClinicErrorFactory.invalidConfiguration(CONFIG_SECTIONS.SCHEDULE, 'timezone inválido');
+      throw ClinicErrorFactory.invalidConfiguration(CONFIG_SECTIONS.SCHEDULE, 'timezone invalido');
     }
 
     if (settings.autosaveIntervalSeconds <= 0) {
@@ -239,14 +239,14 @@ export class ClinicConfigurationValidator {
         if (Number.isNaN(start) || Number.isNaN(end)) {
           throw ClinicErrorFactory.invalidConfiguration(
             CONFIG_SECTIONS.SCHEDULE,
-            `intervalo inválido no dia ${day.dayOfWeek}`,
+            `intervalo invalido no dia ${day.dayOfWeek}`,
           );
         }
 
         if (end <= start) {
           throw ClinicErrorFactory.invalidConfiguration(
             CONFIG_SECTIONS.SCHEDULE,
-            `intervalo com horário final menor ou igual ao inicial no dia ${day.dayOfWeek}`,
+            `intervalo com horario final menor ou igual ao inicial no dia ${day.dayOfWeek}`,
           );
         }
 
@@ -266,7 +266,7 @@ export class ClinicConfigurationValidator {
       if (exception.end <= exception.start) {
         throw ClinicErrorFactory.invalidConfiguration(
           CONFIG_SECTIONS.SCHEDULE,
-          `exceção ${exception.name} possui período inválido`,
+          `excecao ${exception.name} possui periodo invalido`,
         );
       }
     });
@@ -280,7 +280,7 @@ export class ClinicConfigurationValidator {
       if (seenServiceTypes.has(service.serviceTypeId)) {
         throw ClinicErrorFactory.invalidConfiguration(
           CONFIG_SECTIONS.SERVICES,
-          `serviço ${service.serviceTypeId} duplicado`,
+          `servico ${service.serviceTypeId} duplicado`,
         );
       }
 
@@ -299,14 +299,14 @@ export class ClinicConfigurationValidator {
       if (service.durationMinutes <= 0) {
         throw ClinicErrorFactory.invalidConfiguration(
           CONFIG_SECTIONS.SERVICES,
-          `serviço ${service.name} possui duração inválida`,
+          `servico ${service.name} possui duracao invalida`,
         );
       }
 
       if (service.price < 0) {
         throw ClinicErrorFactory.invalidConfiguration(
           CONFIG_SECTIONS.SERVICES,
-          `serviço ${service.name} possui preço negativo`,
+          `servico ${service.name} possui preco negativo`,
         );
       }
 
@@ -318,14 +318,14 @@ export class ClinicConfigurationValidator {
       ) {
         throw ClinicErrorFactory.invalidConfiguration(
           CONFIG_SECTIONS.SERVICES,
-          `serviço ${service.name} possui antecedência mínima maior que a máxima`,
+          `servico ${service.name} possui antecedencia minima maior que a maxima`,
         );
       }
 
       if (service.color && !isValidHexColor(service.color)) {
         throw ClinicErrorFactory.invalidConfiguration(
           CONFIG_SECTIONS.SERVICES,
-          `cor inválida para o serviço ${service.name}`,
+          `cor invalida para o servico ${service.name}`,
         );
       }
     }
@@ -335,7 +335,7 @@ export class ClinicConfigurationValidator {
     if (settings.provider !== 'asaas') {
       throw ClinicErrorFactory.invalidConfiguration(
         CONFIG_SECTIONS.PAYMENTS,
-        'apenas ASAAS é suportado neste momento',
+        'apenas ASAAS e suportado neste momento',
       );
     }
 
@@ -359,7 +359,7 @@ export class ClinicConfigurationValidator {
       if (seenOrders.has(rule.order)) {
         throw ClinicErrorFactory.invalidConfiguration(
           CONFIG_SECTIONS.PAYMENTS,
-          'ordem do split não pode conter duplicidades',
+          'ordem do split nao pode conter duplicidades',
         );
       }
       seenOrders.add(rule.order);
@@ -388,7 +388,7 @@ export class ClinicConfigurationValidator {
     if (refundPolicy.processingTimeHours < 0) {
       throw ClinicErrorFactory.invalidConfiguration(
         CONFIG_SECTIONS.PAYMENTS,
-        'tempo de processamento de reembolso não pode ser negativo',
+        'tempo de processamento de reembolso nao pode ser negativo',
       );
     }
 
@@ -396,7 +396,7 @@ export class ClinicConfigurationValidator {
       if (inadimplencyRule.gracePeriodDays < 0) {
         throw ClinicErrorFactory.invalidConfiguration(
           CONFIG_SECTIONS.PAYMENTS,
-          'período de carência de inadimplência não pode ser negativo',
+          'periodo de carencia de inadimplencia nao pode ser negativo',
         );
       }
 
@@ -406,7 +406,7 @@ export class ClinicConfigurationValidator {
       ) {
         throw ClinicErrorFactory.invalidConfiguration(
           CONFIG_SECTIONS.PAYMENTS,
-          'multa de inadimplência deve estar entre 0 e 100%',
+          'multa de inadimplencia deve estar entre 0 e 100%',
         );
       }
 
@@ -417,7 +417,7 @@ export class ClinicConfigurationValidator {
       ) {
         throw ClinicErrorFactory.invalidConfiguration(
           CONFIG_SECTIONS.PAYMENTS,
-          'juros diário deve estar entre 0 e 100%',
+          'juros diario deve estar entre 0 e 100%',
         );
       }
     }
@@ -428,14 +428,14 @@ export class ClinicConfigurationValidator {
       if (!settings.whatsapp.provider) {
         throw ClinicErrorFactory.invalidConfiguration(
           CONFIG_SECTIONS.INTEGRATIONS,
-          'provider do WhatsApp é obrigatório quando a integração está habilitada',
+          'provider do WhatsApp e obrigatorio quando a integracao esta habilitada',
         );
       }
 
       if (!settings.whatsapp.businessNumber || !isValidPhone(settings.whatsapp.businessNumber)) {
         throw ClinicErrorFactory.invalidConfiguration(
           CONFIG_SECTIONS.INTEGRATIONS,
-          'número do WhatsApp inválido. Utilize DDI+DDD+número',
+          'numero do WhatsApp invalido. Utilize DDI+DDD+numero',
         );
       }
 
@@ -453,7 +453,7 @@ export class ClinicConfigurationValidator {
         if (!settings.googleCalendar.defaultCalendarId) {
           throw ClinicErrorFactory.invalidConfiguration(
             CONFIG_SECTIONS.INTEGRATIONS,
-            'calendário padrão é obrigatório para sincronização em duas vias',
+            'calendario padrao e obrigatorio para sincronizacao em duas vias',
           );
         }
       }
@@ -463,14 +463,14 @@ export class ClinicConfigurationValidator {
       if (!settings.email.provider) {
         throw ClinicErrorFactory.invalidConfiguration(
           CONFIG_SECTIONS.INTEGRATIONS,
-          'provider de e-mail é obrigatório quando a integração está ativa',
+          'provider de e-mail e obrigatorio quando a integracao esta ativa',
         );
       }
 
       if (!settings.email.fromEmail) {
         throw ClinicErrorFactory.invalidConfiguration(
           CONFIG_SECTIONS.INTEGRATIONS,
-          'fromEmail é obrigatório quando a integração de e-mail está ativa',
+          'fromEmail e obrigatorio quando a integracao de e-mail esta ativa',
         );
       }
     }
@@ -506,7 +506,7 @@ export class ClinicConfigurationValidator {
 
     paletteColors.forEach((item) => {
       if (item.value && !item.value.startsWith('http')) {
-        this.logger.warn(`Logo ${item.name} não parece conter URL completa`);
+        this.logger.warn(`Logo ${item.name} nao parece conter URL completa`);
       }
     });
 
@@ -523,7 +523,7 @@ export class ClinicConfigurationValidator {
         if (value && !isValidHexColor(value)) {
           throw ClinicErrorFactory.invalidConfiguration(
             CONFIG_SECTIONS.BRANDING,
-            `cor ${key} inválida`,
+            `cor ${key} invalida`,
           );
         }
       });
@@ -537,14 +537,14 @@ export class ClinicConfigurationValidator {
     if (Number.isNaN(startMinutes) || Number.isNaN(endMinutes)) {
       throw ClinicErrorFactory.invalidConfiguration(
         section,
-        'quiet hours inválido: formato esperado HH:mm',
+        'quiet hours invalido: formato esperado HH:mm',
       );
     }
 
     if (endMinutes <= startMinutes) {
       throw ClinicErrorFactory.invalidConfiguration(
         section,
-        'quiet hours: horário final deve ser maior que o inicial',
+        'quiet hours: horario final deve ser maior que o inicial',
       );
     }
   }

@@ -37,7 +37,7 @@ export class CreateClinicUseCase
 
     const existingBySlug = await this.clinicRepository.findBySlug(input.tenantId, normalizedSlug);
     if (existingBySlug) {
-      throw ClinicErrorFactory.clinicSlugInUse('Slug de clínica já está em uso');
+      throw ClinicErrorFactory.clinicSlugInUse('Slug de clinica ja esta em uso');
     }
 
     if (input.document?.value) {
@@ -46,7 +46,7 @@ export class CreateClinicUseCase
         input.document.value,
       );
       if (documentExists) {
-        throw ClinicErrorFactory.clinicDocumentInUse('Documento de clínica já cadastrado');
+        throw ClinicErrorFactory.clinicDocumentInUse('Documento de clinica ja cadastrado');
       }
     }
 
@@ -87,7 +87,7 @@ export class CreateClinicUseCase
 
     if (holdSettings.ttlMinutes <= 0 || holdSettings.minAdvanceMinutes < 0) {
       throw ClinicErrorFactory.invalidClinicData(
-        'Configurações de hold inválidas: TTL deve ser positivo e antecedência mínima não pode ser negativa',
+        'Configuracoes de hold invalidas: TTL deve ser positivo e antecedencia minima nao pode ser negativa',
       );
     }
 

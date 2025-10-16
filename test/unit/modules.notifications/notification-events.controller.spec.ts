@@ -1,4 +1,4 @@
-﻿import { NotificationEventsController } from '../../../src/modules/notifications/api/controllers/notification-events.controller';
+import { NotificationEventsController } from '../../../src/modules/notifications/api/controllers/notification-events.controller';
 import { IListNotificationEventsUseCase } from '../../../src/domain/notifications/interfaces/use-cases/list-notification-events.use-case.interface';
 import { NotificationEvent } from '../../../src/domain/notifications/types/notification.types';
 

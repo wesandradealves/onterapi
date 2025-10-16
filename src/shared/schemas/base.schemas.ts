@@ -8,10 +8,10 @@ export const timestampSchema = z.object({
 });
 
 export const paginationSchema = z.object({
-  page: z.coerce.number().min(1).default(1).describe('Número da página'),
-  limit: z.coerce.number().min(1).max(100).default(20).describe('Itens por página'),
-  orderBy: z.string().optional().describe('Campo para ordenação'),
-  order: z.enum(['ASC', 'DESC']).default('DESC').describe('Direção da ordenação'),
+  page: z.coerce.number().min(1).default(1).describe('N mero da p gina'),
+  limit: z.coerce.number().min(1).max(100).default(20).describe('Itens por p gina'),
+  orderBy: z.string().optional().describe('Campo para ordena  o'),
+  order: z.enum(['ASC', 'DESC']).default('DESC').describe('Dire  o da ordena  o'),
 });
 
 export const paginatedResponseSchema = <T extends z.ZodType>(itemSchema: T) =>
@@ -19,33 +19,33 @@ export const paginatedResponseSchema = <T extends z.ZodType>(itemSchema: T) =>
     items: z.array(itemSchema),
     meta: z.object({
       total: z.number().describe('Total de registros'),
-      page: z.number().describe('Página atual'),
-      limit: z.number().describe('Itens por página'),
-      totalPages: z.number().describe('Total de páginas'),
-      hasNext: z.boolean().describe('Tem próxima página'),
-      hasPrevious: z.boolean().describe('Tem página anterior'),
+      page: z.number().describe('P gina atual'),
+      limit: z.number().describe('Itens por p gina'),
+      totalPages: z.number().describe('Total de p ginas'),
+      hasNext: z.boolean().describe('Tem pr xima p gina'),
+      hasPrevious: z.boolean().describe('Tem p gina anterior'),
     }),
   });
 
 export const commonHeadersSchema = z.object({
-  'x-tenant-id': z.string().uuid().describe('ID do tenant/clínica'),
-  'x-user-id': z.string().uuid().describe('ID do usuário autenticado'),
-  'x-request-id': z.string().uuid().optional().describe('ID único da requisição'),
-  'x-api-key': z.string().optional().describe('Chave de API para integrações'),
+  'x-tenant-id': z.string().uuid().describe('ID do tenant/cl nica'),
+  'x-user-id': z.string().uuid().describe('ID do usuario autenticado'),
+  'x-request-id': z.string().uuid().optional().describe('ID  nico da requisi  o'),
+  'x-api-key': z.string().optional().describe('Chave de API para integra  es'),
 });
 
 export const addressSchema = z.object({
   zipCode: z
     .string()
     .regex(/^\d{8}$/)
-    .describe('CEP sem formatação'),
+    .describe('CEP sem formata  o'),
   street: z.string().min(1).max(255).describe('Logradouro'),
-  number: z.string().min(1).max(20).describe('Número'),
+  number: z.string().min(1).max(20).describe('N mero'),
   complement: z.string().max(100).optional().nullable().describe('Complemento'),
   district: z.string().min(1).max(100).describe('Bairro'),
   city: z.string().min(1).max(100).describe('Cidade'),
   state: z.string().length(2).describe('UF'),
-  country: z.string().default('Brasil').describe('País'),
+  country: z.string().default('Brasil').describe('Pa s'),
   latitude: z.number().min(-90).max(90).optional().describe('Latitude'),
   longitude: z.number().min(-180).max(180).optional().describe('Longitude'),
 });
@@ -64,7 +64,7 @@ export const contactSchema = z.object({
 });
 
 export const errorResponseSchema = z.object({
-  statusCode: z.number().describe('Código HTTP do erro'),
+  statusCode: z.number().describe('C digo HTTP do erro'),
   message: z.string().describe('Mensagem de erro'),
   error: z.string().optional().describe('Tipo do erro'),
   timestamp: z.string().datetime().describe('Momento do erro'),
@@ -81,16 +81,16 @@ export const successResponseSchema = <T extends z.ZodType>(dataSchema: T) =>
 
 export const softDeleteSchema = z.object({
   isActive: z.boolean().default(true).describe('Registro ativo'),
-  deletedAt: z.string().datetime().nullable().optional().describe('Data de exclusão'),
-  deletedBy: z.string().uuid().nullable().optional().describe('Usuário que excluiu'),
+  deletedAt: z.string().datetime().nullable().optional().describe('Data de exclus o'),
+  deletedBy: z.string().uuid().nullable().optional().describe('Usuario que excluiu'),
 });
 
 export const auditSchema = z.object({
-  createdBy: z.string().uuid().describe('Usuário que criou'),
-  updatedBy: z.string().uuid().optional().describe('Último usuário que atualizou'),
-  createdAt: z.string().datetime().describe('Data de criação'),
-  updatedAt: z.string().datetime().describe('Data da última atualização'),
-  version: z.number().default(1).describe('Versão do registro para controle de concorrência'),
+  createdBy: z.string().uuid().describe('Usuario que criou'),
+  updatedBy: z.string().uuid().optional().describe('Ultimo usuario que atualizou'),
+  createdAt: z.string().datetime().describe('Data de criacao'),
+  updatedAt: z.string().datetime().describe('Data da ultima atualizacao'),
+  version: z.number().default(1).describe('Versao do registro para controle de concorrencia'),
 });
 
 export const searchFiltersSchema = z.object({
@@ -102,7 +102,7 @@ export const searchFiltersSchema = z.object({
 });
 
 export const tenantSchema = z.object({
-  tenantId: z.string().uuid().describe('ID do tenant/clínica'),
+  tenantId: z.string().uuid().describe('ID do tenant/cl nica'),
   tenantName: z.string().optional().describe('Nome do tenant'),
-  tenantDomain: z.string().optional().describe('Domínio do tenant'),
+  tenantDomain: z.string().optional().describe('Dom nio do tenant'),
 });

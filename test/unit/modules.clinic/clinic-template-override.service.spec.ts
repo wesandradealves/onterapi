@@ -1,4 +1,4 @@
-﻿import { ClinicTemplateOverrideService } from '../../../src/modules/clinic/services/clinic-template-override.service';
+import { ClinicTemplateOverrideService } from '../../../src/modules/clinic/services/clinic-template-override.service';
 import { IClinicTemplateOverrideRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-template-override.repository.interface';
 import { IClinicConfigurationRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
 import { IClinicRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic.repository.interface';
@@ -117,7 +117,7 @@ describe('ClinicTemplateOverrideService', () => {
   });
 
   describe('mergeWithActiveOverride', () => {
-    it('atualiza base quando override usa versÃ£o desatualizada', async () => {
+    it('atualiza base quando override usa versio desatualizada', async () => {
       const clinic = createClinic();
       const templateVersion = createTemplateVersion({
         payload: { timezone: 'UTC', allowOnline: true },
@@ -203,7 +203,7 @@ describe('ClinicTemplateOverrideService', () => {
   });
 
   describe('upsertManualOverride', () => {
-    it('limpa overrides quando nÃ£o hÃ¡ metadados de template', async () => {
+    it('limpa overrides quando nio hi metadados de template', async () => {
       const clinic = createClinic();
 
       await service.upsertManualOverride({
@@ -229,7 +229,7 @@ describe('ClinicTemplateOverrideService', () => {
       expect(overrideRepository.create).not.toHaveBeenCalled();
     });
 
-    it('remove override ativo quando diff estÃ¡ vazio', async () => {
+    it('remove override ativo quando diff esti vazio', async () => {
       const clinic = createClinic({
         metadata: {
           templatePropagation: {

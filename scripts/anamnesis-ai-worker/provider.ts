@@ -232,7 +232,7 @@ function resolveSystemPrompt(job: AiWorkerRequestBody): string {
     return candidate.trim();
   }
 
-  return "Você é um agente clínico assistivo. Responda exclusivamente em JSON com campos plan_text, reasoning_text, evidence_map e confidence.";
+  return 'Voce e um agente clinico assistivo. Responda exclusivamente em JSON com campos plan_text, reasoning_text, evidence_map e confidence.';
 }
 
 function resolveUserPrompt(job: AiWorkerRequestBody, compact: AnamnesisCompactSummary): string {

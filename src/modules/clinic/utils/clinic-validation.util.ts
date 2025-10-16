@@ -1,13 +1,13 @@
 import { timingSafeEqual } from 'crypto';
 
 /**
- * Remove todos os caracteres não numéricos da string fornecida.
+ * Remove todos os caracteres nao numericos da string fornecida.
  */
 export const onlyDigits = (value: string): string => value.replace(/\D+/g, '');
 
 /**
- * Valida formato e dígito verificador de um CNPJ.
- * Fonte: Receita Federal – implementação adaptada para TypeScript.
+ * Valida formato e digito verificador de um CNPJ.
+ * Fonte: Receita Federal - implementacao adaptada para TypeScript.
  */
 export const isValidCnpj = (value: string): boolean => {
   const digits = onlyDigits(value);
@@ -37,7 +37,7 @@ export const isValidCnpj = (value: string): boolean => {
 };
 
 /**
- * Valida formato e dígito verificador de um CPF.
+ * Valida formato e digito verificador de um CPF.
  */
 export const isValidCpf = (value: string): boolean => {
   const digits = onlyDigits(value);
@@ -66,13 +66,13 @@ export const isValidCpf = (value: string): boolean => {
 };
 
 /**
- * Valida se a string representa um CEP brasileiro (8 dígitos).
+ * Valida se a string representa um CEP brasileiro (8 digitos).
  */
 export const isValidCep = (value: string): boolean => /^\d{8}$/.test(onlyDigits(value));
 
 /**
- * Valida número de telefone/whatsapp em formato E.164 simplificado.
- * Aceita de 10 a 14 dígitos após remover não numéricos.
+ * Valida numero de telefone/whatsapp em formato E.164 simplificado.
+ * Aceita de 10 a 14 digitos apos remover nao numericos.
  */
 export const isValidPhone = (value: string): boolean => {
   const digits = onlyDigits(value);
@@ -80,13 +80,13 @@ export const isValidPhone = (value: string): boolean => {
 };
 
 /**
- * Validação básica para cores hexadecimais (#RGB ou #RRGGBB).
+ * Validacao basica para cores hexadecimais (#RGB ou #RRGGBB).
  */
 export const isValidHexColor = (value: string): boolean =>
   /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(value);
 
 /**
- * Converte horário HH:mm para minutos absolutos.
+ * Converte horario HH:mm para minutos absolutos.
  */
 export const toMinutes = (time: string): number => {
   const [hours, minutes] = time.split(':').map(Number);

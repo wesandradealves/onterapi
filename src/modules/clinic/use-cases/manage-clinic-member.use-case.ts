@@ -36,12 +36,12 @@ export class ManageClinicMemberUseCase
     const clinic = await this.clinicRepository.findByTenant(input.tenantId, input.clinicId);
 
     if (!clinic) {
-      throw ClinicErrorFactory.clinicNotFound('Clínica não encontrada');
+      throw ClinicErrorFactory.clinicNotFound('Clinica nao encontrada');
     }
 
     const member = await this.memberRepository.findById(input.memberId);
     if (!member || member.clinicId !== input.clinicId) {
-      throw ClinicErrorFactory.memberNotFound('Membro não encontrado');
+      throw ClinicErrorFactory.memberNotFound('Membro nao encontrado');
     }
 
     return this.memberRepository.updateMember(input);

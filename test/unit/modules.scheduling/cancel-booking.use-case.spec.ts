@@ -92,14 +92,14 @@ describe('CancelBookingUseCase', () => {
     );
   });
 
-  it('lança not found quando o agendamento não existe', async () => {
+  it('lan a not found quando o agendamento n o existe', async () => {
     bookingRepository.findById.mockResolvedValue(null);
 
     await expect(useCase.executeOrThrow(createInput())).rejects.toBeInstanceOf(NotFoundException);
     expect(bookingRepository.updateStatus).not.toHaveBeenCalled();
   });
 
-  it('lança conflito quando o agendamento já está cancelado', async () => {
+  it('lan a conflito quando o agendamento j  est  cancelado', async () => {
     bookingRepository.findById.mockResolvedValue(
       baseBooking({ status: 'cancelled', cancellationReason: 'system' }),
     );
@@ -108,7 +108,7 @@ describe('CancelBookingUseCase', () => {
     expect(bookingRepository.updateStatus).not.toHaveBeenCalled();
   });
 
-  it('lança conflito quando o agendamento já foi concluído', async () => {
+  it('lan a conflito quando o agendamento j  foi conclu do', async () => {
     bookingRepository.findById.mockResolvedValue(
       baseBooking({ status: 'completed', paymentStatus: 'settled' }),
     );

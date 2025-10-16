@@ -54,7 +54,7 @@ export class ClinicPaymentController {
 
   @Get()
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Listar ledger financeiro dos agendamentos da clínica' })
+  @ApiOperation({ summary: 'Listar ledger financeiro dos agendamentos da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiResponse({ status: 200, type: ClinicPaymentLedgerListResponseDto })
   @ApiQuery({
@@ -62,7 +62,7 @@ export class ClinicPaymentController {
     required: false,
     type: String,
     description:
-      'Estados de pagamento separados por vírgula (approved, settled, refunded, chargeback, failed)',
+      'Estados de pagamento separados por virgula (approved, settled, refunded, chargeback, failed)',
   })
   @ApiQuery({
     name: 'from',
@@ -80,13 +80,13 @@ export class ClinicPaymentController {
     name: 'limit',
     required: false,
     type: Number,
-    description: 'Quantidade máxima de registros (até 100)',
+    description: 'Quantidade maxima de registros (ate 100)',
   })
   @ApiQuery({
     name: 'offset',
     required: false,
     type: Number,
-    description: 'Deslocamento para paginação',
+    description: 'Deslocamento para paginacao',
   })
   async listPaymentLedgers(
     @Param('clinicId') clinicId: string,
@@ -121,7 +121,7 @@ export class ClinicPaymentController {
 
   @Get(':appointmentId/ledger')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Obter ledger financeiro de um agendamento da clínica' })
+  @ApiOperation({ summary: 'Obter ledger financeiro de um agendamento da clinica' })
   @ApiParam({ name: 'clinicId', type: String })
   @ApiParam({ name: 'appointmentId', type: String })
   @ApiResponse({ status: 200, type: ClinicPaymentLedgerResponseDto })

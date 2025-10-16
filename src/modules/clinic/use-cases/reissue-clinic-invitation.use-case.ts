@@ -43,17 +43,17 @@ export class ReissueClinicInvitationUseCase
     const invitation = await this.invitationRepository.findById(input.invitationId);
 
     if (!invitation || invitation.tenantId !== input.tenantId) {
-      throw ClinicErrorFactory.invitationNotFound('Convite não encontrado para reenvio');
+      throw ClinicErrorFactory.invitationNotFound('Convite nao encontrado para reenvio');
     }
 
     if (!REISSUE_ELIGIBLE_STATUSES.includes(invitation.status)) {
       throw ClinicErrorFactory.invitationAlreadyProcessed(
-        `Convite em estado ${invitation.status} não pode ser reenviado`,
+        `Convite em estado ${invitation.status} nao pode ser reenviado`,
       );
     }
 
     if (input.expiresAt <= new Date()) {
-      throw ClinicErrorFactory.invalidClinicData('Data de expiração deve ser futura');
+      throw ClinicErrorFactory.invalidClinicData('Data de expiracao deve ser futura');
     }
 
     const { token, hash } = this.invitationTokenService.generateToken({
