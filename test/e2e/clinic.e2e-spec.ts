@@ -680,4 +680,39 @@ describe('Clinic module (e2e)', () => {
     expect(auditResponse.body.total).toBe(1);
     expect(auditResponse.body.data[0].id).toBe(auditLog.id);
   });
+
+  it('deve exportar logs de auditoria em CSV', async () => {
+    const auditLog: ClinicAuditLog = {
+      id: 'log-2',
+      tenantId: FIXTURES.tenant,
+      clinicId: FIXTURES.clinic,
+      event: 'clinic.updated',
+      performedBy: currentUser.id,
+      detail: { section: 'general', change: 'tradeName' },
+      createdAt: new Date('2025-10-12T09:30:00.000Z'),
+    };
+
+    listAuditLogsUseCase.executeOrThrow.mockResolvedValueOnce({ data: [auditLog], total: 1 });
+
+    const exportResponse = await request(app.getHttpServer())
+      .get(`/clinics/${FIXTURES.clinic}/audit-logs/export`)
+      .set('x-tenant-id', FIXTURES.tenant)
+      .query({ events: 'clinic.updated' })
+      .expect(200);
+
+    expect(listAuditLogsUseCase.executeOrThrow).toHaveBeenCalledWith({
+      tenantId: FIXTURES.tenant,
+      clinicId: FIXTURES.clinic,
+      events: ['clinic.updated'],
+      page: 1,
+      limit: 1000,
+    });
+
+    expect(exportResponse.headers['content-type']).toContain('text/csv');
+    const csvLines = exportResponse.text.trim().split('\n');
+    expect(csvLines[0]).toBe('id,tenantId,clinicId,event,performedBy,createdAt,detail');
+    expect(csvLines[1]).toContain('"log-2"');
+    expect(csvLines[1]).toContain('"clinic.updated"');
+    expect(csvLines[1]).toContain('""section"":""general""');
+  });
 });
