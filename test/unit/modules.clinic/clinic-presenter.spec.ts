@@ -1,13 +1,19 @@
 import { ClinicPresenter } from '../../../src/modules/clinic/api/presenters/clinic.presenter';
 import { RolesEnum } from '../../../src/domain/auth/enums/roles.enum';
 import {
+  Clinic,
+  ClinicAlert,
   ClinicAppointmentConfirmationResult,
   ClinicConfigurationVersion,
   ClinicDashboardComparison,
   ClinicDashboardForecast,
+  ClinicDashboardSnapshot,
+  ClinicEconomicAgreement,
+  ClinicHold,
   ClinicInvitation,
   ClinicManagementOverview,
   ClinicPaymentLedger,
+  ClinicServiceTypeDefinition,
 } from '../../../src/domain/clinic/types/clinic.types';
 
 describe('ClinicPresenter.invitation', () => {
@@ -85,6 +91,17 @@ describe('ClinicPresenter.invitation', () => {
     expect(dto.metadata).toEqual({ reference: 'source-system' });
     expect(dto.token).toBeUndefined();
   });
+
+  it('throws an error when the invitation has no economic summary', () => {
+    const invalidInvitation = {
+      ...baseInvitation,
+      economicSummary: undefined,
+    } as unknown as ClinicInvitation;
+
+    expect(() => ClinicPresenter.invitation(invalidInvitation, 'token')).toThrow(
+      'Convite sem resumo economico',
+    );
+  });
 });
 
 describe('ClinicPresenter.holdConfirmation', () => {
@@ -150,7 +167,13 @@ describe('ClinicPresenter.paymentLedger', () => {
       gatewayStatus: 'REFUNDED',
       fingerprint: 'fp-refund',
     },
-    chargeback: undefined,
+    chargeback: {
+      chargebackAt: '2099-01-03T10:00:00.000Z',
+      amountCents: 20000,
+      netAmountCents: 18000,
+      gatewayStatus: 'CHARGEBACK',
+      fingerprint: 'fp-chargeback',
+    },
     metadata: { source: 'asaas' },
   };
 
@@ -180,7 +203,7 @@ describe('ClinicPresenter.paymentLedger', () => {
       amountCents: 1000,
     });
     expect(dto.ledger.refund?.fingerprint).toBe('fp-refund');
-    expect(dto.ledger.chargeback).toBeUndefined();
+    expect(dto.ledger.chargeback?.gatewayStatus).toBe('CHARGEBACK');
     expect(dto.ledger.metadata).toEqual({ source: 'asaas' });
   });
 
@@ -363,5 +386,468 @@ describe('ClinicPresenter.teamSettings', () => {
     const dto = ClinicPresenter.teamSettings(version);
 
     expect(dto.payload.requireFinancialClearance).toBe(true);
+  });
+});
+
+describe('ClinicPresenter summary and details', () => {
+  const baseHoldSettings = {
+    ttlMinutes: 30,
+    minAdvanceMinutes: 60,
+    maxAdvanceMinutes: 1440,
+    allowOverbooking: true,
+    overbookingThreshold: 0.25,
+    resourceMatchingStrict: true,
+  };
+
+  const baseClinic: Clinic = {
+    id: 'clinic-1',
+    tenantId: 'tenant-1',
+    name: 'Clinica Integrada',
+    slug: 'clinica-integrada',
+    status: 'active',
+    primaryOwnerId: 'owner-1',
+    holdSettings: baseHoldSettings,
+    configurationVersions: { general: 'cfg-general', services: undefined, branding: '' },
+    createdAt: new Date('2025-10-10T10:00:00Z'),
+    updatedAt: new Date('2025-10-11T13:00:00Z'),
+    metadata: {},
+  };
+
+  it('exposes hold settings in the summary response', () => {
+    const summary = ClinicPresenter.summary(baseClinic);
+
+    expect(summary).toMatchObject({
+      id: 'clinic-1',
+      slug: 'clinica-integrada',
+      holdSettings: {
+        ttlMinutes: 30,
+        minAdvanceMinutes: 60,
+        maxAdvanceMinutes: 1440,
+        allowOverbooking: true,
+        overbookingThreshold: 0.25,
+        resourceMatchingStrict: true,
+      },
+    });
+  });
+
+  it('filters falsy configuration versions and metadata in the details response', () => {
+    const clinicWithMetadata: Clinic = {
+      ...baseClinic,
+      document: { type: 'cnpj', value: '12.345.678/0001-99' },
+      configurationVersions: {
+        general: 'cfg-general',
+        services: '',
+        notifications: undefined,
+      },
+      metadata: { brandColor: '#123456' },
+    };
+
+    const details = ClinicPresenter.details(clinicWithMetadata);
+
+    expect(details.configurationVersions).toEqual({ general: 'cfg-general' });
+    expect(details.metadata).toEqual({ brandColor: '#123456' });
+    expect(details.document).toEqual({ type: 'cnpj', value: '12.345.678/0001-99' });
+  });
+
+  it('maps clinic hold settings dto', () => {
+    const holdSettings = ClinicPresenter.holdSettings(baseClinic);
+
+    expect(holdSettings).toEqual({
+      clinicId: baseClinic.id,
+      tenantId: baseClinic.tenantId,
+      holdSettings: {
+        ttlMinutes: 30,
+        minAdvanceMinutes: 60,
+        maxAdvanceMinutes: 1440,
+        allowOverbooking: true,
+        overbookingThreshold: 0.25,
+        resourceMatchingStrict: true,
+      },
+    });
+  });
+});
+
+describe('ClinicPresenter.templatePropagation', () => {
+  const templateClinic: Clinic = {
+    id: 'clinic-template',
+    tenantId: 'tenant-1',
+    name: 'Clinica Modelo',
+    slug: 'clinica-modelo',
+    status: 'active',
+    primaryOwnerId: 'owner-1',
+    holdSettings: {
+      ttlMinutes: 20,
+      minAdvanceMinutes: 30,
+      maxAdvanceMinutes: 0,
+      allowOverbooking: false,
+      overbookingThreshold: 0,
+      resourceMatchingStrict: true,
+    },
+    createdAt: new Date('2025-10-01T10:00:00Z'),
+    updatedAt: new Date('2025-10-02T11:00:00Z'),
+    metadata: {
+      templatePropagation: {
+        templateClinicId: 'template-root',
+        lastPropagationAt: '2025-10-12T10:00:00Z',
+        lastTriggeredBy: 'owner-1',
+        sections: {
+          general: {
+            templateVersionId: 'tmpl-v1',
+            templateVersionNumber: 2,
+            propagatedVersionId: 'prop-v1',
+            propagatedAt: '2025-10-12T09:00:00Z',
+            triggeredBy: 'owner-1',
+            override: {
+              overrideId: 'ov-1',
+              overrideVersion: 3,
+              overrideHash: 'hash-1',
+              updatedAt: '2025-10-12T09:05:00Z',
+              updatedBy: 'owner-1',
+              appliedConfigurationVersionId: 'cfg-1',
+            },
+          },
+          schedule: {
+            templateVersionId: 'tmpl-v2',
+            propagatedVersionId: 'prop-v2',
+            propagatedAt: '2025-10-10T09:00:00Z',
+            triggeredBy: 'owner-1',
+          },
+          invalid: null,
+          services: {
+            templateVersionId: 'missing-fields',
+          },
+        },
+      },
+    },
+  };
+
+  it('extracts and sorts propagated sections, ignoring invalid entries', () => {
+    const response = ClinicPresenter.templatePropagation(templateClinic);
+
+    expect(response.templateClinicId).toBe('template-root');
+    expect(response.sections).toHaveLength(2);
+    expect(response.sections[0].section).toBe('general');
+    expect(response.sections[0].overrideId).toBe('ov-1');
+    expect(response.sections[1].section).toBe('schedule');
+  });
+
+  it('returns empty propagation when metadata is missing', () => {
+    const clinic: Clinic = {
+      ...templateClinic,
+      metadata: undefined,
+    } as Clinic;
+
+    const response = ClinicPresenter.templatePropagation(clinic);
+
+    expect(response.sections).toHaveLength(0);
+    expect(response.templateClinicId).toBeUndefined();
+  });
+
+  it('ignores non-object propagation payloads', () => {
+    const clinic: Clinic = {
+      ...templateClinic,
+      metadata: {
+        templatePropagation: {
+          sections: 'invalid',
+        },
+      } as unknown as Record<string, unknown>,
+    };
+
+    const response = ClinicPresenter.templatePropagation(clinic);
+
+    expect(response.sections).toEqual([]);
+    expect(response.templateClinicId).toBeUndefined();
+  });
+});
+
+describe('ClinicPresenter.hold', () => {
+  it('maps hold entity into response dto including optional fields', () => {
+    const hold: ClinicHold = {
+      id: 'hold-1',
+      clinicId: 'clinic-1',
+      tenantId: 'tenant-1',
+      professionalId: 'pro-1',
+      patientId: 'patient-1',
+      serviceTypeId: 'service-1',
+      start: new Date('2025-10-20T09:00:00Z'),
+      end: new Date('2025-10-20T10:00:00Z'),
+      ttlExpiresAt: new Date('2025-10-20T09:15:00Z'),
+      status: 'pending',
+      locationId: 'room-1',
+      resources: ['equip-1'],
+      idempotencyKey: 'key-1',
+      createdBy: 'user-1',
+      createdAt: new Date('2025-10-19T10:00:00Z'),
+      updatedAt: new Date('2025-10-19T10:15:00Z'),
+      confirmedAt: undefined,
+      confirmedBy: undefined,
+      cancelledAt: undefined,
+      cancelledBy: undefined,
+      cancellationReason: null,
+      metadata: { source: 'test' },
+    };
+
+    const dto = ClinicPresenter.hold(hold);
+
+    expect(dto).toMatchObject({
+      id: 'hold-1',
+      clinicId: 'clinic-1',
+      resources: ['equip-1'],
+      metadata: { source: 'test' },
+    });
+  });
+});
+
+describe('ClinicPresenter.dashboard', () => {
+  const baseAlert: ClinicAlert = {
+    id: 'alert-1',
+    clinicId: 'clinic-1',
+    tenantId: 'tenant-1',
+    type: 'revenue_drop',
+    channel: 'in_app',
+    triggeredBy: 'system',
+    triggeredAt: new Date('2025-10-12T12:00:00Z'),
+    payload: { drop: 15 },
+  };
+
+  it('maps dashboard snapshot with comparisons and forecast data', () => {
+    const snapshot: ClinicDashboardSnapshot = {
+      period: { start: new Date('2025-10-01'), end: new Date('2025-10-31') },
+      totals: { clinics: 2, professionals: 5, activePatients: 120, revenue: 45000 },
+      metrics: [
+        {
+          metric: 'revenue',
+          clinicId: 'clinic-1',
+          value: 30000,
+          variation: 0.1,
+        },
+      ],
+      alerts: [baseAlert],
+      comparisons: {
+        period: { start: new Date('2025-09-01'), end: new Date('2025-09-30') },
+        previousPeriod: { start: new Date('2025-08-01'), end: new Date('2025-08-31') },
+        metrics: [
+          {
+            metric: 'revenue',
+            entries: [
+              {
+                clinicId: 'clinic-1',
+                name: 'Clinica Prime',
+                revenue: 30000,
+                revenueVariationPercentage: 10,
+                appointments: 120,
+                appointmentsVariationPercentage: 5,
+                activePatients: 80,
+                activePatientsVariationPercentage: 4,
+                occupancyRate: 0.75,
+                occupancyVariationPercentage: 3,
+              },
+            ],
+          },
+        ],
+      },
+      forecast: {
+        period: { start: new Date('2025-11-01'), end: new Date('2025-11-30') },
+        projections: [
+          {
+            clinicId: 'clinic-1',
+            month: '2025-11',
+            projectedRevenue: 32000,
+            projectedAppointments: 130,
+            projectedOccupancyRate: 0.78,
+          },
+        ],
+      },
+    };
+
+    const dto = ClinicPresenter.dashboard(snapshot);
+
+    expect(dto.metrics[0]).toEqual(snapshot.metrics[0]);
+    expect(dto.comparisons?.metrics[0].entries[0].name).toBe('Clinica Prime');
+    expect(dto.forecast?.projections[0].projectedRevenue).toBe(32000);
+  });
+
+  it('returns undefined for optional sections when snapshot omits them', () => {
+    const snapshot: ClinicDashboardSnapshot = {
+      period: { start: new Date('2025-10-01'), end: new Date('2025-10-31') },
+      totals: { clinics: 1, professionals: 2, activePatients: 40, revenue: 15000 },
+      metrics: [],
+      alerts: [],
+    };
+
+    const dto = ClinicPresenter.dashboard(snapshot);
+
+    expect(dto.comparisons).toBeUndefined();
+    expect(dto.forecast).toBeUndefined();
+  });
+});
+
+describe('ClinicPresenter.serviceType', () => {
+  it('maps service type definition including optional fields', () => {
+    const definition: ClinicServiceTypeDefinition = {
+      id: 'service-1',
+      clinicId: 'clinic-1',
+      name: 'Consulta Online',
+      slug: 'consulta-online',
+      color: '#3366ff',
+      durationMinutes: 50,
+      price: 200,
+      currency: 'BRL',
+      isActive: true,
+      requiresAnamnesis: false,
+      enableOnlineScheduling: true,
+      minAdvanceMinutes: 60,
+      maxAdvanceMinutes: 1440,
+      cancellationPolicy: {
+        type: 'percentage',
+        windowMinutes: 120,
+        percentage: 50,
+        message: 'Cancelamento até 2h: 50%',
+      },
+      eligibility: {
+        allowNewPatients: true,
+        allowExistingPatients: true,
+        minimumAge: 18,
+        maximumAge: 70,
+        allowedTags: ['adult'],
+      },
+      instructions: 'Acesse o link enviado por email.',
+      requiredDocuments: ['Documento com foto'],
+      customFields: [
+        { id: 'field-1', label: 'Observação', fieldType: 'text', required: false },
+      ],
+      createdAt: new Date('2025-10-10T10:00:00Z'),
+      updatedAt: new Date('2025-10-11T11:00:00Z'),
+    };
+
+    const dto = ClinicPresenter.serviceType(definition);
+
+    expect(dto.cancellationPolicy?.percentage).toBe(50);
+    expect(dto.eligibility?.allowedTags).toEqual(['adult']);
+    expect(dto.customFields?.[0]).toEqual({
+      id: 'field-1',
+      label: 'Observação',
+      fieldType: 'text',
+      required: false,
+      options: undefined,
+    });
+  });
+});
+
+describe('ClinicPresenter.managementOverview (edge cases)', () => {
+  const alert: ClinicAlert = {
+    id: 'alert-1',
+    clinicId: 'clinic-1',
+    tenantId: 'tenant-1',
+    type: 'compliance',
+    channel: 'push',
+    triggeredBy: 'system',
+    triggeredAt: new Date('2025-10-12T09:00:00Z'),
+    payload: { document: 'crm' },
+  };
+
+  it('omits template and distribution when data is incomplete', () => {
+    const overview: ClinicManagementOverview = {
+      period: { start: new Date('2025-10-01'), end: new Date('2025-10-31') },
+      totals: { clinics: 1, professionals: 2, activePatients: 40, revenue: 15000 },
+      clinics: [
+        {
+          clinicId: 'clinic-1',
+          name: 'Clinica Norte',
+          slug: 'clinica-norte',
+          status: 'inactive',
+          metrics: {
+            revenue: 15000,
+            appointments: 80,
+            activePatients: 40,
+            occupancyRate: 0.6,
+          },
+          alerts: [alert],
+          template: {
+            templateClinicId: undefined,
+            lastPropagationAt: undefined,
+            lastTriggeredBy: undefined,
+            sections: [
+              {
+                section: 'general',
+                templateVersionId: undefined,
+                propagatedVersionId: undefined,
+                triggeredBy: undefined,
+                propagatedAt: undefined,
+              },
+            ],
+          },
+        },
+        {
+          clinicId: 'clinic-2',
+          name: 'Clinica Sul',
+          slug: 'clinica-sul',
+          status: 'inactive',
+          metrics: {
+            revenue: 5000,
+            appointments: 40,
+            activePatients: 20,
+            occupancyRate: 0.4,
+          },
+          alerts: [],
+          template: undefined,
+        },
+      ],
+      alerts: [alert],
+    };
+
+    const dto = ClinicPresenter.managementOverview(overview);
+
+    expect(dto.clinics[0].teamDistribution).toBeUndefined();
+    expect(dto.clinics[0].financials).toBeUndefined();
+    expect(dto.clinics[0].template).toBeUndefined();
+    expect(dto.clinics[1].template).toBeUndefined();
+  });
+});
+
+describe('ClinicPresenter economic summary rounding', () => {
+  const internals = ClinicPresenter as unknown as {
+    roundHalfEven: (value: number, decimals?: number) => number;
+    buildEconomicExamples: (items: ClinicEconomicAgreement[]) => Array<{
+      patientPays: number;
+      professionalReceives: number;
+      remainder: number;
+    }>;
+  };
+
+  it('applies half-even rounding for positive ties', () => {
+    expect(internals.roundHalfEven(1.25, 1)).toBe(1.2);
+    expect(internals.roundHalfEven(1.35, 1)).toBe(1.4);
+  });
+
+  it('applies half-even rounding for negative ties', () => {
+    expect(internals.roundHalfEven(-1.25, 1)).toBe(-1.2);
+    expect(internals.roundHalfEven(-1.35, 1)).toBe(-1.4);
+  });
+
+  it('builds economic examples using rounded values', () => {
+    const items: ClinicEconomicAgreement[] = [
+      {
+        serviceTypeId: 'service-1',
+        price: 100.005,
+        currency: 'BRL',
+        payoutModel: 'fixed',
+        payoutValue: 60.005,
+      },
+      {
+        serviceTypeId: 'service-2',
+        price: 200.0,
+        currency: 'BRL',
+        payoutModel: 'percentage',
+        payoutValue: 33.333,
+      },
+    ];
+
+    const summary = internals.buildEconomicExamples(items);
+
+    expect(summary[0].patientPays).toBeCloseTo(100, 2);
+    expect(summary[0].professionalReceives).toBeCloseTo(60, 2);
+    expect(summary[0].remainder).toBeCloseTo(40, 2);
+    expect(summary[1].professionalReceives).toBeCloseTo(66.67, 2);
   });
 });
