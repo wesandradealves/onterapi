@@ -12,9 +12,18 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiProduces,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import { Response } from 'express';
 
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../auth/guards/roles.guard';
@@ -162,6 +171,88 @@ export class ClinicManagementController {
     return ClinicPresenter.managementOverview(overview);
   }
 
+  @Get('overview/export')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Exportar visao consolidada das clinicas (CSV)' })
+  @ApiQuery({
+    name: 'clinicIds',
+    required: false,
+    description: 'IDs de clinicas (UUIDs) separados por virgula ou multiplos parametros',
+    isArray: true,
+    type: String,
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    description: 'Filtrar por status das clinicas',
+    enum: ['draft', 'pending', 'active', 'inactive', 'suspended'],
+    isArray: true,
+  })
+  @ApiQuery({ name: 'from', required: false, description: 'Data inicial (ISO 8601)', type: String })
+  @ApiQuery({ name: 'to', required: false, description: 'Data final (ISO 8601)', type: String })
+  @ApiQuery({
+    name: 'includeForecast',
+    required: false,
+    description: 'Incluir projecoes de forecast',
+    type: Boolean,
+  })
+  @ApiQuery({
+    name: 'includeComparisons',
+    required: false,
+    description: 'Incluir comparativos de metricas',
+    type: Boolean,
+  })
+  @ApiQuery({
+    name: 'includeAlerts',
+    required: false,
+    description: 'Incluir alertas consolidados',
+    type: Boolean,
+  })
+  @ApiQuery({
+    name: 'includeTeamDistribution',
+    required: false,
+    description: 'Incluir distribuicao da equipe por papel',
+    type: Boolean,
+  })
+  @ApiQuery({
+    name: 'includeFinancials',
+    required: false,
+    description: 'Incluir resumo financeiro consolidado',
+    type: Boolean,
+  })
+  @ApiProduces('text/csv')
+  async exportOverview(
+    @Query(new ZodValidationPipe(getClinicManagementOverviewSchema))
+    query: GetClinicManagementOverviewSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const overviewQuery = toClinicManagementOverviewQuery(query, context);
+    const requestedClinicIds = overviewQuery.filters?.clinicIds ?? query.clinicIds;
+    const authorizedClinicIds = await this.clinicAccessService.resolveAuthorizedClinicIds({
+      tenantId: context.tenantId,
+      user: currentUser,
+      requestedClinicIds,
+    });
+
+    if (authorizedClinicIds.length > 0) {
+      overviewQuery.filters = {
+        ...(overviewQuery.filters ?? {}),
+        clinicIds: authorizedClinicIds,
+      };
+    }
+
+    const overview = await this.getClinicManagementOverviewUseCase.executeOrThrow(overviewQuery);
+    const csvLines = this.buildOverviewCsv(ClinicPresenter.managementOverview(overview));
+    const filename = `clinic-management-overview-${context.tenantId}-${Date.now()}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csvLines.join('\n'));
+  }
+
   @Get('alerts')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
   @ApiOperation({ summary: 'Listar alertas consolidados das clinicas' })
@@ -285,5 +376,80 @@ export class ClinicManagementController {
       tenantId: resolvedTenantId,
       userId: currentUser.id,
     };
+  }
+
+  private buildOverviewCsv(overview: ClinicManagementOverviewResponseDto): string[] {
+    const escapeCell = (value: unknown): string => {
+      if (value === null || value === undefined || value === '') {
+        return '""';
+      }
+
+      if (typeof value === 'string') {
+        const sanitized = value.replace(/"/g, '""');
+        return `"${sanitized}"`;
+      }
+
+      if (value instanceof Date) {
+        return `"${value.toISOString()}"`;
+      }
+
+      if (typeof value === 'object') {
+        const serialized = JSON.stringify(value);
+        return `"${serialized.replace(/"/g, '""')}"`;
+      }
+
+      return `"${String(value).replace(/"/g, '""')}"`;
+    };
+
+    const headers = [
+      'clinicId',
+      'nome',
+      'status',
+      'ultimoAtivoEm',
+      'receita',
+      'consultas',
+      'pacientesAtivos',
+      'ocupacao',
+      'satisfacao',
+      'margemContribuicao',
+      'alertasAtivos',
+      'tiposAlertasAtivos',
+      'owners',
+      'gestores',
+      'profissionais',
+      'secretarias',
+    ];
+
+    const rows = overview.clinics.map((clinic) => {
+      const metrics = clinic.metrics ?? ({} as NonNullable<typeof clinic.metrics>);
+      const financials = clinic.financials;
+      const activeAlerts = clinic.alerts?.filter((alert) => !alert.resolvedAt) ?? [];
+      const alertTypes = Array.from(new Set(activeAlerts.map((alert) => alert.type))).join('|');
+      const distribution = clinic.teamDistribution ?? [];
+
+      const roleCount = (role: RolesEnum): number =>
+        distribution.find((entry) => entry.role === role)?.count ?? 0;
+
+      return [
+        escapeCell(clinic.clinicId),
+        escapeCell(clinic.name),
+        escapeCell(clinic.status),
+        escapeCell(clinic.lastActivityAt ?? ''),
+        escapeCell(financials?.revenue ?? metrics.revenue ?? 0),
+        escapeCell(metrics.appointments ?? 0),
+        escapeCell(metrics.activePatients ?? 0),
+        escapeCell(metrics.occupancyRate ?? 0),
+        escapeCell(metrics.satisfactionScore ?? ''),
+        escapeCell(financials?.contributionPercentage ?? metrics.contributionMargin ?? ''),
+        escapeCell(activeAlerts.length),
+        escapeCell(alertTypes),
+        escapeCell(roleCount(RolesEnum.CLINIC_OWNER)),
+        escapeCell(roleCount(RolesEnum.MANAGER)),
+        escapeCell(roleCount(RolesEnum.PROFESSIONAL)),
+        escapeCell(roleCount(RolesEnum.SECRETARY)),
+      ].join(',');
+    });
+
+    return [headers.join(','), ...rows];
   }
 }

@@ -178,6 +178,107 @@ describe('ClinicManagementController (integration)', () => {
     expect(response.body.totals.revenue).toBe(15000);
   });
 
+  it('exporta overview consolidada em CSV respeitando escopo', async () => {
+    const overview: ClinicManagementOverview = {
+      period: {
+        start: new Date('2025-01-01T00:00:00Z'),
+        end: new Date('2025-01-31T23:59:59Z'),
+      },
+      totals: {
+        clinics: 1,
+        professionals: 4,
+        activePatients: 80,
+        revenue: 10000,
+      },
+      clinics: [
+        {
+          clinicId: 'clinic-1',
+          name: 'Clinic One',
+          status: 'active',
+          primaryOwnerId: 'owner-1',
+          lastActivityAt: new Date('2025-01-15T12:00:00Z'),
+          metrics: {
+            revenue: 10000,
+            appointments: 120,
+            activePatients: 80,
+            occupancyRate: 0.82,
+            satisfactionScore: 4.5,
+            contributionMargin: 0.3,
+          },
+          financials: {
+            clinicId: 'clinic-1',
+            revenue: 10000,
+            expenses: 5000,
+            profit: 5000,
+            margin: 50,
+            contributionPercentage: 55,
+          },
+          alerts: [
+            {
+              id: 'alert-active',
+              clinicId: 'clinic-1',
+              tenantId: tenantCtx,
+              type: 'revenue_drop',
+              channel: 'push',
+              triggeredBy: 'system',
+              triggeredAt: new Date('2025-01-10T10:00:00Z'),
+              payload: { variation: -12 },
+            },
+            {
+              id: 'alert-resolved',
+              clinicId: 'clinic-1',
+              tenantId: tenantCtx,
+              type: 'compliance',
+              channel: 'email',
+              triggeredBy: 'system',
+              triggeredAt: new Date('2025-01-05T10:00:00Z'),
+              resolvedAt: new Date('2025-01-06T10:00:00Z'),
+              resolvedBy: 'manager-1',
+              payload: { document: 'crm' },
+            },
+          ],
+          teamDistribution: [
+            { role: RolesEnum.CLINIC_OWNER, count: 1 },
+            { role: RolesEnum.MANAGER, count: 2 },
+            { role: RolesEnum.PROFESSIONAL, count: 3 },
+            { role: RolesEnum.SECRETARY, count: 1 },
+          ],
+          template: undefined,
+        },
+      ],
+      alerts: [],
+      comparisons: undefined,
+      forecast: undefined,
+      financials: undefined,
+    };
+
+    overviewUseCase.executeOrThrow.mockResolvedValue(overview);
+
+    const response = await request(app.getHttpServer())
+      .get('/management/overview/export')
+      .set('x-tenant-id', tenantCtx)
+      .expect(200);
+
+    expect(response.headers['content-type']).toContain('text/csv');
+    expect(response.headers['content-disposition']).toMatch(
+      /attachment; filename="clinic-management-overview-/,
+    );
+
+    const lines = response.text.trim().split('\n');
+    expect(lines[0]).toBe(
+      'clinicId,nome,status,ultimoAtivoEm,receita,consultas,pacientesAtivos,ocupacao,satisfacao,margemContribuicao,alertasAtivos,tiposAlertasAtivos,owners,gestores,profissionais,secretarias',
+    );
+    expect(lines[1]).toBe(
+      '"clinic-1","Clinic One","active","2025-01-15T12:00:00.000Z","10000","120","80","0.82","4.5","55","1","revenue_drop","1","2","3","1"',
+    );
+
+    expect(clinicAccessService.resolveAuthorizedClinicIds).toHaveBeenCalledWith({
+      tenantId: tenantCtx,
+      user: expect.objectContaining({ id: 'user-ctx' }),
+      requestedClinicIds: undefined,
+    });
+  });
+
   afterEach(async () => {
     await app.close();
   });
