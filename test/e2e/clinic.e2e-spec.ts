@@ -164,6 +164,7 @@ describe('Clinic module (e2e)', () => {
           : [FIXTURES.clinic],
     ),
     assertClinicAccess: jest.fn(async () => undefined),
+    assertAlertAccess: jest.fn(async () => null),
   };
 
   const state: {
@@ -378,6 +379,7 @@ describe('Clinic module (e2e)', () => {
     state.auditLogs = [];
     clinicAccessService.resolveAuthorizedClinicIds.mockClear();
     clinicAccessService.assertClinicAccess.mockClear();
+    clinicAccessService.assertAlertAccess.mockClear();
 
     [
       createClinicUseCase,

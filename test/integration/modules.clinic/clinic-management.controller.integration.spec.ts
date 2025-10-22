@@ -57,6 +57,7 @@ describe('ClinicManagementController (integration)', () => {
   let clinicAccessService: {
     resolveAuthorizedClinicIds: jest.Mock;
     assertClinicAccess: jest.Mock;
+    assertAlertAccess: jest.Mock;
   };
   const tenantCtx = '00000000-0000-0000-0000-000000000000';
 
@@ -87,6 +88,16 @@ describe('ClinicManagementController (integration)', () => {
           requestedClinicIds && requestedClinicIds.length > 0 ? requestedClinicIds : ['clinic-1'],
       ),
       assertClinicAccess: jest.fn(async () => undefined),
+      assertAlertAccess: jest.fn(async () => ({
+        id: 'alert-1',
+        clinicId: 'clinic-1',
+        tenantId: tenantCtx,
+        type: 'revenue_drop',
+        channel: 'system',
+        triggeredAt: new Date('2025-01-01T00:00:00Z'),
+        triggeredBy: 'system',
+        payload: {},
+      })),
     };
 
     const moduleRef: TestingModule = await Test.createTestingModule({
@@ -149,6 +160,13 @@ describe('ClinicManagementController (integration)', () => {
         includeFinancials: 'false',
       })
       .expect(200);
+
+    expect(clinicAccessService.resolveAuthorizedClinicIds).toHaveBeenCalledTimes(1);
+    expect(clinicAccessService.resolveAuthorizedClinicIds).toHaveBeenCalledWith({
+      tenantId: 'tenant-fin',
+      user: expect.objectContaining({ id: 'user-ctx' }),
+      requestedClinicIds: undefined,
+    });
 
     const input = overviewUseCase.executeOrThrow.mock.calls.at(
       -1,
@@ -339,6 +357,15 @@ describe('ClinicManagementController (integration)', () => {
       })
       .expect(200);
 
+    expect(clinicAccessService.resolveAuthorizedClinicIds).toHaveBeenCalledWith({
+      tenantId: 'tenant-1',
+      user: expect.objectContaining({ id: 'user-ctx' }),
+      requestedClinicIds: [
+        '11111111-1111-1111-1111-111111111111',
+        '22222222-2222-2222-2222-222222222222',
+      ],
+    });
+
     expect(overviewUseCase.executeOrThrow).toHaveBeenCalledTimes(1);
     const input = overviewUseCase.executeOrThrow.mock.calls[0][0];
     expect(input.tenantId).toBe('tenant-1');
@@ -410,6 +437,12 @@ describe('ClinicManagementController (integration)', () => {
         })
         .expect(200);
 
+      expect(clinicAccessService.resolveAuthorizedClinicIds).toHaveBeenCalledWith({
+        tenantId: tenantHeader,
+        user: expect.objectContaining({ id: 'user-ctx' }),
+        requestedClinicIds: [clinicA, clinicB],
+      });
+
       expect(alertsUseCase.executeOrThrow).toHaveBeenCalledWith({
         tenantId: tenantHeader,
         clinicIds: [clinicA, clinicB],
@@ -425,6 +458,12 @@ describe('ClinicManagementController (integration)', () => {
       alertsUseCase.executeOrThrow.mockResolvedValue([]);
 
       await request(app.getHttpServer()).get('/management/alerts').expect(200);
+
+      expect(clinicAccessService.resolveAuthorizedClinicIds).toHaveBeenCalledWith({
+        tenantId: tenantCtx,
+        user: expect.objectContaining({ id: 'user-ctx' }),
+        requestedClinicIds: undefined,
+      });
 
       expect(alertsUseCase.executeOrThrow).toHaveBeenCalledWith({
         tenantId: tenantCtx,
@@ -455,16 +494,21 @@ describe('ClinicManagementController (integration)', () => {
       };
 
       resolveAlertUseCase.executeOrThrow.mockResolvedValue(resolved);
+      clinicAccessService.assertAlertAccess.mockResolvedValue(resolved);
 
-      await request(app.getHttpServer())
+      const response = await request(app.getHttpServer())
         .patch(`/management/alerts/${alertId}/resolve`)
         .set('x-tenant-id', tenantHeader)
         .send({ resolvedAt: '2025-03-11T10:00:00Z' })
-        .expect(200)
-        .expect(({ body }) => {
-          expect(body.id).toBe(alertId);
-          expect(body.resolvedAt).toBe('2025-03-11T10:00:00.000Z');
-        });
+        .expect(200);
+
+      expect(clinicAccessService.assertAlertAccess).toHaveBeenCalledWith({
+        tenantId: tenantHeader,
+        alertId,
+        user: expect.objectContaining({ id: 'user-ctx' }),
+      });
+      expect(response.body.id).toBe(alertId);
+      expect(response.body.resolvedAt).toBe('2025-03-11T10:00:00.000Z');
 
       expect(resolveAlertUseCase.executeOrThrow).toHaveBeenCalledWith({
         tenantId: tenantHeader,
@@ -547,6 +591,16 @@ describe('ClinicManagementController (integration)', () => {
             },
           });
         });
+      expect(clinicAccessService.assertClinicAccess).toHaveBeenNthCalledWith(1, {
+        clinicId: fromClinicId,
+        tenantId: tenantHeader,
+        user: expect.objectContaining({ id: 'user-ctx' }),
+      });
+      expect(clinicAccessService.assertClinicAccess).toHaveBeenNthCalledWith(2, {
+        clinicId: toClinicId,
+        tenantId: tenantHeader,
+        user: expect.objectContaining({ id: 'user-ctx' }),
+      });
 
       expect(transferUseCase.executeOrThrow).toHaveBeenCalledWith({
         tenantId: tenantHeader,
@@ -581,6 +635,16 @@ describe('ClinicManagementController (integration)', () => {
           effectiveDate: effectiveDate.toISOString(),
         })
         .expect(201);
+      expect(clinicAccessService.assertClinicAccess).toHaveBeenNthCalledWith(1, {
+        clinicId: fromClinicId,
+        tenantId: tenantCtx,
+        user: expect.objectContaining({ id: 'user-ctx' }),
+      });
+      expect(clinicAccessService.assertClinicAccess).toHaveBeenNthCalledWith(2, {
+        clinicId: toClinicId,
+        tenantId: tenantCtx,
+        user: expect.objectContaining({ id: 'user-ctx' }),
+      });
 
       expect(transferUseCase.executeOrThrow).toHaveBeenCalledWith({
         tenantId: tenantCtx,
@@ -617,6 +681,16 @@ describe('ClinicManagementController (integration)', () => {
         .expect(({ body }) => {
           expect(body.message).toBe('transfer forbidden');
         });
+      expect(clinicAccessService.assertClinicAccess).toHaveBeenNthCalledWith(1, {
+        clinicId: fromClinicId,
+        tenantId: tenantHeader,
+        user: expect.objectContaining({ id: 'user-ctx' }),
+      });
+      expect(clinicAccessService.assertClinicAccess).toHaveBeenNthCalledWith(2, {
+        clinicId: toClinicId,
+        tenantId: tenantHeader,
+        user: expect.objectContaining({ id: 'user-ctx' }),
+      });
     });
   });
 });

@@ -4,8 +4,13 @@ import {
   IClinicMemberRepository,
   IClinicMemberRepository as IClinicMemberRepositoryToken,
 } from '../../../domain/clinic/interfaces/repositories/clinic-member.repository.interface';
+import {
+  IClinicMetricsRepository,
+  IClinicMetricsRepository as IClinicMetricsRepositoryToken,
+} from '../../../domain/clinic/interfaces/repositories/clinic-metrics.repository.interface';
 import { ICurrentUser } from '../../../domain/auth/interfaces/current-user.interface';
 import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
+import { ClinicAlert } from '../../../domain/clinic/types/clinic.types';
 
 type ResolveClinicScopeParams = {
   tenantId: string;
@@ -24,6 +29,8 @@ export class ClinicAccessService {
   constructor(
     @Inject(IClinicMemberRepositoryToken)
     private readonly clinicMemberRepository: IClinicMemberRepository,
+    @Inject(IClinicMetricsRepositoryToken)
+    private readonly clinicMetricsRepository: IClinicMetricsRepository,
   ) {}
 
   async assertClinicAccess(params: AssertClinicAccessParams): Promise<void> {
@@ -82,6 +89,26 @@ export class ClinicAccessService {
     }
 
     return requested;
+  }
+
+  async assertAlertAccess(params: {
+    tenantId: string;
+    alertId: string;
+    user: ICurrentUser;
+  }): Promise<ClinicAlert> {
+    const alert = await this.clinicMetricsRepository.findAlertById(params.alertId);
+
+    if (!alert || alert.tenantId !== params.tenantId) {
+      throw new ForbiddenException('Alerta nao encontrado ou inacessivel');
+    }
+
+    await this.assertClinicAccess({
+      clinicId: alert.clinicId,
+      tenantId: params.tenantId,
+      user: params.user,
+    });
+
+    return alert;
   }
 
   private isGlobalRole(role: RolesEnum | string | undefined): boolean {

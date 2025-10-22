@@ -3,7 +3,7 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { ClinicAccessService } from '@modules/clinic/services/clinic-access.service';
 import { RolesEnum } from '@domain/auth/enums/roles.enum';
 import { ICurrentUser } from '@domain/auth/interfaces/current-user.interface';
-import { ClinicMember } from '@domain/clinic/types/clinic.types';
+import { ClinicAlert, ClinicMember } from '@domain/clinic/types/clinic.types';
 
 const createUser = (overrides: Partial<ICurrentUser> = {}): ICurrentUser => ({
   id: 'user-1',
@@ -46,6 +46,9 @@ describe('ClinicAccessService', () => {
     findActiveByClinicAndUser: jest.Mock;
     listActiveByUser: jest.Mock;
   };
+  let clinicMetricsRepository: {
+    findAlertById: jest.Mock;
+  };
   let service: ClinicAccessService;
 
   beforeEach(() => {
@@ -53,8 +56,14 @@ describe('ClinicAccessService', () => {
       findActiveByClinicAndUser: jest.fn(),
       listActiveByUser: jest.fn(),
     };
+    clinicMetricsRepository = {
+      findAlertById: jest.fn(),
+    };
 
-    service = new ClinicAccessService(clinicMemberRepository as never);
+    service = new ClinicAccessService(
+      clinicMemberRepository as never,
+      clinicMetricsRepository as never,
+    );
   });
 
   describe('assertClinicAccess', () => {
@@ -168,6 +177,62 @@ describe('ClinicAccessService', () => {
       });
 
       expect(result).toEqual(['clinic-2']);
+    });
+  });
+
+  describe('assertAlertAccess', () => {
+    const alert = {
+      id: 'alert-1',
+      clinicId: 'clinic-1',
+      tenantId: 'tenant-1',
+      type: 'revenue_drop',
+      channel: 'system',
+      triggeredAt: new Date('2025-01-01T00:00:00Z'),
+      triggeredBy: 'system',
+      payload: {},
+    } as ClinicAlert;
+
+    it('permite acesso quando usuario possui vinculo com a clinica do alerta', async () => {
+      clinicMetricsRepository.findAlertById.mockResolvedValue(alert);
+      clinicMemberRepository.findActiveByClinicAndUser.mockResolvedValue(memberships[0]);
+
+      const result = await service.assertAlertAccess({
+        tenantId: 'tenant-1',
+        alertId: alert.id,
+        user: createUser(),
+      });
+
+      expect(result).toEqual(alert);
+      expect(clinicMemberRepository.findActiveByClinicAndUser).toHaveBeenCalledWith({
+        clinicId: 'clinic-1',
+        tenantId: 'tenant-1',
+        userId: 'user-1',
+      });
+    });
+
+    it('lanca ForbiddenException quando alerta nao existe ou pertence a outro tenant', async () => {
+      clinicMetricsRepository.findAlertById.mockResolvedValue(null);
+
+      await expect(
+        service.assertAlertAccess({
+          tenantId: 'tenant-1',
+          alertId: 'alert-missing',
+          user: createUser(),
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('lanca ForbiddenException quando usuario nao possui acesso à clinica do alerta', async () => {
+      clinicMetricsRepository.findAlertById.mockResolvedValue(alert);
+      clinicMemberRepository.findActiveByClinicAndUser.mockResolvedValue(null);
+
+      await expect(
+        service.assertAlertAccess({
+          tenantId: 'tenant-1',
+          alertId: alert.id,
+          user: createUser(),
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
     });
   });
 });

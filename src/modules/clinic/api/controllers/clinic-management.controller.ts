@@ -263,6 +263,11 @@ export class ClinicManagementController {
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicDashboardAlertDto> {
     const context = this.resolveContext(currentUser, tenantHeader);
+    await this.clinicAccessService.assertAlertAccess({
+      tenantId: context.tenantId,
+      alertId,
+      user: currentUser,
+    });
     const input = toResolveClinicAlertInput(alertId, body, context);
     const alert = await this.resolveClinicAlertUseCase.executeOrThrow(input);
 
