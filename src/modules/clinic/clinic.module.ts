@@ -46,11 +46,13 @@ import { ClinicPaymentPayoutRequestRepository } from '../../infrastructure/clini
 import { ClinicAuditService } from '../../infrastructure/clinic/services/clinic-audit.service';
 import { ClinicPaymentCredentialsService } from '../../infrastructure/clinic/services/clinic-payment-credentials.service';
 import { ClinicAsaasGatewayService } from '../../infrastructure/clinic/services/clinic-asaas-gateway.service';
+import { ClinicScopeGuard } from './guards/clinic-scope.guard';
 import { ClinicConfigurationValidator } from './services/clinic-configuration-validator.service';
 import { ClinicInvitationTokenService } from './services/clinic-invitation-token.service';
 import { ClinicTemplateOverrideService } from './services/clinic-template-override.service';
 import { ClinicConfigurationCacheService } from './services/clinic-configuration-cache.service';
 import { ClinicConfigurationTelemetryService } from './services/clinic-configuration-telemetry.service';
+import { ClinicAccessService } from './services/clinic-access.service';
 import { ClinicAsaasWebhookGuard } from './guards/clinic-asaas-webhook.guard';
 import { ClinicAlertNotificationService } from './services/clinic-alert-notification.service';
 import { ClinicAlertEventsSubscriber } from './subscribers/clinic-alert-events.subscriber';
@@ -249,6 +251,7 @@ const serviceProviders: Provider[] = [
   ClinicInvitationTokenService,
   ClinicInvitationEconomicSummaryValidator,
   ClinicConfigurationValidator,
+  ClinicAccessService,
   ClinicAsaasWebhookGuard,
   ClinicPaymentReconciliationService,
   ClinicPaymentNotificationService,
@@ -493,7 +496,13 @@ const useCaseProviders: Provider[] = [
     ClinicPaymentWebhookController,
     ClinicPaymentController,
   ],
-  providers: [ClinicAuditService, ...repositoryProviders, ...serviceProviders, ...useCaseProviders],
+  providers: [
+    ClinicAuditService,
+    ClinicScopeGuard,
+    ...repositoryProviders,
+    ...serviceProviders,
+    ...useCaseProviders,
+  ],
   exports: [...serviceProviders, ...useCaseProviders],
 })
 export class ClinicModule {}

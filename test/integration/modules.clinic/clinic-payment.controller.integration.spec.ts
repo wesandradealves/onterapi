@@ -17,6 +17,7 @@ import { ClinicPaymentController } from '../../../src/modules/clinic/api/control
 import { ClinicPaymentLedger } from '../../../src/domain/clinic/types/clinic.types';
 import { JwtAuthGuard } from '../../../src/modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../src/modules/auth/guards/roles.guard';
+import { ClinicScopeGuard } from '../../../src/modules/clinic/guards/clinic-scope.guard';
 
 class AllowAuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
@@ -26,6 +27,12 @@ class AllowAuthGuard implements CanActivate {
       tenantId: 'tenant-1',
       roles: [RolesEnum.CLINIC_OWNER],
     };
+    return true;
+  }
+}
+
+class AllowClinicScopeGuard implements CanActivate {
+  canActivate(): boolean {
     return true;
   }
 }
@@ -62,6 +69,8 @@ describe('ClinicPaymentController (integration)', () => {
       .useClass(AllowAuthGuard)
       .overrideGuard(RolesGuard)
       .useClass(AllowAuthGuard)
+      .overrideGuard(ClinicScopeGuard)
+      .useClass(AllowClinicScopeGuard)
       .compile();
 
     app = moduleRef.createNestApplication();

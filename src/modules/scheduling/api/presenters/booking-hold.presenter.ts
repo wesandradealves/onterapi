@@ -8,6 +8,7 @@ export class BookingHoldPresenter {
       clinicId: hold.clinicId,
       professionalId: hold.professionalId,
       patientId: hold.patientId,
+      serviceTypeId: hold.serviceTypeId,
       status: hold.status,
       startAtUtc: hold.startAtUtc.toISOString(),
       endAtUtc: hold.endAtUtc.toISOString(),

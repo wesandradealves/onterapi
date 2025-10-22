@@ -171,6 +171,7 @@ export class CreateHoldUseCase
       clinicId,
       professionalId,
       patientId,
+      serviceTypeId: input.serviceTypeId,
       startAtUtc,
       endAtUtc,
       ttlExpiresAtUtc,

@@ -26,6 +26,7 @@ import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import { ICurrentUser } from '../../../../domain/auth/interfaces/current-user.interface';
 import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
+import { ClinicScopeGuard } from '@modules/clinic/guards/clinic-scope.guard';
 import { ClinicAuditLogListResponseDto } from '../dtos/clinic-audit-log-response.dto';
 import {
   ListClinicAuditLogsSchema,
@@ -40,7 +41,7 @@ import { Response } from 'express';
 @ApiTags('Clinics')
 @ApiBearerAuth()
 @Controller('clinics/:clinicId/audit-logs')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, ClinicScopeGuard)
 export class ClinicAuditController {
   constructor(
     @Inject(IListClinicAuditLogsUseCaseToken)

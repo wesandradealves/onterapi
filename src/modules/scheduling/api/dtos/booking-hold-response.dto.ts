@@ -13,6 +13,13 @@ export class BookingHoldResponseDto {
   @ApiProperty({ description: 'Identificador do paciente' })
   patientId!: string;
 
+  @ApiProperty({
+    description: 'Identificador do tipo de servico associado ao hold',
+    type: String,
+    nullable: true,
+  })
+  serviceTypeId!: string | null;
+
   @ApiProperty({ description: 'Status atual do hold' })
   status!: string;
 

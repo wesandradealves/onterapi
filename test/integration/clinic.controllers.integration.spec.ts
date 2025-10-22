@@ -9,6 +9,7 @@ import { ClinicHoldController } from '@modules/clinic/api/controllers/clinic-hol
 import { ClinicAuditController } from '@modules/clinic/api/controllers/clinic-audit.controller';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@modules/auth/guards/roles.guard';
+import { ClinicScopeGuard } from '@modules/clinic/guards/clinic-scope.guard';
 import { RolesEnum } from '@domain/auth/enums/roles.enum';
 import { ICurrentUser } from '@domain/auth/interfaces/current-user.interface';
 import {
@@ -166,6 +167,11 @@ const guards = {
       return true;
     }
   },
+  ClinicScopeGuard: class implements Partial<ClinicScopeGuard> {
+    canActivate() {
+      return true;
+    }
+  },
 } as const;
 
 type ListClinicInvitationsInputShape = {
@@ -271,6 +277,8 @@ describe('ClinicConfigurationController (integration)', () => {
       .useClass(guards.JwtAuthGuard as new () => JwtAuthGuard)
       .overrideGuard(RolesGuard)
       .useClass(guards.RolesGuard as new () => RolesGuard)
+      .overrideGuard(ClinicScopeGuard)
+      .useClass(guards.ClinicScopeGuard as new () => ClinicScopeGuard)
       .compile();
 
     app = moduleRef.createNestApplication();
@@ -609,6 +617,8 @@ describe('ClinicInvitationController (integration)', () => {
       .useClass(guards.JwtAuthGuard as new () => JwtAuthGuard)
       .overrideGuard(RolesGuard)
       .useClass(guards.RolesGuard as new () => RolesGuard)
+      .overrideGuard(ClinicScopeGuard)
+      .useClass(guards.ClinicScopeGuard as new () => ClinicScopeGuard)
       .compile();
 
     app = moduleRef.createNestApplication();
@@ -780,6 +790,8 @@ describe('ClinicHoldController (integration)', () => {
       .useClass(guards.JwtAuthGuard as new () => JwtAuthGuard)
       .overrideGuard(RolesGuard)
       .useClass(guards.RolesGuard as new () => RolesGuard)
+      .overrideGuard(ClinicScopeGuard)
+      .useClass(guards.ClinicScopeGuard as new () => ClinicScopeGuard)
       .compile();
 
     app = moduleRef.createNestApplication();
@@ -939,6 +951,8 @@ describe('ClinicMemberController (integration)', () => {
       .useClass(guards.JwtAuthGuard as new () => JwtAuthGuard)
       .overrideGuard(RolesGuard)
       .useClass(guards.RolesGuard as new () => RolesGuard)
+      .overrideGuard(ClinicScopeGuard)
+      .useClass(guards.ClinicScopeGuard as new () => ClinicScopeGuard)
       .compile();
 
     app = moduleRef.createNestApplication();
@@ -1003,6 +1017,8 @@ describe('ClinicAuditController (integration)', () => {
       .useClass(guards.JwtAuthGuard as new () => JwtAuthGuard)
       .overrideGuard(RolesGuard)
       .useClass(guards.RolesGuard as new () => RolesGuard)
+      .overrideGuard(ClinicScopeGuard)
+      .useClass(guards.ClinicScopeGuard as new () => ClinicScopeGuard)
       .compile();
 
     app = moduleRef.createNestApplication();

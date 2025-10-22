@@ -131,6 +131,7 @@ describe('CreateHoldUseCase', () => {
       clinicId: payload.clinicId,
       professionalId: payload.professionalId,
       patientId: payload.patientId,
+      serviceTypeId: payload.serviceTypeId ?? null,
       startAtUtc: payload.startAtUtc,
       endAtUtc: payload.endAtUtc,
       ttlExpiresAtUtc: payload.ttlExpiresAtUtc,
@@ -147,6 +148,7 @@ describe('CreateHoldUseCase', () => {
       input.clinicId,
       input.serviceTypeId,
     );
+    expect(holdRepository.create.mock.calls[0][0].serviceTypeId).toBe(input.serviceTypeId);
     expect(holdRepository.create.mock.calls[0][0].ttlExpiresAtUtc).toEqual(
       new Date('2025-10-08T08:45:00.000Z'),
     );
@@ -263,6 +265,7 @@ describe('CreateHoldUseCase', () => {
       clinicId: payload.clinicId,
       professionalId: payload.professionalId,
       patientId: payload.patientId,
+      serviceTypeId: payload.serviceTypeId ?? null,
       startAtUtc: payload.startAtUtc,
       endAtUtc: payload.endAtUtc,
       ttlExpiresAtUtc: payload.ttlExpiresAtUtc,

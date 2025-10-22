@@ -71,6 +71,7 @@ export interface BookingHold {
   professionalId: string;
   clinicId: string;
   patientId: string;
+  serviceTypeId: string | null;
   startAtUtc: Date;
   endAtUtc: Date;
   ttlExpiresAtUtc: Date;
@@ -192,6 +193,7 @@ export interface CreateHoldInput {
   professionalId: string;
   clinicId: string;
   patientId: string;
+  serviceTypeId: string;
   startAtUtc: Date;
   endAtUtc: Date;
   ttlExpiresAtUtc: Date;

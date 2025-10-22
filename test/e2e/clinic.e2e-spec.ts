@@ -9,6 +9,8 @@ import { ClinicHoldController } from '@modules/clinic/api/controllers/clinic-hol
 import { ClinicAuditController } from '@modules/clinic/api/controllers/clinic-audit.controller';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@modules/auth/guards/roles.guard';
+import { ClinicScopeGuard } from '@modules/clinic/guards/clinic-scope.guard';
+import { ClinicAccessService } from '@modules/clinic/services/clinic-access.service';
 import { RolesEnum } from '@domain/auth/enums/roles.enum';
 import { ICurrentUser } from '@domain/auth/interfaces/current-user.interface';
 import {
@@ -147,7 +149,22 @@ describe('Clinic module (e2e)', () => {
         return true;
       }
     },
+    ClinicScopeGuard: class implements Partial<ClinicScopeGuard> {
+      canActivate() {
+        return true;
+      }
+    },
   } as const;
+
+  const clinicAccessService = {
+    resolveAuthorizedClinicIds: jest.fn(
+      async ({ requestedClinicIds }: { requestedClinicIds?: string[] | null }) =>
+        requestedClinicIds && requestedClinicIds.length > 0
+          ? requestedClinicIds
+          : [FIXTURES.clinic],
+    ),
+    assertClinicAccess: jest.fn(async () => undefined),
+  };
 
   const state: {
     clinic: Clinic | null;
@@ -338,12 +355,15 @@ describe('Clinic module (e2e)', () => {
         { provide: IProcessClinicOverbookingUseCaseToken, useValue: processOverbookingUseCase },
         { provide: IConfirmClinicAppointmentUseCaseToken, useValue: confirmAppointmentUseCase },
         { provide: IListClinicAuditLogsUseCaseToken, useValue: listAuditLogsUseCase },
+        { provide: ClinicAccessService, useValue: clinicAccessService },
       ],
     })
       .overrideGuard(JwtAuthGuard)
       .useClass(guards.JwtAuthGuard as new () => JwtAuthGuard)
       .overrideGuard(RolesGuard)
       .useClass(guards.RolesGuard as new () => RolesGuard)
+      .overrideGuard(ClinicScopeGuard)
+      .useClass(guards.ClinicScopeGuard as new () => ClinicScopeGuard)
       .compile();
 
     app = moduleRef.createNestApplication();
@@ -356,6 +376,8 @@ describe('Clinic module (e2e)', () => {
     state.invitation = null;
     state.hold = null;
     state.auditLogs = [];
+    clinicAccessService.resolveAuthorizedClinicIds.mockClear();
+    clinicAccessService.assertClinicAccess.mockClear();
 
     [
       createClinicUseCase,

@@ -66,6 +66,7 @@ import {
   type IResolveClinicAlertUseCase,
   IResolveClinicAlertUseCase as IResolveClinicAlertUseCaseToken,
 } from '../../../../domain/clinic/interfaces/use-cases/resolve-clinic-alert.use-case.interface';
+import { ClinicAccessService } from '../../services/clinic-access.service';
 
 @ApiTags('Clinic Management')
 @ApiBearerAuth()
@@ -81,6 +82,7 @@ export class ClinicManagementController {
     private readonly listClinicAlertsUseCase: IListClinicAlertsUseCase,
     @Inject(IResolveClinicAlertUseCaseToken)
     private readonly resolveClinicAlertUseCase: IResolveClinicAlertUseCase,
+    private readonly clinicAccessService: ClinicAccessService,
   ) {}
 
   @Get('overview')
@@ -141,6 +143,20 @@ export class ClinicManagementController {
   ): Promise<ClinicManagementOverviewResponseDto> {
     const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
     const overviewQuery = toClinicManagementOverviewQuery(query, context);
+    const requestedClinicIds = overviewQuery.filters?.clinicIds ?? query.clinicIds;
+    const authorizedClinicIds = await this.clinicAccessService.resolveAuthorizedClinicIds({
+      tenantId: context.tenantId,
+      user: currentUser,
+      requestedClinicIds,
+    });
+
+    if (authorizedClinicIds.length > 0) {
+      overviewQuery.filters = {
+        ...(overviewQuery.filters ?? {}),
+        clinicIds: authorizedClinicIds,
+      };
+    }
+
     const overview = await this.getClinicManagementOverviewUseCase.executeOrThrow(overviewQuery);
 
     return ClinicPresenter.managementOverview(overview);
@@ -190,6 +206,16 @@ export class ClinicManagementController {
   ): Promise<ClinicDashboardAlertDto[]> {
     const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
     const alertsQuery = toClinicManagementAlertsQuery(query, context);
+    const authorizedClinicIds = await this.clinicAccessService.resolveAuthorizedClinicIds({
+      tenantId: context.tenantId,
+      user: currentUser,
+      requestedClinicIds: alertsQuery.clinicIds,
+    });
+
+    if (authorizedClinicIds.length > 0) {
+      alertsQuery.clinicIds = authorizedClinicIds;
+    }
+
     const alerts = await this.listClinicAlertsUseCase.executeOrThrow(alertsQuery);
 
     return alerts.map((alert) => ClinicPresenter.alert(alert));
@@ -209,6 +235,18 @@ export class ClinicManagementController {
     const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
 
     const input = toTransferClinicProfessionalInput(body, context);
+    await this.clinicAccessService.assertClinicAccess({
+      clinicId: input.fromClinicId,
+      tenantId: input.tenantId,
+      user: currentUser,
+    });
+
+    await this.clinicAccessService.assertClinicAccess({
+      clinicId: input.toClinicId,
+      tenantId: input.tenantId,
+      user: currentUser,
+    });
+
     const result = await this.transferClinicProfessionalUseCase.executeOrThrow(input);
 
     return ClinicPresenter.professionalTransfer(result);

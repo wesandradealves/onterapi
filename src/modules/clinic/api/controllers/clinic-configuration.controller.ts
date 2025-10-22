@@ -68,6 +68,7 @@ import {
   updateClinicBrandingSettingsSchema,
   UpdateClinicBrandingSettingsSchema,
 } from '../schemas/update-clinic-branding-settings.schema';
+import { ClinicScopeGuard } from '@modules/clinic/guards/clinic-scope.guard';
 import {
   propagateClinicTemplateSchema,
   PropagateClinicTemplateSchema,
@@ -165,7 +166,7 @@ import {
 @ApiTags('Clinics')
 @ApiBearerAuth()
 @Controller('clinics/:clinicId/settings')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, ClinicScopeGuard)
 export class ClinicConfigurationController {
   constructor(
     @Inject(IUpdateClinicGeneralSettingsUseCaseToken)

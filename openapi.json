@@ -6067,7 +6067,6 @@
                             },
                             "payoutValue": {
                               "type": "number",
-                              "exclusiveMinimum": true,
                               "minimum": 0
                             }
                           },
@@ -6093,7 +6092,9 @@
                             "professional",
                             "platform"
                           ]
-                        }
+                        },
+                        "minItems": 5,
+                        "maxItems": 5
                       },
                       "roundingStrategy": {
                         "type": "string",
@@ -6966,6 +6967,55 @@
                 }
               }
             }
+          }
+        },
+        "tags": [
+          "Clinics"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/clinics/{clinicId}/audit-logs/export": {
+      "get": {
+        "operationId": "exportAuditLogs",
+        "summary": "Exportar logs de auditoria da clinica (CSV)",
+        "parameters": [
+          {
+            "name": "clinicId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Quantidade maxima a exportar",
+            "schema": {}
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "events",
+            "required": false,
+            "in": "query",
+            "description": "Eventos separados por virgula",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
           }
         },
         "tags": [
@@ -10500,6 +10550,11 @@
             "description": "Identificador da cl nica",
             "format": "uuid"
           },
+          "serviceTypeId": {
+            "type": "string",
+            "description": "Identificador do tipo de servico configurado na clinica",
+            "format": "uuid"
+          },
           "professionalId": {
             "type": "string",
             "description": "Identificador do profissional",
@@ -10523,6 +10578,7 @@
         },
         "required": [
           "clinicId",
+          "serviceTypeId",
           "professionalId",
           "patientId",
           "startAtUtc",
@@ -10547,6 +10603,11 @@
           "patientId": {
             "type": "string",
             "description": "Identificador do paciente"
+          },
+          "serviceTypeId": {
+            "type": "string",
+            "description": "Identificador do tipo de servico associado ao hold",
+            "nullable": true
           },
           "status": {
             "type": "string",
@@ -10582,6 +10643,7 @@
           "clinicId",
           "professionalId",
           "patientId",
+          "serviceTypeId",
           "status",
           "startAtUtc",
           "endAtUtc",
@@ -13768,7 +13830,9 @@
             ]
           },
           "payoutValue": {
-            "type": "number"
+            "type": "number",
+            "description": "Valor de repasse ao profissional. Em percentual o intervalo permitido e de 0 a 100; em valor fixo deve ser maior ou igual a zero seguindo a mesma moeda do preco.",
+            "minimum": 0
           }
         },
         "required": [
@@ -13818,6 +13882,9 @@
           },
           "orderOfRemainders": {
             "type": "array",
+            "minItems": 5,
+            "maxItems": 5,
+            "description": "Ordem fixa das sobras: impostos  gateway  cl nica  profissional  plataforma. Qualquer diverg ncia gera erro de valida  o.",
             "items": {
               "type": "string",
               "enum": [

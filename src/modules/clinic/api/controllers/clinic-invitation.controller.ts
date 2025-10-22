@@ -28,6 +28,7 @@ import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import { ICurrentUser } from '../../../../domain/auth/interfaces/current-user.interface';
 import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
+import { ClinicScopeGuard } from '@modules/clinic/guards/clinic-scope.guard';
 import { ClinicPresenter } from '../presenters/clinic.presenter';
 import { ClinicInvitationResponseDto } from '../dtos/clinic-invitation-response.dto';
 import { ClinicInvitationListResponseDto } from '../dtos/clinic-invitation-list-response.dto';
@@ -72,7 +73,7 @@ import { ZodApiBody } from '../../../../shared/decorators/zod-api-body.decorator
 @ApiTags('Clinics')
 @ApiBearerAuth()
 @Controller('clinics')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, ClinicScopeGuard)
 export class ClinicInvitationController {
   constructor(
     @Inject(IInviteClinicProfessionalUseCaseToken)

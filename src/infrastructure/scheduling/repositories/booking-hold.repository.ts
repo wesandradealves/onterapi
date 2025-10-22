@@ -26,6 +26,7 @@ export class BookingHoldRepository implements IBookingHoldRepository {
       professionalId: data.professionalId,
       clinicId: data.clinicId,
       patientId: data.patientId,
+      serviceTypeId: data.serviceTypeId ?? null,
       startAtUtc: data.startAtUtc,
       endAtUtc: data.endAtUtc,
       ttlExpiresAtUtc: data.ttlExpiresAtUtc,

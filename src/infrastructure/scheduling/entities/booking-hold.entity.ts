@@ -28,6 +28,9 @@ export class BookingHoldEntity {
   @Column({ name: 'patient_id', type: 'uuid' })
   patientId!: string;
 
+  @Column({ name: 'service_type_id', type: 'uuid', nullable: true })
+  serviceTypeId!: string | null;
+
   @Column({ name: 'start_at_utc', type: 'timestamp with time zone' })
   startAtUtc!: Date;
 

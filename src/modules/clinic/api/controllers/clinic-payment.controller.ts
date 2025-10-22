@@ -23,6 +23,7 @@ import { Roles } from '../../../auth/decorators/roles.decorator';
 import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import { ICurrentUser } from '../../../../domain/auth/interfaces/current-user.interface';
 import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
+import { ClinicScopeGuard } from '@modules/clinic/guards/clinic-scope.guard';
 import {
   IGetClinicPaymentLedgerUseCase,
   IGetClinicPaymentLedgerUseCase as IGetClinicPaymentLedgerUseCaseToken,
@@ -42,7 +43,7 @@ import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe'
 
 @ApiTags('Clinics')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, ClinicScopeGuard)
 @Controller('clinics/:clinicId/payments')
 export class ClinicPaymentController {
   constructor(

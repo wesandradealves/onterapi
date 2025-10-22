@@ -23,6 +23,7 @@ import {
   GetClinicDashboardSchema,
 } from '../schemas/get-clinic-dashboard.schema';
 import { ClinicRequestContext, toClinicDashboardQuery } from '../mappers/clinic-request.mapper';
+import { ClinicAccessService } from '../../services/clinic-access.service';
 import {
   type IGetClinicDashboardUseCase,
   IGetClinicDashboardUseCase as IGetClinicDashboardUseCaseToken,
@@ -36,6 +37,7 @@ export class ClinicDashboardController {
   constructor(
     @Inject(IGetClinicDashboardUseCaseToken)
     private readonly getClinicDashboardUseCase: IGetClinicDashboardUseCase,
+    private readonly clinicAccessService: ClinicAccessService,
   ) {}
 
   @Get()
@@ -72,6 +74,19 @@ export class ClinicDashboardController {
   ): Promise<ClinicDashboardResponseDto> {
     const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
     const dashboardQuery = toClinicDashboardQuery(query, context);
+    const requestedClinicIds = dashboardQuery.filters?.clinicIds ?? query.clinicIds;
+    const authorizedClinicIds = await this.clinicAccessService.resolveAuthorizedClinicIds({
+      tenantId: context.tenantId,
+      user: currentUser,
+      requestedClinicIds,
+    });
+
+    if (authorizedClinicIds.length > 0) {
+      dashboardQuery.filters = {
+        ...(dashboardQuery.filters ?? {}),
+        clinicIds: authorizedClinicIds,
+      };
+    }
 
     const snapshot = await this.getClinicDashboardUseCase.executeOrThrow(dashboardQuery);
     return ClinicPresenter.dashboard(snapshot);

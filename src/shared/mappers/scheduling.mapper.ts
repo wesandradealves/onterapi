@@ -46,6 +46,7 @@ export const mapBookingHoldEntityToDomain = (entity: BookingHoldEntity): Booking
   professionalId: entity.professionalId,
   clinicId: entity.clinicId,
   patientId: entity.patientId,
+  serviceTypeId: entity.serviceTypeId ?? null,
   startAtUtc: entity.startAtUtc,
   endAtUtc: entity.endAtUtc,
   ttlExpiresAtUtc: entity.ttlExpiresAtUtc,

@@ -34,6 +34,7 @@ import {
 import { ClinicManagementController } from '../../../src/modules/clinic/api/controllers/clinic-management.controller';
 import { JwtAuthGuard } from '../../../src/modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../src/modules/auth/guards/roles.guard';
+import { ClinicAccessService } from '../../../src/modules/clinic/services/clinic-access.service';
 
 class AllowAuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
@@ -53,6 +54,10 @@ describe('ClinicManagementController (integration)', () => {
   let transferUseCase: jest.Mocked<ITransferClinicProfessionalUseCase>;
   let alertsUseCase: jest.Mocked<IListClinicAlertsUseCase>;
   let resolveAlertUseCase: jest.Mocked<IResolveClinicAlertUseCase>;
+  let clinicAccessService: {
+    resolveAuthorizedClinicIds: jest.Mock;
+    assertClinicAccess: jest.Mock;
+  };
   const tenantCtx = '00000000-0000-0000-0000-000000000000';
 
   beforeEach(async () => {
@@ -76,6 +81,14 @@ describe('ClinicManagementController (integration)', () => {
       executeOrThrow: jest.fn(),
     } as unknown as jest.Mocked<IResolveClinicAlertUseCase>;
 
+    clinicAccessService = {
+      resolveAuthorizedClinicIds: jest.fn(
+        async ({ requestedClinicIds }: { requestedClinicIds?: string[] | null }) =>
+          requestedClinicIds && requestedClinicIds.length > 0 ? requestedClinicIds : ['clinic-1'],
+      ),
+      assertClinicAccess: jest.fn(async () => undefined),
+    };
+
     const moduleRef: TestingModule = await Test.createTestingModule({
       controllers: [ClinicManagementController],
       providers: [
@@ -95,6 +108,7 @@ describe('ClinicManagementController (integration)', () => {
           provide: IResolveClinicAlertUseCaseToken,
           useValue: resolveAlertUseCase,
         },
+        { provide: ClinicAccessService, useValue: clinicAccessService },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -414,7 +428,7 @@ describe('ClinicManagementController (integration)', () => {
 
       expect(alertsUseCase.executeOrThrow).toHaveBeenCalledWith({
         tenantId: tenantCtx,
-        clinicIds: undefined,
+        clinicIds: ['clinic-1'],
         types: undefined,
         activeOnly: undefined,
         limit: undefined,

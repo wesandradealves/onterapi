@@ -7,6 +7,7 @@ const baseHold = (overrides: Partial<BookingHold> = {}): BookingHold => ({
   clinicId: 'clinic-1',
   professionalId: 'professional-1',
   patientId: 'patient-1',
+  serviceTypeId: 'service-1',
   startAtUtc: new Date('2025-10-10T10:00:00Z'),
   endAtUtc: new Date('2025-10-10T11:00:00Z'),
   ttlExpiresAtUtc: new Date('2025-10-08T09:55:00Z'),
@@ -27,5 +28,6 @@ describe('BookingHoldPresenter', () => {
     expect(response.startAtUtc).toBe(hold.startAtUtc.toISOString());
     expect(response.ttlExpiresAtUtc).toBe(hold.ttlExpiresAtUtc.toISOString());
     expect(response.version).toBe(hold.version);
+    expect(response.serviceTypeId).toBe(hold.serviceTypeId);
   });
 });

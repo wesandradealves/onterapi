@@ -18,6 +18,7 @@ export interface IClinicMemberRepository {
     tenantId: string;
     userId: string;
   }): Promise<ClinicMember | null>;
+  listActiveByUser(params: { tenantId: string; userId: string }): Promise<ClinicMember[]>;
   transferProfessional(params: {
     tenantId: string;
     professionalId: string;

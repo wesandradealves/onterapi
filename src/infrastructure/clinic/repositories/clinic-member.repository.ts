@@ -98,6 +98,19 @@ export class ClinicMemberRepository implements IClinicMemberRepository {
     return entity ? ClinicMapper.toMember(entity) : null;
   }
 
+  async listActiveByUser(params: { tenantId: string; userId: string }): Promise<ClinicMember[]> {
+    const entities = await this.repository.find({
+      where: {
+        tenantId: params.tenantId,
+        userId: params.userId,
+        status: 'active',
+        endedAt: IsNull(),
+      },
+    });
+
+    return entities.map((entity) => ClinicMapper.toMember(entity));
+  }
+
   async transferProfessional(params: {
     tenantId: string;
     professionalId: string;
