@@ -218,9 +218,7 @@ describe('RescheduleBookingUseCase', () => {
 
     await useCase.executeOrThrow(input);
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Serie series-1 nao encontrada'),
-    );
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Serie series-1 nao encontrada'));
     expect(recurrenceRepository.recordOccurrenceReschedule).not.toHaveBeenCalled();
   });
 
@@ -308,6 +306,58 @@ describe('RescheduleBookingUseCase', () => {
     expect(errorSpy).toHaveBeenCalledWith(
       expect.stringContaining('Falha ao atualizar contador de recorrencia'),
       expect.any(String),
+    );
+  });
+
+  it('registra erro serializado quando exce  o n o   instancia de Error', async () => {
+    const booking = { ...baseBooking(), recurrenceSeriesId: 'series-1' };
+    const occurrence = {
+      id: 'occ-1',
+      tenantId: booking.tenantId,
+      seriesId: 'series-1',
+      bookingId: booking.id,
+      startAtUtc: booking.startAtUtc,
+      endAtUtc: booking.endAtUtc,
+      reschedulesCount: 0,
+      createdAt: new Date('2025-10-01T10:00:00Z'),
+      updatedAt: new Date('2025-10-01T10:00:00Z'),
+    };
+    bookingRepository.findById.mockResolvedValue(booking);
+    recurrenceRepository.findSeriesById.mockResolvedValue({
+      id: 'series-1',
+      tenantId: booking.tenantId,
+      professionalId: booking.professionalId,
+      clinicId: booking.clinicId,
+      pattern: 'weekly',
+      patternValue: '1',
+      startDateUtc: new Date('2025-10-01T00:00:00Z'),
+      endDateUtc: null,
+      skipHolidays: true,
+      holidayPolicy: 'skip',
+      limits: {
+        maxReschedulesPerOccurrence: 2,
+        maxReschedulesPerSeries: 5,
+      },
+      createdAt: new Date('2025-10-01T00:00:00Z'),
+      updatedAt: new Date('2025-10-01T00:00:00Z'),
+    });
+    recurrenceRepository.findOccurrenceByBooking.mockResolvedValue(occurrence);
+    recurrenceRepository.getRescheduleUsage.mockResolvedValue({
+      occurrenceReschedules: 0,
+      seriesReschedules: 0,
+    });
+    bookingRepository.reschedule.mockResolvedValue({
+      ...booking,
+      startAtUtc: input.newStartAtUtc,
+      endAtUtc: input.newEndAtUtc,
+    });
+    const errorSpy = jest.spyOn(useCase['logger'], 'error');
+    recurrenceRepository.recordOccurrenceReschedule.mockRejectedValue('db-error-string');
+
+    await expect(useCase.executeOrThrow(input)).rejects.toThrow('db-error-string');
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Falha ao atualizar contador de recorrencia'),
+      expect.stringContaining('db-error-string'),
     );
   });
 });

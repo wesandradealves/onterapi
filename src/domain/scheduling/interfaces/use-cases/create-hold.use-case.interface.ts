@@ -6,6 +6,7 @@ export interface CreateHoldUseCaseInput {
   clinicId: string;
   professionalId: string;
   patientId: string;
+  serviceTypeId: string;
   startAtUtc: Date;
   endAtUtc: Date;
   requesterId: string;

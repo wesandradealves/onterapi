@@ -88,6 +88,26 @@ export interface ClinicPaymentChargebackPayload {
   processedAt: Date;
 }
 
+export interface ClinicPaymentFailedPayload {
+  appointmentId: string;
+  tenantId: string;
+  clinicId: string;
+  professionalId: string;
+  patientId: string;
+  holdId: string;
+  serviceTypeId: string;
+  paymentTransactionId: string;
+  gatewayStatus: string;
+  eventType?: string;
+  sandbox: boolean;
+  fingerprint?: string;
+  payloadId?: string;
+  amount?: ClinicPaymentAmountSnapshot;
+  failedAt: Date;
+  processedAt: Date;
+  reason?: string | null;
+}
+
 export interface ClinicPaymentPayoutRequestedPayload {
   appointmentId: string;
   tenantId: string;
@@ -119,4 +139,5 @@ export type ClinicPaymentStatusChangedEvent = DomainEvent<ClinicPaymentStatusCha
 export type ClinicPaymentSettledEvent = DomainEvent<ClinicPaymentSettledPayload>;
 export type ClinicPaymentRefundedEvent = DomainEvent<ClinicPaymentRefundedPayload>;
 export type ClinicPaymentChargebackEvent = DomainEvent<ClinicPaymentChargebackPayload>;
+export type ClinicPaymentFailedEvent = DomainEvent<ClinicPaymentFailedPayload>;
 export type ClinicPaymentPayoutRequestedEvent = DomainEvent<ClinicPaymentPayoutRequestedPayload>;

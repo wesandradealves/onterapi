@@ -139,6 +139,13 @@ describe('ConfirmBookingUseCase', () => {
     await expect(useCase.executeOrThrow(createInput())).rejects.toBeInstanceOf(NotFoundException);
   });
 
+  it('lan a not found quando o hold n o existe', async () => {
+    bookingRepository.findById.mockResolvedValue(createBooking());
+    holdRepository.findById.mockResolvedValue(null);
+
+    await expect(useCase.executeOrThrow(createInput())).rejects.toThrow('Hold nao encontrado');
+  });
+
   it('lan a gone quando o hold expirou', async () => {
     const booking = createBooking();
     bookingRepository.findById.mockResolvedValue(booking);
@@ -189,5 +196,40 @@ describe('ConfirmBookingUseCase', () => {
         paymentStatus: 'pending',
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('usa data atual quando confirma  o n o possui timestamp', async () => {
+    const booking = createBooking();
+    const hold = {
+      id: 'hold-1',
+      tenantId: 'tenant-1',
+      clinicId: 'clinic-1',
+      professionalId: 'prof-1',
+      patientId: 'patient-1',
+      startAtUtc: booking.startAtUtc,
+      endAtUtc: booking.endAtUtc,
+      ttlExpiresAtUtc: new Date('2025-10-08T09:55:00Z'),
+      status: 'active',
+      createdAt: new Date('2025-10-08T09:00:00Z'),
+      updatedAt: new Date('2025-10-08T09:00:00Z'),
+      version: 1,
+    };
+    bookingRepository.findById.mockResolvedValue(booking);
+    holdRepository.findById.mockResolvedValue(hold);
+    bookingRepository.updateStatus.mockResolvedValue({
+      ...booking,
+      status: 'confirmed',
+      paymentStatus: 'approved',
+    });
+    const now = new Date('2025-10-08T09:35:00Z');
+    jest.setSystemTime(now);
+
+    await useCase.executeOrThrow({
+      ...createInput(),
+      confirmationAtUtc: undefined,
+    });
+
+    const event = messageBus.publish.mock.calls[0][0];
+    expect(event.payload.confirmedAt.toISOString()).toBe(now.toISOString());
   });
 });

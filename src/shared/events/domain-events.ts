@@ -49,6 +49,7 @@ export class DomainEvents {
   static CLINIC_PAYMENT_SETTLED = 'clinic.payment.settled';
   static CLINIC_PAYMENT_REFUNDED = 'clinic.payment.refunded';
   static CLINIC_PAYMENT_CHARGEBACK = 'clinic.payment.chargeback';
+  static CLINIC_PAYMENT_FAILED = 'clinic.payment.failed';
   static CLINIC_TEMPLATE_PROPAGATED = 'clinic.template.propagated';
   static CLINIC_ALERT_TRIGGERED = 'clinic.alert.triggered';
   static CLINIC_ALERT_RESOLVED = 'clinic.alert.resolved';
@@ -72,6 +73,7 @@ export class DomainEvents {
   static NOTIFICATION_CLINIC_PAYMENT_SETTLED = 'notifications.clinic.payment.settled';
   static NOTIFICATION_CLINIC_PAYMENT_REFUNDED = 'notifications.clinic.payment.refunded';
   static NOTIFICATION_CLINIC_PAYMENT_CHARGEBACK = 'notifications.clinic.payment.chargeback';
+  static NOTIFICATION_CLINIC_PAYMENT_FAILED = 'notifications.clinic.payment.failed';
   static NOTIFICATION_CLINIC_ALERT_TRIGGERED = 'notifications.clinic.alert.triggered';
   static NOTIFICATION_CLINIC_ALERT_RESOLVED = 'notifications.clinic.alert.resolved';
   static NOTIFICATION_CLINIC_OVERBOOKING_REVIEW_REQUESTED =
@@ -446,6 +448,7 @@ export class DomainEvents {
       clinicId: string;
       professionalId: string;
       patientId: string;
+      serviceTypeId: string;
       startAtUtc: Date;
       endAtUtc: Date;
       ttlExpiresAtUtc: Date;
@@ -720,6 +723,40 @@ export class DomainEvents {
     );
   }
 
+  static clinicPaymentFailed(
+    appointmentId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      holdId: string;
+      serviceTypeId: string;
+      paymentTransactionId: string;
+      gatewayStatus: string;
+      eventType?: string;
+      sandbox?: boolean;
+      fingerprint?: string | null;
+      payloadId?: string | null;
+      amount?: { value?: number | null; netValue?: number | null };
+      failedAt: Date;
+      processedAt: Date;
+      reason?: string | null;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.CLINIC_PAYMENT_FAILED,
+      appointmentId,
+      {
+        appointmentId,
+        ...data,
+        processedAt: data.processedAt ?? new Date(),
+      },
+      metadata,
+    );
+  }
+
   static billingInvoiceRequested(
     bookingId: string,
     data: {
@@ -851,6 +888,7 @@ export class DomainEvents {
       clinicId: string;
       professionalId: string;
       patientId: string;
+      serviceTypeId: string;
       startAtUtc: Date;
       endAtUtc: Date;
     },
@@ -1248,6 +1286,39 @@ export class DomainEvents {
       {
         appointmentId,
         status: 'chargeback',
+        ...data,
+        queuedAt: new Date(),
+      },
+      metadata,
+    );
+  }
+
+  static notificationsClinicPaymentFailed(
+    appointmentId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      serviceTypeId: string;
+      paymentTransactionId: string;
+      failedAt: Date;
+      reason?: string | null;
+      gatewayStatus: string;
+      sandbox?: boolean;
+      fingerprint?: string | null;
+      payloadId?: string | null;
+      channels?: string[];
+      recipientIds: string[];
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_CLINIC_PAYMENT_FAILED,
+      appointmentId,
+      {
+        appointmentId,
+        status: 'failed',
         ...data,
         queuedAt: new Date(),
       },

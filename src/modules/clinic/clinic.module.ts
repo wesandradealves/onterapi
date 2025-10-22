@@ -114,6 +114,7 @@ import { IGoogleCalendarService } from '../../domain/integrations/interfaces/ser
 import { GoogleCalendarService } from '../../infrastructure/integrations/services/google-calendar.service';
 import { IWhatsAppService } from '../../domain/integrations/interfaces/services/whatsapp.service.interface';
 import { WhatsAppService } from '../../infrastructure/integrations/services/whatsapp.service';
+import { ClinicInvitationEconomicSummaryValidator } from './services/clinic-invitation-economic-summary.validator';
 import { ClinicPaymentEventsSubscriber } from './subscribers/clinic-payment-events.subscriber';
 import { ClinicPaymentPayoutEventsSubscriber } from './subscribers/clinic-payment-payout-events.subscriber';
 import { IClinicRepository as IClinicRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic.repository.interface';
@@ -246,6 +247,7 @@ const serviceProviders: Provider[] = [
     useClass: GoogleCalendarService,
   },
   ClinicInvitationTokenService,
+  ClinicInvitationEconomicSummaryValidator,
   ClinicConfigurationValidator,
   ClinicAsaasWebhookGuard,
   ClinicPaymentReconciliationService,

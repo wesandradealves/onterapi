@@ -53,6 +53,7 @@ describe('SchedulingController (integration)', () => {
     patient: '44444444-4444-4444-4444-444444444444',
     hold: '55555555-5555-5555-5555-555555555555',
     booking: '66666666-6666-6666-6666-666666666666',
+    serviceType: '77777777-7777-7777-7777-777777777777',
   } as const;
 
   const currentUser: ICurrentUser = {
@@ -189,6 +190,7 @@ describe('SchedulingController (integration)', () => {
       clinicId: hold.clinicId,
       professionalId: hold.professionalId,
       patientId: hold.patientId,
+      serviceTypeId: FIXTURE_IDS.serviceType,
       startAtUtc: hold.startAtUtc.toISOString(),
       endAtUtc: hold.endAtUtc.toISOString(),
     };
@@ -205,6 +207,7 @@ describe('SchedulingController (integration)', () => {
         clinicId: hold.clinicId,
         professionalId: hold.professionalId,
         patientId: hold.patientId,
+        serviceTypeId: FIXTURE_IDS.serviceType,
         startAtUtc: new Date(payload.startAtUtc),
         endAtUtc: new Date(payload.endAtUtc),
         requesterId: currentUser.id,

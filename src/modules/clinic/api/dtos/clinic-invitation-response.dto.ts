@@ -21,7 +21,11 @@ export class ClinicEconomicAgreementDto {
   @ApiProperty({ enum: ['fixed', 'percentage'] })
   payoutModel!: ClinicPayoutModel;
 
-  @ApiProperty()
+  @ApiProperty({
+    description:
+      'Valor de repasse ao profissional. Em percentual o intervalo permitido e de 0 a 100; em valor fixo deve ser maior ou igual a zero seguindo a mesma moeda do preco.',
+    minimum: 0,
+  })
   payoutValue!: number;
 }
 
@@ -43,7 +47,14 @@ export class ClinicInvitationEconomicSummaryDto {
   @ApiProperty({ type: [ClinicEconomicAgreementDto] })
   items!: ClinicEconomicAgreementDto[];
 
-  @ApiProperty({ enum: ['taxes', 'gateway', 'clinic', 'professional', 'platform'], isArray: true })
+  @ApiProperty({
+    enum: ['taxes', 'gateway', 'clinic', 'professional', 'platform'],
+    isArray: true,
+    minItems: 5,
+    maxItems: 5,
+    description:
+      'Ordem fixa das sobras: impostos → gateway → cl nica → profissional → plataforma. Qualquer diverg ncia gera erro de valida  o.',
+  })
   orderOfRemainders!: ClinicSplitRecipient[];
 
   @ApiProperty({ enum: ['half_even'] })

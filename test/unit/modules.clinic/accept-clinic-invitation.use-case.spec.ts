@@ -10,6 +10,7 @@ import { ClinicInvitationTokenService } from '../../../src/modules/clinic/servic
 import { ClinicAuditService } from '../../../src/infrastructure/clinic/services/clinic-audit.service';
 import { ClinicInvitation } from '../../../src/domain/clinic/types/clinic.types';
 import { RolesEnum } from '../../../src/domain/auth/enums/roles.enum';
+import { ClinicInvitationEconomicSummaryValidator } from '../../../src/modules/clinic/services/clinic-invitation-economic-summary.validator';
 
 describe('AcceptClinicInvitationUseCase', () => {
   const baseInvitation: ClinicInvitation = {
@@ -48,6 +49,7 @@ describe('AcceptClinicInvitationUseCase', () => {
   let auditService: ClinicAuditService;
   let auditRegisterSpy: jest.SpyInstance;
   let tokenService: ClinicInvitationTokenService;
+  let economicSummaryValidator: jest.Mocked<ClinicInvitationEconomicSummaryValidator>;
   let useCase: AcceptClinicInvitationUseCase;
 
   beforeEach(() => {
@@ -121,6 +123,10 @@ describe('AcceptClinicInvitationUseCase', () => {
       hash: baseInvitation.tokenHash,
     });
 
+    economicSummaryValidator = {
+      validate: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<ClinicInvitationEconomicSummaryValidator>;
+
     useCase = new AcceptClinicInvitationUseCase(
       invitationRepository,
       clinicRepository,
@@ -129,6 +135,7 @@ describe('AcceptClinicInvitationUseCase', () => {
       appointmentRepository,
       auditService,
       tokenService,
+      economicSummaryValidator,
     );
   });
 
@@ -140,6 +147,12 @@ describe('AcceptClinicInvitationUseCase', () => {
       token: 'signed-token',
     });
 
+    expect(economicSummaryValidator.validate).toHaveBeenCalledWith(
+      baseInvitation.clinicId,
+      baseInvitation.tenantId,
+      baseInvitation.economicSummary,
+      { allowInactive: true },
+    );
     expect(result.acceptedEconomicSnapshot).toBeDefined();
     expect(invitationRepository.markAccepted).toHaveBeenCalledWith({
       invitationId: baseInvitation.id,

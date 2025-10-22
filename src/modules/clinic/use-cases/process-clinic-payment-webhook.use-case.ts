@@ -36,8 +36,10 @@ export class ProcessClinicPaymentWebhookUseCase
   implements IProcessClinicPaymentWebhookUseCase
 {
   private static readonly EVENT_TTL_DAYS = 180;
+  private static readonly PURGE_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 horas
 
   protected readonly logger = new Logger(ProcessClinicPaymentWebhookUseCase.name);
+  private lastPurgeAt: Date | null = null;
 
   constructor(
     @Inject(IClinicAppointmentRepositoryToken)
@@ -245,6 +247,27 @@ export class ProcessClinicPaymentWebhookUseCase
             chargebackAt: paidAt ?? input.receivedAt,
           }),
         );
+      } else if (targetStatus === 'failed') {
+        await this.messageBus.publish(
+          DomainEvents.clinicPaymentFailed(appointment.id, {
+            tenantId: appointment.tenantId,
+            clinicId: appointment.clinicId,
+            professionalId: appointment.professionalId,
+            patientId: appointment.patientId,
+            holdId: appointment.holdId,
+            serviceTypeId: appointment.serviceTypeId,
+            paymentTransactionId: paymentId,
+            gatewayStatus,
+            eventType,
+            sandbox,
+            fingerprint,
+            payloadId,
+            amount,
+            failedAt: input.receivedAt,
+            processedAt: input.receivedAt,
+            reason: eventType ?? gatewayStatus,
+          }),
+        );
       }
     }
 
@@ -276,6 +299,8 @@ export class ProcessClinicPaymentWebhookUseCase
       sandbox,
       receivedAt: input.receivedAt,
     });
+
+    await this.purgeExpiredIfNeeded(input.receivedAt);
   }
 
   private isValidPaymentPayload(
@@ -449,6 +474,32 @@ export class ProcessClinicPaymentWebhookUseCase
     const ttlMs = ProcessClinicPaymentWebhookUseCase.EVENT_TTL_DAYS * 24 * 60 * 60 * 1000;
     const expires = new Date(receivedAt.getTime() + ttlMs);
     return expires;
+  }
+
+  private async purgeExpiredIfNeeded(reference: Date): Promise<void> {
+    if (
+      this.lastPurgeAt &&
+      reference.getTime() - this.lastPurgeAt.getTime() <
+        ProcessClinicPaymentWebhookUseCase.PURGE_INTERVAL_MS
+    ) {
+      return;
+    }
+
+    try {
+      const removed = await this.webhookEventRepository.purgeExpired(reference);
+
+      if (removed > 0) {
+        this.logger.log('Eventos de webhook ASAAS expirados removidos', {
+          removed,
+          reference: reference.toISOString(),
+        });
+      }
+
+      this.lastPurgeAt = reference;
+    } catch (error) {
+      const trace = error instanceof Error ? error.stack : JSON.stringify(error);
+      this.logger.error('Falha ao remover eventos de webhook ASAAS expirados', trace ?? undefined);
+    }
   }
 }
 

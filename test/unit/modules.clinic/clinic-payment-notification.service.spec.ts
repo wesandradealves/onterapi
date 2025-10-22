@@ -7,6 +7,7 @@ import {
 } from '../../../src/domain/clinic/types/clinic.types';
 import {
   ClinicPaymentChargebackEvent,
+  ClinicPaymentFailedEvent,
   ClinicPaymentRefundedEvent,
   ClinicPaymentSettledEvent,
 } from '../../../src/modules/clinic/services/clinic-payment-event.types';
@@ -139,6 +140,36 @@ const createChargebackEvent = (): ClinicPaymentChargebackEvent => ({
     amount: { value: 200, netValue: 180 },
     chargebackAt: new Date('2099-01-03T12:00:00Z'),
     processedAt: new Date('2099-01-03T12:02:00Z'),
+  },
+});
+
+const createFailedEvent = (
+  overrides: Partial<ClinicPaymentFailedEvent['payload']> = {},
+): ClinicPaymentFailedEvent => ({
+  eventId: 'evt-failed',
+  eventName: DomainEvents.CLINIC_PAYMENT_FAILED,
+  aggregateId: 'appointment-1',
+  occurredOn: new Date('2099-01-04T12:05:00Z'),
+  metadata: {},
+  payload: {
+    appointmentId: 'appointment-1',
+    tenantId: 'tenant-1',
+    clinicId: 'clinic-1',
+    professionalId: 'professional-1',
+    patientId: 'patient-1',
+    holdId: 'hold-1',
+    serviceTypeId: 'service-1',
+    paymentTransactionId: 'trx-1',
+    gatewayStatus: 'OVERDUE',
+    eventType: 'PAYMENT_OVERDUE',
+    sandbox: false,
+    fingerprint: 'fp-failed',
+    payloadId: 'asaas-evt-failed',
+    amount: { value: 200, netValue: 180 },
+    failedAt: new Date('2099-01-04T11:55:00Z'),
+    processedAt: new Date('2099-01-04T12:05:00Z'),
+    reason: 'payment_expired',
+    ...overrides,
   },
 });
 
@@ -313,5 +344,68 @@ describe('ClinicPaymentNotificationService', () => {
     expect(messageBus.publish).toHaveBeenCalledTimes(2);
     expect(emailService.sendClinicPaymentEmail).not.toHaveBeenCalled();
     expect(whatsappService.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('nao envia notificacoes de falha quando nao ha destinatarios elegiveis', async () => {
+    notificationContext.resolveRecipients.mockResolvedValueOnce([]);
+
+    await service.notifyFailure({
+      appointment: createAppointment(),
+      event: createFailedEvent(),
+    });
+
+    expect(messageBus.publish).not.toHaveBeenCalled();
+    expect(emailService.sendClinicPaymentEmail).not.toHaveBeenCalled();
+    expect(whatsappService.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('publica evento de falha com canais padrao', async () => {
+    notificationContext.resolveChannels.mockReturnValueOnce(['system']);
+
+    await service.notifyFailure({
+      appointment: createAppointment(),
+      event: createFailedEvent(),
+    });
+
+    expect(messageBus.publish).toHaveBeenCalledTimes(1);
+    const published = messageBus.publish.mock.calls[0][0];
+    expect(published.eventName).toBe(DomainEvents.NOTIFICATION_CLINIC_PAYMENT_FAILED);
+    expect(published.payload.status).toBe('failed');
+    expect(published.payload.reason).toBe('payment_expired');
+    expect(published.payload.channels).toEqual(['system']);
+    expect(emailService.sendClinicPaymentEmail).not.toHaveBeenCalled();
+    expect(whatsappService.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('envia email quando falha configurada para canal email', async () => {
+    notificationContext.resolveChannels.mockReturnValueOnce(['system', 'email']);
+
+    await service.notifyFailure({
+      appointment: createAppointment(),
+      event: createFailedEvent(),
+    });
+
+    expect(emailService.sendClinicPaymentEmail).toHaveBeenCalledTimes(1);
+    const payload = emailService.sendClinicPaymentEmail.mock.calls[0][0];
+    expect(payload.status).toBe('failed');
+    expect(payload.transactionId).toBe('trx-1');
+    expect(payload.details?.reason).toBe('payment_expired');
+    expect(messageBus.publish).toHaveBeenCalledTimes(1);
+  });
+
+  it('envia whatsapp quando falha configurada para canal whatsapp e integracao ativa', async () => {
+    notificationContext.resolveChannels.mockReturnValueOnce(['system', 'whatsapp']);
+    notificationContext.resolveWhatsAppSettings.mockResolvedValueOnce({ enabled: true });
+
+    await service.notifyFailure({
+      appointment: createAppointment(),
+      event: createFailedEvent(),
+    });
+
+    expect(whatsappService.sendMessage).toHaveBeenCalledTimes(1);
+    expect(whatsappService.sendMessage.mock.calls[0][0].body).toContain(
+      'Pagamento nao foi concluido',
+    );
+    expect(messageBus.publish).toHaveBeenCalledTimes(1);
   });
 });

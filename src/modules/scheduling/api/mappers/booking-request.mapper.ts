@@ -48,6 +48,7 @@ export const toCreateHoldInput = (
   clinicId: payload.clinicId,
   professionalId: payload.professionalId,
   patientId: payload.patientId,
+  serviceTypeId: payload.serviceTypeId,
   startAtUtc: new Date(payload.startAtUtc),
   endAtUtc: new Date(payload.endAtUtc),
   requesterId: context.userId,

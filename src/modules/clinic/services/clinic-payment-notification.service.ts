@@ -22,6 +22,7 @@ import {
 } from '../../../domain/integrations/interfaces/services/whatsapp.service.interface';
 import {
   ClinicPaymentChargebackEvent,
+  ClinicPaymentFailedEvent,
   ClinicPaymentRefundedEvent,
   ClinicPaymentSettledEvent,
 } from './clinic-payment-event.types';
@@ -33,6 +34,7 @@ const ACTIVE_STATUS: ClinicMemberStatus[] = ['active'];
 const PAYMENT_SETTLED_EVENT = 'clinic.payment.settled';
 const PAYMENT_REFUNDED_EVENT = 'clinic.payment.refunded';
 const PAYMENT_CHARGEBACK_EVENT = 'clinic.payment.chargeback';
+const PAYMENT_FAILED_EVENT = 'clinic.payment.failed';
 
 @Injectable()
 export class ClinicPaymentNotificationService {
@@ -367,6 +369,121 @@ export class ClinicPaymentNotificationService {
     });
   }
 
+  async notifyFailure(input: {
+    appointment: ClinicAppointment;
+    event: ClinicPaymentFailedEvent;
+  }): Promise<void> {
+    const recipients = await this.notificationContext.resolveRecipients({
+      tenantId: input.appointment.tenantId,
+      clinicId: input.appointment.clinicId,
+      includeProfessionalId: input.appointment.professionalId,
+      roles: RECIPIENT_ROLES,
+      statuses: ACTIVE_STATUS,
+    });
+
+    if (recipients.length === 0) {
+      this.logger.debug('Falha de pagamento sem destinatarios elegiveis para notificacao', {
+        appointmentId: input.appointment.id,
+        clinicId: input.appointment.clinicId,
+      });
+      return;
+    }
+
+    const settings = await this.notificationContext.resolveNotificationSettings(
+      input.appointment.tenantId,
+      input.appointment.clinicId,
+    );
+    const channels = this.notificationContext.resolveChannels({
+      settings,
+      eventKey: PAYMENT_FAILED_EVENT,
+      eventDate: new Date(input.event.payload.failedAt),
+      fallbackChannels: NOTIFICATION_CHANNEL_FALLBACK,
+      logScope: 'payments',
+    });
+
+    if (channels.length === 0) {
+      this.logger.debug('Falha de pagamento sem canais habilitados para notificacao', {
+        clinicId: input.appointment.clinicId,
+        appointmentId: input.appointment.id,
+        event: PAYMENT_FAILED_EVENT,
+      });
+      return;
+    }
+
+    const failureReason = input.event.payload.reason ?? input.event.payload.gatewayStatus;
+
+    await this.messageBus.publish(
+      DomainEvents.notificationsClinicPaymentFailed(input.appointment.id, {
+        tenantId: input.appointment.tenantId,
+        clinicId: input.appointment.clinicId,
+        professionalId: input.appointment.professionalId,
+        patientId: input.appointment.patientId,
+        serviceTypeId: input.appointment.serviceTypeId,
+        paymentTransactionId: input.event.payload.paymentTransactionId,
+        failedAt: new Date(input.event.payload.failedAt),
+        reason: failureReason ?? null,
+        gatewayStatus: input.event.payload.gatewayStatus,
+        sandbox: Boolean(input.event.payload.sandbox),
+        fingerprint: input.event.payload.fingerprint ?? null,
+        payloadId: input.event.payload.payloadId ?? null,
+        channels,
+        recipientIds: recipients,
+      }),
+    );
+
+    const amountCents =
+      input.event.payload.amount?.value !== undefined && input.event.payload.amount?.value !== null
+        ? Math.round((input.event.payload.amount.value ?? 0) * 100)
+        : undefined;
+    const netAmountCents =
+      input.event.payload.amount?.netValue !== undefined &&
+      input.event.payload.amount?.netValue !== null
+        ? Math.round((input.event.payload.amount.netValue ?? 0) * 100)
+        : undefined;
+
+    const details: Record<string, unknown> = {};
+    if (failureReason) {
+      details.reason = failureReason;
+    }
+
+    if (channels.includes('email')) {
+      await this.dispatchPaymentEmail({
+        appointment: input.appointment,
+        recipientIds: recipients,
+        clinicId: input.appointment.clinicId,
+        status: 'failed',
+        eventAt: new Date(input.event.payload.failedAt),
+        transactionId: input.event.payload.paymentTransactionId,
+        serviceTypeId: input.appointment.serviceTypeId,
+        amountCents,
+        netAmountCents,
+        details,
+      });
+    }
+
+    if (channels.includes('whatsapp')) {
+      await this.dispatchPaymentWhatsApp({
+        appointment: input.appointment,
+        recipientIds: recipients,
+        clinicId: input.appointment.clinicId,
+        status: 'failed',
+        eventAt: new Date(input.event.payload.failedAt),
+        transactionId: input.event.payload.paymentTransactionId,
+        serviceTypeId: input.appointment.serviceTypeId,
+        amountCents,
+        netAmountCents,
+        details,
+      });
+    }
+
+    this.logger.debug('Notificacao de falha de pagamento enfileirada', {
+      appointmentId: input.appointment.id,
+      recipients,
+      channels,
+      transactionId: input.event.payload.paymentTransactionId,
+    });
+  }
+
   private matchesQuietHours(
     date: Date,
     quietHours: { start: string; end: string; timezone?: string } | undefined,
@@ -457,7 +574,7 @@ export class ClinicPaymentNotificationService {
     appointment: ClinicAppointment;
     recipientIds: string[];
     clinicId: string;
-    status: 'settled' | 'refunded' | 'chargeback';
+    status: 'settled' | 'refunded' | 'chargeback' | 'failed';
     eventAt: Date;
     transactionId: string;
     serviceTypeId?: string;
@@ -507,7 +624,7 @@ export class ClinicPaymentNotificationService {
     appointment: ClinicAppointment;
     recipientIds: string[];
     clinicId: string;
-    status: 'settled' | 'refunded' | 'chargeback';
+    status: 'settled' | 'refunded' | 'chargeback' | 'failed';
     eventAt: Date;
     transactionId: string;
     serviceTypeId?: string;
@@ -551,6 +668,7 @@ export class ClinicPaymentNotificationService {
       transactionId: input.transactionId,
       amountCents: input.amountCents,
       netAmountCents: input.netAmountCents ?? undefined,
+      details: input.details,
     });
 
     await Promise.all(
@@ -611,11 +729,12 @@ export class ClinicPaymentNotificationService {
 
   private formatWhatsAppMessage(input: {
     clinicName: string;
-    status: 'settled' | 'refunded' | 'chargeback';
+    status: 'settled' | 'refunded' | 'chargeback' | 'failed';
     eventAt: Date;
     transactionId: string;
     amountCents?: number;
     netAmountCents?: number | null;
+    details?: Record<string, unknown>;
   }): string {
     const statusLabel = this.resolvePaymentStatusLabel(input.status);
     const eventDate = input.eventAt.toLocaleString('pt-BR', {
@@ -637,6 +756,9 @@ export class ClinicPaymentNotificationService {
       `Transacao: ${input.transactionId}`,
       `Valor: ${amount}`,
       netAmount ? `Liquido: ${netAmount}` : null,
+      input.details && typeof input.details.reason === 'string'
+        ? `Motivo: ${String(input.details.reason)}`
+        : null,
       `Data: ${eventDate}`,
       '',
       'Esta mensagem foi enviada automaticamente pela Onterapi.',
@@ -645,7 +767,9 @@ export class ClinicPaymentNotificationService {
     return (lines as string[]).join('\n');
   }
 
-  private resolvePaymentStatusLabel(status: 'settled' | 'refunded' | 'chargeback'): string {
+  private resolvePaymentStatusLabel(
+    status: 'settled' | 'refunded' | 'chargeback' | 'failed',
+  ): string {
     switch (status) {
       case 'settled':
         return 'Pagamento liquidado';
@@ -653,6 +777,8 @@ export class ClinicPaymentNotificationService {
         return 'Pagamento reembolsado';
       case 'chargeback':
         return 'Chargeback registrado';
+      case 'failed':
+        return 'Pagamento nao foi concluido';
       default:
         return 'Atualizacao de pagamento';
     }

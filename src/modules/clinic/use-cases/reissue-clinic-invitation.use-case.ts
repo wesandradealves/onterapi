@@ -16,6 +16,7 @@ import {
 } from '../../../domain/clinic/types/clinic.types';
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
 import { ClinicInvitationTokenService } from '../services/clinic-invitation-token.service';
+import { ClinicInvitationEconomicSummaryValidator } from '../services/clinic-invitation-economic-summary.validator';
 
 const REISSUE_ELIGIBLE_STATUSES: Array<ClinicInvitation['status']> = [
   'pending',
@@ -35,6 +36,7 @@ export class ReissueClinicInvitationUseCase
     private readonly invitationRepository: IClinicInvitationRepository,
     private readonly auditService: ClinicAuditService,
     private readonly invitationTokenService: ClinicInvitationTokenService,
+    private readonly economicSummaryValidator: ClinicInvitationEconomicSummaryValidator,
   ) {
     super();
   }
@@ -55,6 +57,12 @@ export class ReissueClinicInvitationUseCase
     if (input.expiresAt <= new Date()) {
       throw ClinicErrorFactory.invalidClinicData('Data de expiracao deve ser futura');
     }
+
+    await this.economicSummaryValidator.validate(
+      invitation.clinicId,
+      invitation.tenantId,
+      invitation.economicSummary,
+    );
 
     const { token, hash } = this.invitationTokenService.generateToken({
       invitationId: invitation.id,

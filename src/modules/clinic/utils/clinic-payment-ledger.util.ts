@@ -76,7 +76,8 @@ function normalizeEvents(items: unknown[]): ClinicPaymentLedgerEventEntry[] {
       (type === 'status_changed' ||
         type === 'settled' ||
         type === 'refunded' ||
-        type === 'chargeback') &&
+        type === 'chargeback' ||
+        type === 'failed') &&
       typeof gatewayStatus === 'string' &&
       typeof recordedAt === 'string'
     ) {

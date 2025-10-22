@@ -25,6 +25,7 @@ import {
 } from '../../../domain/clinic/types/clinic.types';
 import { ClinicAuditService } from '../../../infrastructure/clinic/services/clinic-audit.service';
 import { ClinicInvitationTokenService } from '../services/clinic-invitation-token.service';
+import { ClinicInvitationEconomicSummaryValidator } from '../services/clinic-invitation-economic-summary.validator';
 
 @Injectable()
 export class InviteClinicProfessionalUseCase
@@ -40,6 +41,7 @@ export class InviteClinicProfessionalUseCase
     private readonly invitationRepository: IClinicInvitationRepository,
     @Inject(IClinicMemberRepositoryToken)
     private readonly memberRepository: IClinicMemberRepository,
+    private readonly economicSummaryValidator: ClinicInvitationEconomicSummaryValidator,
     private readonly auditService: ClinicAuditService,
     private readonly invitationTokenService: ClinicInvitationTokenService,
   ) {
@@ -85,6 +87,12 @@ export class InviteClinicProfessionalUseCase
     if (input.expiresAt <= new Date()) {
       throw ClinicErrorFactory.invalidClinicData('Data de expiracao do convite deve ser futura');
     }
+
+    await this.economicSummaryValidator.validate(
+      input.clinicId,
+      input.tenantId,
+      input.economicSummary,
+    );
 
     const placeholderHash = this.invitationTokenService.hash(
       `pending:${randomBytes(8).toString('hex')}:${Date.now()}`,

@@ -49,6 +49,10 @@ describe('CancelBookingUseCase', () => {
   let messageBus: jest.Mocked<MessageBus>;
   let useCase: CancelBookingUseCase;
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   beforeEach(() => {
     bookingRepository = {
       findById: jest.fn(),
@@ -115,5 +119,40 @@ describe('CancelBookingUseCase', () => {
 
     await expect(useCase.executeOrThrow(createInput())).rejects.toBeInstanceOf(ConflictException);
     expect(bookingRepository.updateStatus).not.toHaveBeenCalled();
+  });
+
+  it('usa valores padr o quando motivo e horario n o informados', async () => {
+    const booking = baseBooking();
+    bookingRepository.findById.mockResolvedValue(booking);
+    const cancelled = baseBooking({
+      status: 'cancelled',
+      cancellationReason: null,
+    });
+    bookingRepository.updateStatus.mockResolvedValue(cancelled);
+    const now = new Date('2025-10-08T15:00:00Z');
+    jest.useFakeTimers().setSystemTime(now);
+    const logSpy = jest.spyOn(useCase['logger'], 'log');
+
+    const input = {
+      ...createInput(),
+      reason: undefined,
+      cancelledAtUtc: undefined,
+    };
+
+    await useCase.executeOrThrow(input as any);
+
+    expect(bookingRepository.updateStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ cancellationReason: null }),
+    );
+    const event = messageBus.publish.mock.calls[0][0];
+    expect(event.payload.reason).toBeUndefined();
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Agendamento booking-1 cancelado'),
+      expect.objectContaining({
+        cancelledAt: now,
+        reason: null,
+      }),
+    );
+    logSpy.mockRestore();
   });
 });

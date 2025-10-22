@@ -4,6 +4,8 @@ import {
   Clinic,
   ClinicAlert,
   ClinicAppointmentConfirmationResult,
+  ClinicConfigurationSection,
+  ClinicConfigurationTelemetry,
   ClinicConfigurationVersion,
   ClinicDashboardComparison,
   ClinicDashboardForecast,
@@ -12,6 +14,7 @@ import {
   ClinicHold,
   ClinicInvitation,
   ClinicManagementOverview,
+  ClinicManagementTemplateInfo,
   ClinicPaymentLedger,
   ClinicServiceTypeDefinition,
 } from '../../../src/domain/clinic/types/clinic.types';
@@ -713,9 +716,7 @@ describe('ClinicPresenter.serviceType', () => {
       },
       instructions: 'Acesse o link enviado por email.',
       requiredDocuments: ['Documento com foto'],
-      customFields: [
-        { id: 'field-1', label: 'Observação', fieldType: 'text', required: false },
-      ],
+      customFields: [{ id: 'field-1', label: 'Observação', fieldType: 'text', required: false }],
       createdAt: new Date('2025-10-10T10:00:00Z'),
       updatedAt: new Date('2025-10-11T11:00:00Z'),
     };
@@ -849,5 +850,467 @@ describe('ClinicPresenter economic summary rounding', () => {
     expect(summary[0].professionalReceives).toBeCloseTo(60, 2);
     expect(summary[0].remainder).toBeCloseTo(40, 2);
     expect(summary[1].professionalReceives).toBeCloseTo(66.67, 2);
+  });
+});
+
+describe('ClinicPresenter fallback normalization', () => {
+  const internals = ClinicPresenter as unknown as {
+    mapGeneralSettingsPayload: (raw: Record<string, unknown>) => any;
+    mapTeamSettingsPayload: (raw: Record<string, unknown>) => any;
+    mapScheduleSettingsPayload: (raw: Record<string, unknown>) => any;
+    mapServiceSettingsPayload: (raw: Record<string, unknown>) => any;
+    mapPaymentSettingsPayload: (raw: Record<string, unknown>) => any;
+    mapIntegrationSettingsPayload: (raw: Record<string, unknown>) => any;
+    mapNotificationSettingsPayload: (raw: Record<string, unknown>) => any;
+    mapBrandingSettingsPayload: (raw: Record<string, unknown>) => any;
+    mapManagementTemplateInfo: (template?: ClinicManagementTemplateInfo) => any;
+    mapTelemetry: (telemetry?: ClinicConfigurationTelemetry) => any;
+  };
+
+  it('omits optional fields in clinic details when absent', () => {
+    const clinic: Clinic = {
+      id: 'clinic-fallback',
+      tenantId: 'tenant-1',
+      name: 'Fallback Clinic',
+      slug: 'fallback-clinic',
+      status: 'active',
+      primaryOwnerId: 'owner-1',
+      holdSettings: {
+        ttlMinutes: 30,
+        minAdvanceMinutes: 10,
+        allowOverbooking: false,
+        resourceMatchingStrict: true,
+      },
+      createdAt: new Date('2025-01-01T10:00:00Z'),
+      updatedAt: new Date('2025-01-02T10:00:00Z'),
+      metadata: {},
+    };
+
+    const details = ClinicPresenter.details(clinic);
+
+    expect(details.document).toBeUndefined();
+    expect(details.metadata).toBeUndefined();
+  });
+
+  it('defaults configuration payloads when version payload is undefined', () => {
+    const makeVersion = (section: ClinicConfigurationSection): ClinicConfigurationVersion => ({
+      id: `${section}-version`,
+      clinicId: 'clinic-1',
+      section,
+      version: 1,
+      payload: undefined as unknown as Record<string, unknown>,
+      createdBy: 'user-1',
+      createdAt: new Date('2025-01-01T12:00:00Z'),
+      autoApply: false,
+    });
+
+    const general = ClinicPresenter.generalSettings(makeVersion('general'));
+    const team = ClinicPresenter.teamSettings(makeVersion('team'));
+    const schedule = ClinicPresenter.scheduleSettings(makeVersion('schedule'));
+    const services = ClinicPresenter.serviceSettings(makeVersion('services'));
+    const payments = ClinicPresenter.paymentSettings(makeVersion('payments'));
+    const integrations = ClinicPresenter.integrationSettings(makeVersion('integrations'));
+    const notifications = ClinicPresenter.notificationSettings(makeVersion('notifications'));
+    const branding = ClinicPresenter.brandingSettings(makeVersion('branding'));
+
+    expect(general.payload.tradeName).toBe('');
+    expect(team.payload.quotas).toEqual([]);
+    expect(schedule.payload.workingDays).toEqual([]);
+    expect(services.services).toEqual([]);
+    expect(payments.payload.splitRules).toEqual([]);
+    expect(integrations.payload.webhooks).toEqual([]);
+    expect(notifications.payload.channels).toEqual([]);
+    expect(branding.payload.palette).toBeUndefined();
+  });
+
+  it('normalizes service type optional fields', () => {
+    const serviceType: ClinicServiceTypeDefinition = {
+      id: 'svc-1',
+      clinicId: 'clinic-1',
+      name: 'Avaliação',
+      slug: 'avaliacao',
+      durationMinutes: 60,
+      price: 200,
+      currency: 'BRL',
+      isActive: true,
+      requiresAnamnesis: false,
+      enableOnlineScheduling: true,
+      minAdvanceMinutes: 30,
+      cancellationPolicy: {
+        type: 'percentage',
+        windowMinutes: undefined,
+        percentage: undefined,
+        message: undefined,
+      },
+      eligibility: {
+        allowNewPatients: true,
+        allowExistingPatients: true,
+        minimumAge: undefined,
+        maximumAge: undefined,
+        allowedTags: [],
+      },
+      customFields: [
+        {
+          label: 'Observações',
+          fieldType: 'text',
+          required: false,
+          options: [],
+        },
+        {
+          id: 'field-options',
+          label: 'Motivo',
+          fieldType: 'select',
+          required: true,
+          options: ['A'],
+        },
+      ],
+      createdAt: new Date('2025-01-01T10:00:00Z'),
+      updatedAt: new Date('2025-01-01T10:00:00Z'),
+    };
+
+    const dto = ClinicPresenter.serviceType(serviceType);
+
+    expect(dto.color).toBeUndefined();
+    expect(dto.maxAdvanceMinutes).toBeUndefined();
+    expect(dto.instructions).toBeUndefined();
+    expect(dto.requiredDocuments).toEqual([]);
+    expect(dto.cancellationPolicy.windowMinutes).toBeUndefined();
+    expect(dto.eligibility?.allowedTags).toBeUndefined();
+    expect(dto.customFields?.[0].id).toBeUndefined();
+    expect(dto.customFields?.[0].options).toBeUndefined();
+    expect(dto.customFields?.[1].options).toEqual(['A']);
+
+    const minimal = ClinicPresenter.serviceType({
+      ...serviceType,
+      id: 'svc-2',
+      name: 'Consulta',
+      slug: 'consulta',
+      createdAt: new Date('2025-01-02T10:00:00Z'),
+      updatedAt: new Date('2025-01-02T10:00:00Z'),
+      customFields: undefined,
+    });
+
+    expect(minimal.customFields).toEqual([]);
+  });
+
+  it('defaults alert payload when undefined', () => {
+    const alert: ClinicAlert = {
+      id: 'alert-coverage',
+      clinicId: 'clinic-1',
+      tenantId: 'tenant-1',
+      type: 'revenue_drop',
+      channel: 'push',
+      triggeredBy: 'system',
+      triggeredAt: new Date('2025-01-03T08:00:00Z'),
+      payload: undefined as unknown as Record<string, unknown>,
+    };
+
+    const dto = ClinicPresenter.alert(alert);
+
+    expect(dto.payload).toEqual({});
+  });
+
+  it('normalizes payment ledger optional values', () => {
+    const ledger: ClinicPaymentLedger = {
+      currency: 'BRL',
+      lastUpdatedAt: new Date('2025-01-04T10:00:00Z').toISOString(),
+      events: [
+        {
+          type: 'status_changed',
+          gatewayStatus: 'approved',
+          recordedAt: new Date('2025-01-04T10:00:00Z').toISOString(),
+          sandbox: false,
+        },
+      ],
+      settlement: {
+        settledAt: new Date('2025-01-05T10:00:00Z').toISOString(),
+        baseAmountCents: 10000,
+        split: [
+          { recipient: 'clinic', percentage: 50, amountCents: 5000 },
+          { recipient: 'professional', percentage: 50, amountCents: 5000 },
+        ],
+        remainderCents: 0,
+        gatewayStatus: 'settled',
+      },
+      refund: {
+        refundedAt: new Date('2025-01-06T10:00:00Z').toISOString(),
+        gatewayStatus: 'refunded',
+      },
+      chargeback: {
+        chargebackAt: new Date('2025-01-07T10:00:00Z').toISOString(),
+        gatewayStatus: 'chargeback',
+      },
+    };
+
+    const dto = ClinicPresenter.paymentLedger({
+      appointmentId: 'appt-1',
+      clinicId: 'clinic-1',
+      tenantId: 'tenant-1',
+      paymentStatus: 'settled',
+      paymentTransactionId: 'txn-1',
+      ledger,
+    });
+
+    expect(dto.ledger.settlement?.netAmountCents).toBeUndefined();
+    expect(dto.ledger.refund?.netAmountCents).toBeUndefined();
+    expect(dto.ledger.refund?.fingerprint).toBeUndefined();
+    expect(dto.ledger.chargeback?.amountCents).toBeUndefined();
+    expect(dto.ledger.metadata).toBeUndefined();
+  });
+
+  it('handles template overrides without applied version', () => {
+    const template = internals.mapManagementTemplateInfo({
+      templateClinicId: 'template-1',
+      lastPropagationAt: new Date('2025-01-08T10:00:00Z'),
+      lastTriggeredBy: 'user-1',
+      sections: [
+        {
+          section: 'general',
+          templateVersionId: 'tpl-v1',
+          templateVersionNumber: 2,
+          propagatedVersionId: 'cfg-v1',
+          propagatedAt: new Date('2025-01-08T11:00:00Z'),
+          triggeredBy: 'user-1',
+          override: {
+            overrideId: 'ovr-1',
+            overrideVersion: 1,
+            overrideHash: 'hash-v1',
+            overrideUpdatedAt: new Date('2025-01-08T11:05:00Z'),
+            overrideUpdatedBy: 'user-1',
+          },
+        },
+      ],
+    });
+
+    expect(template?.sections[0].overrideAppliedVersionId).toBeUndefined();
+  });
+
+  it('sanitizes raw configuration payload fragments', () => {
+    const generalPayload = internals.mapGeneralSettingsPayload({
+      generalSettings: {
+        document: {},
+        address: {},
+        contact: { socialLinks: 'invalid' },
+      },
+    });
+    expect(generalPayload.document).toEqual({ type: '', value: '' });
+    expect(generalPayload.address.number).toBeUndefined();
+    expect(generalPayload.contact.socialLinks).toBeUndefined();
+    expect(generalPayload.stateRegistration).toBeUndefined();
+    expect(generalPayload.municipalRegistration).toBeUndefined();
+
+    const generalWithRegistrations = internals.mapGeneralSettingsPayload({
+      generalSettings: {
+        stateRegistration: '12345',
+        municipalRegistration: '67890',
+        address: {},
+        contact: {},
+      },
+    });
+    expect(generalWithRegistrations.stateRegistration).toBe('12345');
+    expect(generalWithRegistrations.municipalRegistration).toBe('67890');
+
+    const teamPayload = internals.mapTeamSettingsPayload({
+      teamSettings: {
+        quotas: [
+          { role: RolesEnum.MANAGER, limit: 'NaN' },
+          { limit: 10 },
+          { role: RolesEnum.SECRETARY },
+        ],
+        metadata: {},
+      },
+    });
+    expect(teamPayload.quotas).toEqual([]);
+    expect(teamPayload.defaultMemberStatus).toBe('pending_invitation');
+    expect(teamPayload.metadata).toBeUndefined();
+
+    const schedulePayload = internals.mapScheduleSettingsPayload({
+      scheduleSettings: {
+        workingDays: [
+          { dayOfWeek: 1, active: true, intervals: [{ start: '08:00', end: '12:00' }] },
+          { dayOfWeek: 2, active: false, intervals: [{ end: '15:00' }] },
+          { dayOfWeek: 3, active: true },
+        ],
+        exceptionPeriods: [
+          {
+            id: 'exc-1',
+            name: 'Fechado',
+            appliesTo: 'clinic',
+            start: '2025-02-01T10:00:00Z',
+            end: '2025-02-01T12:00:00Z',
+          },
+          { name: 'invalid' },
+        ],
+        holidays: [
+          { id: 'hol-1', name: 'Feriado', date: '2025-12-25', scope: 'national' },
+          { name: 'Sem ID', date: '2025-12-24', scope: 'local' },
+        ],
+      },
+    });
+    expect(schedulePayload.exceptionPeriods).toHaveLength(1);
+    expect(schedulePayload.holidays).toHaveLength(1);
+
+    const scheduleWithMissingIds = internals.mapScheduleSettingsPayload({
+      scheduleSettings: {
+        exceptionPeriods: [
+          {
+            id: undefined,
+            name: 'Sem identificador',
+            appliesTo: 'clinic',
+            start: '2025-03-01T10:00:00Z',
+            end: '2025-03-01T12:00:00Z',
+          },
+          {
+            id: 'sem-nome',
+            appliesTo: 'clinic',
+            start: '2025-03-02T10:00:00Z',
+            end: '2025-03-02T12:00:00Z',
+          },
+        ],
+      },
+    });
+    expect(scheduleWithMissingIds.exceptionPeriods).toEqual([]);
+
+    const servicesPayload = internals.mapServiceSettingsPayload([
+      {
+        id: 'svc-raw',
+        cancellationPolicy: { window: 120 },
+        eligibility: { allowedTags: [] },
+        requiredDocuments: [],
+      },
+      {
+        serviceTypeId: 'svc-explicit',
+        requiredDocuments: 'doc',
+      },
+      10,
+    ] as unknown as Record<string, unknown>);
+    expect(servicesPayload[0]).toMatchObject({
+      serviceTypeId: 'svc-raw',
+      name: '',
+      slug: '',
+      durationMinutes: 0,
+      price: 0,
+      currency: 'BRL',
+      cancellationPolicyWindowMinutes: 120,
+    });
+    expect(servicesPayload[0]).not.toHaveProperty('allowedTags');
+    expect(servicesPayload[1].serviceTypeId).toBe('svc-explicit');
+    expect(servicesPayload[1]).not.toHaveProperty('requiredDocuments');
+    expect(servicesPayload).toHaveLength(2);
+
+    const paymentPayload = internals.mapPaymentSettingsPayload({
+      paymentSettings: {
+        splitRules: [
+          { recipient: 'clinic', percentage: 50, order: 1 },
+          { percentage: 25, order: 2 },
+          { recipient: 'platform', order: 3 },
+        ],
+        antifraud: {},
+        inadimplencyRule: { actions: ['notify', 123] },
+        refundPolicy: {},
+        cancellationPolicies: [{ type: 'window', message: 'texto' }, { windowMinutes: 10 }],
+      },
+    });
+    expect(paymentPayload.splitRules).toHaveLength(1);
+    expect(paymentPayload.inadimplencyRule.actions).toEqual(['notify', '123']);
+
+    const integrationPayload = internals.mapIntegrationSettingsPayload({
+      integrationSettings: {
+        whatsapp: {
+          templates: [
+            { name: 'welcome', status: 'approved', lastUpdatedAt: 'invalid' },
+            { status: 'pending' },
+          ],
+          quietHours: { start: '21:00', end: '07:00' },
+        },
+        googleCalendar: {},
+        email: { tracking: {} },
+        webhooks: [
+          { url: 'https://example.com/webhook' },
+          { event: 'asaas.payment', url: 'https://example.com/webhook', active: true },
+        ],
+        metadata: {},
+      },
+    });
+    expect(integrationPayload.whatsapp.templates).toHaveLength(1);
+    expect(integrationPayload.whatsapp.quietHours?.timezone).toBeUndefined();
+    expect(integrationPayload.webhooks).toHaveLength(1);
+    expect(integrationPayload.metadata).toBeUndefined();
+
+    const notificationPayload = internals.mapNotificationSettingsPayload({
+      notificationSettings: {
+        channels: [
+          {
+            type: 'email',
+            enabled: true,
+            defaultEnabled: false,
+            quietHours: { start: '21:00', end: '07:00' },
+          },
+          { enabled: true },
+        ],
+        templates: [
+          {
+            id: 'tpl-1',
+            event: 'appointment.confirmed',
+            channel: 'email',
+            version: 'v1',
+            variables: [{ name: 'patient', required: true }, { required: false }],
+          },
+          {
+            id: 'tpl-2',
+            event: 'payment.approved',
+            channel: 'email',
+            version: 'v1',
+          },
+          { id: 'tpl-invalid' },
+        ],
+        rules: [
+          { event: 'appointment.confirmed', channels: ['email'], enabled: true },
+          { channels: 'email' },
+        ],
+        quietHours: { start: '20:00', end: '06:00' },
+        metadata: {},
+      },
+    });
+    expect(notificationPayload.channels).toHaveLength(1);
+    expect(notificationPayload.templates).toHaveLength(2);
+    expect(notificationPayload.templates[1].variables).toEqual([]);
+    expect(notificationPayload.rules).toHaveLength(1);
+    expect(notificationPayload.quietHours?.timezone).toBeUndefined();
+    expect(notificationPayload.metadata).toBeUndefined();
+
+    const brandingPayload = internals.mapBrandingSettingsPayload({
+      brandingSettings: {
+        palette: {
+          primary: undefined,
+          accent: '#ff0000',
+          surface: '#f5f5f5',
+          text: '#101010',
+        },
+        typography: { primaryFont: undefined },
+        preview: { previewUrl: 'https://example.com/preview' },
+        metadata: {},
+      },
+    });
+    expect(brandingPayload.palette?.primary).toBe('#1976d2');
+    expect(brandingPayload.palette?.accent).toBe('#ff0000');
+    expect(brandingPayload.palette?.surface).toBe('#f5f5f5');
+    expect(brandingPayload.palette?.text).toBe('#101010');
+    expect(brandingPayload.typography?.primaryFont).toBe('Inter');
+    expect(brandingPayload.preview?.mode).toBe('draft');
+    expect(brandingPayload.metadata).toBeUndefined();
+  });
+
+  it('omits telemetry optional fields when absent', () => {
+    const telemetry = internals.mapTelemetry({
+      section: 'general',
+      state: 'idle',
+      completionScore: 0.8,
+    } as ClinicConfigurationTelemetry);
+
+    expect(telemetry.state).toBe('idle');
+    expect(telemetry.lastAttemptAt).toBeUndefined();
+    expect(telemetry.lastUpdatedBy).toBeUndefined();
+    expect(telemetry.pendingConflicts).toBeUndefined();
   });
 });

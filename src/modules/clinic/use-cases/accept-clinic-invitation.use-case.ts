@@ -34,6 +34,7 @@ import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.facto
 import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
 import { ClinicAuditService } from '../../../infrastructure/clinic/services/clinic-audit.service';
 import { ClinicInvitationTokenService } from '../services/clinic-invitation-token.service';
+import { ClinicInvitationEconomicSummaryValidator } from '../services/clinic-invitation-economic-summary.validator';
 
 @Injectable()
 export class AcceptClinicInvitationUseCase
@@ -55,6 +56,7 @@ export class AcceptClinicInvitationUseCase
     private readonly appointmentRepository: IClinicAppointmentRepository,
     private readonly auditService: ClinicAuditService,
     private readonly invitationTokenService: ClinicInvitationTokenService,
+    private readonly economicSummaryValidator: ClinicInvitationEconomicSummaryValidator,
   ) {
     super();
   }
@@ -93,6 +95,13 @@ export class AcceptClinicInvitationUseCase
     if (decodedToken.hash !== invitation.tokenHash) {
       throw ClinicErrorFactory.invitationInvalidToken('Token invalido para o convite');
     }
+
+    await this.economicSummaryValidator.validate(
+      invitation.clinicId,
+      invitation.tenantId,
+      invitation.economicSummary,
+      { allowInactive: true },
+    );
 
     const clinic = await this.clinicRepository.findByTenant(
       invitation.tenantId,

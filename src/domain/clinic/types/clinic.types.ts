@@ -739,7 +739,7 @@ export interface ClinicPaymentSplitAllocation {
 }
 
 export interface ClinicPaymentLedgerEventEntry {
-  type: 'status_changed' | 'settled' | 'refunded' | 'chargeback';
+  type: 'status_changed' | 'settled' | 'refunded' | 'chargeback' | 'failed';
   gatewayStatus: string;
   eventType?: string;
   recordedAt: string;

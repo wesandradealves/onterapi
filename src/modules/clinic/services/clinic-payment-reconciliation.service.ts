@@ -23,6 +23,7 @@ import { parseClinicPaymentSettings } from '../utils/payment-settings.parser';
 import { extractClinicPaymentLedger } from '../utils/clinic-payment-ledger.util';
 import {
   ClinicPaymentChargebackEvent,
+  ClinicPaymentFailedEvent,
   ClinicPaymentRefundedEvent,
   ClinicPaymentSettledEvent,
   ClinicPaymentStatusChangedEvent,
@@ -118,6 +119,10 @@ export class ClinicPaymentReconciliationService {
 
   async handlePaymentChargeback(event: ClinicPaymentChargebackEvent): Promise<void> {
     await this.recordChargeback(event);
+  }
+
+  async handlePaymentFailed(event: ClinicPaymentFailedEvent): Promise<void> {
+    await this.recordFailure(event);
   }
 
   private async recordSettlement(event: ClinicPaymentSettledEvent): Promise<void> {
@@ -405,6 +410,68 @@ export class ClinicPaymentReconciliationService {
       appointment,
       event,
       chargeback,
+    });
+  }
+
+  private async recordFailure(event: ClinicPaymentFailedEvent): Promise<void> {
+    const appointment = await this.appointmentRepository.findById(event.payload.appointmentId);
+
+    if (!appointment) {
+      this.logger.warn('Falha de pagamento ignorada: agendamento inexistente', {
+        appointmentId: event.payload.appointmentId,
+      });
+      return;
+    }
+
+    const ledger = extractClinicPaymentLedger(appointment.metadata);
+
+    if (event.payload.fingerprint && this.hasEvent(ledger, 'failed', event.payload.fingerprint)) {
+      this.logger.log('Falha de pagamento ignorada (evento duplicado)', {
+        appointmentId: appointment.id,
+        fingerprint: event.payload.fingerprint,
+      });
+      return;
+    }
+
+    const recordedAt = (event.payload.processedAt ?? new Date()).toISOString();
+
+    const nextLedger = this.appendEvent(ledger, {
+      type: 'failed',
+      gatewayStatus: event.payload.gatewayStatus,
+      eventType: event.payload.eventType,
+      recordedAt,
+      fingerprint: event.payload.fingerprint,
+      sandbox: event.payload.sandbox,
+      metadata: {
+        failedAt: event.payload.failedAt.toISOString(),
+        reason: event.payload.reason ?? null,
+        amount: event.payload.amount ?? null,
+        payloadId: event.payload.payloadId ?? null,
+      },
+    });
+
+    await this.persistLedger(appointment.id, nextLedger);
+
+    await this.auditService.register({
+      event: 'clinic.payment.failure_recorded',
+      tenantId: appointment.tenantId,
+      clinicId: appointment.clinicId,
+      detail: {
+        appointmentId: appointment.id,
+        paymentTransactionId: event.payload.paymentTransactionId,
+        gatewayStatus: event.payload.gatewayStatus,
+        eventType: event.payload.eventType,
+        sandbox: event.payload.sandbox,
+        fingerprint: event.payload.fingerprint ?? null,
+        reason: event.payload.reason ?? null,
+        failedAt: event.payload.failedAt.toISOString(),
+        processedAt: recordedAt,
+      },
+    });
+
+    await this.paymentNotificationService.notifyFailure({
+      appointment,
+      event,
     });
   }
 

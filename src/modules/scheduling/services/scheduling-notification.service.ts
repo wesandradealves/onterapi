@@ -27,6 +27,7 @@ export class SchedulingNotificationService {
         clinicId: payload.clinicId,
         professionalId: payload.professionalId,
         patientId: payload.patientId,
+        serviceTypeId: payload.serviceTypeId,
         startAtUtc: payload.startAtUtc,
         endAtUtc: payload.endAtUtc,
       }),
@@ -38,6 +39,7 @@ export class SchedulingNotificationService {
       clinicId: payload.clinicId,
       professionalId: payload.professionalId,
       patientId: payload.patientId,
+      serviceTypeId: payload.serviceTypeId,
     });
   }
 

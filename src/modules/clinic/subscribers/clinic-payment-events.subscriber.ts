@@ -5,6 +5,7 @@ import { DomainEvents } from '../../../shared/events/domain-events';
 import { MessageBus } from '../../../shared/messaging/message-bus';
 import {
   ClinicPaymentChargebackEvent,
+  ClinicPaymentFailedEvent,
   ClinicPaymentRefundedEvent,
   ClinicPaymentSettledEvent,
   ClinicPaymentStatusChangedEvent,
@@ -47,6 +48,13 @@ export class ClinicPaymentEventsSubscriber implements OnModuleInit, OnModuleDest
       const typed = event as unknown as ClinicPaymentChargebackEvent;
       await this.executeSafely(event, 'paymentReconciliation.handlePaymentChargeback', () =>
         this.paymentReconciliationService.handlePaymentChargeback(typed),
+      );
+    });
+
+    this.registerHandler(DomainEvents.CLINIC_PAYMENT_FAILED, async (event) => {
+      const typed = event as unknown as ClinicPaymentFailedEvent;
+      await this.executeSafely(event, 'paymentReconciliation.handlePaymentFailed', () =>
+        this.paymentReconciliationService.handlePaymentFailed(typed),
       );
     });
   }

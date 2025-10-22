@@ -6,6 +6,13 @@ export class CreateHoldDto {
   @IsUUID()
   clinicId!: string;
 
+  @ApiProperty({
+    description: 'Identificador do tipo de servico configurado na clinica',
+    format: 'uuid',
+  })
+  @IsUUID()
+  serviceTypeId!: string;
+
   @ApiProperty({ description: 'Identificador do profissional', format: 'uuid' })
   @IsUUID()
   professionalId!: string;

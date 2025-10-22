@@ -17,6 +17,10 @@ const context: SchedulingRequestContext = {
 };
 
 describe('booking-request.mapper', () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('mapeia cria  o de agendamento', () => {
     const input = toCreateBookingInput(
       {
@@ -45,6 +49,28 @@ describe('booking-request.mapper', () => {
     expect(input.tenantId).toBe(context.tenantId);
     expect(input.requesterId).toBe(context.userId);
     expect(input.requestedAtUtc).toBeInstanceOf(Date);
+  });
+
+  it('atribui valores padr o quando campos opcionais faltam na cria  o', () => {
+    const now = new Date('2025-10-08T12:00:00Z');
+    jest.useFakeTimers().setSystemTime(now);
+
+    const input = toCreateBookingInput(
+      {
+        holdId: 'hold-1',
+        source: 'clinic_portal',
+        timezone: 'America/Sao_Paulo',
+      } as any,
+      context,
+    );
+
+    expect(input.lateToleranceMinutes).toBeUndefined();
+    expect(input.recurrenceSeriesId).toBeNull();
+    expect(input.pricingSplit).toBeNull();
+    expect(input.preconditionsPassed).toBe(false);
+    expect(input.anamneseRequired).toBe(false);
+    expect(input.anamneseOverrideReason).toBeNull();
+    expect(input.requestedAtUtc.toISOString()).toBe(now.toISOString());
   });
 
   it('mapeia cria  o de hold', () => {
@@ -78,6 +104,19 @@ describe('booking-request.mapper', () => {
     expect(input.cancelledAtUtc).toBeInstanceOf(Date);
   });
 
+  it('mapeia cancelamento sem motivo usando defaults', () => {
+    const input = toCancelBookingInput(
+      'booking-1',
+      {
+        expectedVersion: 2,
+      } as any,
+      context,
+    );
+
+    expect(input.reason).toBeNull();
+    expect(input.cancelledAtUtc).toBeUndefined();
+  });
+
   it('mapeia confirma  o', () => {
     const input = toConfirmBookingInput(
       'booking-1',
@@ -91,6 +130,19 @@ describe('booking-request.mapper', () => {
 
     expect(input.holdId).toBe('hold-1');
     expect(input.confirmationAtUtc).toBeInstanceOf(Date);
+  });
+
+  it('mapeia confirma  o sem timestamp usando undefined', () => {
+    const input = toConfirmBookingInput(
+      'booking-1',
+      {
+        holdId: 'hold-1',
+        paymentStatus: 'approved',
+      },
+      context,
+    );
+
+    expect(input.confirmationAtUtc).toBeUndefined();
   });
 
   it('mapeia atualiza  o de pagamento', () => {
@@ -130,5 +182,20 @@ describe('booking-request.mapper', () => {
     );
 
     expect(input.markedAtUtc).toBeInstanceOf(Date);
+  });
+
+  it('mapeia marca  o de no-show usando now quando nao informado', () => {
+    const now = new Date('2025-10-10T10:00:00Z');
+    jest.useFakeTimers().setSystemTime(now);
+
+    const input = toMarkBookingNoShowInput(
+      'booking-1',
+      {
+        expectedVersion: 5,
+      } as any,
+      context,
+    );
+
+    expect(input.markedAtUtc.toISOString()).toBe(now.toISOString());
   });
 });

@@ -283,6 +283,8 @@ export class NotificationEmailService {
         return 'Pagamento reembolsado';
       case 'chargeback':
         return 'Chargeback registrado';
+      case 'failed':
+        return 'Pagamento nao concluido';
       default:
         return 'Atualizacao de pagamento';
     }

@@ -37,6 +37,12 @@ import { SchedulingBillingService } from './services/scheduling-billing.service'
 import { SchedulingMetricsService } from './services/scheduling-metrics.service';
 import { SchedulingNotificationService } from './services/scheduling-notification.service';
 import { SchedulingEventsSubscriber } from './subscribers/scheduling-events.subscriber';
+import { ClinicEntity } from '../../infrastructure/clinic/entities/clinic.entity';
+import { ClinicRepository } from '../../infrastructure/clinic/repositories/clinic.repository';
+import { IClinicRepository as IClinicRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic.repository.interface';
+import { ClinicServiceTypeEntity } from '../../infrastructure/clinic/entities/clinic-service-type.entity';
+import { ClinicServiceTypeRepository } from '../../infrastructure/clinic/repositories/clinic-service-type.repository';
+import { IClinicServiceTypeRepository as IClinicServiceTypeRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-service-type.repository.interface';
 
 @Module({
   imports: [
@@ -48,6 +54,8 @@ import { SchedulingEventsSubscriber } from './subscribers/scheduling-events.subs
       RecurrenceSeriesEntity,
       RecurrenceOccurrenceEntity,
       ExternalCalendarEventEntity,
+      ClinicEntity,
+      ClinicServiceTypeEntity,
     ]),
   ],
   providers: [
@@ -99,6 +107,14 @@ import { SchedulingEventsSubscriber } from './subscribers/scheduling-events.subs
       provide: IRecordPaymentStatusUseCase,
       useClass: RecordPaymentStatusUseCase,
     },
+    {
+      provide: IClinicRepositoryToken,
+      useClass: ClinicRepository,
+    },
+    {
+      provide: IClinicServiceTypeRepositoryToken,
+      useClass: ClinicServiceTypeRepository,
+    },
     SchedulingBillingService,
     SchedulingMetricsService,
     SchedulingNotificationService,
@@ -118,6 +134,8 @@ import { SchedulingEventsSubscriber } from './subscribers/scheduling-events.subs
     IClinicInvitationPolicyRepositoryToken,
     IRecurrenceRepositoryToken,
     IExternalCalendarEventsRepositoryToken,
+    IClinicRepositoryToken,
+    IClinicServiceTypeRepositoryToken,
   ],
 })
 export class SchedulingModule {}

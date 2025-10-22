@@ -494,7 +494,13 @@ describe('ClinicPresenter configuration mapping edge cases', () => {
             { dayOfWeek: 3, active: true, intervals: [{ start: '08:00' }] },
           ],
           exceptionPeriods: [
-            { id: 'exc-1', name: 'Maintenance', appliesTo: 'clinic', start: '2025-10-10T10:00:00Z', end: '2025-10-10T12:00:00Z' },
+            {
+              id: 'exc-1',
+              name: 'Maintenance',
+              appliesTo: 'clinic',
+              start: '2025-10-10T10:00:00Z',
+              end: '2025-10-10T12:00:00Z',
+            },
             { id: 'exc-invalid' },
           ],
           holidays: [
@@ -519,7 +525,20 @@ describe('ClinicPresenter configuration mapping edge cases', () => {
       payload: {
         services: [
           { name: 'Invalid service' },
-          { id: 'svc-1', name: 'Valido', durationMinutes: '45', price: '150', currency: 'BRL', isActive: 'true', requiresAnamnesis: 'false', enableOnlineScheduling: 'true', minAdvanceMinutes: '30', cancellationPolicy: {}, eligibility: {}, requiredDocuments: [987] },
+          {
+            id: 'svc-1',
+            name: 'Valido',
+            durationMinutes: '45',
+            price: '150',
+            currency: 'BRL',
+            isActive: 'true',
+            requiresAnamnesis: 'false',
+            enableOnlineScheduling: 'true',
+            minAdvanceMinutes: '30',
+            cancellationPolicy: {},
+            eligibility: {},
+            requiredDocuments: [987],
+          },
         ],
       },
     };
@@ -543,10 +562,7 @@ describe('ClinicPresenter configuration mapping edge cases', () => {
             { recipient: 'clinic', percentage: 70, order: 1 },
             { recipient: 'invalid', percentage: 'abc' },
           ],
-          cancellationPolicies: [
-            { type: 'percentage', percentage: 50 },
-            { windowMinutes: 30 },
-          ],
+          cancellationPolicies: [{ type: 'percentage', percentage: 50 }, { windowMinutes: 30 }],
           refundPolicy: {},
           inadimplencyRule: {},
           antifraud: {},
@@ -572,10 +588,7 @@ describe('ClinicPresenter configuration mapping edge cases', () => {
               { name: 'invalid' },
             ],
           },
-          webhooks: [
-            { event: 'clinic.updated', url: 'https://hook' },
-            { event: 'invalid' },
-          ],
+          webhooks: [{ event: 'clinic.updated', url: 'https://hook' }, { event: 'invalid' }],
         },
       },
     };
@@ -592,12 +605,16 @@ describe('ClinicPresenter configuration mapping edge cases', () => {
       section: 'notifications',
       payload: {
         notificationSettings: {
-          channels: [
-            { type: 'email', enabled: true },
-            { enabled: true },
-          ],
+          channels: [{ type: 'email', enabled: true }, { enabled: true }],
           templates: [
-            { id: 'tmpl-1', event: 'booking.created', channel: 'email', version: 'v1', active: true, variables: [] },
+            {
+              id: 'tmpl-1',
+              event: 'booking.created',
+              channel: 'email',
+              version: 'v1',
+              active: true,
+              variables: [],
+            },
             { event: 'invalid' },
           ],
           rules: [
@@ -642,13 +659,23 @@ describe('ClinicPresenter configuration mapping edge cases', () => {
       resolveConfigurationState: (version: ClinicConfigurationVersion) => string;
     };
 
-    expect(internals.resolveConfigurationState({ ...versionBase, appliedAt: new Date() })).toBe('saved');
-    expect(internals.resolveConfigurationState({ ...versionBase, appliedAt: undefined, autoApply: true })).toBe('saving');
+    expect(internals.resolveConfigurationState({ ...versionBase, appliedAt: new Date() })).toBe(
+      'saved',
+    );
+    expect(
+      internals.resolveConfigurationState({
+        ...versionBase,
+        appliedAt: undefined,
+        autoApply: true,
+      }),
+    ).toBe('saving');
     expect(internals.resolveConfigurationState(versionBase)).toBe('idle');
   });
 
   it('toDate returns undefined for invalid values', () => {
-    const internals = ClinicPresenter as unknown as { toDate: (value: unknown) => Date | undefined };
+    const internals = ClinicPresenter as unknown as {
+      toDate: (value: unknown) => Date | undefined;
+    };
 
     expect(internals.toDate('invalid')).toBeUndefined();
     const date = new Date('2025-10-12T10:00:00Z');
@@ -658,30 +685,30 @@ describe('ClinicPresenter configuration mapping edge cases', () => {
 
 describe('ClinicPresenter internal mappings', () => {
   const internals = ClinicPresenter as unknown as {
-    mapGeneralSettingsPayload: (raw: Record<string, unknown>) => ReturnType<
-      typeof ClinicPresenter.generalSettings
-    >['payload'];
-    mapTeamSettingsPayload: (raw: Record<string, unknown>) => ReturnType<
-      typeof ClinicPresenter.teamSettings
-    >['payload'];
-    mapScheduleSettingsPayload: (raw: Record<string, unknown>) => ReturnType<
-      typeof ClinicPresenter.scheduleSettings
-    >['payload'];
-    mapServiceSettingsPayload: (raw: Record<string, unknown>) => ReturnType<
-      typeof ClinicPresenter.serviceSettings
-    >;
-    mapPaymentSettingsPayload: (raw: Record<string, unknown>) => ReturnType<
-      typeof ClinicPresenter.paymentSettings
-    >['payload'];
-    mapIntegrationSettingsPayload: (raw: Record<string, unknown>) => ReturnType<
-      typeof ClinicPresenter.integrationSettings
-    >['payload'];
-    mapNotificationSettingsPayload: (raw: Record<string, unknown>) => ReturnType<
-      typeof ClinicPresenter.notificationSettings
-    >['payload'];
-    mapBrandingSettingsPayload: (raw: Record<string, unknown>) => ReturnType<
-      typeof ClinicPresenter.brandingSettings
-    >['payload'];
+    mapGeneralSettingsPayload: (
+      raw: Record<string, unknown>,
+    ) => ReturnType<typeof ClinicPresenter.generalSettings>['payload'];
+    mapTeamSettingsPayload: (
+      raw: Record<string, unknown>,
+    ) => ReturnType<typeof ClinicPresenter.teamSettings>['payload'];
+    mapScheduleSettingsPayload: (
+      raw: Record<string, unknown>,
+    ) => ReturnType<typeof ClinicPresenter.scheduleSettings>['payload'];
+    mapServiceSettingsPayload: (
+      raw: Record<string, unknown>,
+    ) => ReturnType<typeof ClinicPresenter.serviceSettings>;
+    mapPaymentSettingsPayload: (
+      raw: Record<string, unknown>,
+    ) => ReturnType<typeof ClinicPresenter.paymentSettings>['payload'];
+    mapIntegrationSettingsPayload: (
+      raw: Record<string, unknown>,
+    ) => ReturnType<typeof ClinicPresenter.integrationSettings>['payload'];
+    mapNotificationSettingsPayload: (
+      raw: Record<string, unknown>,
+    ) => ReturnType<typeof ClinicPresenter.notificationSettings>['payload'];
+    mapBrandingSettingsPayload: (
+      raw: Record<string, unknown>,
+    ) => ReturnType<typeof ClinicPresenter.brandingSettings>['payload'];
   };
 
   it('maps general settings through helper covering defaults', () => {
@@ -736,7 +763,14 @@ describe('ClinicPresenter internal mappings', () => {
           null,
         ],
         exceptionPeriods: [
-          { id: 'exc-1', name: 'Manutencao', appliesTo: 'clinic', start: '2025-12-01', end: '2025-12-02', resourceIds: [1, 'room'] },
+          {
+            id: 'exc-1',
+            name: 'Manutencao',
+            appliesTo: 'clinic',
+            start: '2025-12-01',
+            end: '2025-12-02',
+            resourceIds: [1, 'room'],
+          },
           { id: 'exc-2' },
           null,
         ],
@@ -776,8 +810,18 @@ describe('ClinicPresenter internal mappings', () => {
           enableOnlineScheduling: true,
           minAdvanceMinutes: '60',
           maxAdvanceMinutes: '180',
-          cancellationPolicy: { type: 'percentage', windowMinutes: '120', percentage: '50', message: 'policy' },
-          eligibility: { allowNewPatients: false, allowExistingPatients: true, minimumAge: '18', allowedTags: ['adult'] },
+          cancellationPolicy: {
+            type: 'percentage',
+            windowMinutes: '120',
+            percentage: '50',
+            message: 'policy',
+          },
+          eligibility: {
+            allowNewPatients: false,
+            allowExistingPatients: true,
+            minimumAge: '18',
+            allowedTags: ['adult'],
+          },
           instructions: 'Instrucao',
           requiredDocuments: ['RG', 123],
           color: '#00FF00',
@@ -812,7 +856,12 @@ describe('ClinicPresenter internal mappings', () => {
           maxRetries: '2',
           actions: ['notify', 1],
         },
-        refundPolicy: { type: 'manual', processingTimeHours: '24', feePercentage: '5', allowPartialRefund: 'true' },
+        refundPolicy: {
+          type: 'manual',
+          processingTimeHours: '24',
+          feePercentage: '5',
+          allowPartialRefund: 'true',
+        },
         cancellationPolicies: [
           { type: 'percentage', windowMinutes: '180', percentage: '50', message: 'policy' },
           { type: undefined },
@@ -841,7 +890,11 @@ describe('ClinicPresenter internal mappings', () => {
           businessNumber: '123',
           instanceStatus: 'connected',
           qrCodeUrl: 'https://qr',
-          templates: [{ name: 'tmpl', status: 'approved', category: 'transactional' }, { name: 'invalid' }, null],
+          templates: [
+            { name: 'tmpl', status: 'approved', category: 'transactional' },
+            { name: 'invalid' },
+            null,
+          ],
           quietHours: { start: '20:00', end: '07:00', timezone: 'UTC' },
           webhookUrl: 'https://hook',
         },
@@ -863,7 +916,11 @@ describe('ClinicPresenter internal mappings', () => {
           tracking: { open: true, click: false, bounce: true },
           templates: ['tmpl1'],
         },
-        webhooks: [{ event: 'booking.created', url: 'https://webhook', active: true }, { event: 'invalid' }, null],
+        webhooks: [
+          { event: 'booking.created', url: 'https://webhook', active: true },
+          { event: 'invalid' },
+          null,
+        ],
         metadata: { env: 'sandbox' },
       },
     });
@@ -882,7 +939,12 @@ describe('ClinicPresenter internal mappings', () => {
     const payload = internals.mapNotificationSettingsPayload({
       notificationSettings: {
         channels: [
-          { type: 'email', enabled: true, defaultEnabled: false, quietHours: { start: '22:00', end: '06:00', timezone: 'UTC' } },
+          {
+            type: 'email',
+            enabled: true,
+            defaultEnabled: false,
+            quietHours: { start: '22:00', end: '06:00', timezone: 'UTC' },
+          },
           { enabled: true },
           null,
         ],
@@ -914,7 +976,9 @@ describe('ClinicPresenter internal mappings', () => {
 
     expect(payload.channels).toHaveLength(1);
     expect(payload.templates[0].variables).toEqual([{ name: 'patient', required: true }]);
-    expect(payload.rules).toEqual([{ event: 'booking.confirmed', channels: ['email'], enabled: true }]);
+    expect(payload.rules).toEqual([
+      { event: 'booking.confirmed', channels: ['email'], enabled: true },
+    ]);
     expect(payload.quietHours?.timezone).toBe('America/Sao_Paulo');
     expect(payload.events).toEqual(['booking.confirmed']);
     expect(payload.metadata).toEqual({ source: 'default' });
@@ -932,7 +996,11 @@ describe('ClinicPresenter internal mappings', () => {
         logoUrl: 'https://cdn/logo.png',
         palette: { primary: '#000', secondary: '#fff' },
         typography: { primaryFont: 'Inter', secondaryFont: 'Roboto' },
-        preview: { mode: 'preview', generatedAt: '2025-10-10T10:00:00Z', previewUrl: 'https://cdn/preview.png' },
+        preview: {
+          mode: 'preview',
+          generatedAt: '2025-10-10T10:00:00Z',
+          previewUrl: 'https://cdn/preview.png',
+        },
         customCss: '.selector { color: #000; }',
         versionLabel: 'v1',
         metadata: { theme: 'dark' },

@@ -3,6 +3,7 @@ import { ConflictException, GoneException, NotFoundException } from '@nestjs/com
 import { CreateBookingUseCase } from '@modules/scheduling/use-cases/create-booking.use-case';
 import { IBookingRepository } from '@domain/scheduling/interfaces/repositories/booking.repository.interface';
 import { IBookingHoldRepository } from '@domain/scheduling/interfaces/repositories/booking-hold.repository.interface';
+import { BookingValidationService } from '@domain/scheduling/services/booking-validation.service';
 import { MessageBus } from '@shared/messaging/message-bus';
 import { DomainEvents } from '@shared/events/domain-events';
 import { Booking } from '@domain/scheduling/types/scheduling.types';
@@ -64,6 +65,10 @@ describe('CreateBookingUseCase', () => {
   let holdRepository: jest.Mocked<IBookingHoldRepository>;
   let messageBus: jest.Mocked<MessageBus>;
   let useCase: CreateBookingUseCase;
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
 
   beforeEach(() => {
     bookingRepository = {
@@ -166,5 +171,32 @@ describe('CreateBookingUseCase', () => {
       expectedVersion: hold.version,
       status: 'confirmed',
     });
+  });
+
+  it('usa instante atual quando requestedAtUtc n o informado', async () => {
+    const hold = baseHold();
+    holdRepository.findById.mockResolvedValue(hold);
+    bookingRepository.findByHold.mockResolvedValue(null);
+    holdRepository.updateStatus.mockResolvedValue({
+      ...hold,
+      status: 'confirmed',
+      version: hold.version + 1,
+    } as any);
+    bookingRepository.create.mockResolvedValue(baseBooking());
+    const now = new Date('2025-10-08T09:20:00Z');
+    jest.useFakeTimers().setSystemTime(now);
+    const validationSpy = jest.spyOn(BookingValidationService, 'validateHoldForBookingCreation');
+
+    await useCase.executeOrThrow({
+      ...createInput(),
+      requestedAtUtc: undefined,
+    } as any);
+
+    expect(validationSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nowUtc: now,
+      }),
+    );
+    validationSpy.mockRestore();
   });
 });

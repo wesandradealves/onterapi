@@ -1,6 +1,7 @@
 import { ClinicPaymentReconciliationService } from '../../../src/modules/clinic/services/clinic-payment-reconciliation.service';
 import {
   ClinicPaymentChargebackEvent,
+  ClinicPaymentFailedEvent,
   ClinicPaymentRefundedEvent,
   ClinicPaymentSettledEvent,
 } from '../../../src/modules/clinic/services/clinic-payment-event.types';
@@ -112,6 +113,33 @@ const createChargebackEvent = (): ClinicPaymentChargebackEvent => ({
   },
 });
 
+const createFailedEvent = (): ClinicPaymentFailedEvent => ({
+  eventId: 'evt-failed',
+  eventName: DomainEvents.CLINIC_PAYMENT_FAILED,
+  aggregateId: 'appointment-1',
+  occurredOn: new Date('2099-01-04T08:05:00Z'),
+  metadata: {},
+  payload: {
+    appointmentId: 'appointment-1',
+    tenantId: 'tenant-1',
+    clinicId: 'clinic-1',
+    professionalId: 'professional-1',
+    patientId: 'patient-1',
+    holdId: 'hold-1',
+    serviceTypeId: 'service-1',
+    paymentTransactionId: 'pay-123',
+    gatewayStatus: 'OVERDUE',
+    eventType: 'PAYMENT_OVERDUE',
+    sandbox: false,
+    fingerprint: 'fp-failed',
+    payloadId: 'asaas-evt-failed',
+    amount: { value: 200, netValue: 0 },
+    failedAt: new Date('2099-01-04T08:00:00Z'),
+    processedAt: new Date('2099-01-04T08:05:00Z'),
+    reason: 'Pagamento nao compensado',
+  },
+});
+
 describe('ClinicPaymentReconciliationService', () => {
   let appointmentRepository: Mocked<IClinicAppointmentRepository>;
   let configurationRepository: Mocked<IClinicConfigurationRepository>;
@@ -138,6 +166,7 @@ describe('ClinicPaymentReconciliationService', () => {
       notifySettlement: jest.fn(),
       notifyRefund: jest.fn(),
       notifyChargeback: jest.fn(),
+      notifyFailure: jest.fn(),
     } as unknown as Mocked<ClinicPaymentNotificationService>;
 
     paymentPayoutService = {
@@ -351,6 +380,52 @@ describe('ClinicPaymentReconciliationService', () => {
       expect.objectContaining({
         appointment: expect.objectContaining({ id: 'appointment-1' }),
         event: expect.objectContaining({ eventName: DomainEvents.CLINIC_PAYMENT_CHARGEBACK }),
+      }),
+    );
+    expect(paymentPayoutService.requestPayout).not.toHaveBeenCalled();
+  });
+
+  it('registra falha de pagamento e dispara notificacao', async () => {
+    appointmentRepository.findById.mockResolvedValue(createAppointment());
+
+    (appointmentRepository.updateMetadata as jest.Mock).mockClear();
+    (auditService.register as jest.Mock).mockClear();
+    paymentNotificationService.notifyFailure.mockClear();
+
+    await service.handlePaymentFailed(createFailedEvent());
+
+    expect(appointmentRepository.updateMetadata).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appointmentId: 'appointment-1',
+        metadataPatch: expect.objectContaining({
+          paymentLedger: expect.objectContaining({
+            events: expect.arrayContaining([
+              expect.objectContaining({
+                type: 'failed',
+                gatewayStatus: 'OVERDUE',
+                fingerprint: 'fp-failed',
+              }),
+            ]),
+          }),
+        }),
+      }),
+    );
+
+    expect(auditService.register).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'clinic.payment.failure_recorded',
+        detail: expect.objectContaining({
+          appointmentId: 'appointment-1',
+          paymentTransactionId: 'pay-123',
+          gatewayStatus: 'OVERDUE',
+        }),
+      }),
+    );
+
+    expect(paymentNotificationService.notifyFailure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appointment: expect.objectContaining({ id: 'appointment-1' }),
+        event: expect.objectContaining({ eventName: DomainEvents.CLINIC_PAYMENT_FAILED }),
       }),
     );
     expect(paymentPayoutService.requestPayout).not.toHaveBeenCalled();

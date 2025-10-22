@@ -200,6 +200,7 @@ describe('ProcessClinicPaymentWebhookUseCase', () => {
         fingerprint: expect.any(String),
       }),
     );
+    expect(webhookEventRepository.purgeExpired).toHaveBeenCalledWith(input.receivedAt);
   });
 
   it('deve falhar quando status ASAAS for desconhecido', async () => {
@@ -284,6 +285,7 @@ describe('ProcessClinicPaymentWebhookUseCase', () => {
     const refundEventNames = messageBus.publish.mock.calls.map(([event]) => event.eventName);
     expect(refundEventNames).toContain(DomainEvents.CLINIC_PAYMENT_STATUS_CHANGED);
     expect(refundEventNames).toContain(DomainEvents.CLINIC_PAYMENT_REFUNDED);
+    expect(webhookEventRepository.purgeExpired).toHaveBeenCalledWith(input.receivedAt);
   });
 
   it('deve registrar chargeback e preservar paymentDate quando informado', async () => {
@@ -341,6 +343,49 @@ describe('ProcessClinicPaymentWebhookUseCase', () => {
     const chargebackEventNames = messageBus.publish.mock.calls.map(([event]) => event.eventName);
     expect(chargebackEventNames).toContain(DomainEvents.CLINIC_PAYMENT_STATUS_CHANGED);
     expect(chargebackEventNames).toContain(DomainEvents.CLINIC_PAYMENT_CHARGEBACK);
+    expect(webhookEventRepository.purgeExpired).toHaveBeenCalledWith(input.receivedAt);
+  });
+
+  it('deve registrar falha de pagamento e publicar eventos de falha', async () => {
+    const appointment = createAppointment({ paymentStatus: 'approved' });
+    appointmentRepository.findByPaymentTransactionId.mockResolvedValue(appointment);
+    appointmentRepository.updatePaymentStatus.mockImplementation(async () =>
+      createAppointment({ paymentStatus: 'failed' }),
+    );
+    holdRepository.updatePaymentStatus.mockResolvedValue({
+      ...baseHold,
+      metadata: { paymentStatus: 'failed' },
+    } as ClinicHold);
+
+    const input = createInput({
+      receivedAt: new Date('2099-01-04T10:15:00Z'),
+      payload: {
+        event: 'PAYMENT_OVERDUE',
+        payment: {
+          id: 'pay-123',
+          status: 'OVERDUE',
+          paymentDate: '2099-01-04T10:00:00Z',
+          value: 200,
+          netValue: 150,
+        },
+      },
+    });
+
+    await useCase.executeOrThrow(input);
+
+    expect(appointmentRepository.updatePaymentStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appointmentId: appointment.id,
+        paymentStatus: 'failed',
+        gatewayStatus: 'OVERDUE',
+        eventFingerprint: expect.any(String),
+      }),
+    );
+
+    const publishedEvents = messageBus.publish.mock.calls.map(([event]) => event.eventName);
+    expect(publishedEvents).toContain(DomainEvents.CLINIC_PAYMENT_STATUS_CHANGED);
+    expect(publishedEvents).toContain(DomainEvents.CLINIC_PAYMENT_FAILED);
+    expect(webhookEventRepository.purgeExpired).toHaveBeenCalledWith(input.receivedAt);
   });
 
   it('ignora webhook ja persistido em armazenamento dedicado', async () => {
@@ -353,6 +398,7 @@ describe('ProcessClinicPaymentWebhookUseCase', () => {
     expect(appointmentRepository.updatePaymentStatus).not.toHaveBeenCalled();
     expect(holdRepository.updatePaymentStatus).not.toHaveBeenCalled();
     expect(webhookEventRepository.record).not.toHaveBeenCalled();
+    expect(webhookEventRepository.purgeExpired).not.toHaveBeenCalled();
     expect(auditService.register).not.toHaveBeenCalled();
     expect(messageBus.publish).not.toHaveBeenCalled();
   });
@@ -373,5 +419,6 @@ describe('ProcessClinicPaymentWebhookUseCase', () => {
     expect(holdRepository.updatePaymentStatus).not.toHaveBeenCalled();
     expect(auditService.register).not.toHaveBeenCalled();
     expect(messageBus.publish).not.toHaveBeenCalled();
+    expect(webhookEventRepository.purgeExpired).not.toHaveBeenCalled();
   });
 });

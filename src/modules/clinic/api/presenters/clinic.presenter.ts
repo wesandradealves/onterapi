@@ -798,10 +798,6 @@ export class ClinicPresenter {
       return (floor % 2 === 0 ? floor : floor + 1) / multiplier;
     }
 
-    if (Math.abs(diff + 0.5) < Number.EPSILON) {
-      return (floor % 2 === 0 ? floor : floor - 1) / multiplier;
-    }
-
     return Math.round(scaled) / multiplier;
   }
 
@@ -1155,7 +1151,9 @@ export class ClinicPresenter {
         continue;
       }
       const record = item as Record<string, unknown>;
-      const id = record.id !== undefined ? String(record.id) : undefined;
+      const idValue = record.id;
+      const id =
+        typeof idValue === 'string' || typeof idValue === 'number' ? String(idValue) : undefined;
       const name = record.name !== undefined ? String(record.name) : undefined;
       const appliesTo = record.appliesTo !== undefined ? String(record.appliesTo) : undefined;
       const start = record.start ? new Date(record.start as string) : undefined;

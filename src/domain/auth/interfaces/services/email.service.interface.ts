@@ -93,7 +93,7 @@ export interface ClinicAlertEmailData {
 export interface ClinicPaymentEmailData {
   to: string;
   clinicName: string;
-  status: 'settled' | 'refunded' | 'chargeback';
+  status: 'settled' | 'refunded' | 'chargeback' | 'failed';
   transactionId: string;
   eventAt: Date;
   serviceType?: string;
