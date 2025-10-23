@@ -76,6 +76,7 @@ import {
   IResolveClinicAlertUseCase as IResolveClinicAlertUseCaseToken,
 } from '../../../../domain/clinic/interfaces/use-cases/resolve-clinic-alert.use-case.interface';
 import { ClinicAccessService } from '../../services/clinic-access.service';
+import { ClinicManagementExportService } from '../../services/clinic-management-export.service';
 
 @ApiTags('Clinic Management')
 @ApiBearerAuth()
@@ -92,6 +93,7 @@ export class ClinicManagementController {
     @Inject(IResolveClinicAlertUseCaseToken)
     private readonly resolveClinicAlertUseCase: IResolveClinicAlertUseCase,
     private readonly clinicAccessService: ClinicAccessService,
+    private readonly exportService: ClinicManagementExportService,
   ) {}
 
   @Get('overview')
@@ -245,12 +247,87 @@ export class ClinicManagementController {
     }
 
     const overview = await this.getClinicManagementOverviewUseCase.executeOrThrow(overviewQuery);
-    const csvLines = this.buildOverviewCsv(ClinicPresenter.managementOverview(overview));
+    const overviewDto = ClinicPresenter.managementOverview(overview);
+    const csvLines = this.exportService.buildOverviewCsv(overviewDto);
     const filename = `clinic-management-overview-${context.tenantId}-${Date.now()}.csv`;
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(csvLines.join('\n'));
+  }
+
+  @Get('overview/export.xls')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Exportar visao consolidada das clinicas (Excel)' })
+  @ApiProduces('application/vnd.ms-excel')
+  async exportOverviewExcel(
+    @Query(new ZodValidationPipe(getClinicManagementOverviewSchema))
+    query: GetClinicManagementOverviewSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const overviewQuery = toClinicManagementOverviewQuery(query, context);
+    const requestedClinicIds = overviewQuery.filters?.clinicIds ?? query.clinicIds;
+    const authorizedClinicIds = await this.clinicAccessService.resolveAuthorizedClinicIds({
+      tenantId: context.tenantId,
+      user: currentUser,
+      requestedClinicIds,
+    });
+
+    if (authorizedClinicIds.length > 0) {
+      overviewQuery.filters = {
+        ...(overviewQuery.filters ?? {}),
+        clinicIds: authorizedClinicIds,
+      };
+    }
+
+    const overview = await this.getClinicManagementOverviewUseCase.executeOrThrow(overviewQuery);
+    const overviewDto = ClinicPresenter.managementOverview(overview);
+    const buffer = await this.exportService.buildOverviewExcel(overviewDto);
+    const filename = `clinic-management-overview-${context.tenantId}-${Date.now()}.xls`;
+
+    res.setHeader('Content-Type', 'application/vnd.ms-excel');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
+  }
+
+  @Get('overview/export.pdf')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Exportar visao consolidada das clinicas (PDF)' })
+  @ApiProduces('application/pdf')
+  async exportOverviewPdf(
+    @Query(new ZodValidationPipe(getClinicManagementOverviewSchema))
+    query: GetClinicManagementOverviewSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const overviewQuery = toClinicManagementOverviewQuery(query, context);
+    const requestedClinicIds = overviewQuery.filters?.clinicIds ?? query.clinicIds;
+    const authorizedClinicIds = await this.clinicAccessService.resolveAuthorizedClinicIds({
+      tenantId: context.tenantId,
+      user: currentUser,
+      requestedClinicIds,
+    });
+
+    if (authorizedClinicIds.length > 0) {
+      overviewQuery.filters = {
+        ...(overviewQuery.filters ?? {}),
+        clinicIds: authorizedClinicIds,
+      };
+    }
+
+    const overview = await this.getClinicManagementOverviewUseCase.executeOrThrow(overviewQuery);
+    const overviewDto = ClinicPresenter.managementOverview(overview);
+    const buffer = await this.exportService.buildOverviewPdf(overviewDto);
+    const filename = `clinic-management-overview-${context.tenantId}-${Date.now()}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
   }
 
   @Get('alerts')
@@ -339,7 +416,7 @@ export class ClinicManagementController {
 
     const alerts = await this.listClinicAlertsUseCase.executeOrThrow(alertsQuery);
     const dtoAlerts = alerts.map((alert) => ClinicPresenter.alert(alert));
-    const csvLines = this.buildAlertsCsv(dtoAlerts);
+    const csvLines = this.exportService.buildAlertsCsv(dtoAlerts);
     const filename = `clinic-alerts-${context.tenantId}-${Date.now()}.csv`;
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -411,107 +488,5 @@ export class ClinicManagementController {
       tenantId: resolvedTenantId,
       userId: currentUser.id,
     };
-  }
-
-  private buildOverviewCsv(overview: ClinicManagementOverviewResponseDto): string[] {
-    const headers = [
-      'clinicId',
-      'nome',
-      'status',
-      'ultimoAtivoEm',
-      'receita',
-      'consultas',
-      'pacientesAtivos',
-      'ocupacao',
-      'satisfacao',
-      'margemContribuicao',
-      'alertasAtivos',
-      'tiposAlertasAtivos',
-      'owners',
-      'gestores',
-      'profissionais',
-      'secretarias',
-    ];
-
-    const rows = overview.clinics.map((clinic) => {
-      const metrics = clinic.metrics ?? ({} as NonNullable<typeof clinic.metrics>);
-      const financials = clinic.financials;
-      const activeAlerts = clinic.alerts?.filter((alert) => !alert.resolvedAt) ?? [];
-      const alertTypes = Array.from(new Set(activeAlerts.map((alert) => alert.type))).join('|');
-      const distribution = clinic.teamDistribution ?? [];
-
-      const roleCount = (role: RolesEnum): number =>
-        distribution.find((entry) => entry.role === role)?.count ?? 0;
-
-      return [
-        this.escapeCsvValue(clinic.clinicId),
-        this.escapeCsvValue(clinic.name),
-        this.escapeCsvValue(clinic.status),
-        this.escapeCsvValue(clinic.lastActivityAt ?? ''),
-        this.escapeCsvValue(financials?.revenue ?? metrics.revenue ?? 0),
-        this.escapeCsvValue(metrics.appointments ?? 0),
-        this.escapeCsvValue(metrics.activePatients ?? 0),
-        this.escapeCsvValue(metrics.occupancyRate ?? 0),
-        this.escapeCsvValue(metrics.satisfactionScore ?? ''),
-        this.escapeCsvValue(financials?.contributionPercentage ?? metrics.contributionMargin ?? ''),
-        this.escapeCsvValue(activeAlerts.length),
-        this.escapeCsvValue(alertTypes),
-        this.escapeCsvValue(roleCount(RolesEnum.CLINIC_OWNER)),
-        this.escapeCsvValue(roleCount(RolesEnum.MANAGER)),
-        this.escapeCsvValue(roleCount(RolesEnum.PROFESSIONAL)),
-        this.escapeCsvValue(roleCount(RolesEnum.SECRETARY)),
-      ].join(',');
-    });
-
-    return [headers.join(','), ...rows];
-  }
-
-  private buildAlertsCsv(alerts: ClinicDashboardAlertDto[]): string[] {
-    const headers = [
-      'alertId',
-      'clinicId',
-      'tipo',
-      'canal',
-      'disparadoPor',
-      'disparadoEm',
-      'resolvidoPor',
-      'resolvidoEm',
-      'dados',
-    ];
-
-    const rows = alerts.map((alert) =>
-      [
-        this.escapeCsvValue(alert.id),
-        this.escapeCsvValue(alert.clinicId),
-        this.escapeCsvValue(alert.type),
-        this.escapeCsvValue(alert.channel),
-        this.escapeCsvValue(alert.triggeredBy),
-        this.escapeCsvValue(alert.triggeredAt),
-        this.escapeCsvValue(alert.resolvedBy ?? ''),
-        this.escapeCsvValue(alert.resolvedAt ?? ''),
-        this.escapeCsvValue(alert.payload ?? {}),
-      ].join(','),
-    );
-
-    return [headers.join(','), ...rows];
-  }
-
-  private escapeCsvValue(value: unknown): string {
-    if (value === null || value === undefined || value === '') {
-      return '""';
-    }
-
-    if (value instanceof Date) {
-      return `"${value.toISOString()}"`;
-    }
-
-    if (typeof value === 'object') {
-      const serialized = JSON.stringify(value);
-      return `"${serialized.replace(/"/g, '""')}"`;
-    }
-
-    const stringValue = String(value);
-    const sanitized = stringValue.replace(/"/g, '""');
-    return `"${sanitized}"`;
   }
 }

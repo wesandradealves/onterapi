@@ -50,6 +50,7 @@ import { ClinicScopeGuard } from './guards/clinic-scope.guard';
 import { ClinicConfigurationValidator } from './services/clinic-configuration-validator.service';
 import { ClinicInvitationTokenService } from './services/clinic-invitation-token.service';
 import { ClinicTemplateOverrideService } from './services/clinic-template-override.service';
+import { ClinicManagementExportService } from './services/clinic-management-export.service';
 import { ClinicConfigurationCacheService } from './services/clinic-configuration-cache.service';
 import { ClinicConfigurationTelemetryService } from './services/clinic-configuration-telemetry.service';
 import { ClinicAccessService } from './services/clinic-access.service';
@@ -260,6 +261,7 @@ const serviceProviders: Provider[] = [
   ClinicPaymentPayoutWorkerService,
   ClinicGoogleCalendarSyncService,
   ClinicAlertNotificationService,
+  ClinicManagementExportService,
   ClinicTemplateOverrideService,
   ClinicNotificationContextService,
   ClinicOverbookingEvaluatorService,

@@ -35,6 +35,7 @@ import { ClinicManagementController } from '../../../src/modules/clinic/api/cont
 import { JwtAuthGuard } from '../../../src/modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../src/modules/auth/guards/roles.guard';
 import { ClinicAccessService } from '../../../src/modules/clinic/services/clinic-access.service';
+import { ClinicManagementExportService } from '../../../src/modules/clinic/services/clinic-management-export.service';
 
 class AllowAuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
@@ -60,6 +61,86 @@ describe('ClinicManagementController (integration)', () => {
     assertAlertAccess: jest.Mock;
   };
   const tenantCtx = '00000000-0000-0000-0000-000000000000';
+  const binaryParser = (res: any, callback: (err: Error | null, body: Buffer) => void) => {
+    const chunks: Buffer[] = [];
+    res.on('data', (chunk) => chunks.push(chunk));
+    res.on('end', () => callback(null, Buffer.concat(chunks)));
+  };
+
+  const buildOverviewFixture = (): ClinicManagementOverview => ({
+    period: {
+      start: new Date('2025-01-01T00:00:00Z'),
+      end: new Date('2025-01-31T23:59:59Z'),
+    },
+    totals: {
+      clinics: 1,
+      professionals: 4,
+      activePatients: 80,
+      revenue: 10000,
+    },
+    clinics: [
+      {
+        clinicId: 'clinic-1',
+        name: 'Clinic One',
+        status: 'active',
+        primaryOwnerId: 'owner-1',
+        lastActivityAt: new Date('2025-01-15T12:00:00Z'),
+        metrics: {
+          revenue: 10000,
+          appointments: 120,
+          activePatients: 80,
+          occupancyRate: 0.82,
+          satisfactionScore: 4.5,
+          contributionMargin: 0.3,
+        },
+        financials: {
+          clinicId: 'clinic-1',
+          revenue: 10000,
+          expenses: 5000,
+          profit: 5000,
+          margin: 50,
+          contributionPercentage: 55,
+        },
+        alerts: [
+          {
+            id: 'alert-active',
+            clinicId: 'clinic-1',
+            tenantId: tenantCtx,
+            type: 'revenue_drop',
+            channel: 'push',
+            triggeredBy: 'system',
+            triggeredAt: new Date('2025-01-10T10:00:00Z'),
+            payload: { variation: -12 },
+            resolvedAt: undefined,
+            resolvedBy: undefined,
+          } as ClinicAlert,
+          {
+            id: 'alert-resolved',
+            clinicId: 'clinic-1',
+            tenantId: tenantCtx,
+            type: 'compliance',
+            channel: 'email',
+            triggeredBy: 'system',
+            triggeredAt: new Date('2025-01-05T10:00:00Z'),
+            resolvedAt: new Date('2025-01-06T10:00:00Z'),
+            resolvedBy: 'manager-1',
+            payload: { document: 'crm' },
+          } as ClinicAlert,
+        ],
+        teamDistribution: [
+          { role: RolesEnum.CLINIC_OWNER, count: 1 },
+          { role: RolesEnum.MANAGER, count: 2 },
+          { role: RolesEnum.PROFESSIONAL, count: 3 },
+          { role: RolesEnum.SECRETARY, count: 1 },
+        ],
+        template: undefined,
+      },
+    ],
+    alerts: [],
+    comparisons: undefined,
+    forecast: undefined,
+    financials: undefined,
+  });
 
   beforeEach(async () => {
     overviewUseCase = {
@@ -120,6 +201,7 @@ describe('ClinicManagementController (integration)', () => {
           useValue: resolveAlertUseCase,
         },
         { provide: ClinicAccessService, useValue: clinicAccessService },
+        ClinicManagementExportService,
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -236,78 +318,7 @@ describe('ClinicManagementController (integration)', () => {
   });
 
   it('exporta overview consolidada em CSV respeitando escopo', async () => {
-    const overview: ClinicManagementOverview = {
-      period: {
-        start: new Date('2025-01-01T00:00:00Z'),
-        end: new Date('2025-01-31T23:59:59Z'),
-      },
-      totals: {
-        clinics: 1,
-        professionals: 4,
-        activePatients: 80,
-        revenue: 10000,
-      },
-      clinics: [
-        {
-          clinicId: 'clinic-1',
-          name: 'Clinic One',
-          status: 'active',
-          primaryOwnerId: 'owner-1',
-          lastActivityAt: new Date('2025-01-15T12:00:00Z'),
-          metrics: {
-            revenue: 10000,
-            appointments: 120,
-            activePatients: 80,
-            occupancyRate: 0.82,
-            satisfactionScore: 4.5,
-            contributionMargin: 0.3,
-          },
-          financials: {
-            clinicId: 'clinic-1',
-            revenue: 10000,
-            expenses: 5000,
-            profit: 5000,
-            margin: 50,
-            contributionPercentage: 55,
-          },
-          alerts: [
-            {
-              id: 'alert-active',
-              clinicId: 'clinic-1',
-              tenantId: tenantCtx,
-              type: 'revenue_drop',
-              channel: 'push',
-              triggeredBy: 'system',
-              triggeredAt: new Date('2025-01-10T10:00:00Z'),
-              payload: { variation: -12 },
-            },
-            {
-              id: 'alert-resolved',
-              clinicId: 'clinic-1',
-              tenantId: tenantCtx,
-              type: 'compliance',
-              channel: 'email',
-              triggeredBy: 'system',
-              triggeredAt: new Date('2025-01-05T10:00:00Z'),
-              resolvedAt: new Date('2025-01-06T10:00:00Z'),
-              resolvedBy: 'manager-1',
-              payload: { document: 'crm' },
-            },
-          ],
-          teamDistribution: [
-            { role: RolesEnum.CLINIC_OWNER, count: 1 },
-            { role: RolesEnum.MANAGER, count: 2 },
-            { role: RolesEnum.PROFESSIONAL, count: 3 },
-            { role: RolesEnum.SECRETARY, count: 1 },
-          ],
-          template: undefined,
-        },
-      ],
-      alerts: [],
-      comparisons: undefined,
-      forecast: undefined,
-      financials: undefined,
-    };
+    const overview = buildOverviewFixture();
 
     overviewUseCase.executeOrThrow.mockResolvedValue(overview);
 
@@ -334,6 +345,47 @@ describe('ClinicManagementController (integration)', () => {
       user: expect.objectContaining({ id: 'user-ctx' }),
       requestedClinicIds: undefined,
     });
+  });
+
+  it('exporta overview consolidada em Excel', async () => {
+    const overview = buildOverviewFixture();
+    overviewUseCase.executeOrThrow.mockResolvedValue(overview);
+
+    const response = await request(app.getHttpServer())
+      .get('/management/overview/export.xls')
+      .set('x-tenant-id', tenantCtx)
+      .buffer(true)
+      .parse(binaryParser)
+      .expect(200);
+
+    expect(Buffer.isBuffer(response.body)).toBe(true);
+    expect(response.headers['content-type']).toContain('application/vnd.ms-excel');
+    const xml = response.body.toString('utf-8');
+    expect(xml).toContain('<Workbook');
+    expect(xml).toContain('Clinic One');
+
+    expect(clinicAccessService.resolveAuthorizedClinicIds).toHaveBeenCalledWith({
+      tenantId: tenantCtx,
+      user: expect.objectContaining({ id: 'user-ctx' }),
+      requestedClinicIds: undefined,
+    });
+  });
+
+  it('exporta overview consolidada em PDF', async () => {
+    const overview = buildOverviewFixture();
+    overviewUseCase.executeOrThrow.mockResolvedValue(overview);
+
+    const response = await request(app.getHttpServer())
+      .get('/management/overview/export.pdf')
+      .set('x-tenant-id', tenantCtx)
+      .buffer(true)
+      .parse(binaryParser)
+      .expect(200);
+
+    expect(Buffer.isBuffer(response.body)).toBe(true);
+    expect(response.headers['content-type']).toContain('application/pdf');
+    expect(response.body.subarray(0, 4).toString()).toBe('%PDF');
+    expect(response.body.toString('utf-8')).toContain('Clinic One');
   });
 
   afterEach(async () => {
