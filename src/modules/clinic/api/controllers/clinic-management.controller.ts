@@ -312,6 +312,41 @@ export class ClinicManagementController {
     return alerts.map((alert) => ClinicPresenter.alert(alert));
   }
 
+  @Get('alerts/export')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Exportar alertas das clinicas (CSV)' })
+  @ApiProduces('text/csv')
+  async exportAlerts(
+    @Query(new ZodValidationPipe(getClinicManagementAlertsSchema))
+    query: GetClinicManagementAlertsSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const alertsQuery = toClinicManagementAlertsQuery(query, context);
+    const authorizedClinicIds = await this.clinicAccessService.resolveAuthorizedClinicIds({
+      tenantId: context.tenantId,
+      user: currentUser,
+      requestedClinicIds: alertsQuery.clinicIds,
+    });
+
+    if (authorizedClinicIds.length > 0) {
+      alertsQuery.clinicIds = authorizedClinicIds;
+    }
+
+    alertsQuery.limit = Math.min(alertsQuery.limit ?? 1000, 5000);
+
+    const alerts = await this.listClinicAlertsUseCase.executeOrThrow(alertsQuery);
+    const dtoAlerts = alerts.map((alert) => ClinicPresenter.alert(alert));
+    const csvLines = this.buildAlertsCsv(dtoAlerts);
+    const filename = `clinic-alerts-${context.tenantId}-${Date.now()}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csvLines.join('\n'));
+  }
+
   @Post('professionals/transfer')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
   @ApiOperation({ summary: 'Transferir profissional entre clinicas' })
@@ -379,28 +414,6 @@ export class ClinicManagementController {
   }
 
   private buildOverviewCsv(overview: ClinicManagementOverviewResponseDto): string[] {
-    const escapeCell = (value: unknown): string => {
-      if (value === null || value === undefined || value === '') {
-        return '""';
-      }
-
-      if (typeof value === 'string') {
-        const sanitized = value.replace(/"/g, '""');
-        return `"${sanitized}"`;
-      }
-
-      if (value instanceof Date) {
-        return `"${value.toISOString()}"`;
-      }
-
-      if (typeof value === 'object') {
-        const serialized = JSON.stringify(value);
-        return `"${serialized.replace(/"/g, '""')}"`;
-      }
-
-      return `"${String(value).replace(/"/g, '""')}"`;
-    };
-
     const headers = [
       'clinicId',
       'nome',
@@ -431,25 +444,74 @@ export class ClinicManagementController {
         distribution.find((entry) => entry.role === role)?.count ?? 0;
 
       return [
-        escapeCell(clinic.clinicId),
-        escapeCell(clinic.name),
-        escapeCell(clinic.status),
-        escapeCell(clinic.lastActivityAt ?? ''),
-        escapeCell(financials?.revenue ?? metrics.revenue ?? 0),
-        escapeCell(metrics.appointments ?? 0),
-        escapeCell(metrics.activePatients ?? 0),
-        escapeCell(metrics.occupancyRate ?? 0),
-        escapeCell(metrics.satisfactionScore ?? ''),
-        escapeCell(financials?.contributionPercentage ?? metrics.contributionMargin ?? ''),
-        escapeCell(activeAlerts.length),
-        escapeCell(alertTypes),
-        escapeCell(roleCount(RolesEnum.CLINIC_OWNER)),
-        escapeCell(roleCount(RolesEnum.MANAGER)),
-        escapeCell(roleCount(RolesEnum.PROFESSIONAL)),
-        escapeCell(roleCount(RolesEnum.SECRETARY)),
+        this.escapeCsvValue(clinic.clinicId),
+        this.escapeCsvValue(clinic.name),
+        this.escapeCsvValue(clinic.status),
+        this.escapeCsvValue(clinic.lastActivityAt ?? ''),
+        this.escapeCsvValue(financials?.revenue ?? metrics.revenue ?? 0),
+        this.escapeCsvValue(metrics.appointments ?? 0),
+        this.escapeCsvValue(metrics.activePatients ?? 0),
+        this.escapeCsvValue(metrics.occupancyRate ?? 0),
+        this.escapeCsvValue(metrics.satisfactionScore ?? ''),
+        this.escapeCsvValue(financials?.contributionPercentage ?? metrics.contributionMargin ?? ''),
+        this.escapeCsvValue(activeAlerts.length),
+        this.escapeCsvValue(alertTypes),
+        this.escapeCsvValue(roleCount(RolesEnum.CLINIC_OWNER)),
+        this.escapeCsvValue(roleCount(RolesEnum.MANAGER)),
+        this.escapeCsvValue(roleCount(RolesEnum.PROFESSIONAL)),
+        this.escapeCsvValue(roleCount(RolesEnum.SECRETARY)),
       ].join(',');
     });
 
     return [headers.join(','), ...rows];
+  }
+
+  private buildAlertsCsv(alerts: ClinicDashboardAlertDto[]): string[] {
+    const headers = [
+      'alertId',
+      'clinicId',
+      'tipo',
+      'canal',
+      'disparadoPor',
+      'disparadoEm',
+      'resolvidoPor',
+      'resolvidoEm',
+      'dados',
+    ];
+
+    const rows = alerts.map((alert) =>
+      [
+        this.escapeCsvValue(alert.id),
+        this.escapeCsvValue(alert.clinicId),
+        this.escapeCsvValue(alert.type),
+        this.escapeCsvValue(alert.channel),
+        this.escapeCsvValue(alert.triggeredBy),
+        this.escapeCsvValue(alert.triggeredAt),
+        this.escapeCsvValue(alert.resolvedBy ?? ''),
+        this.escapeCsvValue(alert.resolvedAt ?? ''),
+        this.escapeCsvValue(alert.payload ?? {}),
+      ].join(','),
+    );
+
+    return [headers.join(','), ...rows];
+  }
+
+  private escapeCsvValue(value: unknown): string {
+    if (value === null || value === undefined || value === '') {
+      return '""';
+    }
+
+    if (value instanceof Date) {
+      return `"${value.toISOString()}"`;
+    }
+
+    if (typeof value === 'object') {
+      const serialized = JSON.stringify(value);
+      return `"${serialized.replace(/"/g, '""')}"`;
+    }
+
+    const stringValue = String(value);
+    const sanitized = stringValue.replace(/"/g, '""');
+    return `"${sanitized}"`;
   }
 }

@@ -178,6 +178,63 @@ describe('ClinicManagementController (integration)', () => {
     expect(response.body.totals.revenue).toBe(15000);
   });
 
+  it('exporta alertas em csv respeitando filtros e escopo', async () => {
+    const tenantHeader = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+    const clinicId = '11111111-1111-1111-1111-111111111111';
+    const alert: ClinicAlert = {
+      id: 'alert-export',
+      clinicId,
+      tenantId: tenantHeader,
+      type: 'revenue_drop',
+      channel: 'push',
+      triggeredBy: 'system',
+      triggeredAt: new Date('2025-04-05T09:00:00Z'),
+      resolvedAt: new Date('2025-04-05T10:00:00Z'),
+      resolvedBy: 'manager-1',
+      payload: { delta: -12.5 },
+    };
+
+    alertsUseCase.executeOrThrow.mockResolvedValue([alert]);
+
+    const response = await request(app.getHttpServer())
+      .get('/management/alerts/export')
+      .set('x-tenant-id', tenantHeader)
+      .expect(200);
+
+    expect(clinicAccessService.resolveAuthorizedClinicIds).toHaveBeenCalledWith({
+      tenantId: tenantHeader,
+      user: expect.objectContaining({ id: 'user-ctx' }),
+      requestedClinicIds: undefined,
+    });
+
+    expect(alertsUseCase.executeOrThrow).toHaveBeenCalledWith({
+      tenantId: tenantHeader,
+      clinicIds: ['clinic-1'],
+      types: undefined,
+      activeOnly: undefined,
+      limit: 1000,
+    });
+
+    expect(response.headers['content-type']).toContain('text/csv');
+    expect(response.headers['content-disposition']).toMatch(
+      /attachment; filename="clinic-alerts-.*\.csv"/,
+    );
+
+    const lines = response.text.trim().split('\n');
+    expect(lines[0]).toBe(
+      'alertId,clinicId,tipo,canal,disparadoPor,disparadoEm,resolvidoPor,resolvidoEm,dados',
+    );
+    expect(lines[1]).toContain('"alert-export"');
+    expect(lines[1]).toContain(`"${clinicId}"`);
+    expect(lines[1]).toContain('"revenue_drop"');
+    expect(lines[1]).toContain('"push"');
+    expect(lines[1]).toContain('"system"');
+    expect(lines[1]).toContain('"2025-04-05T09:00:00.000Z"');
+    expect(lines[1]).toContain('"manager-1"');
+    expect(lines[1]).toContain('"2025-04-05T10:00:00.000Z"');
+    expect(lines[1]).toContain('"{""delta"":-12.5}"');
+  });
+
   it('exporta overview consolidada em CSV respeitando escopo', async () => {
     const overview: ClinicManagementOverview = {
       period: {
