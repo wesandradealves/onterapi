@@ -21,6 +21,9 @@ import {
   WhatsAppMessagePayload,
 } from '../../../domain/integrations/interfaces/services/whatsapp.service.interface';
 import {
+  IPushNotificationService,
+} from '../../../domain/integrations/interfaces/services/push-notification.service.interface';
+import {
   ClinicPaymentChargebackEvent,
   ClinicPaymentFailedEvent,
   ClinicPaymentRefundedEvent,
@@ -35,6 +38,7 @@ const PAYMENT_SETTLED_EVENT = 'clinic.payment.settled';
 const PAYMENT_REFUNDED_EVENT = 'clinic.payment.refunded';
 const PAYMENT_CHARGEBACK_EVENT = 'clinic.payment.chargeback';
 const PAYMENT_FAILED_EVENT = 'clinic.payment.failed';
+const PAYMENT_PUSH_CATEGORY = 'clinic_payment';
 
 @Injectable()
 export class ClinicPaymentNotificationService {
@@ -47,6 +51,8 @@ export class ClinicPaymentNotificationService {
     private readonly clinicRepository: IClinicRepository,
     @Inject(IEmailService)
     private readonly emailService: IEmailService,
+    @Inject(IPushNotificationService)
+    private readonly pushNotificationService: IPushNotificationService,
     @Inject(IWhatsAppService)
     private readonly whatsappService: IWhatsAppService,
   ) {}
@@ -93,6 +99,18 @@ export class ClinicPaymentNotificationService {
       return;
     }
 
+    const dispatchChannels = this.notificationContext.normalizeDispatchChannels(channels);
+
+    if (dispatchChannels.length === 0) {
+      this.logger.warn('Liquidacao de pagamento sem canais normalizados para notificacao', {
+        clinicId: input.appointment.clinicId,
+        appointmentId: input.appointment.id,
+        event: PAYMENT_SETTLED_EVENT,
+        rawChannels: channels,
+      });
+      return;
+    }
+
     await this.messageBus.publish(
       DomainEvents.notificationsClinicPaymentSettled(input.appointment.id, {
         tenantId: input.appointment.tenantId,
@@ -113,11 +131,28 @@ export class ClinicPaymentNotificationService {
         fingerprint: input.event.payload.fingerprint ?? null,
         payloadId: input.event.payload.payloadId ?? null,
         recipientIds: recipients,
-        channels,
+        channels: dispatchChannels,
       }),
     );
 
-    if (channels.includes('email')) {
+    if (dispatchChannels.includes('push')) {
+      await this.dispatchPaymentPush({
+        appointment: input.appointment,
+        clinicId: input.appointment.clinicId,
+        recipientIds: recipients,
+        status: 'settled',
+        eventAt: new Date(input.settlement.settledAt),
+        transactionId: input.event.payload.paymentTransactionId,
+        amountCents: input.settlement.baseAmountCents,
+        netAmountCents: input.settlement.netAmountCents ?? null,
+        details: {
+          split: input.settlement.split,
+          remainderCents: input.settlement.remainderCents,
+        },
+      });
+    }
+
+    if (dispatchChannels.includes('email')) {
       await this.dispatchPaymentEmail({
         appointment: input.appointment,
         recipientIds: recipients,
@@ -135,7 +170,7 @@ export class ClinicPaymentNotificationService {
       });
     }
 
-    if (channels.includes('whatsapp')) {
+    if (dispatchChannels.includes('whatsapp')) {
       await this.dispatchPaymentWhatsApp({
         appointment: input.appointment,
         recipientIds: recipients,
@@ -156,7 +191,7 @@ export class ClinicPaymentNotificationService {
     this.logger.debug('Notificacao de pagamento liquidado enfileirada', {
       appointmentId: input.appointment.id,
       recipients,
-      channels,
+      channels: dispatchChannels,
       transactionId: input.event.payload.paymentTransactionId,
     });
   }
@@ -203,6 +238,18 @@ export class ClinicPaymentNotificationService {
       return;
     }
 
+    const dispatchChannels = this.notificationContext.normalizeDispatchChannels(channels);
+
+    if (dispatchChannels.length === 0) {
+      this.logger.warn('Reembolso sem canais normalizados para notificacao', {
+        clinicId: input.appointment.clinicId,
+        appointmentId: input.appointment.id,
+        event: PAYMENT_REFUNDED_EVENT,
+        rawChannels: channels,
+      });
+      return;
+    }
+
     await this.messageBus.publish(
       DomainEvents.notificationsClinicPaymentRefunded(input.appointment.id, {
         tenantId: input.appointment.tenantId,
@@ -221,11 +268,27 @@ export class ClinicPaymentNotificationService {
         fingerprint: input.event.payload.fingerprint ?? null,
         payloadId: input.event.payload.payloadId ?? null,
         recipientIds: recipients,
-        channels,
+        channels: dispatchChannels,
       }),
     );
 
-    if (channels.includes('email')) {
+    if (dispatchChannels.includes('push')) {
+      await this.dispatchPaymentPush({
+        appointment: input.appointment,
+        clinicId: input.appointment.clinicId,
+        recipientIds: recipients,
+        status: 'refunded',
+        eventAt: new Date(input.refund.refundedAt),
+        transactionId: input.event.payload.paymentTransactionId,
+        amountCents: input.refund.amountCents,
+        netAmountCents: input.refund.netAmountCents ?? null,
+        details: {
+          gatewayStatus: input.refund.gatewayStatus,
+        },
+      });
+    }
+
+    if (dispatchChannels.includes('email')) {
       await this.dispatchPaymentEmail({
         appointment: input.appointment,
         recipientIds: recipients,
@@ -242,7 +305,7 @@ export class ClinicPaymentNotificationService {
       });
     }
 
-    if (channels.includes('whatsapp')) {
+    if (dispatchChannels.includes('whatsapp')) {
       await this.dispatchPaymentWhatsApp({
         appointment: input.appointment,
         recipientIds: recipients,
@@ -262,7 +325,7 @@ export class ClinicPaymentNotificationService {
     this.logger.debug('Notificacao de reembolso enfileirada', {
       appointmentId: input.appointment.id,
       recipients,
-      channels,
+      channels: dispatchChannels,
       transactionId: input.event.payload.paymentTransactionId,
     });
   }
@@ -309,6 +372,18 @@ export class ClinicPaymentNotificationService {
       return;
     }
 
+    const dispatchChannels = this.notificationContext.normalizeDispatchChannels(channels);
+
+    if (dispatchChannels.length === 0) {
+      this.logger.warn('Chargeback sem canais normalizados para notificacao', {
+        clinicId: input.appointment.clinicId,
+        appointmentId: input.appointment.id,
+        event: PAYMENT_CHARGEBACK_EVENT,
+        rawChannels: channels,
+      });
+      return;
+    }
+
     await this.messageBus.publish(
       DomainEvents.notificationsClinicPaymentChargeback(input.appointment.id, {
         tenantId: input.appointment.tenantId,
@@ -323,11 +398,27 @@ export class ClinicPaymentNotificationService {
         fingerprint: input.event.payload.fingerprint ?? null,
         payloadId: input.event.payload.payloadId ?? null,
         recipientIds: recipients,
-        channels,
+        channels: dispatchChannels,
       }),
     );
 
-    if (channels.includes('email')) {
+    if (dispatchChannels.includes('push')) {
+      await this.dispatchPaymentPush({
+        appointment: input.appointment,
+        clinicId: input.appointment.clinicId,
+        recipientIds: recipients,
+        status: 'chargeback',
+        eventAt: new Date(input.chargeback.chargebackAt),
+        transactionId: input.event.payload.paymentTransactionId,
+        amountCents: input.chargeback.amountCents,
+        netAmountCents: input.chargeback.netAmountCents ?? null,
+        details: {
+          gatewayStatus: input.chargeback.gatewayStatus,
+        },
+      });
+    }
+
+    if (dispatchChannels.includes('email')) {
       await this.dispatchPaymentEmail({
         appointment: input.appointment,
         recipientIds: recipients,
@@ -344,7 +435,7 @@ export class ClinicPaymentNotificationService {
       });
     }
 
-    if (channels.includes('whatsapp')) {
+    if (dispatchChannels.includes('whatsapp')) {
       await this.dispatchPaymentWhatsApp({
         appointment: input.appointment,
         recipientIds: recipients,
@@ -364,7 +455,7 @@ export class ClinicPaymentNotificationService {
     this.logger.debug('Notificacao de chargeback enfileirada', {
       appointmentId: input.appointment.id,
       recipients,
-      channels,
+      channels: dispatchChannels,
       transactionId: input.event.payload.paymentTransactionId,
     });
   }
@@ -410,6 +501,18 @@ export class ClinicPaymentNotificationService {
       return;
     }
 
+    const dispatchChannels = this.notificationContext.normalizeDispatchChannels(channels);
+
+    if (dispatchChannels.length === 0) {
+      this.logger.warn('Falha de pagamento sem canais normalizados para notificacao', {
+        clinicId: input.appointment.clinicId,
+        appointmentId: input.appointment.id,
+        event: PAYMENT_FAILED_EVENT,
+        rawChannels: channels,
+      });
+      return;
+    }
+
     const failureReason = input.event.payload.reason ?? input.event.payload.gatewayStatus;
 
     await this.messageBus.publish(
@@ -426,7 +529,7 @@ export class ClinicPaymentNotificationService {
         sandbox: Boolean(input.event.payload.sandbox),
         fingerprint: input.event.payload.fingerprint ?? null,
         payloadId: input.event.payload.payloadId ?? null,
-        channels,
+        channels: dispatchChannels,
         recipientIds: recipients,
       }),
     );
@@ -446,7 +549,21 @@ export class ClinicPaymentNotificationService {
       details.reason = failureReason;
     }
 
-    if (channels.includes('email')) {
+    if (dispatchChannels.includes('push')) {
+      await this.dispatchPaymentPush({
+        appointment: input.appointment,
+        clinicId: input.appointment.clinicId,
+        recipientIds: recipients,
+        status: 'failed',
+        eventAt: new Date(input.event.payload.failedAt),
+        transactionId: input.event.payload.paymentTransactionId,
+        amountCents,
+        netAmountCents,
+        details: Object.keys(details).length > 0 ? { ...details } : undefined,
+      });
+    }
+
+    if (dispatchChannels.includes('email')) {
       await this.dispatchPaymentEmail({
         appointment: input.appointment,
         recipientIds: recipients,
@@ -461,7 +578,7 @@ export class ClinicPaymentNotificationService {
       });
     }
 
-    if (channels.includes('whatsapp')) {
+    if (dispatchChannels.includes('whatsapp')) {
       await this.dispatchPaymentWhatsApp({
         appointment: input.appointment,
         recipientIds: recipients,
@@ -479,7 +596,7 @@ export class ClinicPaymentNotificationService {
     this.logger.debug('Notificacao de falha de pagamento enfileirada', {
       appointmentId: input.appointment.id,
       recipients,
-      channels,
+      channels: dispatchChannels,
       transactionId: input.event.payload.paymentTransactionId,
     });
   }
@@ -567,6 +684,124 @@ export class ClinicPaymentNotificationService {
       return new Date(Date.UTC(year, month - 1, day, hour, minute));
     } catch {
       return date;
+    }
+  }
+
+  private async dispatchPaymentPush(input: {
+    appointment: ClinicAppointment;
+    clinicId: string;
+    recipientIds: string[];
+    status: 'settled' | 'refunded' | 'chargeback' | 'failed';
+    eventAt: Date;
+    transactionId: string;
+    amountCents?: number;
+    netAmountCents?: number | null;
+    details?: Record<string, unknown>;
+  }): Promise<void> {
+    const pushRecipients = await this.notificationContext.resolveRecipientPushTokens(
+      input.recipientIds,
+    );
+    const tokens = Array.from(
+      new Set(pushRecipients.flatMap((recipient) => recipient.tokens ?? [])),
+    );
+
+    if (tokens.length === 0) {
+      this.logger.debug('Pagamentos: nenhum token push encontrado para notificacao', {
+        clinicId: input.clinicId,
+        appointmentId: input.appointment.id,
+        status: input.status,
+      });
+      return;
+    }
+
+    const clinic = await this.clinicRepository.findById(input.clinicId);
+    const clinicName = clinic?.name ?? 'Clinica';
+    const { title, body } = this.buildPaymentPushMessage({
+      clinicName,
+      status: input.status,
+      transactionId: input.transactionId,
+      amountCents: input.amountCents,
+    });
+
+    const pushResult = await this.pushNotificationService.sendNotification({
+      tokens,
+      title,
+      body,
+      data: {
+        appointmentId: input.appointment.id,
+        transactionId: input.transactionId,
+        status: input.status,
+        clinicId: input.clinicId,
+        amountCents:
+          input.amountCents !== undefined ? String(input.amountCents) : undefined,
+        netAmountCents:
+          input.netAmountCents !== undefined && input.netAmountCents !== null
+            ? String(input.netAmountCents)
+            : undefined,
+        eventAt: input.eventAt.toISOString(),
+      },
+      category: PAYMENT_PUSH_CATEGORY,
+      tenantId: input.appointment.tenantId,
+      clinicId: input.clinicId,
+    });
+
+    if (pushResult.error) {
+      this.logger.error(
+        'Falha ao enviar notificacao de pagamento por push',
+        pushResult.error,
+        {
+          clinicId: input.clinicId,
+          appointmentId: input.appointment.id,
+          status: input.status,
+        },
+      );
+    } else {
+      this.logger.debug('Notificacao de pagamento enviada por push', {
+        clinicId: input.clinicId,
+        appointmentId: input.appointment.id,
+        status: input.status,
+        tokens: tokens.length,
+      });
+    }
+  }
+
+  private buildPaymentPushMessage(input: {
+    clinicName: string;
+    status: 'settled' | 'refunded' | 'chargeback' | 'failed';
+    transactionId: string;
+    amountCents?: number;
+  }): { title: string; body: string } {
+    const formattedAmount =
+      input.amountCents !== undefined
+        ? this.formatCurrency(input.amountCents / 100)
+        : undefined;
+
+    switch (input.status) {
+      case 'settled':
+        return {
+          title: 'Pagamento confirmado',
+          body: formattedAmount
+            ? `Transacao ${input.transactionId} recebida em ${input.clinicName}. Valor ${formattedAmount}.`
+            : `Transacao ${input.transactionId} recebida em ${input.clinicName}.`,
+        };
+      case 'refunded':
+        return {
+          title: 'Pagamento reembolsado',
+          body: formattedAmount
+            ? `Reembolso da transacao ${input.transactionId} emitido por ${input.clinicName}. Valor ${formattedAmount}.`
+            : `Reembolso da transacao ${input.transactionId} emitido por ${input.clinicName}.`,
+        };
+      case 'chargeback':
+        return {
+          title: 'Chargeback registrado',
+          body: `Chargeback aberto para a transacao ${input.transactionId} em ${input.clinicName}. Avalie o caso.`,
+        };
+      case 'failed':
+      default:
+        return {
+          title: 'Pagamento nao concluido',
+          body: `Transacao ${input.transactionId} em ${input.clinicName} nao foi concluida. Verifique o status do paciente.`,
+        };
     }
   }
 

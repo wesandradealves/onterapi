@@ -15,6 +15,7 @@ import { DomainEvents } from '../../../src/shared/events/domain-events';
 import { IClinicRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic.repository.interface';
 import { IEmailService } from '../../../src/domain/auth/interfaces/services/email.service.interface';
 import { IWhatsAppService } from '../../../src/domain/integrations/interfaces/services/whatsapp.service.interface';
+import { IPushNotificationService } from '../../../src/domain/integrations/interfaces/services/push-notification.service.interface';
 import { MessageBus } from '../../../src/shared/messaging/message-bus';
 import { ClinicNotificationContextService } from '../../../src/modules/clinic/services/clinic-notification-context.service';
 
@@ -178,6 +179,7 @@ describe('ClinicPaymentNotificationService', () => {
   let notificationContext: Mocked<ClinicNotificationContextService>;
   let clinicRepository: Mocked<IClinicRepository>;
   let emailService: Mocked<IEmailService>;
+  let pushNotificationService: Mocked<IPushNotificationService>;
   let whatsappService: Mocked<IWhatsAppService>;
   let service: ClinicPaymentNotificationService;
 
@@ -192,12 +194,37 @@ describe('ClinicPaymentNotificationService', () => {
       resolveRecipients: jest.fn().mockResolvedValue(['professional-1']),
       resolveNotificationSettings: jest.fn().mockResolvedValue(null),
       resolveChannels: jest.fn().mockReturnValue(['system']),
+      normalizeDispatchChannels: jest.fn((channels: string[]) => {
+        if (!Array.isArray(channels)) {
+          return [];
+        }
+
+        const normalized: string[] = [];
+
+        for (const entry of channels) {
+          if (typeof entry !== 'string') {
+            continue;
+          }
+
+          const trimmed = entry.trim().toLowerCase();
+          const mapped = trimmed === 'system' ? 'push' : trimmed;
+
+          if (!normalized.includes(mapped)) {
+            normalized.push(mapped);
+          }
+        }
+
+        return normalized;
+      }),
       resolveRecipientEmails: jest
         .fn()
         .mockResolvedValue([{ userId: 'professional-1', email: 'pro@example.com' }]),
       resolveRecipientPhones: jest
         .fn()
         .mockResolvedValue([{ userId: 'professional-1', phone: '+5511999999999' }]),
+      resolveRecipientPushTokens: jest
+        .fn()
+        .mockResolvedValue([{ userId: 'professional-1', tokens: ['push-token-1'] }]),
       resolveWhatsAppSettings: jest.fn().mockResolvedValue({ enabled: false }),
     } as unknown as Mocked<ClinicNotificationContextService>;
 
@@ -208,6 +235,10 @@ describe('ClinicPaymentNotificationService', () => {
     emailService = {
       sendClinicPaymentEmail: jest.fn(),
     } as unknown as Mocked<IEmailService>;
+
+    pushNotificationService = {
+      sendNotification: jest.fn().mockResolvedValue({ data: undefined }),
+    } as unknown as Mocked<IPushNotificationService>;
 
     whatsappService = {
       sendMessage: jest.fn(),
@@ -223,6 +254,7 @@ describe('ClinicPaymentNotificationService', () => {
       notificationContext,
       clinicRepository,
       emailService,
+      pushNotificationService,
       whatsappService,
     );
   });
@@ -243,7 +275,8 @@ describe('ClinicPaymentNotificationService', () => {
     );
     expect(messageBus.publish).toHaveBeenCalledTimes(1);
     const eventPublished = messageBus.publish.mock.calls[0][0];
-    expect(eventPublished.payload.channels).toEqual(['system']);
+    expect(eventPublished.payload.channels).toEqual(['push']);
+    expect(pushNotificationService.sendNotification).toHaveBeenCalledTimes(1);
     expect(emailService.sendClinicPaymentEmail).not.toHaveBeenCalled();
     expect(whatsappService.sendMessage).not.toHaveBeenCalled();
   });
@@ -260,6 +293,7 @@ describe('ClinicPaymentNotificationService', () => {
     expect(messageBus.publish).not.toHaveBeenCalled();
     expect(emailService.sendClinicPaymentEmail).not.toHaveBeenCalled();
     expect(whatsappService.sendMessage).not.toHaveBeenCalled();
+    expect(pushNotificationService.sendNotification).not.toHaveBeenCalled();
   });
 
   it('suprime canais em quiet hours quando contexto retorna vazio', async () => {
@@ -274,6 +308,7 @@ describe('ClinicPaymentNotificationService', () => {
     expect(messageBus.publish).not.toHaveBeenCalled();
     expect(emailService.sendClinicPaymentEmail).not.toHaveBeenCalled();
     expect(whatsappService.sendMessage).not.toHaveBeenCalled();
+    expect(pushNotificationService.sendNotification).not.toHaveBeenCalled();
   });
 
   it('mantem canal system mesmo em quiet hours e publica evento', async () => {
@@ -286,7 +321,8 @@ describe('ClinicPaymentNotificationService', () => {
     });
 
     expect(messageBus.publish).toHaveBeenCalledTimes(1);
-    expect(messageBus.publish.mock.calls[0][0].payload.channels).toEqual(['system']);
+    expect(messageBus.publish.mock.calls[0][0].payload.channels).toEqual(['push']);
+    expect(pushNotificationService.sendNotification).toHaveBeenCalledTimes(1);
     expect(emailService.sendClinicPaymentEmail).not.toHaveBeenCalled();
     expect(whatsappService.sendMessage).not.toHaveBeenCalled();
   });
@@ -301,6 +337,7 @@ describe('ClinicPaymentNotificationService', () => {
     });
 
     expect(messageBus.publish).toHaveBeenCalledTimes(1);
+    expect(pushNotificationService.sendNotification).toHaveBeenCalledTimes(1);
     expect(emailService.sendClinicPaymentEmail).toHaveBeenCalledTimes(1);
     expect(whatsappService.sendMessage).not.toHaveBeenCalled();
   });
@@ -319,6 +356,7 @@ describe('ClinicPaymentNotificationService', () => {
     });
 
     expect(messageBus.publish).toHaveBeenCalledTimes(1);
+    expect(pushNotificationService.sendNotification).toHaveBeenCalledTimes(1);
     expect(whatsappService.sendMessage).toHaveBeenCalledTimes(1);
     const payload = whatsappService.sendMessage.mock.calls[0][0];
     expect(payload.to).toMatch(/^\+\d{10,15}$/);
@@ -342,6 +380,7 @@ describe('ClinicPaymentNotificationService', () => {
     });
 
     expect(messageBus.publish).toHaveBeenCalledTimes(2);
+    expect(pushNotificationService.sendNotification).toHaveBeenCalledTimes(2);
     expect(emailService.sendClinicPaymentEmail).not.toHaveBeenCalled();
     expect(whatsappService.sendMessage).not.toHaveBeenCalled();
   });
@@ -357,6 +396,7 @@ describe('ClinicPaymentNotificationService', () => {
     expect(messageBus.publish).not.toHaveBeenCalled();
     expect(emailService.sendClinicPaymentEmail).not.toHaveBeenCalled();
     expect(whatsappService.sendMessage).not.toHaveBeenCalled();
+    expect(pushNotificationService.sendNotification).not.toHaveBeenCalled();
   });
 
   it('publica evento de falha com canais padrao', async () => {
@@ -372,8 +412,9 @@ describe('ClinicPaymentNotificationService', () => {
     expect(published.eventName).toBe(DomainEvents.NOTIFICATION_CLINIC_PAYMENT_FAILED);
     expect(published.payload.status).toBe('failed');
     expect(published.payload.reason).toBe('payment_expired');
-    expect(published.payload.channels).toEqual(['system']);
+    expect(published.payload.channels).toEqual(['push']);
     expect(emailService.sendClinicPaymentEmail).not.toHaveBeenCalled();
+    expect(pushNotificationService.sendNotification).toHaveBeenCalledTimes(1);
     expect(whatsappService.sendMessage).not.toHaveBeenCalled();
   });
 
@@ -391,6 +432,7 @@ describe('ClinicPaymentNotificationService', () => {
     expect(payload.transactionId).toBe('trx-1');
     expect(payload.details?.reason).toBe('payment_expired');
     expect(messageBus.publish).toHaveBeenCalledTimes(1);
+    expect(pushNotificationService.sendNotification).toHaveBeenCalledTimes(1);
   });
 
   it('envia whatsapp quando falha configurada para canal whatsapp e integracao ativa', async () => {
@@ -407,5 +449,19 @@ describe('ClinicPaymentNotificationService', () => {
       'Pagamento nao foi concluido',
     );
     expect(messageBus.publish).toHaveBeenCalledTimes(1);
+    expect(pushNotificationService.sendNotification).toHaveBeenCalledTimes(1);
   });
 });
+
+
+
+
+
+
+
+
+
+
+
+
+

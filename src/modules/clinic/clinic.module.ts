@@ -120,6 +120,10 @@ import { IGoogleCalendarService } from '../../domain/integrations/interfaces/ser
 import { GoogleCalendarService } from '../../infrastructure/integrations/services/google-calendar.service';
 import { IWhatsAppService } from '../../domain/integrations/interfaces/services/whatsapp.service.interface';
 import { WhatsAppService } from '../../infrastructure/integrations/services/whatsapp.service';
+import {
+  IPushNotificationService,
+} from '../../domain/integrations/interfaces/services/push-notification.service.interface';
+import { PushNotificationService } from '../../infrastructure/integrations/services/push-notification.service';
 import { ClinicInvitationEconomicSummaryValidator } from './services/clinic-invitation-economic-summary.validator';
 import { ClinicPaymentEventsSubscriber } from './subscribers/clinic-payment-events.subscriber';
 import { ClinicPaymentPayoutEventsSubscriber } from './subscribers/clinic-payment-payout-events.subscriber';
@@ -248,6 +252,10 @@ const serviceProviders: Provider[] = [
   {
     provide: IWhatsAppService,
     useClass: WhatsAppService,
+  },
+  {
+    provide: IPushNotificationService,
+    useClass: PushNotificationService,
   },
   {
     provide: IGoogleCalendarService,

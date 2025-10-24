@@ -4,6 +4,7 @@ import { ClinicNotificationContextService } from '../../../src/modules/clinic/se
 import { IClinicRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic.repository.interface';
 import { IEmailService } from '../../../src/domain/auth/interfaces/services/email.service.interface';
 import { IWhatsAppService } from '../../../src/domain/integrations/interfaces/services/whatsapp.service.interface';
+import { IPushNotificationService } from '../../../src/domain/integrations/interfaces/services/push-notification.service.interface';
 import {
   ClinicOverbookingReviewedEvent,
   ClinicOverbookingReviewRequestedEvent,
@@ -67,6 +68,7 @@ describe('ClinicOverbookingNotificationService', () => {
   let notificationContext: Mocked<ClinicNotificationContextService>;
   let clinicRepository: Mocked<IClinicRepository>;
   let emailService: Mocked<IEmailService>;
+  let pushNotificationService: Mocked<IPushNotificationService>;
   let whatsappService: Mocked<IWhatsAppService>;
   let service: ClinicOverbookingNotificationService;
 
@@ -82,12 +84,37 @@ describe('ClinicOverbookingNotificationService', () => {
       resolveRecipients: jest.fn().mockResolvedValue(['professional-1']),
       resolveNotificationSettings: jest.fn().mockResolvedValue(null),
       resolveChannels: jest.fn().mockReturnValue(['system']),
+      normalizeDispatchChannels: jest.fn((channels: string[]) => {
+        if (!Array.isArray(channels)) {
+          return [];
+        }
+
+        const normalized: string[] = [];
+
+        for (const entry of channels) {
+          if (typeof entry !== 'string') {
+            continue;
+          }
+
+          const trimmed = entry.trim().toLowerCase();
+          const mapped = trimmed === 'system' ? 'push' : trimmed;
+
+          if (!normalized.includes(mapped)) {
+            normalized.push(mapped);
+          }
+        }
+
+        return normalized;
+      }),
       resolveRecipientEmails: jest
         .fn()
         .mockResolvedValue([{ userId: 'professional-1', email: 'pro@example.com' }]),
       resolveRecipientPhones: jest
         .fn()
         .mockResolvedValue([{ userId: 'professional-1', phone: '+5511999999999' }]),
+      resolveRecipientPushTokens: jest
+        .fn()
+        .mockResolvedValue([{ userId: 'professional-1', tokens: ['push-token-1'] }]),
       resolveWhatsAppSettings: jest.fn().mockResolvedValue(null),
     } as unknown as Mocked<ClinicNotificationContextService>;
 
@@ -98,6 +125,10 @@ describe('ClinicOverbookingNotificationService', () => {
     emailService = {
       sendClinicOverbookingEmail: jest.fn().mockResolvedValue({ data: undefined }),
     } as unknown as Mocked<IEmailService>;
+
+    pushNotificationService = {
+      sendNotification: jest.fn().mockResolvedValue({ data: undefined }),
+    } as unknown as Mocked<IPushNotificationService>;
 
     whatsappService = {
       sendMessage: jest.fn().mockResolvedValue({ data: undefined }),
@@ -110,6 +141,7 @@ describe('ClinicOverbookingNotificationService', () => {
       notificationContext,
       clinicRepository,
       emailService,
+      pushNotificationService,
       whatsappService,
     );
   });
@@ -124,6 +156,7 @@ describe('ClinicOverbookingNotificationService', () => {
     const event = messageBus.publish.mock.calls[0][0];
     expect(event.eventName).toBe(DomainEvents.NOTIFICATION_CLINIC_OVERBOOKING_REVIEW_REQUESTED);
     expect(event.payload.status).toBe('pending_review');
+    expect(event.payload.channels).toEqual(['push']);
     expect(emailService.sendClinicOverbookingEmail).not.toHaveBeenCalled();
   });
 
@@ -133,6 +166,7 @@ describe('ClinicOverbookingNotificationService', () => {
     await service.notifyReviewRequested(buildReviewRequestedEvent());
 
     expect(messageBus.publish).toHaveBeenCalledTimes(1);
+    expect(pushNotificationService.sendNotification).toHaveBeenCalledTimes(1);
     expect(emailService.sendClinicOverbookingEmail).toHaveBeenCalledTimes(1);
     expect(emailService.sendClinicOverbookingEmail).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -160,6 +194,7 @@ describe('ClinicOverbookingNotificationService', () => {
       'system',
       'whatsapp',
     ]);
+    expect(pushNotificationService.sendNotification).toHaveBeenCalledTimes(1);
     expect(whatsappService.sendMessage).toHaveBeenCalledTimes(1);
     const payload = whatsappService.sendMessage.mock.calls[0][0];
     expect(payload.to).toMatch(/^\+\d{10,15}$/);
@@ -177,6 +212,8 @@ describe('ClinicOverbookingNotificationService', () => {
     const event = messageBus.publish.mock.calls[0][0];
     expect(event.eventName).toBe(DomainEvents.NOTIFICATION_CLINIC_OVERBOOKING_REVIEWED);
     expect(event.payload.status).toBe('approved');
+    expect(event.payload.channels).toEqual(['push', 'email']);
+    expect(pushNotificationService.sendNotification).toHaveBeenCalledTimes(1);
     expect(emailService.sendClinicOverbookingEmail).toHaveBeenCalledTimes(1);
     expect(emailService.sendClinicOverbookingEmail).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -197,6 +234,7 @@ describe('ClinicOverbookingNotificationService', () => {
 
     expect(messageBus.publish).not.toHaveBeenCalled();
     expect(emailService.sendClinicOverbookingEmail).not.toHaveBeenCalled();
+    expect(pushNotificationService.sendNotification).not.toHaveBeenCalled();
   });
 
   it('nao publica quando nenhum canal esta disponivel', async () => {
@@ -206,5 +244,22 @@ describe('ClinicOverbookingNotificationService', () => {
 
     expect(messageBus.publish).not.toHaveBeenCalled();
     expect(emailService.sendClinicOverbookingEmail).not.toHaveBeenCalled();
+    expect(pushNotificationService.sendNotification).not.toHaveBeenCalled();
   });
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

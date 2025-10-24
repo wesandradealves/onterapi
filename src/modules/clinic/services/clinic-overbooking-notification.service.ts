@@ -13,6 +13,9 @@ import {
   WhatsAppMessagePayload,
 } from '../../../domain/integrations/interfaces/services/whatsapp.service.interface';
 import {
+  IPushNotificationService,
+} from '../../../domain/integrations/interfaces/services/push-notification.service.interface';
+import {
   ClinicOverbookingReviewedEvent,
   ClinicOverbookingReviewRequestedEvent,
 } from './clinic-overbooking-event.types';
@@ -20,6 +23,7 @@ import {
 const OVERBOOKING_EVENT_KEY_REVIEW_REQUESTED = 'clinic.overbooking.review_requested';
 const OVERBOOKING_EVENT_KEY_REVIEWED = 'clinic.overbooking.reviewed';
 const DEFAULT_NOTIFICATION_FALLBACK = ['system'];
+const OVERBOOKING_PUSH_CATEGORY = 'clinic_overbooking';
 
 @Injectable()
 export class ClinicOverbookingNotificationService {
@@ -32,6 +36,8 @@ export class ClinicOverbookingNotificationService {
     private readonly clinicRepository: IClinicRepository,
     @Inject(IEmailService)
     private readonly emailService: IEmailService,
+    @Inject(IPushNotificationService)
+    private readonly pushNotificationService: IPushNotificationService,
     @Inject(IWhatsAppService)
     private readonly whatsappService: IWhatsAppService,
   ) {}
@@ -73,13 +79,34 @@ export class ClinicOverbookingNotificationService {
       return;
     }
 
+    const dispatchChannels = this.notificationContext.normalizeDispatchChannels(channels);
+
+    if (dispatchChannels.length === 0) {
+      this.logger.warn('Overbooking: canais normalizados vazios para revisao pendente', {
+        clinicId: event.payload.clinicId,
+        holdId: event.aggregateId,
+        rawChannels: channels,
+      });
+      return;
+    }
+
     await this.publishNotificationEvent('requested', event.aggregateId, {
-      channels,
+      channels: dispatchChannels,
       recipients,
       payload: event.payload,
     });
 
-    if (channels.includes('email')) {
+    if (dispatchChannels.includes('push')) {
+      await this.dispatchPush({
+        holdId: event.aggregateId,
+        clinicId: event.payload.clinicId,
+        recipients,
+        status: 'review_requested',
+        payload: event.payload,
+      });
+    }
+
+    if (dispatchChannels.includes('email')) {
       await this.dispatchEmail({
         holdId: event.aggregateId,
         clinicId: event.payload.clinicId,
@@ -89,7 +116,7 @@ export class ClinicOverbookingNotificationService {
       });
     }
 
-    if (channels.includes('whatsapp')) {
+    if (dispatchChannels.includes('whatsapp')) {
       await this.dispatchWhatsApp({
         holdId: event.aggregateId,
         clinicId: event.payload.clinicId,
@@ -139,13 +166,35 @@ export class ClinicOverbookingNotificationService {
       return;
     }
 
+    const dispatchChannels = this.notificationContext.normalizeDispatchChannels(channels);
+
+    if (dispatchChannels.length === 0) {
+      this.logger.warn('Overbooking: canais normalizados vazios para resultado de revisao', {
+        clinicId: event.payload.clinicId,
+        holdId: event.aggregateId,
+        status: event.payload.status,
+        rawChannels: channels,
+      });
+      return;
+    }
+
     await this.publishNotificationEvent(event.payload.status, event.aggregateId, {
-      channels,
+      channels: dispatchChannels,
       recipients,
       payload: event.payload,
     });
 
-    if (channels.includes('email')) {
+    if (dispatchChannels.includes('push')) {
+      await this.dispatchPush({
+        holdId: event.aggregateId,
+        clinicId: event.payload.clinicId,
+        recipients,
+        status: event.payload.status,
+        payload: event.payload,
+      });
+    }
+
+    if (dispatchChannels.includes('email')) {
       await this.dispatchEmail({
         holdId: event.aggregateId,
         clinicId: event.payload.clinicId,
@@ -155,7 +204,7 @@ export class ClinicOverbookingNotificationService {
       });
     }
 
-    if (channels.includes('whatsapp')) {
+    if (dispatchChannels.includes('whatsapp')) {
       await this.dispatchWhatsApp({
         holdId: event.aggregateId,
         clinicId: event.payload.clinicId,
@@ -501,6 +550,117 @@ export class ClinicOverbookingNotificationService {
       return date;
     }
   }
+  private async dispatchPush(input: {
+    holdId: string;
+    clinicId: string;
+    recipients: string[];
+    status: 'review_requested' | 'approved' | 'rejected';
+    payload:
+      | ClinicOverbookingReviewRequestedEvent['payload']
+      | ClinicOverbookingReviewedEvent['payload'];
+  }): Promise<void> {
+    const pushRecipients = await this.notificationContext.resolveRecipientPushTokens(
+      input.recipients,
+    );
+    const tokens = Array.from(
+      new Set(pushRecipients.flatMap((recipient) => recipient.tokens ?? [])),
+    );
+
+    if (tokens.length === 0) {
+      this.logger.debug('Overbooking: nenhum token push encontrado', {
+        clinicId: input.clinicId,
+        holdId: input.holdId,
+        status: input.status,
+      });
+      return;
+    }
+
+    const clinic = await this.clinicRepository.findById(input.clinicId);
+    const clinicName = clinic?.name ?? 'Clinica';
+    const { title, body } = this.buildOverbookingPushMessage({
+      clinicName,
+      status: input.status,
+      holdId: input.holdId,
+      payload: input.payload,
+    });
+
+    const data: Record<string, string> = {
+      holdId: input.holdId,
+      status: input.status,
+      clinicId: input.clinicId,
+      riskScore: String(input.payload.riskScore),
+      threshold: String(input.payload.threshold),
+    };
+
+    if ('reviewedBy' in input.payload && input.payload.reviewedBy) {
+      data.reviewedBy = input.payload.reviewedBy;
+    }
+
+    if ('justification' in input.payload && input.payload.justification) {
+      data.justification = String(input.payload.justification);
+    }
+
+    const pushResult = await this.pushNotificationService.sendNotification({
+      tokens,
+      title,
+      body,
+      data,
+      category: OVERBOOKING_PUSH_CATEGORY,
+      tenantId: input.payload.tenantId,
+      clinicId: input.clinicId,
+    });
+
+    if (pushResult.error) {
+      this.logger.error('Overbooking: falha ao enviar notificacao push', pushResult.error, {
+        clinicId: input.clinicId,
+        holdId: input.holdId,
+        status: input.status,
+      });
+    } else {
+      this.logger.debug('Overbooking: notificacao push enviada', {
+        clinicId: input.clinicId,
+        holdId: input.holdId,
+        status: input.status,
+        tokens: tokens.length,
+      });
+    }
+  }
+
+  private buildOverbookingPushMessage(input: {
+    clinicName: string;
+    status: 'review_requested' | 'approved' | 'rejected';
+    holdId: string;
+    payload:
+      | ClinicOverbookingReviewRequestedEvent['payload']
+      | ClinicOverbookingReviewedEvent['payload'];
+  }): { title: string; body: string } {
+    if (input.status === 'review_requested') {
+      const payload = input.payload as ClinicOverbookingReviewRequestedEvent['payload'];
+      return {
+        title: 'Revisao de overbooking pendente',
+        body: `Hold ${input.holdId} com risco ${payload.riskScore}% (limiar ${payload.threshold}%) em ${input.clinicName}.`,
+      };
+    }
+
+    const payload = input.payload as ClinicOverbookingReviewedEvent['payload'];
+    if (input.status === 'approved') {
+      return {
+        title: 'Revisao de overbooking aprovada',
+        body: `Hold ${input.holdId} aprovado em ${input.clinicName}. Revisado por ${payload.reviewedBy ?? 'N/D'}.`,
+      };
+    }
+
+    const justification =
+      payload.justification && payload.justification.length > 0
+        ? ` Motivo: ${payload.justification}.`
+        : '';
+
+    return {
+      title: 'Overbooking reprovado',
+      body: `Hold ${input.holdId} reprovado em ${input.clinicName}.${justification}`,
+    };
+  }
+
   private async dispatchEmail(input: {
     holdId: string;
     clinicId: string;

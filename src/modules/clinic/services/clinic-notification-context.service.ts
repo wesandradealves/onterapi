@@ -225,6 +225,34 @@ export class ClinicNotificationContextService {
     return filtered;
   }
 
+  normalizeDispatchChannels(channels: string[]): string[] {
+    if (!Array.isArray(channels) || channels.length === 0) {
+      return [];
+    }
+
+    const normalized: string[] = [];
+
+    for (const entry of channels) {
+      if (typeof entry !== 'string') {
+        continue;
+      }
+
+      const trimmed = entry.trim();
+      if (trimmed.length === 0) {
+        continue;
+      }
+
+      const lower = trimmed.toLowerCase();
+      const mapped = lower === 'system' ? 'push' : lower;
+
+      if (!normalized.includes(mapped)) {
+        normalized.push(mapped);
+      }
+    }
+
+    return normalized;
+  }
+
   async resolveRecipientEmails(
     userIds: string[],
   ): Promise<Array<{ userId: string; email: string }>> {
@@ -243,16 +271,37 @@ export class ClinicNotificationContextService {
       .map((contact) => ({ userId: contact.userId, phone: contact.phone as string }));
   }
 
+  async resolveRecipientPushTokens(
+    userIds: string[],
+  ): Promise<Array<{ userId: string; tokens: string[] }>> {
+    const contacts = await this.resolveRecipientContacts(userIds);
+
+    return contacts
+      .map((contact) => ({
+        userId: contact.userId,
+        tokens:
+          Array.isArray(contact.pushTokens) && contact.pushTokens.length > 0
+            ? contact.pushTokens
+            : [],
+      }))
+      .filter((entry) => entry.tokens.length > 0);
+  }
+
   private async resolveRecipientContacts(
     userIds: string[],
-  ): Promise<Array<{ userId: string; email?: string; phone?: string }>> {
+  ): Promise<Array<{ userId: string; email?: string; phone?: string; pushTokens?: string[] }>> {
     const uniqueIds = Array.from(new Set(userIds.filter(Boolean)));
     if (uniqueIds.length === 0) {
       return [];
     }
 
     const users = await Promise.all(uniqueIds.map((id) => this.userRepository.findById(id)));
-    const contacts: Array<{ userId: string; email?: string; phone?: string }> = [];
+    const contacts: Array<{
+      userId: string;
+      email?: string;
+      phone?: string;
+      pushTokens?: string[];
+    }> = [];
 
     uniqueIds.forEach((userId, index) => {
       const user = users[index];
@@ -264,6 +313,7 @@ export class ClinicNotificationContextService {
         userId,
         email: typeof user.email === 'string' ? user.email : undefined,
         phone: typeof user.phone === 'string' ? user.phone : undefined,
+        pushTokens: this.extractPushTokens(user),
       });
     });
 
@@ -435,6 +485,28 @@ export class ClinicNotificationContextService {
     } catch {
       return date;
     }
+  }
+
+  private extractPushTokens(user: { metadata?: Record<string, unknown> } | null | undefined): string[] {
+    if (!user || !user.metadata || typeof user.metadata !== 'object') {
+      return [];
+    }
+
+    const notification = (user.metadata as Record<string, unknown>).notification;
+    if (!notification || typeof notification !== 'object') {
+      return [];
+    }
+
+    const rawTokens = (notification as Record<string, unknown>).pushTokens;
+    if (!Array.isArray(rawTokens)) {
+      return [];
+    }
+
+    const tokens = rawTokens
+      .filter((token): token is string => typeof token === 'string' && token.trim().length > 0)
+      .map((token) => token.trim());
+
+    return Array.from(new Set(tokens));
   }
 
   private castNotificationSettings(
