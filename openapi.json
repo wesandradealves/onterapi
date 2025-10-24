@@ -7103,6 +7103,40 @@
         ]
       }
     },
+    "/integrations/google-calendar/webhook": {
+      "post": {
+        "operationId": "handleGoogleEvent",
+        "summary": "Webhook de eventos do Google Calendar",
+        "description": "Recebe eventos externos do Google Calendar e registra bloqueios pendentes conforme regras da clinica.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "description": "Request payload",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClinicGoogleWebhookSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Evento recebido para processamento.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClinicExternalCalendarEventResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Clinic Webhooks"
+        ]
+      }
+    },
     "/clinics/{clinicId}/payments": {
       "get": {
         "operationId": "listPaymentLedgers",
@@ -13517,6 +13551,161 @@
           "createdBy",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "ClinicExternalCalendarEventResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "professionalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "externalEventId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected",
+              "cancelled"
+            ]
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "validationErrors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "calendarId": {
+            "type": "string",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "google_calendar"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "professionalId",
+          "externalEventId",
+          "status",
+          "startAt",
+          "endAt",
+          "timezone",
+          "source",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ClinicGoogleWebhookSchema": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clinicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "professionalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "triggeredBy": {
+            "type": "string"
+          },
+          "event": {
+            "type": "object",
+            "properties": {
+              "externalEventId": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "confirmed",
+                  "tentative",
+                  "cancelled"
+                ]
+              },
+              "startAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "endAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "timezone": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "locationId": {
+                "type": "string"
+              },
+              "resources": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "calendarId": {
+                "type": "string"
+              },
+              "rawPayload": {
+                "type": "object",
+                "additionalProperties": {}
+              }
+            },
+            "required": [
+              "externalEventId",
+              "status",
+              "startAt",
+              "endAt",
+              "timezone"
+            ]
+          }
+        },
+        "required": [
+          "tenantId",
+          "clinicId",
+          "professionalId",
+          "event"
         ]
       },
       "ClinicAppointmentConfirmationResponseDto": {

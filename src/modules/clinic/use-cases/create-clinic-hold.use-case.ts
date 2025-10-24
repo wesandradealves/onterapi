@@ -13,6 +13,10 @@ import {
   type IClinicServiceTypeRepository,
   IClinicServiceTypeRepository as IClinicServiceTypeRepositoryToken,
 } from '../../../domain/clinic/interfaces/repositories/clinic-service-type.repository.interface';
+import {
+  IExternalCalendarEventsRepository,
+  IExternalCalendarEventsRepositoryToken,
+} from '../../../domain/scheduling/interfaces/repositories/external-calendar-events.repository.interface';
 import { ClinicHold, ClinicHoldRequestInput } from '../../../domain/clinic/types/clinic.types';
 import {
   type ICreateClinicHoldUseCase,
@@ -49,6 +53,8 @@ export class CreateClinicHoldUseCase
     private readonly clinicHoldRepository: IClinicHoldRepository,
     @Inject(IClinicServiceTypeRepositoryToken)
     private readonly clinicServiceTypeRepository: IClinicServiceTypeRepository,
+    @Inject(IExternalCalendarEventsRepositoryToken)
+    private readonly externalCalendarEventsRepository: IExternalCalendarEventsRepository,
     private readonly auditService: ClinicAuditService,
     private readonly messageBus: MessageBus,
     private readonly overbookingEvaluator: ClinicOverbookingEvaluatorService,
@@ -123,6 +129,20 @@ export class CreateClinicHoldUseCase
       start,
       end,
     });
+
+    const externalCalendarConflicts =
+      await this.externalCalendarEventsRepository.findApprovedOverlap({
+        tenantId: input.tenantId,
+        professionalId: input.professionalId,
+        start,
+        end,
+      });
+
+    if (externalCalendarConflicts.length > 0) {
+      throw ClinicErrorFactory.holdAlreadyExists(
+        'Profissional ja possui evento externo aprovado para este periodo',
+      );
+    }
 
     const allowOverbooking = clinic.holdSettings?.allowOverbooking ?? false;
 

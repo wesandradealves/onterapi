@@ -13,6 +13,7 @@ import {
 import { ClinicOverbookingEvaluatorService } from '../../../src/modules/clinic/services/clinic-overbooking-evaluator.service';
 import { MessageBus } from '../../../src/shared/messaging/message-bus';
 import { DomainEvents } from '../../../src/shared/events/domain-events';
+import { IExternalCalendarEventsRepository } from '../../../src/domain/scheduling/interfaces/repositories/external-calendar-events.repository.interface';
 
 type Mocked<T> = jest.Mocked<T>;
 
@@ -81,6 +82,7 @@ describe('CreateClinicHoldUseCase', () => {
   let auditService: ClinicAuditService;
   let clinicOverbookingEvaluator: Mocked<ClinicOverbookingEvaluatorService>;
   let messageBus: Mocked<MessageBus>;
+  let externalCalendarEventsRepository: Mocked<IExternalCalendarEventsRepository>;
   let useCase: CreateClinicHoldUseCase;
 
   const baseInput = {
@@ -110,9 +112,18 @@ describe('CreateClinicHoldUseCase', () => {
       updateMetadata: jest.fn(),
     } as unknown as Mocked<IClinicHoldRepository>;
 
+    clinicHoldRepository.findActiveOverlapByProfessional.mockResolvedValue([]);
+    clinicHoldRepository.findActiveOverlapByResources.mockResolvedValue([]);
+
     clinicServiceTypeRepository = {
       findById: jest.fn(),
     } as unknown as Mocked<IClinicServiceTypeRepository>;
+
+    externalCalendarEventsRepository = {
+      findApprovedOverlap: jest.fn(),
+    } as unknown as Mocked<IExternalCalendarEventsRepository>;
+
+    externalCalendarEventsRepository.findApprovedOverlap.mockResolvedValue([]);
 
     auditService = {
       register: jest.fn(),
@@ -154,6 +165,7 @@ describe('CreateClinicHoldUseCase', () => {
       clinicRepository,
       clinicHoldRepository,
       clinicServiceTypeRepository,
+      externalCalendarEventsRepository,
       auditService,
       messageBus,
       clinicOverbookingEvaluator,
@@ -173,6 +185,35 @@ describe('CreateClinicHoldUseCase', () => {
     expect(auditService.register).not.toHaveBeenCalled();
     expect(clinicOverbookingEvaluator.evaluate).not.toHaveBeenCalled();
     expect(messageBus.publish).not.toHaveBeenCalled();
+  });
+
+  it('lanca conflito quando existe evento externo aprovado no periodo', async () => {
+    clinicRepository.findByTenant.mockResolvedValue(buildClinic());
+    clinicHoldRepository.findByIdempotencyKey.mockResolvedValue(null);
+    clinicServiceTypeRepository.findById.mockResolvedValue(buildServiceType());
+    clinicHoldRepository.findActiveOverlapByProfessional.mockResolvedValue([]);
+    externalCalendarEventsRepository.findApprovedOverlap.mockResolvedValue([
+      {
+        id: 'event-1',
+        tenantId: baseInput.tenantId,
+        professionalId: baseInput.professionalId,
+        source: 'google_calendar',
+        externalId: 'ext-1',
+        startAtUtc: new Date(baseInput.start),
+        endAtUtc: new Date(baseInput.end),
+        timezone: 'UTC',
+        status: 'approved',
+        validationErrors: null,
+        resourceId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any,
+    ]);
+
+    await expect(useCase.executeOrThrow(baseInput)).rejects.toBeInstanceOf(ConflictException);
+
+    expect(clinicHoldRepository.create).not.toHaveBeenCalled();
+    expect(auditService.register).not.toHaveBeenCalled();
   });
 
   it('cria hold quando nao ha conflito de recursos e registra auditoria', async () => {

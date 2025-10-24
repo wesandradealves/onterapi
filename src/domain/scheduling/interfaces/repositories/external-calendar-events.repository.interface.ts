@@ -23,6 +23,13 @@ export interface IExternalCalendarEventsRepository {
     tenantId: string,
     professionalId: string,
   ): Promise<ExternalCalendarEvent[]>;
+  findApprovedOverlap(params: {
+    tenantId: string;
+    professionalId: string;
+    start: Date;
+    end: Date;
+    excludeEventId?: string;
+  }): Promise<ExternalCalendarEvent[]>;
   updateStatus(data: UpdateExternalCalendarEventStatusInput): Promise<ExternalCalendarEvent>;
 }
 

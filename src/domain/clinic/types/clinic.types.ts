@@ -715,6 +715,30 @@ export interface ClinicHold {
   metadata?: Record<string, unknown>;
 }
 
+export type ClinicExternalCalendarEventInboundStatus = 'confirmed' | 'tentative' | 'cancelled';
+
+export interface ClinicExternalCalendarEventPayload {
+  externalEventId: string;
+  status: ClinicExternalCalendarEventInboundStatus;
+  startAt: Date;
+  endAt: Date;
+  timezone: string;
+  summary?: string;
+  description?: string;
+  locationId?: string;
+  resources?: string[];
+  calendarId?: string;
+  rawPayload?: Record<string, unknown>;
+}
+
+export interface ProcessClinicExternalCalendarEventInput {
+  tenantId: string;
+  clinicId: string;
+  professionalId: string;
+  payload: ClinicExternalCalendarEventPayload;
+  triggeredBy?: string;
+}
+
 export type ClinicAppointmentStatus = 'scheduled' | 'completed' | 'cancelled';
 
 export type ClinicPaymentStatus = 'approved' | 'settled' | 'refunded' | 'chargeback' | 'failed';

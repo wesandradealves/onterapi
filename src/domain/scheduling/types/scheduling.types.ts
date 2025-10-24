@@ -159,7 +159,7 @@ export interface RecurrenceOccurrence {
   updatedAt: Date;
 }
 
-export type ExternalCalendarEventStatus = 'pending' | 'approved' | 'rejected';
+export type ExternalCalendarEventStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 
 export interface ExternalCalendarEvent {
   id: string;

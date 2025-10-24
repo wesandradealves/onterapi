@@ -131,6 +131,10 @@ export class ClinicErrorFactory {
     return new NotFoundException(this.sanitize(message));
   }
 
+  static externalEventInvalid(message: string): BadRequestException {
+    return new BadRequestException(this.sanitize(message));
+  }
+
   private static sanitize(message: string): string {
     if (!message) {
       return '';

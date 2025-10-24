@@ -30,6 +30,10 @@ import {
   IClinicPaymentGatewayService as IClinicPaymentGatewayServiceToken,
 } from '../../../domain/clinic/interfaces/services/clinic-payment-gateway.service.interface';
 import {
+  IExternalCalendarEventsRepository,
+  IExternalCalendarEventsRepositoryToken,
+} from '../../../domain/scheduling/interfaces/repositories/external-calendar-events.repository.interface';
+import {
   type IConfirmClinicAppointmentUseCase,
   IConfirmClinicAppointmentUseCase as IConfirmClinicAppointmentUseCaseToken,
 } from '../../../domain/clinic/interfaces/use-cases/confirm-clinic-appointment.use-case.interface';
@@ -66,6 +70,8 @@ export class ConfirmClinicAppointmentUseCase
     private readonly clinicPaymentCredentialsService: IClinicPaymentCredentialsService,
     @Inject(IClinicPaymentGatewayServiceToken)
     private readonly clinicPaymentGatewayService: IClinicPaymentGatewayService,
+    @Inject(IExternalCalendarEventsRepositoryToken)
+    private readonly externalCalendarEventsRepository: IExternalCalendarEventsRepository,
     private readonly auditService: ClinicAuditService,
   ) {
     super();
@@ -184,6 +190,20 @@ export class ConfirmClinicAppointmentUseCase
       end: hold.end,
       excludeHoldId: hold.id,
     });
+
+    const externalCalendarConflicts =
+      await this.externalCalendarEventsRepository.findApprovedOverlap({
+        tenantId: hold.tenantId,
+        professionalId: hold.professionalId,
+        start: hold.start,
+        end: hold.end,
+      });
+
+    if (externalCalendarConflicts.length > 0) {
+      throw ClinicErrorFactory.holdAlreadyExists(
+        'Profissional possui evento externo aprovado neste periodo',
+      );
+    }
 
     const hasConfirmedOverlap = overlappingHolds.some((item) => item.status === 'confirmed');
 

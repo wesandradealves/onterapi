@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ConflictException, ForbiddenException } from '@nestjs/common';
 
 import { ConfirmClinicAppointmentUseCase } from '../../../src/modules/clinic/use-cases/confirm-clinic-appointment.use-case';
 import { IClinicRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic.repository.interface';
@@ -8,6 +8,7 @@ import { IClinicAppointmentRepository } from '../../../src/domain/clinic/interfa
 import { IClinicConfigurationRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
 import { IClinicPaymentCredentialsService } from '../../../src/domain/clinic/interfaces/services/clinic-payment-credentials.service.interface';
 import { IClinicPaymentGatewayService } from '../../../src/domain/clinic/interfaces/services/clinic-payment-gateway.service.interface';
+import { IExternalCalendarEventsRepository } from '../../../src/domain/scheduling/interfaces/repositories/external-calendar-events.repository.interface';
 import { ClinicAuditService } from '../../../src/infrastructure/clinic/services/clinic-audit.service';
 import {
   Clinic,
@@ -102,6 +103,7 @@ describe('ConfirmClinicAppointmentUseCase', () => {
   let clinicConfigurationRepository: Mocked<IClinicConfigurationRepository>;
   let clinicPaymentCredentialsService: Mocked<IClinicPaymentCredentialsService>;
   let clinicPaymentGatewayService: Mocked<IClinicPaymentGatewayService>;
+  let externalCalendarEventsRepository: Mocked<IExternalCalendarEventsRepository>;
   let auditService: ClinicAuditService;
   let useCase: ConfirmClinicAppointmentUseCase;
 
@@ -118,6 +120,9 @@ describe('ConfirmClinicAppointmentUseCase', () => {
       expireHold: jest.fn(),
     } as unknown as Mocked<IClinicHoldRepository>;
 
+    clinicHoldRepository.findActiveOverlapByProfessional.mockResolvedValue([]);
+    clinicHoldRepository.findActiveOverlapByResources.mockResolvedValue([]);
+
     clinicServiceTypeRepository = {
       findById: jest.fn(),
     } as unknown as Mocked<IClinicServiceTypeRepository>;
@@ -127,6 +132,8 @@ describe('ConfirmClinicAppointmentUseCase', () => {
       findActiveOverlap: jest.fn(),
       create: jest.fn(),
     } as unknown as Mocked<IClinicAppointmentRepository>;
+
+    clinicAppointmentRepository.findActiveOverlap.mockResolvedValue([]);
 
     clinicConfigurationRepository = {
       findLatestAppliedVersion: jest.fn(),
@@ -141,6 +148,12 @@ describe('ConfirmClinicAppointmentUseCase', () => {
       executePayout: jest.fn(),
     } as unknown as Mocked<IClinicPaymentGatewayService>;
 
+    externalCalendarEventsRepository = {
+      findApprovedOverlap: jest.fn(),
+    } as unknown as Mocked<IExternalCalendarEventsRepository>;
+
+    externalCalendarEventsRepository.findApprovedOverlap.mockResolvedValue([]);
+
     auditService = {
       register: jest.fn().mockResolvedValue(undefined),
     } as unknown as ClinicAuditService;
@@ -153,6 +166,7 @@ describe('ConfirmClinicAppointmentUseCase', () => {
       clinicConfigurationRepository,
       clinicPaymentCredentialsService,
       clinicPaymentGatewayService,
+      externalCalendarEventsRepository,
       auditService,
     );
   });
@@ -346,6 +360,50 @@ describe('ConfirmClinicAppointmentUseCase', () => {
     expect(clinicConfigurationRepository.findLatestAppliedVersion).not.toHaveBeenCalled();
     expect(clinicPaymentCredentialsService.resolveCredentials).not.toHaveBeenCalled();
     expect(clinicPaymentGatewayService.verifyPayment).not.toHaveBeenCalled();
+  });
+
+  it('should throw conflict when there is an approved external calendar event overlap', async () => {
+    const clinic = createClinic();
+    const hold = createHold();
+    const serviceType = createServiceType();
+
+    clinicRepository.findByTenant.mockResolvedValue(clinic);
+    clinicHoldRepository.findById.mockResolvedValue(hold);
+    clinicServiceTypeRepository.findById.mockResolvedValue(serviceType);
+    clinicAppointmentRepository.findByHoldId.mockResolvedValue(null);
+
+    externalCalendarEventsRepository.findApprovedOverlap.mockResolvedValue([
+      {
+        id: 'event-1',
+        tenantId: hold.tenantId,
+        professionalId: hold.professionalId,
+        source: 'google_calendar',
+        externalId: 'ext-1',
+        startAtUtc: new Date(hold.start),
+        endAtUtc: new Date(hold.end),
+        timezone: 'UTC',
+        status: 'approved',
+        validationErrors: null,
+        resourceId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any,
+    ]);
+
+    await expect(
+      useCase.executeOrThrow({
+        clinicId: hold.clinicId,
+        tenantId: hold.tenantId,
+        holdId: hold.id,
+        confirmedBy: 'user-hold',
+        paymentTransactionId: 'trx-789',
+        idempotencyKey: 'idem-external',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(clinicPaymentCredentialsService.resolveCredentials).not.toHaveBeenCalled();
+    expect(clinicPaymentGatewayService.verifyPayment).not.toHaveBeenCalled();
+    expect(clinicHoldRepository.confirmHold).not.toHaveBeenCalled();
   });
 
   it('should expire hold and throw when TTL already elapsed', async () => {

@@ -16,6 +16,7 @@ import { ClinicAuditController } from './api/controllers/clinic-audit.controller
 import { ClinicPaymentWebhookController } from './api/controllers/clinic-payment-webhook.controller';
 import { ClinicPaymentController } from './api/controllers/clinic-payment.controller';
 import { ClinicManagementController } from './api/controllers/clinic-management.controller';
+import { ClinicGoogleCalendarController } from './api/controllers/clinic-google-calendar.controller';
 import { ClinicEntity } from '../../infrastructure/clinic/entities/clinic.entity';
 import { ClinicConfigurationVersionEntity } from '../../infrastructure/clinic/entities/clinic-configuration-version.entity';
 import { ClinicMemberEntity } from '../../infrastructure/clinic/entities/clinic-member.entity';
@@ -55,6 +56,7 @@ import { ClinicConfigurationCacheService } from './services/clinic-configuration
 import { ClinicConfigurationTelemetryService } from './services/clinic-configuration-telemetry.service';
 import { ClinicAccessService } from './services/clinic-access.service';
 import { ClinicAsaasWebhookGuard } from './guards/clinic-asaas-webhook.guard';
+import { ClinicGoogleWebhookGuard } from './guards/clinic-google-webhook.guard';
 import { ClinicAlertNotificationService } from './services/clinic-alert-notification.service';
 import { ClinicAlertEventsSubscriber } from './subscribers/clinic-alert-events.subscriber';
 import { ClinicOverbookingEvaluatorService } from './services/clinic-overbooking-evaluator.service';
@@ -74,6 +76,7 @@ import { PropagateClinicTemplateUseCase } from './use-cases/propagate-clinic-tem
 import { CreateClinicUseCase } from './use-cases/create-clinic.use-case';
 import { CreateClinicHoldUseCase } from './use-cases/create-clinic-hold.use-case';
 import { ProcessClinicOverbookingUseCase } from './use-cases/process-clinic-overbooking.use-case';
+import { ProcessClinicExternalCalendarEventUseCase } from './use-cases/process-clinic-external-calendar-event.use-case';
 import { ConfirmClinicAppointmentUseCase } from './use-cases/confirm-clinic-appointment.use-case';
 import { TransferClinicProfessionalUseCase } from './use-cases/transfer-clinic-professional.use-case';
 import { CheckClinicProfessionalFinancialClearanceUseCase } from './use-cases/check-clinic-professional-financial-clearance.use-case';
@@ -157,6 +160,7 @@ import { IGetClinicBrandingSettingsUseCase as IGetClinicBrandingSettingsUseCaseT
 import { ICreateClinicUseCase as ICreateClinicUseCaseToken } from '../../domain/clinic/interfaces/use-cases/create-clinic.use-case.interface';
 import { ICreateClinicHoldUseCase as ICreateClinicHoldUseCaseToken } from '../../domain/clinic/interfaces/use-cases/create-clinic-hold.use-case.interface';
 import { IProcessClinicOverbookingUseCase as IProcessClinicOverbookingUseCaseToken } from '../../domain/clinic/interfaces/use-cases/process-clinic-overbooking.use-case.interface';
+import { IProcessClinicExternalCalendarEventUseCase as IProcessClinicExternalCalendarEventUseCaseToken } from '../../domain/clinic/interfaces/use-cases/process-clinic-external-calendar-event.use-case.interface';
 import { IConfirmClinicAppointmentUseCase as IConfirmClinicAppointmentUseCaseToken } from '../../domain/clinic/interfaces/use-cases/confirm-clinic-appointment.use-case.interface';
 import { IProcessClinicPaymentWebhookUseCase as IProcessClinicPaymentWebhookUseCaseToken } from '../../domain/clinic/interfaces/use-cases/process-clinic-payment-webhook.use-case.interface';
 import { IGetClinicDashboardUseCase as IGetClinicDashboardUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic-dashboard.use-case.interface';
@@ -254,6 +258,7 @@ const serviceProviders: Provider[] = [
   ClinicConfigurationValidator,
   ClinicAccessService,
   ClinicAsaasWebhookGuard,
+  ClinicGoogleWebhookGuard,
   ClinicPaymentReconciliationService,
   ClinicPaymentNotificationService,
   ClinicPaymentPayoutService,
@@ -366,6 +371,10 @@ const useCaseProviders: Provider[] = [
   {
     provide: IProcessClinicOverbookingUseCaseToken,
     useClass: ProcessClinicOverbookingUseCase,
+  },
+  {
+    provide: IProcessClinicExternalCalendarEventUseCaseToken,
+    useClass: ProcessClinicExternalCalendarEventUseCase,
   },
   {
     provide: IConfirmClinicAppointmentUseCaseToken,
@@ -495,6 +504,7 @@ const useCaseProviders: Provider[] = [
     ClinicMemberController,
     ClinicsController,
     ClinicAuditController,
+    ClinicGoogleCalendarController,
     ClinicPaymentWebhookController,
     ClinicPaymentController,
   ],

@@ -26,6 +26,7 @@ import {
   ClinicPaymentLedgerRefund as DomainClinicPaymentLedgerRefund,
   ClinicPaymentLedgerSettlement as DomainClinicPaymentLedgerSettlement,
 } from '../../../../domain/clinic/types/clinic.types';
+import { ExternalCalendarEvent } from '../../../../domain/scheduling/types/scheduling.types';
 import {
   ClinicConfigurationTelemetryResponseDto,
   ClinicConfigurationVersionResponseDto,
@@ -102,6 +103,7 @@ import {
   ClinicManagementOverviewResponseDto,
   ClinicManagementTeamDistributionDto,
 } from '../dtos/clinic-management-overview-response.dto';
+import { ClinicExternalCalendarEventResponseDto } from '../dtos/clinic-external-calendar-event-response.dto';
 
 export class ClinicPresenter {
   static configuration(version: ClinicConfigurationVersion): ClinicConfigurationVersionResponseDto {
@@ -145,6 +147,25 @@ export class ClinicPresenter {
       slug: clinic.slug,
       status: clinic.status,
       holdSettings,
+    };
+  }
+
+  static externalCalendarEvent(
+    event: ExternalCalendarEvent,
+  ): ClinicExternalCalendarEventResponseDto {
+    return {
+      id: event.id,
+      professionalId: event.professionalId,
+      externalEventId: event.externalId,
+      status: event.status,
+      startAt: event.startAtUtc,
+      endAt: event.endAtUtc,
+      timezone: event.timezone,
+      validationErrors: event.validationErrors ?? null,
+      calendarId: event.resourceId ?? null,
+      source: 'google_calendar',
+      createdAt: event.createdAt,
+      updatedAt: event.updatedAt,
     };
   }
 

@@ -28,16 +28,12 @@ import {
 } from '../../scheduling/services/scheduling-event.types';
 import { MessageBus } from '../../../shared/messaging/message-bus';
 import { DomainEvents } from '../../../shared/events/domain-events';
+import {
+  ClinicGoogleIntegrationSettings,
+  extractGoogleIntegrationSettings,
+} from './clinic-google-integration-settings.util';
 
-type GoogleCalendarIntegrationSettings = {
-  enabled: boolean;
-  syncMode: 'one_way' | 'two_way';
-  conflictPolicy: 'onterapi_wins' | 'google_wins' | 'ask_user';
-  requireValidationForExternalEvents: boolean;
-  defaultCalendarId?: string;
-  hidePatientName?: boolean;
-  prefix?: string;
-};
+type GoogleCalendarIntegrationSettings = ClinicGoogleIntegrationSettings;
 
 @Injectable()
 export class ClinicGoogleCalendarSyncService implements OnModuleInit, OnModuleDestroy {
@@ -285,43 +281,7 @@ export class ClinicGoogleCalendarSyncService implements OnModuleInit, OnModuleDe
         return null;
       }
 
-      const payload = version.payload ?? {};
-      const integrations =
-        payload && typeof payload === 'object' && 'integrationSettings' in payload
-          ? (payload as Record<string, unknown>).integrationSettings
-          : payload;
-
-      const googleSection =
-        integrations && typeof integrations === 'object' && 'googleCalendar' in integrations
-          ? (integrations as Record<string, unknown>).googleCalendar
-          : undefined;
-
-      if (!googleSection || typeof googleSection !== 'object') {
-        return null;
-      }
-
-      const raw = googleSection as Record<string, unknown>;
-
-      return {
-        enabled: raw.enabled === true,
-        syncMode:
-          raw.syncMode === 'two_way'
-            ? 'two_way'
-            : raw.syncMode === 'one_way'
-              ? 'one_way'
-              : 'one_way',
-        conflictPolicy:
-          raw.conflictPolicy === 'google_wins'
-            ? 'google_wins'
-            : raw.conflictPolicy === 'ask_user'
-              ? 'ask_user'
-              : 'onterapi_wins',
-        requireValidationForExternalEvents: raw.requireValidationForExternalEvents === true,
-        defaultCalendarId:
-          typeof raw.defaultCalendarId === 'string' ? raw.defaultCalendarId : undefined,
-        hidePatientName: raw.hidePatientName === true,
-        prefix: typeof raw.prefix === 'string' ? raw.prefix : undefined,
-      };
+      return extractGoogleIntegrationSettings(version.payload);
     } catch (error) {
       this.logger.error('Failed to resolve Google Calendar settings', error as Error, {
         clinicId,

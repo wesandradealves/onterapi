@@ -222,20 +222,21 @@ export class CreateHoldUseCase
 
     const resolved = settings ?? fallback;
     const minAdvanceMinutes = Math.max(resolved.minAdvanceMinutes ?? 0, 0);
-    const maxAdvanceMinutes =
+
+    const normalizedMaxMinutes =
       resolved.maxAdvanceMinutes !== undefined
         ? Math.max(resolved.maxAdvanceMinutes, 0)
         : undefined;
-
-    const maxAdvanceDays =
-      maxAdvanceMinutes && maxAdvanceMinutes > 0
-        ? Math.max(1, Math.ceil(maxAdvanceMinutes / (60 * 24)))
-        : 90;
+    const candidateMinutes =
+      normalizedMaxMinutes !== undefined && normalizedMaxMinutes > 0
+        ? normalizedMaxMinutes
+        : 60 * 24 * 90;
+    const maxAdvanceDays = Math.max(1, Math.ceil(candidateMinutes / (60 * 24)));
 
     return {
       ttlMinutes: Math.max(resolved.ttlMinutes ?? 30, 1),
       minAdvanceMinutes,
-      maxAdvanceMinutes,
+      maxAdvanceMinutes: normalizedMaxMinutes,
       maxAdvanceDays,
       bufferBetweenBookingsMinutes: 15,
     };
@@ -243,16 +244,10 @@ export class CreateHoldUseCase
 
   private computeHoldTtl(startAtUtc: Date, nowUtc: Date, ttlMinutes: number): Date {
     const ttlMilliseconds = ttlMinutes * 60000;
-    let ttlExpiresAt = new Date(nowUtc.getTime() + ttlMilliseconds);
+    const rawExpiryMillis = nowUtc.getTime() + ttlMilliseconds;
+    const cappedAtStartMillis = Math.min(rawExpiryMillis, startAtUtc.getTime() - 60000);
+    const safeExpiryMillis = Math.max(cappedAtStartMillis, nowUtc.getTime());
 
-    if (ttlExpiresAt >= startAtUtc) {
-      ttlExpiresAt = new Date(startAtUtc.getTime() - 60000);
-    }
-
-    if (ttlExpiresAt <= nowUtc) {
-      return new Date(nowUtc.getTime());
-    }
-
-    return ttlExpiresAt;
+    return new Date(safeExpiryMillis);
   }
 }
