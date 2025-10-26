@@ -31,7 +31,29 @@ const createAppointment = (overrides: Partial<ClinicAppointment> = {}): ClinicAp
   confirmedAt: new Date('2099-01-01T11:00:00Z'),
   createdAt: new Date('2099-01-01T10:30:00Z'),
   updatedAt: new Date('2099-01-01T10:30:00Z'),
-  metadata: {},
+  metadata: {
+    professionalPolicy: {
+      policyId: 'policy-1',
+      channelScope: 'direct',
+      sourceInvitationId: 'inv-1',
+      acceptedBy: 'professional-1',
+      effectiveAt: '2098-12-01T00:00:00.000Z',
+      updatedAt: '2098-12-01T00:00:00.000Z',
+      economicSummary: {
+        items: [
+          {
+            serviceTypeId: 'service-1',
+            price: 200,
+            currency: 'BRL',
+            payoutModel: 'percentage',
+            payoutValue: 50,
+          },
+        ],
+        orderOfRemainders: ['taxes', 'gateway', 'clinic', 'professional', 'platform'],
+        roundingStrategy: 'half_even',
+      },
+    },
+  },
   ...overrides,
 });
 
@@ -228,10 +250,10 @@ describe('ClinicPaymentReconciliationService', () => {
       gatewayStatus: 'RECEIVED_IN_ADVANCE',
       fingerprint: 'fp-123',
       split: expect.arrayContaining([
-        expect.objectContaining({ recipient: 'taxes', amountCents: 1000 }),
-        expect.objectContaining({ recipient: 'gateway', amountCents: 600 }),
-        expect.objectContaining({ recipient: 'clinic', amountCents: 10400 }),
-        expect.objectContaining({ recipient: 'professional', amountCents: 8000 }),
+        expect.objectContaining({ recipient: 'taxes', amountCents: 833 }),
+        expect.objectContaining({ recipient: 'gateway', amountCents: 500 }),
+        expect.objectContaining({ recipient: 'clinic', amountCents: 8667 }),
+        expect.objectContaining({ recipient: 'professional', amountCents: 10000 }),
       ]),
     });
 
@@ -242,6 +264,13 @@ describe('ClinicPaymentReconciliationService', () => {
           baseAmountCents: 20000,
           netAmountCents: 18000,
           fingerprint: 'fp-123',
+          professionalPolicyId: 'policy-1',
+          split: expect.arrayContaining([
+            expect.objectContaining({ recipient: 'taxes', amountCents: 833 }),
+            expect.objectContaining({ recipient: 'gateway', amountCents: 500 }),
+            expect.objectContaining({ recipient: 'clinic', amountCents: 8667 }),
+            expect.objectContaining({ recipient: 'professional', amountCents: 10000 }),
+          ]),
         }),
       }),
     );

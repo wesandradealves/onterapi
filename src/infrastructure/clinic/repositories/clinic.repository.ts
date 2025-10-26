@@ -415,4 +415,18 @@ export class ClinicRepository implements IClinicRepository {
 
     return true;
   }
+
+  async listTenantIds(): Promise<string[]> {
+    const rows = await this.repository
+      .createQueryBuilder('clinic')
+      .select('DISTINCT clinic.tenant_id', 'tenantId')
+      .where('clinic.tenant_id IS NOT NULL')
+      .getRawMany<{ tenantId: string | null }>();
+
+    return rows
+      .map((row) => row.tenantId)
+      .filter(
+        (tenantId): tenantId is string => typeof tenantId === 'string' && tenantId.length > 0,
+      );
+  }
 }

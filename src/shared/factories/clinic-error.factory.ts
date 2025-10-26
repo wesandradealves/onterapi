@@ -67,6 +67,10 @@ export class ClinicErrorFactory {
     return new ConflictException(this.sanitize(message));
   }
 
+  static professionalPolicyNotFound(message: string): NotFoundException {
+    return new NotFoundException(this.sanitize(message));
+  }
+
   static quotaExceeded(message: string): ConflictException {
     return new ConflictException(this.sanitize(message));
   }

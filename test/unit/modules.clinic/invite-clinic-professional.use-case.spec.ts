@@ -69,6 +69,7 @@ describe('InviteClinicProfessionalUseCase', () => {
     professionalId: 'professional-1',
     email: undefined,
     channel: 'email' as const,
+    channelScope: 'direct' as const,
     economicSummary: {
       items: [
         {
@@ -93,6 +94,7 @@ describe('InviteClinicProfessionalUseCase', () => {
     status: 'pending',
     tokenHash: 'hash-original',
     channel: baseInput.channel,
+    channelScope: baseInput.channelScope,
     expiresAt: baseInput.expiresAt,
     economicSummary: baseInput.economicSummary,
     metadata: {},
@@ -159,11 +161,24 @@ describe('InviteClinicProfessionalUseCase', () => {
 
     const result = await useCase.executeOrThrow(baseInput);
 
+    expect(invitationRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        channelScope: baseInput.channelScope,
+      }),
+    );
+    expect(invitationRepository.updateToken).toHaveBeenCalledWith(
+      expect.objectContaining({
+        channelScope: baseInput.channelScope,
+      }),
+    );
+
     expect(result.metadata?.issuedToken).toBe('token-abc');
     expect(tokenService.generateToken).toHaveBeenCalledWith(
       expect.objectContaining({
         invitationId: 'inv-1',
         clinicId: baseInput.clinicId,
+        professionalId: baseInput.professionalId,
+        targetEmail: baseInput.email,
       }),
     );
     expect(auditService.register).toHaveBeenCalledWith(

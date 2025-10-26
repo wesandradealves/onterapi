@@ -10,6 +10,7 @@ import {
   ManageClinicMemberInput,
   RemoveClinicMemberInput,
 } from '../../../domain/clinic/types/clinic.types';
+import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
 import { IClinicMemberRepository } from '../../../domain/clinic/interfaces/repositories/clinic-member.repository.interface';
 import { ClinicMemberEntity } from '../entities/clinic-member.entity';
 import { ClinicMapper } from '../mappers/clinic.mapper';
@@ -109,6 +110,32 @@ export class ClinicMemberRepository implements IClinicMemberRepository {
     });
 
     return entities.map((entity) => ClinicMapper.toMember(entity));
+  }
+
+  async countActiveProfessionalsByClinics(params: {
+    tenantId: string;
+    clinicIds: string[];
+  }): Promise<Record<string, number>> {
+    if (!params.clinicIds || params.clinicIds.length === 0) {
+      return {};
+    }
+
+    const rows = await this.repository
+      .createQueryBuilder('member')
+      .select('member.clinic_id', 'clinicId')
+      .addSelect('COUNT(*)', 'total')
+      .where('member.tenant_id = :tenantId', { tenantId: params.tenantId })
+      .andWhere('member.clinic_id IN (:...clinicIds)', { clinicIds: params.clinicIds })
+      .andWhere('member.role = :role', { role: RolesEnum.PROFESSIONAL })
+      .andWhere('member.status = :status', { status: 'active' })
+      .andWhere('member.ended_at IS NULL')
+      .groupBy('member.clinic_id')
+      .getRawMany<{ clinicId: string; total: string }>();
+
+    return rows.reduce<Record<string, number>>((acc, row) => {
+      acc[row.clinicId] = Number(row.total);
+      return acc;
+    }, {});
   }
 
   async transferProfessional(params: {

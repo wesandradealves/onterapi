@@ -69,6 +69,8 @@ export class ReissueClinicInvitationUseCase
       clinicId: invitation.clinicId,
       tenantId: invitation.tenantId,
       expiresAt: input.expiresAt,
+      professionalId: invitation.professionalId,
+      targetEmail: invitation.targetEmail,
     });
 
     const refreshed = await this.invitationRepository.updateToken({
@@ -77,6 +79,7 @@ export class ReissueClinicInvitationUseCase
       tokenHash: hash,
       expiresAt: input.expiresAt,
       channel: input.channel,
+      channelScope: input.channelScope,
     });
 
     const result = {
@@ -97,6 +100,7 @@ export class ReissueClinicInvitationUseCase
         previousStatus: invitation.status,
         newExpiration: input.expiresAt,
         channel: input.channel ?? invitation.channel,
+        channelScope: input.channelScope ?? invitation.channelScope,
       },
     });
 

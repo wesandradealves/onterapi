@@ -4,10 +4,13 @@ import { CreateClinicHoldUseCase } from '../../../src/modules/clinic/use-cases/c
 import { IClinicRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic.repository.interface';
 import { IClinicHoldRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-hold.repository.interface';
 import { IClinicServiceTypeRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-service-type.repository.interface';
+import { IClinicProfessionalPolicyRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-professional-policy.repository.interface';
 import { ClinicAuditService } from '../../../src/infrastructure/clinic/services/clinic-audit.service';
 import {
   Clinic,
   ClinicHold,
+  ClinicInvitationEconomicSummary,
+  ClinicProfessionalPolicy,
   ClinicServiceTypeDefinition,
 } from '../../../src/domain/clinic/types/clinic.types';
 import { ClinicOverbookingEvaluatorService } from '../../../src/modules/clinic/services/clinic-overbooking-evaluator.service';
@@ -75,10 +78,41 @@ const buildHold = (): ClinicHold => ({
   updatedAt: new Date('2098-12-31T00:00:00Z'),
 });
 
+const buildPolicy = (
+  overrides: Partial<ClinicProfessionalPolicy> = {},
+): ClinicProfessionalPolicy => ({
+  id: 'policy-1',
+  clinicId: 'clinic-1',
+  tenantId: 'tenant-1',
+  professionalId: 'professional-1',
+  channelScope: 'both',
+  economicSummary: {
+    items: [
+      {
+        serviceTypeId: 'service-1',
+        price: 180,
+        currency: 'BRL',
+        payoutModel: 'percentage',
+        payoutValue: 50,
+      },
+    ],
+    orderOfRemainders: ['taxes', 'gateway', 'clinic', 'professional', 'platform'],
+    roundingStrategy: 'half_even',
+  },
+  effectiveAt: new Date('2098-12-01T00:00:00Z'),
+  endedAt: undefined,
+  sourceInvitationId: 'inv-1',
+  acceptedBy: 'professional-1',
+  createdAt: new Date('2098-12-01T00:00:00Z'),
+  updatedAt: new Date('2098-12-01T00:00:00Z'),
+  ...overrides,
+});
+
 describe('CreateClinicHoldUseCase', () => {
   let clinicRepository: Mocked<IClinicRepository>;
   let clinicHoldRepository: Mocked<IClinicHoldRepository>;
   let clinicServiceTypeRepository: Mocked<IClinicServiceTypeRepository>;
+  let professionalPolicyRepository: Mocked<IClinicProfessionalPolicyRepository>;
   let auditService: ClinicAuditService;
   let clinicOverbookingEvaluator: Mocked<ClinicOverbookingEvaluatorService>;
   let messageBus: Mocked<MessageBus>;
@@ -97,6 +131,7 @@ describe('CreateClinicHoldUseCase', () => {
     idempotencyKey: 'idem-1',
     locationId: 'room-1',
     resources: ['equip-1', 'equip-2'],
+    channel: 'direct' as const,
   };
 
   beforeEach(() => {
@@ -129,6 +164,11 @@ describe('CreateClinicHoldUseCase', () => {
       register: jest.fn(),
     } as unknown as ClinicAuditService;
 
+    professionalPolicyRepository = {
+      findActivePolicy: jest.fn().mockResolvedValue(buildPolicy()),
+      replacePolicy: jest.fn(),
+    } as unknown as Mocked<IClinicProfessionalPolicyRepository>;
+
     clinicOverbookingEvaluator = {
       evaluate: jest.fn().mockResolvedValue({
         riskScore: 80,
@@ -144,27 +184,68 @@ describe('CreateClinicHoldUseCase', () => {
       unsubscribe: jest.fn(),
     } as unknown as Mocked<MessageBus>;
 
-    clinicHoldRepository.create.mockImplementation(async (payload) => ({
-      ...buildHold(),
-      clinicId: payload.clinicId,
-      tenantId: payload.tenantId,
-      professionalId: payload.professionalId,
-      patientId: payload.patientId,
-      serviceTypeId: payload.serviceTypeId,
-      start: payload.start,
-      end: payload.end,
-      ttlExpiresAt: payload.ttlExpiresAt,
-      idempotencyKey: payload.idempotencyKey,
-      createdBy: payload.requestedBy,
-      locationId: payload.locationId ?? null,
-      resources: payload.resources ?? [],
-      metadata: payload.metadata,
-    }));
+    clinicHoldRepository.create.mockImplementation(async (payload) => {
+      const professionalPolicyMetadata =
+        (payload.metadata?.professionalPolicy as Record<string, unknown> | undefined) ?? undefined;
+      const effectiveAtRaw = professionalPolicyMetadata?.effectiveAt;
+      const effectiveAt =
+        effectiveAtRaw instanceof Date
+          ? effectiveAtRaw
+          : typeof effectiveAtRaw === 'string'
+            ? new Date(effectiveAtRaw)
+            : undefined;
+
+      const hasValidPolicy =
+        professionalPolicyMetadata &&
+        typeof professionalPolicyMetadata.policyId === 'string' &&
+        (professionalPolicyMetadata.channelScope === 'direct' ||
+          professionalPolicyMetadata.channelScope === 'marketplace' ||
+          professionalPolicyMetadata.channelScope === 'both') &&
+        typeof professionalPolicyMetadata.acceptedBy === 'string' &&
+        typeof professionalPolicyMetadata.sourceInvitationId === 'string' &&
+        effectiveAt;
+
+      return {
+        ...buildHold(),
+        clinicId: payload.clinicId,
+        tenantId: payload.tenantId,
+        professionalId: payload.professionalId,
+        patientId: payload.patientId,
+        serviceTypeId: payload.serviceTypeId,
+        start: payload.start,
+        end: payload.end,
+        ttlExpiresAt: payload.ttlExpiresAt,
+        idempotencyKey: payload.idempotencyKey,
+        createdBy: payload.requestedBy,
+        locationId: payload.locationId ?? null,
+        resources: payload.resources ?? [],
+        channel:
+          payload.metadata && typeof payload.metadata.channel === 'string'
+            ? (payload.metadata.channel as 'direct' | 'marketplace')
+            : undefined,
+        professionalPolicySnapshot: hasValidPolicy
+          ? {
+              policyId: professionalPolicyMetadata!.policyId as string,
+              channelScope: professionalPolicyMetadata!.channelScope as
+                | 'direct'
+                | 'marketplace'
+                | 'both',
+              acceptedBy: professionalPolicyMetadata!.acceptedBy as string,
+              sourceInvitationId: professionalPolicyMetadata!.sourceInvitationId as string,
+              effectiveAt: effectiveAt as Date,
+              economicSummary: professionalPolicyMetadata!
+                .economicSummary as ClinicInvitationEconomicSummary,
+            }
+          : undefined,
+        metadata: payload.metadata,
+      };
+    });
 
     useCase = new CreateClinicHoldUseCase(
       clinicRepository,
       clinicHoldRepository,
       clinicServiceTypeRepository,
+      professionalPolicyRepository,
       externalCalendarEventsRepository,
       auditService,
       messageBus,
@@ -226,6 +307,18 @@ describe('CreateClinicHoldUseCase', () => {
 
     expect(result.clinicId).toBe(baseInput.clinicId);
     expect(result.metadata?.overbooking).toBeUndefined();
+    expect(professionalPolicyRepository.findActivePolicy).toHaveBeenCalledWith({
+      clinicId: baseInput.clinicId,
+      tenantId: baseInput.tenantId,
+      professionalId: baseInput.professionalId,
+    });
+    const metadata = result.metadata as Record<string, unknown>;
+    expect(metadata).toEqual(
+      expect.objectContaining({
+        channel: 'direct',
+        professionalPolicy: expect.objectContaining({ policyId: 'policy-1' }),
+      }),
+    );
     expect(clinicHoldRepository.findActiveOverlapByResources).toHaveBeenCalledWith(
       expect.objectContaining({
         tenantId: baseInput.tenantId,
@@ -240,10 +333,103 @@ describe('CreateClinicHoldUseCase', () => {
         event: 'clinic.hold.created',
         clinicId: baseInput.clinicId,
         tenantId: baseInput.tenantId,
+        detail: expect.objectContaining({
+          channel: 'direct',
+          professionalPolicyId: 'policy-1',
+        }),
       }),
     );
     expect(clinicOverbookingEvaluator.evaluate).not.toHaveBeenCalled();
     expect(messageBus.publish).not.toHaveBeenCalled();
+  });
+
+  it('bloqueia holds quando canal solicitado nao e permitido na politica', async () => {
+    clinicRepository.findByTenant.mockResolvedValue(buildClinic());
+    clinicHoldRepository.findByIdempotencyKey.mockResolvedValue(null);
+    clinicServiceTypeRepository.findById.mockResolvedValue(buildServiceType());
+    professionalPolicyRepository.findActivePolicy.mockResolvedValueOnce(
+      buildPolicy({ channelScope: 'direct' }),
+    );
+
+    await expect(
+      useCase.executeOrThrow({ ...baseInput, channel: 'marketplace' as const }),
+    ).rejects.toThrow(
+      'Politica clinica-profissional nao permite agendamentos pelo canal informado',
+    );
+
+    expect(clinicHoldRepository.create).not.toHaveBeenCalled();
+  });
+
+  it('bloqueia holds quando politica clinica-profissional nao for localizada', async () => {
+    clinicRepository.findByTenant.mockResolvedValue(buildClinic());
+    clinicHoldRepository.findByIdempotencyKey.mockResolvedValue(null);
+    clinicServiceTypeRepository.findById.mockResolvedValue(buildServiceType());
+    professionalPolicyRepository.findActivePolicy.mockResolvedValueOnce(null);
+
+    await expect(useCase.executeOrThrow(baseInput)).rejects.toThrow(
+      'Politica clinica-profissional nao encontrada para o profissional convidado',
+    );
+
+    expect(clinicHoldRepository.create).not.toHaveBeenCalled();
+    expect(clinicHoldRepository.findActiveOverlapByProfessional).not.toHaveBeenCalled();
+  });
+
+  it('bloqueia holds quando a politica nao contempla o servico selecionado', async () => {
+    clinicRepository.findByTenant.mockResolvedValue(buildClinic());
+    clinicHoldRepository.findByIdempotencyKey.mockResolvedValue(null);
+    clinicServiceTypeRepository.findById.mockResolvedValue(buildServiceType());
+    professionalPolicyRepository.findActivePolicy.mockResolvedValueOnce(
+      buildPolicy({
+        economicSummary: {
+          items: [
+            {
+              serviceTypeId: 'service-xyz',
+              price: 180,
+              currency: 'BRL',
+              payoutModel: 'percentage',
+              payoutValue: 40,
+            },
+          ],
+          orderOfRemainders: ['taxes', 'gateway', 'clinic', 'professional', 'platform'],
+          roundingStrategy: 'half_even',
+        },
+      }),
+    );
+
+    await expect(useCase.executeOrThrow(baseInput)).rejects.toThrow(
+      'Politica clinica-profissional nao contempla o tipo de servico selecionado',
+    );
+
+    expect(clinicHoldRepository.create).not.toHaveBeenCalled();
+  });
+
+  it('bloqueia holds quando valores economicos divergem da politica', async () => {
+    clinicRepository.findByTenant.mockResolvedValue(buildClinic());
+    clinicHoldRepository.findByIdempotencyKey.mockResolvedValue(null);
+    clinicServiceTypeRepository.findById.mockResolvedValue(buildServiceType());
+    professionalPolicyRepository.findActivePolicy.mockResolvedValueOnce(
+      buildPolicy({
+        economicSummary: {
+          items: [
+            {
+              serviceTypeId: 'service-1',
+              price: 200,
+              currency: 'USD',
+              payoutModel: 'percentage',
+              payoutValue: 40,
+            },
+          ],
+          orderOfRemainders: ['taxes', 'gateway', 'clinic', 'professional', 'platform'],
+          roundingStrategy: 'half_even',
+        },
+      }),
+    );
+
+    await expect(useCase.executeOrThrow(baseInput)).rejects.toThrow(
+      'Politica clinica-profissional divergente dos precos configurados para o servico',
+    );
+
+    expect(clinicHoldRepository.create).not.toHaveBeenCalled();
   });
 
   it('marca overbooking como pendente quando risco abaixo do limiar', async () => {

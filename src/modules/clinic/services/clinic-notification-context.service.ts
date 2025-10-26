@@ -16,6 +16,7 @@ import {
   IClinicConfigurationRepository as IClinicConfigurationRepositoryToken,
 } from '../../../domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
 import { IUserRepository } from '../../../domain/users/interfaces/repositories/user.repository.interface';
+import { ClinicAuditService } from '../../../infrastructure/clinic/services/clinic-audit.service';
 
 const DEFAULT_ROLES: ClinicStaffRole[] = [RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER];
 const DEFAULT_STATUS: ClinicMemberStatus[] = ['active'];
@@ -70,6 +71,7 @@ export class ClinicNotificationContextService {
     private readonly clinicConfigurationRepository: IClinicConfigurationRepository,
     @Inject('IUserRepository')
     private readonly userRepository: IUserRepository,
+    private readonly auditService: ClinicAuditService,
   ) {}
 
   async resolveRecipients(params: ResolveRecipientsParams): Promise<string[]> {
@@ -287,6 +289,121 @@ export class ClinicNotificationContextService {
       .filter((entry) => entry.tokens.length > 0);
   }
 
+  async removeInvalidPushTokens(params: {
+    tenantId: string;
+    clinicId: string;
+    recipients: Array<{ userId: string; tokens?: string[] }>;
+    rejectedTokens: string[];
+    scope?: string;
+  }): Promise<void> {
+    const rejected = new Set(
+      (params.rejectedTokens ?? [])
+        .filter((token): token is string => typeof token === 'string')
+        .map((token) => token.trim())
+        .filter((token) => token.length > 0),
+    );
+
+    if (rejected.size === 0) {
+      return;
+    }
+
+    const scope = params.scope ?? 'clinic-notifications';
+
+    for (const recipient of params.recipients) {
+      if (!recipient.userId) {
+        continue;
+      }
+
+      const recipientTokens = (recipient.tokens ?? [])
+        .filter((token): token is string => typeof token === 'string')
+        .map((token) => token.trim())
+        .filter((token) => token.length > 0);
+
+      const tokensToRemove = recipientTokens.filter((token) => rejected.has(token));
+
+      if (tokensToRemove.length === 0) {
+        continue;
+      }
+
+      try {
+        const user = await this.userRepository.findById(recipient.userId);
+
+        if (!user) {
+          this.logger.warn(`${scope}: usuario nao encontrado ao remover tokens push`, {
+            tenantId: params.tenantId,
+            clinicId: params.clinicId,
+            userId: recipient.userId,
+            tokens: tokensToRemove.length,
+          });
+          continue;
+        }
+
+        const existingTokens = this.extractPushTokens(user);
+        if (existingTokens.length === 0) {
+          continue;
+        }
+
+        const filteredTokens = existingTokens.filter((token) => !rejected.has(token));
+        if (filteredTokens.length === existingTokens.length) {
+          continue;
+        }
+
+        const metadata =
+          user.metadata && typeof user.metadata === 'object'
+            ? { ...(user.metadata as Record<string, unknown>) }
+            : ({} as Record<string, unknown>);
+
+        const notification =
+          metadata.notification && typeof metadata.notification === 'object'
+            ? { ...(metadata.notification as Record<string, unknown>) }
+            : ({} as Record<string, unknown>);
+
+        if (filteredTokens.length > 0) {
+          notification.pushTokens = filteredTokens;
+        } else {
+          delete notification.pushTokens;
+        }
+
+        if (Object.keys(notification).length === 0) {
+          delete metadata.notification;
+        } else {
+          metadata.notification = notification;
+        }
+
+        await this.userRepository.update(user.id, { metadata });
+
+        const removedCount = existingTokens.length - filteredTokens.length;
+
+        this.logger.debug(`${scope}: tokens push removidos para usuario`, {
+          tenantId: params.tenantId,
+          clinicId: params.clinicId,
+          userId: user.id,
+          removed: removedCount,
+        });
+
+        await this.auditService.register({
+          tenantId: params.tenantId,
+          clinicId: params.clinicId,
+          performedBy: 'system',
+          event: 'clinic.notification.push_tokens_removed',
+          detail: {
+            userId: user.id,
+            removedTokens: tokensToRemove,
+            remainingTokens: filteredTokens,
+            scope,
+            removedCount,
+          },
+        });
+      } catch (error) {
+        this.logger.error(`${scope}: falha ao remover tokens push invalidos`, error as Error, {
+          tenantId: params.tenantId,
+          clinicId: params.clinicId,
+          userId: recipient.userId,
+        });
+      }
+    }
+  }
+
   private async resolveRecipientContacts(
     userIds: string[],
   ): Promise<Array<{ userId: string; email?: string; phone?: string; pushTokens?: string[] }>> {
@@ -487,7 +604,9 @@ export class ClinicNotificationContextService {
     }
   }
 
-  private extractPushTokens(user: { metadata?: Record<string, unknown> } | null | undefined): string[] {
+  private extractPushTokens(
+    user: { metadata?: Record<string, unknown> } | null | undefined,
+  ): string[] {
     if (!user || !user.metadata || typeof user.metadata !== 'object') {
       return [];
     }

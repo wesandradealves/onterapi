@@ -19,6 +19,7 @@ import {
   ClinicPaymentLedger,
   ClinicPaymentLedgerEventEntry,
   ClinicPaymentSplitAllocation,
+  ClinicProfessionalPolicy,
   ClinicProfessionalTransferResult,
   ClinicServiceCustomField,
   ClinicServiceTypeDefinition,
@@ -34,6 +35,7 @@ import {
 import { ClinicHoldResponseDto } from '../dtos/clinic-hold-response.dto';
 import { ClinicAppointmentConfirmationResponseDto } from '../dtos/clinic-appointment-confirmation-response.dto';
 import { ClinicSummaryDto } from '../dtos/clinic-summary.dto';
+import { ClinicProfessionalPolicyResponseDto } from '../dtos/clinic-professional-policy-response.dto';
 import {
   ClinicGeneralSettingsPayloadDto,
   ClinicGeneralSettingsResponseDto,
@@ -460,6 +462,19 @@ export class ClinicPresenter {
       resources: hold.resources,
       idempotencyKey: hold.idempotencyKey,
       createdBy: hold.createdBy,
+      channel: hold.channel,
+      professionalPolicySnapshot: hold.professionalPolicySnapshot
+        ? {
+            policyId: hold.professionalPolicySnapshot.policyId,
+            channelScope: hold.professionalPolicySnapshot.channelScope,
+            acceptedBy: hold.professionalPolicySnapshot.acceptedBy,
+            sourceInvitationId: hold.professionalPolicySnapshot.sourceInvitationId,
+            effectiveAt: hold.professionalPolicySnapshot.effectiveAt,
+            economicSummary: ClinicPresenter.formatEconomicSummary(
+              hold.professionalPolicySnapshot.economicSummary,
+            )!,
+          }
+        : undefined,
       confirmedAt: hold.confirmedAt,
       confirmedBy: hold.confirmedBy,
       cancelledAt: hold.cancelledAt,
@@ -468,6 +483,23 @@ export class ClinicPresenter {
       createdAt: hold.createdAt,
       updatedAt: hold.updatedAt,
       metadata: hold.metadata,
+    };
+  }
+
+  static professionalPolicy(policy: ClinicProfessionalPolicy): ClinicProfessionalPolicyResponseDto {
+    return {
+      id: policy.id,
+      clinicId: policy.clinicId,
+      tenantId: policy.tenantId,
+      professionalId: policy.professionalId,
+      channelScope: policy.channelScope,
+      economicSummary: ClinicPresenter.formatEconomicSummary(policy.economicSummary)!,
+      effectiveAt: policy.effectiveAt,
+      endedAt: policy.endedAt,
+      sourceInvitationId: policy.sourceInvitationId,
+      acceptedBy: policy.acceptedBy,
+      createdAt: policy.createdAt,
+      updatedAt: policy.updatedAt,
     };
   }
 
@@ -543,6 +575,7 @@ export class ClinicPresenter {
       issuedBy: invitation.issuedBy,
       status: invitation.status,
       channel: invitation.channel,
+      channelScope: invitation.channelScope,
       expiresAt: invitation.expiresAt,
       acceptedAt: invitation.acceptedAt,
       acceptedBy: invitation.acceptedBy,

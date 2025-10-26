@@ -39,14 +39,22 @@ import {
 } from '../../../domain/clinic/interfaces/use-cases/confirm-clinic-appointment.use-case.interface';
 import {
   ClinicAppointment,
+  ClinicAppointmentChannel,
   ClinicAppointmentConfirmationResult,
   ClinicHoldConfirmationInput,
+  ClinicInvitationChannelScope,
+  ClinicInvitationEconomicSummary,
   ClinicPaymentSettings,
   ClinicPaymentStatus,
+  ClinicProfessionalPolicy,
 } from '../../../domain/clinic/types/clinic.types';
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
 import { ClinicAuditService } from '../../../infrastructure/clinic/services/clinic-audit.service';
 import { parseClinicPaymentSettings } from '../utils/payment-settings.parser';
+import {
+  type IClinicProfessionalPolicyRepository,
+  IClinicProfessionalPolicyRepository as IClinicProfessionalPolicyRepositoryToken,
+} from '../../../domain/clinic/interfaces/repositories/clinic-professional-policy.repository.interface';
 
 @Injectable()
 export class ConfirmClinicAppointmentUseCase
@@ -72,6 +80,8 @@ export class ConfirmClinicAppointmentUseCase
     private readonly clinicPaymentGatewayService: IClinicPaymentGatewayService,
     @Inject(IExternalCalendarEventsRepositoryToken)
     private readonly externalCalendarEventsRepository: IExternalCalendarEventsRepository,
+    @Inject(IClinicProfessionalPolicyRepositoryToken)
+    private readonly professionalPolicyRepository: IClinicProfessionalPolicyRepository,
     private readonly auditService: ClinicAuditService,
   ) {
     super();
@@ -174,6 +184,42 @@ export class ConfirmClinicAppointmentUseCase
       clinic.holdSettings?.minAdvanceMinutes ?? 0,
       serviceType.minAdvanceMinutes,
     );
+    const professionalPolicy = await this.professionalPolicyRepository.findActivePolicy({
+      clinicId: hold.clinicId,
+      tenantId: hold.tenantId,
+      professionalId: hold.professionalId,
+    });
+
+    if (!professionalPolicy) {
+      throw ClinicErrorFactory.invitationNotFound(
+        'Politica clinica-profissional nao encontrada para o profissional convidado',
+      );
+    }
+
+    const holdChannel: ClinicAppointmentChannel =
+      hold.channel ?? this.extractChannelFromMetadata(hold.metadata);
+
+    if (!this.isChannelAllowed(professionalPolicy.channelScope, holdChannel)) {
+      throw ClinicErrorFactory.invalidClinicData(
+        'Politica clinica-profissional nao permite agendamentos pelo canal utilizado',
+      );
+    }
+
+    const policyItem = professionalPolicy.economicSummary.items.find(
+      (item) => item.serviceTypeId === hold.serviceTypeId,
+    );
+
+    if (!policyItem) {
+      throw ClinicErrorFactory.invalidClinicData(
+        'Politica clinica-profissional nao contempla o tipo de servico do hold',
+      );
+    }
+
+    if (policyItem.price !== serviceType.price || policyItem.currency !== serviceType.currency) {
+      throw ClinicErrorFactory.invalidClinicData(
+        'Politica clinica-profissional divergente do tipo de servico configurado',
+      );
+    }
 
     const diffMinutes = Math.floor((hold.start.getTime() - now.getTime()) / 60000);
 
@@ -281,6 +327,7 @@ export class ConfirmClinicAppointmentUseCase
         confirmationIdempotencyKey: input.idempotencyKey,
         gatewayStatus: verification.providerStatus,
         sandboxMode: paymentSettings.sandboxMode,
+        professionalPolicy: this.buildProfessionalPolicyMetadata(professionalPolicy),
       },
     });
 
@@ -304,6 +351,8 @@ export class ConfirmClinicAppointmentUseCase
         paymentTransactionId: input.paymentTransactionId,
         paymentStatus: finalPaymentStatus,
         gatewayStatus: verification.providerStatus,
+        channel: holdChannel,
+        professionalPolicyId: professionalPolicy.id,
       },
     });
 
@@ -321,6 +370,28 @@ export class ConfirmClinicAppointmentUseCase
       confirmedAt: appointment.confirmedAt,
       paymentStatus: appointment.paymentStatus,
     };
+  }
+
+  private extractChannelFromMetadata(
+    metadata: Record<string, unknown> | undefined,
+  ): ClinicAppointmentChannel {
+    if (metadata && typeof metadata === 'object') {
+      const raw = (metadata as Record<string, unknown>).channel;
+      if (raw === 'marketplace' || raw === 'direct') {
+        return raw;
+      }
+    }
+    return 'direct';
+  }
+
+  private isChannelAllowed(
+    scope: ClinicInvitationChannelScope,
+    channel: ClinicAppointmentChannel,
+  ): boolean {
+    if (scope === 'both') {
+      return true;
+    }
+    return scope === channel;
   }
 
   private async resolvePaymentSettings(clinicId: string): Promise<ClinicPaymentSettings> {
@@ -353,6 +424,34 @@ export class ConfirmClinicAppointmentUseCase
       );
     }
   }
+
+  private buildProfessionalPolicyMetadata(
+    policy: ClinicProfessionalPolicy,
+  ): ProfessionalPolicyMetadata {
+    const economicSummary: ClinicInvitationEconomicSummary = JSON.parse(
+      JSON.stringify(policy.economicSummary ?? {}),
+    );
+
+    return {
+      policyId: policy.id,
+      channelScope: policy.channelScope,
+      sourceInvitationId: policy.sourceInvitationId,
+      acceptedBy: policy.acceptedBy,
+      effectiveAt: policy.effectiveAt.toISOString(),
+      updatedAt: policy.updatedAt.toISOString(),
+      economicSummary,
+    };
+  }
 }
 
 export const ConfirmClinicAppointmentUseCaseToken = IConfirmClinicAppointmentUseCaseToken;
+
+interface ProfessionalPolicyMetadata {
+  policyId: string;
+  channelScope: string;
+  sourceInvitationId: string;
+  acceptedBy: string;
+  effectiveAt: string;
+  updatedAt: string;
+  economicSummary: ClinicInvitationEconomicSummary;
+}

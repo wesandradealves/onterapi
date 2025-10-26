@@ -265,10 +265,16 @@ export class ProcessClinicExternalCalendarEventUseCase
       };
     }
 
-    const autoApproved =
-      context.inboundStatus === 'confirmed' &&
+    let autoApproved = false;
+
+    if (
+      context.clinicSettings &&
       context.clinicSettings.enabled === true &&
-      conflicts.length === 0;
+      context.inboundStatus === 'confirmed' &&
+      conflicts.length === 0
+    ) {
+      autoApproved = true;
+    }
 
     return {
       status: autoApproved ? 'approved' : 'pending',

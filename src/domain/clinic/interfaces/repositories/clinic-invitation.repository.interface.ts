@@ -2,6 +2,8 @@ import {
   AcceptClinicInvitationInput,
   ClinicInvitation,
   ClinicInvitationChannel,
+  ClinicInvitationChannelScope,
+  ClinicInvitationExpirationRecord,
   ClinicInvitationStatus,
   InviteClinicProfessionalInput,
   RevokeClinicInvitationInput,
@@ -15,6 +17,7 @@ export interface IClinicInvitationRepository {
     tokenHash: string;
     expiresAt?: Date;
     channel?: ClinicInvitationChannel;
+    channelScope?: ClinicInvitationChannelScope;
   }): Promise<ClinicInvitation>;
   findById(invitationId: string): Promise<ClinicInvitation | null>;
   findByTokenHash(tokenHash: string): Promise<ClinicInvitation | null>;
@@ -33,7 +36,7 @@ export interface IClinicInvitationRepository {
   }): Promise<ClinicInvitation>;
   markRevoked(input: RevokeClinicInvitationInput): Promise<ClinicInvitation>;
   expireInvitation(invitationId: string): Promise<ClinicInvitation>;
-  expireInvitationsBefore(referenceDate: Date): Promise<number>;
+  expireInvitationsBefore(referenceDate: Date): Promise<ClinicInvitationExpirationRecord[]>;
   hasActiveInvitation(params: {
     clinicId: string;
     tenantId: string;

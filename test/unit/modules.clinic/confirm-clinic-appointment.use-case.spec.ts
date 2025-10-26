@@ -8,6 +8,7 @@ import { IClinicAppointmentRepository } from '../../../src/domain/clinic/interfa
 import { IClinicConfigurationRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
 import { IClinicPaymentCredentialsService } from '../../../src/domain/clinic/interfaces/services/clinic-payment-credentials.service.interface';
 import { IClinicPaymentGatewayService } from '../../../src/domain/clinic/interfaces/services/clinic-payment-gateway.service.interface';
+import { IClinicProfessionalPolicyRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-professional-policy.repository.interface';
 import { IExternalCalendarEventsRepository } from '../../../src/domain/scheduling/interfaces/repositories/external-calendar-events.repository.interface';
 import { ClinicAuditService } from '../../../src/infrastructure/clinic/services/clinic-audit.service';
 import {
@@ -103,6 +104,7 @@ describe('ConfirmClinicAppointmentUseCase', () => {
   let clinicConfigurationRepository: Mocked<IClinicConfigurationRepository>;
   let clinicPaymentCredentialsService: Mocked<IClinicPaymentCredentialsService>;
   let clinicPaymentGatewayService: Mocked<IClinicPaymentGatewayService>;
+  let professionalPolicyRepository: Mocked<IClinicProfessionalPolicyRepository>;
   let externalCalendarEventsRepository: Mocked<IExternalCalendarEventsRepository>;
   let auditService: ClinicAuditService;
   let useCase: ConfirmClinicAppointmentUseCase;
@@ -148,6 +150,11 @@ describe('ConfirmClinicAppointmentUseCase', () => {
       executePayout: jest.fn(),
     } as unknown as Mocked<IClinicPaymentGatewayService>;
 
+    professionalPolicyRepository = {
+      findActivePolicy: jest.fn(),
+      replacePolicy: jest.fn(),
+    } as unknown as Mocked<IClinicProfessionalPolicyRepository>;
+
     externalCalendarEventsRepository = {
       findApprovedOverlap: jest.fn(),
     } as unknown as Mocked<IExternalCalendarEventsRepository>;
@@ -158,6 +165,33 @@ describe('ConfirmClinicAppointmentUseCase', () => {
       register: jest.fn().mockResolvedValue(undefined),
     } as unknown as ClinicAuditService;
 
+    professionalPolicyRepository.findActivePolicy.mockResolvedValue({
+      id: 'policy-1',
+      clinicId: 'clinic-1',
+      tenantId: 'tenant-1',
+      professionalId: 'professional-1',
+      channelScope: 'direct',
+      economicSummary: {
+        items: [
+          {
+            serviceTypeId: 'service-1',
+            price: 200,
+            currency: 'BRL',
+            payoutModel: 'percentage',
+            payoutValue: 50,
+          },
+        ],
+        orderOfRemainders: ['taxes', 'gateway', 'clinic', 'professional', 'platform'],
+        roundingStrategy: 'half_even',
+      },
+      effectiveAt: new Date('2098-12-01T00:00:00Z'),
+      endedAt: undefined,
+      sourceInvitationId: 'inv-1',
+      acceptedBy: 'professional-1',
+      createdAt: new Date('2098-12-01T00:00:00Z'),
+      updatedAt: new Date('2098-12-01T00:00:00Z'),
+    });
+
     useCase = new ConfirmClinicAppointmentUseCase(
       clinicRepository,
       clinicHoldRepository,
@@ -167,6 +201,7 @@ describe('ConfirmClinicAppointmentUseCase', () => {
       clinicPaymentCredentialsService,
       clinicPaymentGatewayService,
       externalCalendarEventsRepository,
+      professionalPolicyRepository,
       auditService,
     );
   });
@@ -290,11 +325,23 @@ describe('ConfirmClinicAppointmentUseCase', () => {
       paymentTransactionId: input.paymentTransactionId,
       paymentStatus: 'approved',
       confirmedAt: expect.any(Date),
-      metadata: {
+      metadata: expect.objectContaining({
         confirmationIdempotencyKey: input.idempotencyKey,
         gatewayStatus: 'RECEIVED',
         sandboxMode: false,
-      },
+        professionalPolicy: expect.objectContaining({
+          policyId: 'policy-1',
+          economicSummary: expect.objectContaining({
+            items: expect.arrayContaining([
+              expect.objectContaining({
+                serviceTypeId: hold.serviceTypeId,
+                payoutModel: 'percentage',
+                payoutValue: 50,
+              }),
+            ]),
+          }),
+        }),
+      }),
     });
 
     expect(clinicHoldRepository.confirmHold).toHaveBeenCalledWith({
@@ -326,8 +373,90 @@ describe('ConfirmClinicAppointmentUseCase', () => {
         paymentTransactionId: input.paymentTransactionId,
         paymentStatus: 'approved',
         gatewayStatus: 'RECEIVED',
+        channel: 'direct',
+        professionalPolicyId: 'policy-1',
       },
     });
+  });
+
+  it('should throw when professional policy is not found', async () => {
+    const clinic = createClinic();
+    const hold = createHold();
+    const serviceType = createServiceType();
+
+    clinicRepository.findByTenant.mockResolvedValue(clinic);
+    clinicHoldRepository.findById.mockResolvedValue(hold);
+    clinicServiceTypeRepository.findById.mockResolvedValue(serviceType);
+    clinicAppointmentRepository.findByHoldId.mockResolvedValue(null);
+    clinicHoldRepository.findActiveOverlapByProfessional.mockResolvedValue([]);
+    clinicAppointmentRepository.findActiveOverlap.mockResolvedValue([]);
+    professionalPolicyRepository.findActivePolicy.mockResolvedValueOnce(null);
+
+    await expect(
+      useCase.executeOrThrow({
+        clinicId: hold.clinicId,
+        tenantId: hold.tenantId,
+        holdId: hold.id,
+        confirmedBy: 'user-hold',
+        paymentTransactionId: 'trx-404',
+        idempotencyKey: 'idem-missing-policy',
+      }),
+    ).rejects.toThrow('Politica clinica-profissional nao encontrada');
+
+    expect(clinicAppointmentRepository.create).not.toHaveBeenCalled();
+    expect(clinicPaymentGatewayService.verifyPayment).not.toHaveBeenCalled();
+  });
+
+  it('should throw when professional policy does not include the service type', async () => {
+    const clinic = createClinic();
+    const hold = createHold();
+    const serviceType = createServiceType();
+
+    clinicRepository.findByTenant.mockResolvedValue(clinic);
+    clinicHoldRepository.findById.mockResolvedValue(hold);
+    clinicServiceTypeRepository.findById.mockResolvedValue(serviceType);
+    clinicAppointmentRepository.findByHoldId.mockResolvedValue(null);
+    clinicHoldRepository.findActiveOverlapByProfessional.mockResolvedValue([]);
+    clinicAppointmentRepository.findActiveOverlap.mockResolvedValue([]);
+    professionalPolicyRepository.findActivePolicy.mockResolvedValueOnce({
+      id: 'policy-2',
+      clinicId: clinic.id,
+      tenantId: clinic.tenantId,
+      professionalId: hold.professionalId,
+      channelScope: 'direct',
+      economicSummary: {
+        items: [
+          {
+            serviceTypeId: 'other-service',
+            price: 180,
+            currency: 'BRL',
+            payoutModel: 'fixed',
+            payoutValue: 90,
+          },
+        ],
+        orderOfRemainders: ['taxes', 'gateway', 'clinic', 'professional', 'platform'],
+        roundingStrategy: 'half_even',
+      },
+      effectiveAt: new Date('2098-12-01T00:00:00Z'),
+      endedAt: undefined,
+      sourceInvitationId: 'inv-2',
+      acceptedBy: 'professional-1',
+      createdAt: new Date('2098-12-01T00:00:00Z'),
+      updatedAt: new Date('2098-12-01T00:00:00Z'),
+    });
+
+    await expect(
+      useCase.executeOrThrow({
+        clinicId: hold.clinicId,
+        tenantId: hold.tenantId,
+        holdId: hold.id,
+        confirmedBy: 'user-hold',
+        paymentTransactionId: 'trx-405',
+        idempotencyKey: 'idem-policy-mismatch',
+      }),
+    ).rejects.toThrow('Politica clinica-profissional nao contempla o tipo de servico do hold');
+
+    expect(clinicAppointmentRepository.create).not.toHaveBeenCalled();
   });
 
   it('should reuse existing confirmation when idempotency key matches', async () => {

@@ -14,6 +14,7 @@ describe('ReissueClinicInvitationUseCase', () => {
     status: 'pending',
     tokenHash: 'hash-old',
     channel: 'email',
+    channelScope: 'direct',
     expiresAt: new Date('2025-11-01T10:00:00Z'),
     economicSummary: {
       items: [
@@ -47,6 +48,7 @@ describe('ReissueClinicInvitationUseCase', () => {
         tokenHash: 'hash-new',
         expiresAt: new Date('2025-12-01T10:00:00Z'),
         channel: 'whatsapp',
+        channelScope: 'both',
       })),
     } as unknown as jest.Mocked<IClinicInvitationRepository>;
 
@@ -81,6 +83,7 @@ describe('ReissueClinicInvitationUseCase', () => {
       reissuedBy: 'manager-2',
       expiresAt,
       channel: 'whatsapp',
+      channelScope: 'both',
     });
 
     expect(economicSummaryValidator.validate).toHaveBeenCalledWith(
@@ -102,6 +105,7 @@ describe('ReissueClinicInvitationUseCase', () => {
         tokenHash: 'hash-new',
         expiresAt,
         channel: 'whatsapp',
+        channelScope: 'both',
       }),
     );
     expect(result.metadata?.issuedToken).toBe('new-token');

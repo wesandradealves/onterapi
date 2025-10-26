@@ -35,14 +35,16 @@ import { ClinicInvitationListResponseDto } from '../dtos/clinic-invitation-list-
 import { ClinicRequestContext } from '../mappers/clinic-request.mapper';
 import { type ClinicInvitationEconomicSummary } from '../../../../domain/clinic/types/clinic.types';
 import {
-  AcceptClinicInvitationSchema,
   acceptClinicInvitationSchema,
-  InviteClinicProfessionalSchema,
+  AcceptClinicInvitationSchema,
+  declineClinicInvitationSchema,
+  DeclineClinicInvitationSchema,
   inviteClinicProfessionalSchema,
-  ListClinicInvitationsSchema,
+  InviteClinicProfessionalSchema,
   listClinicInvitationsSchema,
-  RevokeClinicInvitationSchema,
+  ListClinicInvitationsSchema,
   revokeClinicInvitationSchema,
+  RevokeClinicInvitationSchema,
 } from '../schemas/clinic-invitation.schema';
 import {
   ReissueClinicInvitationSchema,
@@ -60,6 +62,10 @@ import {
   type IAcceptClinicInvitationUseCase,
   IAcceptClinicInvitationUseCase as IAcceptClinicInvitationUseCaseToken,
 } from '../../../../domain/clinic/interfaces/use-cases/accept-clinic-invitation.use-case.interface';
+import {
+  type IDeclineClinicInvitationUseCase,
+  IDeclineClinicInvitationUseCase as IDeclineClinicInvitationUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/decline-clinic-invitation.use-case.interface';
 import {
   type IRevokeClinicInvitationUseCase,
   IRevokeClinicInvitationUseCase as IRevokeClinicInvitationUseCaseToken,
@@ -82,6 +88,8 @@ export class ClinicInvitationController {
     private readonly listInvitationsUseCase: IListClinicInvitationsUseCase,
     @Inject(IAcceptClinicInvitationUseCaseToken)
     private readonly acceptInvitationUseCase: IAcceptClinicInvitationUseCase,
+    @Inject(IDeclineClinicInvitationUseCaseToken)
+    private readonly declineInvitationUseCase: IDeclineClinicInvitationUseCase,
     @Inject(IRevokeClinicInvitationUseCaseToken)
     private readonly revokeInvitationUseCase: IRevokeClinicInvitationUseCase,
     @Inject(IReissueClinicInvitationUseCaseToken)
@@ -123,6 +131,7 @@ export class ClinicInvitationController {
       professionalId: body.professionalId,
       email: body.email,
       channel: body.channel,
+      channelScope: body.channelScope,
       economicSummary,
       expiresAt: new Date(body.expiresAt),
       metadata: body.metadata,
@@ -197,6 +206,39 @@ export class ClinicInvitationController {
     return ClinicPresenter.invitation(invitation);
   }
 
+  @Post('invitations/:invitationId/decline')
+  @Roles(
+    RolesEnum.CLINIC_OWNER,
+    RolesEnum.MANAGER,
+    RolesEnum.PROFESSIONAL,
+    RolesEnum.SECRETARY,
+    RolesEnum.SUPER_ADMIN,
+  )
+  @ApiOperation({ summary: 'Recusar convite de clinica' })
+  @ApiParam({ name: 'invitationId', type: String })
+  @ApiResponse({ status: 200, type: ClinicInvitationResponseDto })
+  @ZodApiBody({ schema: declineClinicInvitationSchema })
+  async declineInvitation(
+    @Param('invitationId') invitationId: string,
+    @Body(new ZodValidationPipe(declineClinicInvitationSchema))
+    body: DeclineClinicInvitationSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+  ): Promise<ClinicInvitationResponseDto> {
+    const tenantId = body.tenantId ?? currentUser.tenantId;
+    if (!tenantId) {
+      throw new BadRequestException('Tenant nao informado');
+    }
+
+    const invitation = await this.declineInvitationUseCase.executeOrThrow({
+      invitationId,
+      tenantId,
+      declinedBy: currentUser.id,
+      reason: body.reason,
+    });
+
+    return ClinicPresenter.invitation(invitation);
+  }
+
   @Post('invitations/:invitationId/revoke')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
   @ApiOperation({ summary: 'Revogar convite de clinica' })
@@ -246,6 +288,7 @@ export class ClinicInvitationController {
       reissuedBy: currentUser.id,
       expiresAt: new Date(body.expiresAt),
       channel: body.channel,
+      channelScope: body.channelScope,
     });
 
     const token = invitation.metadata?.issuedToken as string | undefined;

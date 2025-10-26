@@ -226,6 +226,7 @@ describe('ClinicPaymentNotificationService', () => {
         .fn()
         .mockResolvedValue([{ userId: 'professional-1', tokens: ['push-token-1'] }]),
       resolveWhatsAppSettings: jest.fn().mockResolvedValue({ enabled: false }),
+      removeInvalidPushTokens: jest.fn().mockResolvedValue(undefined),
     } as unknown as Mocked<ClinicNotificationContextService>;
 
     clinicRepository = {
@@ -237,7 +238,7 @@ describe('ClinicPaymentNotificationService', () => {
     } as unknown as Mocked<IEmailService>;
 
     pushNotificationService = {
-      sendNotification: jest.fn().mockResolvedValue({ data: undefined }),
+      sendNotification: jest.fn().mockResolvedValue({ data: { rejectedTokens: [] } }),
     } as unknown as Mocked<IPushNotificationService>;
 
     whatsappService = {
@@ -279,6 +280,25 @@ describe('ClinicPaymentNotificationService', () => {
     expect(pushNotificationService.sendNotification).toHaveBeenCalledTimes(1);
     expect(emailService.sendClinicPaymentEmail).not.toHaveBeenCalled();
     expect(whatsappService.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('remove tokens rejeitados pelo provedor de push', async () => {
+    pushNotificationService.sendNotification.mockResolvedValueOnce({
+      data: { rejectedTokens: ['push-token-1'] },
+    });
+
+    await service.notifySettlement({
+      appointment: createAppointment(),
+      event: createSettledEvent(),
+      settlement: createSettlement(),
+    });
+
+    expect(notificationContext.removeInvalidPushTokens).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rejectedTokens: ['push-token-1'],
+        scope: 'clinic-payments',
+      }),
+    );
   });
 
   it('nao publica evento quando nenhum canal esta habilitado', async () => {
@@ -452,16 +472,3 @@ describe('ClinicPaymentNotificationService', () => {
     expect(pushNotificationService.sendNotification).toHaveBeenCalledTimes(1);
   });
 });
-
-
-
-
-
-
-
-
-
-
-
-
-

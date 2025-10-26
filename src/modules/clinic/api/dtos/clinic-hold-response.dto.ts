@@ -1,4 +1,25 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ClinicInvitationEconomicSummaryDto } from './clinic-invitation-response.dto';
+
+export class ClinicHoldProfessionalPolicySnapshotDto {
+  @ApiProperty()
+  policyId!: string;
+
+  @ApiProperty({ enum: ['direct', 'marketplace', 'both'] })
+  channelScope!: 'direct' | 'marketplace' | 'both';
+
+  @ApiProperty()
+  acceptedBy!: string;
+
+  @ApiProperty()
+  sourceInvitationId!: string;
+
+  @ApiProperty({ type: String })
+  effectiveAt!: Date;
+
+  @ApiProperty({ type: ClinicInvitationEconomicSummaryDto })
+  economicSummary!: ClinicInvitationEconomicSummaryDto;
+}
 
 export class ClinicHoldResponseDto {
   @ApiProperty()
@@ -42,6 +63,12 @@ export class ClinicHoldResponseDto {
 
   @ApiProperty()
   createdBy!: string;
+
+  @ApiPropertyOptional({ enum: ['direct', 'marketplace'] })
+  channel?: 'direct' | 'marketplace';
+
+  @ApiPropertyOptional({ type: ClinicHoldProfessionalPolicySnapshotDto })
+  professionalPolicySnapshot?: ClinicHoldProfessionalPolicySnapshotDto;
 
   @ApiPropertyOptional({ type: String })
   confirmedAt?: Date;

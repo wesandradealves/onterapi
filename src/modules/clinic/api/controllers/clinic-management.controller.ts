@@ -33,7 +33,10 @@ import { ICurrentUser } from '../../../../domain/auth/interfaces/current-user.in
 import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
 import { ClinicPresenter } from '../presenters/clinic.presenter';
-import { ClinicDashboardAlertDto } from '../dtos/clinic-dashboard-response.dto';
+import {
+  ClinicAlertEvaluationResponseDto,
+  ClinicDashboardAlertDto,
+} from '../dtos/clinic-dashboard-response.dto';
 import { ClinicProfessionalTransferResponseDto } from '../dtos/clinic-professional-transfer-response.dto';
 import { ClinicManagementOverviewResponseDto } from '../dtos/clinic-management-overview-response.dto';
 import {
@@ -44,6 +47,7 @@ import {
   ClinicRequestContext,
   toClinicManagementAlertsQuery,
   toClinicManagementOverviewQuery,
+  toEvaluateClinicAlertsInput,
   toResolveClinicAlertInput,
   toTransferClinicProfessionalInput,
 } from '../mappers/clinic-request.mapper';
@@ -55,6 +59,10 @@ import {
   getClinicManagementAlertsSchema,
   GetClinicManagementAlertsSchema,
 } from '../schemas/get-clinic-management-alerts.schema';
+import {
+  evaluateClinicAlertsSchema,
+  EvaluateClinicAlertsSchema,
+} from '../schemas/evaluate-clinic-alerts.schema';
 import {
   resolveClinicAlertSchema,
   ResolveClinicAlertSchema,
@@ -75,6 +83,10 @@ import {
   type IResolveClinicAlertUseCase,
   IResolveClinicAlertUseCase as IResolveClinicAlertUseCaseToken,
 } from '../../../../domain/clinic/interfaces/use-cases/resolve-clinic-alert.use-case.interface';
+import {
+  type IEvaluateClinicAlertsUseCase,
+  IEvaluateClinicAlertsUseCase as IEvaluateClinicAlertsUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/evaluate-clinic-alerts.use-case.interface';
 import { ClinicAccessService } from '../../services/clinic-access.service';
 import { ClinicManagementExportService } from '../../services/clinic-management-export.service';
 
@@ -92,6 +104,8 @@ export class ClinicManagementController {
     private readonly listClinicAlertsUseCase: IListClinicAlertsUseCase,
     @Inject(IResolveClinicAlertUseCaseToken)
     private readonly resolveClinicAlertUseCase: IResolveClinicAlertUseCase,
+    @Inject(IEvaluateClinicAlertsUseCaseToken)
+    private readonly evaluateClinicAlertsUseCase: IEvaluateClinicAlertsUseCase,
     private readonly clinicAccessService: ClinicAccessService,
     private readonly exportService: ClinicManagementExportService,
   ) {}
@@ -475,6 +489,44 @@ export class ClinicManagementController {
     const alert = await this.resolveClinicAlertUseCase.executeOrThrow(input);
 
     return ClinicPresenter.alert(alert);
+  }
+
+  @Post('alerts/evaluate')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Forcar avaliacao dos alertas automaticos das clinicas' })
+  @ApiResponse({ status: 201, type: ClinicAlertEvaluationResponseDto })
+  @HttpCode(HttpStatus.CREATED)
+  async evaluateAlerts(
+    @Body(new ZodValidationPipe(evaluateClinicAlertsSchema))
+    body: EvaluateClinicAlertsSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicAlertEvaluationResponseDto> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? currentUser.tenantId);
+
+    const authorizedClinicIds = await this.clinicAccessService.resolveAuthorizedClinicIds({
+      tenantId: context.tenantId,
+      user: currentUser,
+      requestedClinicIds: body.clinicIds,
+    });
+
+    const input = toEvaluateClinicAlertsInput(
+      {
+        clinicIds: authorizedClinicIds.length > 0 ? authorizedClinicIds : body.clinicIds,
+      },
+      context,
+    );
+
+    const result = await this.evaluateClinicAlertsUseCase.executeOrThrow(input);
+
+    return {
+      tenantId: result.tenantId,
+      evaluatedClinics: result.evaluatedClinics,
+      triggered: result.triggered,
+      skipped: result.skipped,
+      alerts: result.alerts.map((alert) => ClinicPresenter.alert(alert)),
+      skippedDetails: result.skippedDetails,
+    };
   }
 
   private resolveContext(currentUser: ICurrentUser, tenantId?: string): ClinicRequestContext {

@@ -6,6 +6,36 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [Unreleased]
 
+## [0.19.0] - 2025-10-24
+
+### Added
+
+- Expansao do guia `clinic-module-clarifications.md` (diretorio docs externo)
+  consolidando invariantes, configuracoes, convites, agendamentos, gestao
+  multi-clinica e criterios de aceite.
+- Secao dedicada no README para o modulo de clinica com links de suites de teste
+  e resumo operacional.
+- Limpeza automatica de tokens push rejeitados pelo provedor, evitando
+  notificacoes repetidas para dispositivos invalidos, mantendo o metadata dos
+  usuarios alinhado e registrando auditoria do descarte.
+- Servico `ClinicAlertMonitorService` com worker configuravel para detectar
+  queda de receita, baixa ocupacao e staff insuficiente, disparando alertas
+  automaticos por push.
+- Endpoint `POST /management/alerts/evaluate` permitindo disparo manual da
+  avaliacao de alertas automaticos para as clinicas autorizadas.
+- Resposta desse endpoint passa a expor `skippedDetails` com clinica, tipo e
+  motivo, mantendo auditoria e Swagger alinhados.
+- Convites registram `channelScope` (direct/marketplace/both) no dominio, schema,
+  DTOs e auditoria, tornando explicito o canal de atuacao acordado.
+- Token de convite inclui profissional/email de destino, invalidando aceites com
+  credenciais divergentes e reforcando a seguranca do onboarding.
+- Fluxo de recusa de convite com auditoria (`clinic.invitation.declined`) e
+  endpoint dedicado.
+
+### Documentation
+
+- Atualiza sumario do README para incluir o modulo de clinica.
+
 ## [0.18.1] - 2025-10-10
 
 ### Changed

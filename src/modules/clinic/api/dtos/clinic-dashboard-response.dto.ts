@@ -167,3 +167,34 @@ export class ClinicDashboardResponseDto {
   @ApiPropertyOptional({ type: () => ClinicDashboardForecastDto })
   forecast?: ClinicDashboardForecastDto;
 }
+
+export class ClinicAlertSkippedDetailDto {
+  @ApiProperty()
+  clinicId!: string;
+
+  @ApiProperty()
+  type!: string;
+
+  @ApiProperty()
+  reason!: string;
+}
+
+export class ClinicAlertEvaluationResponseDto {
+  @ApiProperty()
+  tenantId!: string;
+
+  @ApiProperty()
+  evaluatedClinics!: number;
+
+  @ApiProperty()
+  triggered!: number;
+
+  @ApiProperty()
+  skipped!: number;
+
+  @ApiProperty({ type: [ClinicDashboardAlertDto] })
+  alerts!: ClinicDashboardAlertDto[];
+
+  @ApiProperty({ type: [ClinicAlertSkippedDetailDto] })
+  skippedDetails!: ClinicAlertSkippedDetailDto[];
+}

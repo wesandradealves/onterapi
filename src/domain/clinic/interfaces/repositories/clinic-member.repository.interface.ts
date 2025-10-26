@@ -19,6 +19,10 @@ export interface IClinicMemberRepository {
     userId: string;
   }): Promise<ClinicMember | null>;
   listActiveByUser(params: { tenantId: string; userId: string }): Promise<ClinicMember[]>;
+  countActiveProfessionalsByClinics(params: {
+    tenantId: string;
+    clinicIds: string[];
+  }): Promise<Record<string, number>>;
   transferProfessional(params: {
     tenantId: string;
     professionalId: string;

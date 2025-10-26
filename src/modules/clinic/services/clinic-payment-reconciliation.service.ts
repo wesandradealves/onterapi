@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import {
+  ClinicInvitationEconomicSummary,
   ClinicPaymentLedger,
   ClinicPaymentLedgerChargeback,
   ClinicPaymentLedgerEventEntry,
@@ -34,6 +35,15 @@ import { ClinicPaymentPayoutService } from './clinic-payment-payout.service';
 interface PaymentSplitComputation {
   allocations: ClinicPaymentSplitAllocation[];
   remainderCents: number;
+}
+
+type ClinicInvitationEconomicSummaryItem = ClinicInvitationEconomicSummary['items'][number];
+
+interface ProfessionalPolicySnapshot {
+  policyId?: string;
+  channelScope?: string;
+  sourceInvitationId?: string;
+  economicSummary: ClinicInvitationEconomicSummary;
 }
 
 @Injectable()
@@ -145,6 +155,26 @@ export class ClinicPaymentReconciliationService {
       return;
     }
 
+    const professionalPolicySnapshot = this.extractProfessionalPolicyMetadata(
+      appointment.metadata as Record<string, unknown> | undefined,
+    );
+
+    if (
+      professionalPolicySnapshot &&
+      !professionalPolicySnapshot.economicSummary.items.some(
+        (item) => item.serviceTypeId === appointment.serviceTypeId,
+      )
+    ) {
+      this.logger.warn(
+        'Politica clinica-profissional nao contempla o tipo de servico liquidado; aplicando split financeiro geral',
+        {
+          appointmentId: appointment.id,
+          policyId: professionalPolicySnapshot.policyId ?? null,
+          serviceTypeId: appointment.serviceTypeId,
+        },
+      );
+    }
+
     const paymentSettings = await this.resolvePaymentSettings(appointment.clinicId);
     const baseAmount = this.resolveAmountValue(event.payload.amount, appointment.metadata, 'value');
 
@@ -164,7 +194,10 @@ export class ClinicPaymentReconciliationService {
     );
     const netCents = netAmount != null ? this.toCents(netAmount) : undefined;
 
-    const computation = this.calculateSplit(baseCents, paymentSettings);
+    const computation = this.calculateSplit(baseCents, paymentSettings, {
+      policySummary: professionalPolicySnapshot?.economicSummary,
+      serviceTypeId: appointment.serviceTypeId,
+    });
     const settledAtIso = event.payload.settledAt.toISOString();
     const recordedAt = (event.payload.processedAt ?? new Date()).toISOString();
 
@@ -214,6 +247,8 @@ export class ClinicPaymentReconciliationService {
         split: computation.allocations,
         settledAt: settledAtIso,
         sandbox: event.payload.sandbox,
+        professionalPolicyId: professionalPolicySnapshot?.policyId ?? null,
+        policyChannelScope: professionalPolicySnapshot?.channelScope ?? null,
       },
     });
 
@@ -558,9 +593,43 @@ export class ClinicPaymentReconciliationService {
     return undefined;
   }
 
+  private extractProfessionalPolicyMetadata(
+    metadata: Record<string, unknown> | undefined,
+  ): ProfessionalPolicySnapshot | null {
+    if (!metadata || typeof metadata !== 'object') {
+      return null;
+    }
+
+    const container = metadata as Record<string, unknown>;
+    const rawPolicy = container.professionalPolicy as unknown;
+
+    if (!rawPolicy || typeof rawPolicy !== 'object') {
+      return null;
+    }
+
+    const snapshot = rawPolicy as Record<string, unknown>;
+    const summary = snapshot.economicSummary;
+
+    if (!summary || typeof summary !== 'object') {
+      return null;
+    }
+
+    return {
+      policyId: typeof snapshot.policyId === 'string' ? snapshot.policyId : undefined,
+      channelScope: typeof snapshot.channelScope === 'string' ? snapshot.channelScope : undefined,
+      sourceInvitationId:
+        typeof snapshot.sourceInvitationId === 'string' ? snapshot.sourceInvitationId : undefined,
+      economicSummary: summary as ClinicInvitationEconomicSummary,
+    };
+  }
+
   private calculateSplit(
     baseAmountCents: number,
     paymentSettings: ClinicPaymentSettings,
+    context?: {
+      policySummary?: ClinicInvitationEconomicSummary;
+      serviceTypeId?: string;
+    },
   ): PaymentSplitComputation {
     const rules =
       paymentSettings.splitRules.length > 0
@@ -576,12 +645,10 @@ export class ClinicPaymentReconciliationService {
     rules.sort((a, b) => a.order - b.order);
 
     const baseAmount = baseAmountCents / 100;
-    let allocatedCents = 0;
 
     const allocations = rules.map((rule) => {
       const calculatedAmount = (baseAmount * rule.percentage) / 100;
       const amountCents = this.toCents(calculatedAmount);
-      allocatedCents += amountCents;
       const allocation: ClinicPaymentSplitAllocation = {
         recipient: rule.recipient,
         percentage: rule.percentage,
@@ -590,20 +657,93 @@ export class ClinicPaymentReconciliationService {
       return allocation;
     });
 
-    let remainderCents = baseAmountCents - allocatedCents;
-    const adjustmentOrder: ClinicSplitRecipient[] = [
-      'taxes',
-      'gateway',
-      'clinic',
-      'professional',
-      'platform',
-    ];
+    const policyItem =
+      context?.policySummary && context.serviceTypeId
+        ? context.policySummary.items.find((item) => item.serviceTypeId === context.serviceTypeId)
+        : undefined;
+
+    if (policyItem) {
+      let professionalAmountCents = this.computeProfessionalAmount(baseAmount, policyItem);
+      if (professionalAmountCents < 0) {
+        professionalAmountCents = 0;
+      }
+      if (professionalAmountCents > baseAmountCents) {
+        professionalAmountCents = baseAmountCents;
+      }
+
+      let professionalAllocation = allocations.find(
+        (allocation) => allocation.recipient === 'professional',
+      );
+
+      if (!professionalAllocation) {
+        professionalAllocation = {
+          recipient: 'professional',
+          percentage: 0,
+          amountCents: professionalAmountCents,
+        };
+        allocations.push(professionalAllocation);
+      } else {
+        professionalAllocation.amountCents = professionalAmountCents;
+      }
+
+      const totalOtherPercentage = rules
+        .filter((rule) => rule.recipient !== 'professional')
+        .reduce((sum, rule) => sum + rule.percentage, 0);
+      const remainingBaseCents = Math.max(baseAmountCents - professionalAllocation.amountCents, 0);
+      const remainingBaseAmount = remainingBaseCents / 100;
+
+      if (totalOtherPercentage > 0) {
+        for (const rule of rules) {
+          if (rule.recipient === 'professional') {
+            continue;
+          }
+
+          const allocation = allocations.find((item) => item.recipient === rule.recipient);
+          const computedAmount = this.toCents(
+            remainingBaseAmount * (rule.percentage / totalOtherPercentage),
+          );
+
+          if (allocation) {
+            allocation.amountCents = computedAmount;
+          } else {
+            allocations.push({
+              recipient: rule.recipient,
+              percentage: rule.percentage,
+              amountCents: computedAmount,
+            });
+          }
+        }
+      } else {
+        for (const allocation of allocations) {
+          if (allocation.recipient !== 'professional') {
+            allocation.amountCents = 0;
+          }
+        }
+      }
+    }
+
+    let remainderCents =
+      baseAmountCents - allocations.reduce((sum, allocation) => sum + allocation.amountCents, 0);
+
+    const adjustmentOrder =
+      context?.policySummary?.orderOfRemainders ??
+      (['taxes', 'gateway', 'clinic', 'professional', 'platform'] as ClinicSplitRecipient[]);
 
     let safety = 0;
     while (remainderCents !== 0 && safety < 1000) {
       safety += 1;
       const targetRecipient = adjustmentOrder.find((recipient) =>
-        allocations.some((allocation) => allocation.recipient === recipient),
+        allocations.some((allocation) => {
+          if (allocation.recipient !== recipient) {
+            return false;
+          }
+
+          if (remainderCents < 0) {
+            return allocation.amountCents > 0;
+          }
+
+          return true;
+        }),
       );
 
       if (!targetRecipient) {
@@ -619,11 +759,27 @@ export class ClinicPaymentReconciliationService {
       if (remainderCents > 0) {
         allocation.amountCents += 1;
         remainderCents -= 1;
-      } else if (remainderCents < 0 && allocation.amountCents > 0) {
-        allocation.amountCents -= 1;
-        remainderCents += 1;
+      } else if (remainderCents < 0) {
+        if (allocation.amountCents > 0) {
+          allocation.amountCents -= 1;
+          remainderCents += 1;
+        } else {
+          break;
+        }
       } else {
         break;
+      }
+    }
+
+    if (baseAmountCents > 0) {
+      for (const allocation of allocations) {
+        allocation.percentage = Number(
+          ((allocation.amountCents / baseAmountCents) * 100).toFixed(6),
+        );
+      }
+    } else {
+      for (const allocation of allocations) {
+        allocation.percentage = 0;
       }
     }
 
@@ -631,6 +787,18 @@ export class ClinicPaymentReconciliationService {
       allocations,
       remainderCents,
     };
+  }
+
+  private computeProfessionalAmount(
+    baseAmount: number,
+    item: ClinicInvitationEconomicSummaryItem,
+  ): number {
+    if (item.payoutModel === 'percentage') {
+      const payoutAmount = baseAmount * (item.payoutValue / 100);
+      return this.toCents(payoutAmount);
+    }
+
+    return this.toCents(item.payoutValue);
   }
 
   private toCents(amount: number): number {

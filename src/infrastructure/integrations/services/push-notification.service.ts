@@ -3,9 +3,10 @@ import { ConfigService } from '@nestjs/config';
 
 import {
   IPushNotificationService,
+  PushNotificationDispatchResult,
   PushNotificationPayload,
 } from '../../../domain/integrations/interfaces/services/push-notification.service.interface';
-import { Result, failure, success } from '../../../shared/types/result.type';
+import { failure, Result, success } from '../../../shared/types/result.type';
 
 interface PushApiResponse {
   id?: string;
@@ -22,23 +23,24 @@ export class PushNotificationService implements IPushNotificationService {
 
   constructor(private readonly configService: ConfigService) {}
 
-  async sendNotification(payload: PushNotificationPayload): Promise<Result<void>> {
+  async sendNotification(
+    payload: PushNotificationPayload,
+  ): Promise<Result<PushNotificationDispatchResult>> {
     const tokens = Array.isArray(payload.tokens)
       ? payload.tokens.filter((token) => typeof token === 'string' && token.trim().length > 0)
       : [];
 
     if (tokens.length === 0) {
       this.logger.debug('Notificacao push ignorada: lista de tokens vazia ou invalida');
-      return success(undefined);
+      return success({ rejectedTokens: [] });
     }
 
-    const baseUrl =
-      this.configService.get<string>('PUSH_API_BASE_URL') ?? this.defaultBaseUrl;
+    const baseUrl = this.configService.get<string>('PUSH_API_BASE_URL') ?? this.defaultBaseUrl;
     const apiKey = this.configService.get<string>('PUSH_API_KEY');
 
     if (!apiKey || apiKey.trim().length === 0) {
       this.logger.warn('Notificacao push ignorada: chave de API nao configurada');
-      return success(undefined);
+      return success({ rejectedTokens: [] });
     }
 
     const endpoint = `${baseUrl.replace(/\/$/, '')}/notifications`;
@@ -78,12 +80,15 @@ export class PushNotificationService implements IPushNotificationService {
         return failure(new Error('Falha ao enviar notificacao push'));
       }
 
-      const body = (await response
-        .json()
-        .catch(() => ({}))) as PushApiResponse | Record<string, unknown>;
+      const body = (await response.json().catch(() => ({}))) as
+        | PushApiResponse
+        | Record<string, unknown>;
 
       const rejectedTokens =
-        body && typeof body === 'object' && 'rejectedTokens' in body && Array.isArray(body.rejectedTokens)
+        body &&
+        typeof body === 'object' &&
+        'rejectedTokens' in body &&
+        Array.isArray(body.rejectedTokens)
           ? (body.rejectedTokens as string[])
           : [];
 
@@ -98,7 +103,7 @@ export class PushNotificationService implements IPushNotificationService {
         providerId: 'id' in body ? body.id : undefined,
       });
 
-      return success(undefined);
+      return success({ rejectedTokens });
     } catch (error) {
       if ((error as Error).name === 'AbortError') {
         this.logger.error('Timeout ao enviar notificacao push');

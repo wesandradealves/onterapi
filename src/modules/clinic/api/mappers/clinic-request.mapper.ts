@@ -49,6 +49,8 @@ import { GetClinicManagementOverviewSchema } from '../schemas/get-clinic-managem
 import { GetClinicManagementAlertsSchema } from '../schemas/get-clinic-management-alerts.schema';
 import { ResolveClinicAlertSchema } from '../schemas/resolve-clinic-alert.schema';
 import { ReviewClinicOverbookingSchema } from '../schemas/review-clinic-overbooking.schema';
+import { EvaluateClinicAlertsInput } from '../../../../domain/clinic/interfaces/use-cases/evaluate-clinic-alerts.use-case.interface';
+import { EvaluateClinicAlertsSchema } from '../schemas/evaluate-clinic-alerts.schema';
 
 export interface ClinicRequestContext {
   tenantId: string;
@@ -395,6 +397,7 @@ export const toCreateClinicHoldInput = (
   locationId: body.locationId,
   resources: body.resources,
   idempotencyKey: body.idempotencyKey,
+  channel: body.channel,
   metadata: body.metadata,
 });
 
@@ -566,4 +569,13 @@ export const toResolveClinicAlertInput = (
   alertId,
   resolvedBy: context.userId,
   resolvedAt: body.resolvedAt ? new Date(body.resolvedAt) : undefined,
+});
+
+export const toEvaluateClinicAlertsInput = (
+  body: EvaluateClinicAlertsSchema,
+  context: ClinicRequestContext,
+): EvaluateClinicAlertsInput => ({
+  tenantId: context.tenantId,
+  clinicIds: body.clinicIds,
+  triggeredBy: context.userId,
 });

@@ -10,8 +10,14 @@ export interface PushNotificationPayload {
   clinicId?: string;
 }
 
+export interface PushNotificationDispatchResult {
+  rejectedTokens: string[];
+}
+
 export interface IPushNotificationService {
-  sendNotification(payload: PushNotificationPayload): Promise<Result<void>>;
+  sendNotification(
+    payload: PushNotificationPayload,
+  ): Promise<Result<PushNotificationDispatchResult>>;
 }
 
 export const IPushNotificationService = Symbol('IPushNotificationService');

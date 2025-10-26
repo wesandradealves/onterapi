@@ -23,7 +23,9 @@ import {
   ClinicInvitationEconomicSummary,
   ClinicOverbookingReviewInput,
   ClinicProfessionalFinancialClearanceStatus,
+  ClinicProfessionalPolicy,
   ClinicTemplatePropagationInput,
+  DeclineClinicInvitationInput,
 } from '@domain/clinic/types/clinic.types';
 import {
   IUpdateClinicGeneralSettingsUseCase as IUpdateClinicGeneralSettingsUseCaseToken,
@@ -110,11 +112,16 @@ import {
   IRevokeClinicInvitationUseCase as IRevokeClinicInvitationUseCaseToken,
   RevokeClinicInvitationInput,
 } from '@domain/clinic/interfaces/use-cases/revoke-clinic-invitation.use-case.interface';
+import { IDeclineClinicInvitationUseCase as IDeclineClinicInvitationUseCaseToken } from '@domain/clinic/interfaces/use-cases/decline-clinic-invitation.use-case.interface';
 import {
   IReissueClinicInvitationUseCase as IReissueClinicInvitationUseCaseToken,
   ReissueClinicInvitationInput,
 } from '@domain/clinic/interfaces/use-cases/reissue-clinic-invitation.use-case.interface';
 import { ICheckClinicProfessionalFinancialClearanceUseCase as ICheckClinicProfessionalFinancialClearanceUseCaseToken } from '@domain/clinic/interfaces/use-cases/check-clinic-professional-financial-clearance.use-case.interface';
+import {
+  GetClinicProfessionalPolicyInput,
+  IGetClinicProfessionalPolicyUseCase as IGetClinicProfessionalPolicyUseCaseToken,
+} from '@domain/clinic/interfaces/use-cases/get-clinic-professional-policy.use-case.interface';
 import {
   ClinicHoldRequestInput,
   ICreateClinicHoldUseCase as ICreateClinicHoldUseCaseToken,
@@ -569,6 +576,7 @@ describe('ClinicInvitationController (integration)', () => {
     status: overrides.status ?? 'pending',
     tokenHash: overrides.tokenHash ?? 'hash',
     channel: overrides.channel ?? 'email',
+    channelScope: overrides.channelScope ?? 'direct',
     expiresAt: overrides.expiresAt ?? new Date('2025-11-01T12:00:00.000Z'),
     acceptedAt: overrides.acceptedAt,
     acceptedBy: overrides.acceptedBy,
@@ -597,6 +605,7 @@ describe('ClinicInvitationController (integration)', () => {
       ListClinicInvitationsInputShape,
       { data: ClinicInvitation[]; total: number }
     >(),
+    decline: createUseCaseMock<DeclineClinicInvitationInput, ClinicInvitation>(),
     accept: createUseCaseMock<AcceptClinicInvitationInput, ClinicInvitation>(),
     revoke: createUseCaseMock<RevokeClinicInvitationInput, ClinicInvitation>(),
     reissue: createUseCaseMock<ReissueClinicInvitationInput, ClinicInvitation>(),
@@ -610,6 +619,7 @@ describe('ClinicInvitationController (integration)', () => {
         { provide: IListClinicInvitationsUseCaseToken, useValue: useCases.list },
         { provide: IAcceptClinicInvitationUseCaseToken, useValue: useCases.accept },
         { provide: IRevokeClinicInvitationUseCaseToken, useValue: useCases.revoke },
+        { provide: IDeclineClinicInvitationUseCaseToken, useValue: useCases.decline },
         { provide: IReissueClinicInvitationUseCaseToken, useValue: useCases.reissue },
       ],
     })
@@ -645,6 +655,7 @@ describe('ClinicInvitationController (integration)', () => {
       professionalId: FIXTURES.professional,
       email: invitationResponse.targetEmail,
       channel: 'email',
+      channelScope: 'direct',
       economicSummary: {
         items: economicSummary.items,
         orderOfRemainders: economicSummary.orderOfRemainders,
@@ -667,6 +678,7 @@ describe('ClinicInvitationController (integration)', () => {
       professionalId: payload.professionalId,
       email: payload.email,
       channel: payload.channel,
+      channelScope: payload.channelScope,
       economicSummary,
       expiresAt: new Date(payload.expiresAt),
       metadata: payload.metadata,
@@ -719,6 +731,29 @@ describe('ClinicInvitationController (integration)', () => {
     );
   });
 
+  it('POST /clinics/invitations/:id/decline deve recusar convite', async () => {
+    const declinedInvitation = buildInvitation({
+      status: 'declined',
+      declinedBy: currentUser.id,
+      declinedAt: new Date('2025-10-12T10:00:00.000Z'),
+    });
+    useCases.decline.executeOrThrow.mockResolvedValue(declinedInvitation);
+
+    const response = await request(app.getHttpServer())
+      .post(`/clinics/invitations/${FIXTURES.invitation}/decline`)
+      .send({ tenantId: FIXTURES.tenant, reason: 'Nao tenho disponibilidade' })
+      .expect(201);
+
+    expect(useCases.decline.executeOrThrow).toHaveBeenCalledWith({
+      invitationId: FIXTURES.invitation,
+      tenantId: FIXTURES.tenant,
+      declinedBy: currentUser.id,
+      reason: 'Nao tenho disponibilidade',
+    });
+    expect(response.body.status).toBe('declined');
+    expect(response.body.declinedBy).toBe(currentUser.id);
+  });
+
   it('POST /clinics/invitations/:id/revoke deve revogar convite', async () => {
     const revokedInvitation = buildInvitation({ status: 'revoked', revokedBy: currentUser.id });
     useCases.revoke.executeOrThrow.mockResolvedValue(revokedInvitation);
@@ -748,6 +783,7 @@ describe('ClinicInvitationController (integration)', () => {
       tenantId: FIXTURES.tenant,
       expiresAt: new Date('2025-12-31T12:00:00.000Z').toISOString(),
       channel: 'email',
+      channelScope: 'direct',
     };
 
     const response = await request(app.getHttpServer())
@@ -761,6 +797,7 @@ describe('ClinicInvitationController (integration)', () => {
       reissuedBy: currentUser.id,
       expiresAt: new Date(payload.expiresAt),
       channel: payload.channel,
+      channelScope: payload.channelScope,
     });
     expect(response.body.token).toBe('token-reissue');
     expect(response.body.metadata).toEqual({ source: 'manager' });
@@ -933,6 +970,7 @@ describe('ClinicMemberController (integration)', () => {
       CheckClinicProfessionalFinancialClearanceInput,
       ClinicProfessionalFinancialClearanceStatus
     >(),
+    policy: createUseCaseMock<GetClinicProfessionalPolicyInput, ClinicProfessionalPolicy>(),
   };
 
   beforeAll(async () => {
@@ -944,6 +982,10 @@ describe('ClinicMemberController (integration)', () => {
         {
           provide: ICheckClinicProfessionalFinancialClearanceUseCaseToken,
           useValue: useCases.financialClearance,
+        },
+        {
+          provide: IGetClinicProfessionalPolicyUseCaseToken,
+          useValue: useCases.policy,
         },
       ],
     })
@@ -997,6 +1039,86 @@ describe('ClinicMemberController (integration)', () => {
       hasPendencies: false,
       pendingCount: 0,
       statusesEvaluated: ['chargeback', 'failed'],
+    });
+  });
+
+  it('GET /clinics/:id/members/professional/:professionalId/policy retorna politica ativa', async () => {
+    const economicSummary: ClinicInvitationEconomicSummary = {
+      items: [
+        {
+          serviceTypeId: 'service-123',
+          price: 300,
+          currency: 'BRL',
+          payoutModel: 'fixed',
+          payoutValue: 120,
+        },
+      ],
+      orderOfRemainders: ['taxes', 'gateway', 'clinic', 'professional', 'platform'],
+      roundingStrategy: 'half_even',
+    };
+
+    const policy: ClinicProfessionalPolicy = {
+      id: 'policy-1',
+      clinicId: FIXTURES.clinic,
+      tenantId: FIXTURES.tenant,
+      professionalId: FIXTURES.professional,
+      channelScope: 'both',
+      economicSummary,
+      effectiveAt: new Date('2025-10-12T10:00:00.000Z'),
+      endedAt: null,
+      sourceInvitationId: FIXTURES.invitation,
+      acceptedBy: currentUser.id,
+      createdAt: new Date('2025-10-12T09:00:00.000Z'),
+      updatedAt: new Date('2025-10-12T09:30:00.000Z'),
+    };
+
+    useCases.policy.executeOrThrow.mockResolvedValue(policy);
+
+    const response = await request(app.getHttpServer())
+      .get(`/clinics/${FIXTURES.clinic}/members/professional/${FIXTURES.professional}/policy`)
+      .set('x-tenant-id', FIXTURES.tenant)
+      .query({ tenantId: FIXTURES.tenant })
+      .expect(200);
+
+    expect(useCases.policy.executeOrThrow).toHaveBeenCalledWith({
+      clinicId: FIXTURES.clinic,
+      tenantId: FIXTURES.tenant,
+      professionalId: FIXTURES.professional,
+    });
+
+    expect(response.body).toEqual({
+      id: 'policy-1',
+      clinicId: FIXTURES.clinic,
+      tenantId: FIXTURES.tenant,
+      professionalId: FIXTURES.professional,
+      channelScope: 'both',
+      economicSummary: {
+        items: [
+          {
+            serviceTypeId: 'service-123',
+            price: 300,
+            currency: 'BRL',
+            payoutModel: 'fixed',
+            payoutValue: 120,
+          },
+        ],
+        orderOfRemainders: ['taxes', 'gateway', 'clinic', 'professional', 'platform'],
+        roundingStrategy: 'half_even',
+        examples: [
+          {
+            currency: 'BRL',
+            patientPays: 300,
+            professionalReceives: 120,
+            remainder: 180,
+          },
+        ],
+      },
+      effectiveAt: policy.effectiveAt.toISOString(),
+      endedAt: null,
+      sourceInvitationId: FIXTURES.invitation,
+      acceptedBy: currentUser.id,
+      createdAt: policy.createdAt.toISOString(),
+      updatedAt: policy.updatedAt.toISOString(),
     });
   });
 });

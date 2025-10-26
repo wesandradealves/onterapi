@@ -3,6 +3,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ClinicCurrency,
   ClinicInvitationChannel,
+  ClinicInvitationChannelScope,
   ClinicInvitationStatus,
   ClinicPayoutModel,
   ClinicSplitRecipient,
@@ -53,7 +54,7 @@ export class ClinicInvitationEconomicSummaryDto {
     minItems: 5,
     maxItems: 5,
     description:
-      'Ordem fixa das sobras: impostos → gateway → cl nica → profissional → plataforma. Qualquer diverg ncia gera erro de valida  o.',
+      'Ordem fixa das sobras: impostos -> gateway -> clinica -> profissional -> plataforma. Qualquer divergencia gera erro de validacao.',
   })
   orderOfRemainders!: ClinicSplitRecipient[];
 
@@ -88,6 +89,9 @@ export class ClinicInvitationResponseDto {
 
   @ApiProperty({ enum: ['email', 'whatsapp'] })
   channel!: ClinicInvitationChannel;
+
+  @ApiProperty({ enum: ['direct', 'marketplace', 'both'] })
+  channelScope!: ClinicInvitationChannelScope;
 
   @ApiProperty({ type: String })
   expiresAt!: Date;

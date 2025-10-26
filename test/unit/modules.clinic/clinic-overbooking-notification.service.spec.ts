@@ -116,6 +116,7 @@ describe('ClinicOverbookingNotificationService', () => {
         .fn()
         .mockResolvedValue([{ userId: 'professional-1', tokens: ['push-token-1'] }]),
       resolveWhatsAppSettings: jest.fn().mockResolvedValue(null),
+      removeInvalidPushTokens: jest.fn().mockResolvedValue(undefined),
     } as unknown as Mocked<ClinicNotificationContextService>;
 
     clinicRepository = {
@@ -127,7 +128,7 @@ describe('ClinicOverbookingNotificationService', () => {
     } as unknown as Mocked<IEmailService>;
 
     pushNotificationService = {
-      sendNotification: jest.fn().mockResolvedValue({ data: undefined }),
+      sendNotification: jest.fn().mockResolvedValue({ data: { rejectedTokens: [] } }),
     } as unknown as Mocked<IPushNotificationService>;
 
     whatsappService = {
@@ -203,6 +204,21 @@ describe('ClinicOverbookingNotificationService', () => {
     notificationContext.resolveChannels.mockImplementation(() => ['system']);
   });
 
+  it('remove tokens rejeitados apos notificacao de overbooking', async () => {
+    pushNotificationService.sendNotification.mockResolvedValueOnce({
+      data: { rejectedTokens: ['push-token-1'] },
+    });
+
+    await service.notifyReviewRequested(buildReviewRequestedEvent());
+
+    expect(notificationContext.removeInvalidPushTokens).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rejectedTokens: ['push-token-1'],
+        scope: 'clinic-overbooking',
+      }),
+    );
+  });
+
   it('publica evento e envia email para resultado de revisao', async () => {
     notificationContext.resolveChannels.mockReturnValueOnce(['system', 'email']);
 
@@ -247,19 +263,3 @@ describe('ClinicOverbookingNotificationService', () => {
     expect(pushNotificationService.sendNotification).not.toHaveBeenCalled();
   });
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

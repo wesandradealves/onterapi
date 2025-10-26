@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { LessThan, Repository } from 'typeorm';
 
 import {
   AcceptClinicInvitationInput,
   ClinicInvitation,
   ClinicInvitationChannel,
+  ClinicInvitationChannelScope,
+  ClinicInvitationExpirationRecord,
   ClinicInvitationStatus,
   InviteClinicProfessionalInput,
   RevokeClinicInvitationInput,
@@ -33,6 +35,7 @@ export class ClinicInvitationRepository implements IClinicInvitationRepository {
       status: 'pending',
       tokenHash: input.tokenHash,
       channel: input.channel,
+      channelScope: input.channelScope,
       expiresAt: input.expiresAt,
       economicSummary: input.economicSummary,
       metadata: input.metadata ?? {},
@@ -48,6 +51,7 @@ export class ClinicInvitationRepository implements IClinicInvitationRepository {
     tokenHash: string;
     expiresAt?: Date;
     channel?: ClinicInvitationChannel;
+    channelScope?: ClinicInvitationChannelScope;
   }): Promise<ClinicInvitation> {
     const entity = await this.repository.findOneOrFail({
       where: { id: params.invitationId, tenantId: params.tenantId },
@@ -61,6 +65,10 @@ export class ClinicInvitationRepository implements IClinicInvitationRepository {
 
     if (params.channel) {
       entity.channel = params.channel;
+    }
+
+    if (params.channelScope) {
+      entity.channelScope = params.channelScope;
     }
 
     entity.acceptedAt = null;
@@ -170,16 +178,34 @@ export class ClinicInvitationRepository implements IClinicInvitationRepository {
     return ClinicMapper.toInvitation(saved);
   }
 
-  async expireInvitationsBefore(referenceDate: Date): Promise<number> {
-    const result = await this.repository
+  async expireInvitationsBefore(referenceDate: Date): Promise<ClinicInvitationExpirationRecord[]> {
+    const invitations = await this.repository.find({
+      select: ['id', 'clinicId', 'tenantId'],
+      where: {
+        status: 'pending',
+        expiresAt: LessThan(referenceDate),
+      },
+    });
+
+    if (invitations.length === 0) {
+      return [];
+    }
+
+    await this.repository
       .createQueryBuilder()
       .update()
       .set({ status: 'expired', revokedAt: () => 'now()' })
-      .where('status = :status', { status: 'pending' })
-      .andWhere('expires_at < :referenceDate', { referenceDate })
+      .where('id IN (:...ids)', { ids: invitations.map((invitation) => invitation.id) })
       .execute();
 
-    return result.affected ?? 0;
+    const expiredAt = new Date();
+
+    return invitations.map((invitation) => ({
+      invitationId: invitation.id,
+      clinicId: invitation.clinicId,
+      tenantId: invitation.tenantId,
+      expiredAt,
+    }));
   }
 
   async hasActiveInvitation(params: {

@@ -28,6 +28,7 @@ describe('ClinicPresenter.invitation', () => {
     status: 'pending',
     tokenHash: 'hashed-token',
     channel: 'email',
+    channelScope: 'direct',
     expiresAt: new Date('2025-12-01T12:00:00Z'),
     economicSummary: {
       items: [
@@ -580,6 +581,27 @@ describe('ClinicPresenter.hold', () => {
       resources: ['equip-1'],
       idempotencyKey: 'key-1',
       createdBy: 'user-1',
+      channel: 'marketplace',
+      professionalPolicySnapshot: {
+        policyId: 'policy-1',
+        channelScope: 'both',
+        acceptedBy: 'pro-1',
+        sourceInvitationId: 'inv-1',
+        effectiveAt: new Date('2025-10-18T00:00:00Z'),
+        economicSummary: {
+          items: [
+            {
+              serviceTypeId: 'service-1',
+              price: 200,
+              currency: 'BRL',
+              payoutModel: 'percentage',
+              payoutValue: 55,
+            },
+          ],
+          orderOfRemainders: ['taxes', 'gateway', 'clinic', 'professional', 'platform'],
+          roundingStrategy: 'half_even',
+        },
+      },
       createdAt: new Date('2025-10-19T10:00:00Z'),
       updatedAt: new Date('2025-10-19T10:15:00Z'),
       confirmedAt: undefined,
@@ -587,7 +609,30 @@ describe('ClinicPresenter.hold', () => {
       cancelledAt: undefined,
       cancelledBy: undefined,
       cancellationReason: null,
-      metadata: { source: 'test' },
+      metadata: {
+        source: 'test',
+        channel: 'marketplace',
+        professionalPolicy: {
+          policyId: 'policy-1',
+          channelScope: 'both',
+          acceptedBy: 'pro-1',
+          sourceInvitationId: 'inv-1',
+          effectiveAt: '2025-10-18T00:00:00.000Z',
+          economicSummary: {
+            items: [
+              {
+                serviceTypeId: 'service-1',
+                price: 200,
+                currency: 'BRL',
+                payoutModel: 'percentage',
+                payoutValue: 55,
+              },
+            ],
+            orderOfRemainders: ['taxes', 'gateway', 'clinic', 'professional', 'platform'],
+            roundingStrategy: 'half_even',
+          },
+        },
+      },
     };
 
     const dto = ClinicPresenter.hold(hold);
@@ -596,7 +641,12 @@ describe('ClinicPresenter.hold', () => {
       id: 'hold-1',
       clinicId: 'clinic-1',
       resources: ['equip-1'],
-      metadata: { source: 'test' },
+      channel: 'marketplace',
+      professionalPolicySnapshot: expect.objectContaining({
+        policyId: 'policy-1',
+        channelScope: 'both',
+      }),
+      metadata: expect.objectContaining({ source: 'test', channel: 'marketplace' }),
     });
   });
 });
@@ -1253,6 +1303,7 @@ describe('ClinicPresenter fallback normalization', () => {
             id: 'tpl-1',
             event: 'appointment.confirmed',
             channel: 'email',
+            channelScope: 'direct',
             version: 'v1',
             variables: [{ name: 'patient', required: true }, { required: false }],
           },
@@ -1260,6 +1311,7 @@ describe('ClinicPresenter fallback normalization', () => {
             id: 'tpl-2',
             event: 'payment.approved',
             channel: 'email',
+            channelScope: 'direct',
             version: 'v1',
           },
           { id: 'tpl-invalid' },

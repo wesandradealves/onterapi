@@ -12,6 +12,8 @@ interface InvitationTokenPayload {
   exp: string;
   iat: string;
   jti: string;
+  pro?: string;
+  eml?: string;
 }
 
 @Injectable()
@@ -37,6 +39,8 @@ export class ClinicInvitationTokenService {
     clinicId: string;
     tenantId: string;
     expiresAt: Date;
+    professionalId?: string;
+    targetEmail?: string;
   }): { token: string; hash: string } {
     const issuedAt = new Date();
     const payload: InvitationTokenPayload = {
@@ -47,6 +51,14 @@ export class ClinicInvitationTokenService {
       iat: issuedAt.toISOString(),
       jti: randomBytes(16).toString('hex'),
     };
+
+    if (input.professionalId) {
+      payload.pro = input.professionalId;
+    }
+
+    if (input.targetEmail) {
+      payload.eml = input.targetEmail;
+    }
 
     const encodedPayload = this.base64UrlEncode(JSON.stringify(payload));
     const signature = this.sign(encodedPayload);
@@ -66,6 +78,8 @@ export class ClinicInvitationTokenService {
     issuedAt: Date;
     nonce: string;
     hash: string;
+    professionalId?: string;
+    targetEmail?: string;
   } {
     const [payloadPart, signature] = token.split('.');
 
@@ -109,6 +123,8 @@ export class ClinicInvitationTokenService {
       issuedAt,
       nonce: payload.jti,
       hash: this.hash(token),
+      professionalId: payload.pro,
+      targetEmail: payload.eml,
     };
   }
 

@@ -14,10 +14,19 @@ import {
   IClinicServiceTypeRepository as IClinicServiceTypeRepositoryToken,
 } from '../../../domain/clinic/interfaces/repositories/clinic-service-type.repository.interface';
 import {
+  type IClinicProfessionalPolicyRepository,
+  IClinicProfessionalPolicyRepository as IClinicProfessionalPolicyRepositoryToken,
+} from '../../../domain/clinic/interfaces/repositories/clinic-professional-policy.repository.interface';
+import {
   IExternalCalendarEventsRepository,
   IExternalCalendarEventsRepositoryToken,
 } from '../../../domain/scheduling/interfaces/repositories/external-calendar-events.repository.interface';
-import { ClinicHold, ClinicHoldRequestInput } from '../../../domain/clinic/types/clinic.types';
+import {
+  ClinicAppointmentChannel,
+  ClinicHold,
+  ClinicHoldRequestInput,
+  ClinicInvitationChannelScope,
+} from '../../../domain/clinic/types/clinic.types';
 import {
   type ICreateClinicHoldUseCase,
   ICreateClinicHoldUseCase as ICreateClinicHoldUseCaseToken,
@@ -53,6 +62,8 @@ export class CreateClinicHoldUseCase
     private readonly clinicHoldRepository: IClinicHoldRepository,
     @Inject(IClinicServiceTypeRepositoryToken)
     private readonly clinicServiceTypeRepository: IClinicServiceTypeRepository,
+    @Inject(IClinicProfessionalPolicyRepositoryToken)
+    private readonly professionalPolicyRepository: IClinicProfessionalPolicyRepository,
     @Inject(IExternalCalendarEventsRepositoryToken)
     private readonly externalCalendarEventsRepository: IExternalCalendarEventsRepository,
     private readonly auditService: ClinicAuditService,
@@ -68,6 +79,8 @@ export class CreateClinicHoldUseCase
     if (!clinic) {
       throw ClinicErrorFactory.clinicNotFound('Clinica nao encontrada');
     }
+
+    const channel: ClinicAppointmentChannel = input.channel ?? 'direct';
 
     const existing = await this.clinicHoldRepository.findByIdempotencyKey(
       input.clinicId,
@@ -86,6 +99,43 @@ export class CreateClinicHoldUseCase
 
     if (!serviceType) {
       throw ClinicErrorFactory.serviceTypeNotFound('Tipo de servico nao encontrado');
+    }
+
+    const professionalPolicy = await this.professionalPolicyRepository.findActivePolicy({
+      clinicId: input.clinicId,
+      tenantId: input.tenantId,
+      professionalId: input.professionalId,
+    });
+
+    if (!professionalPolicy) {
+      throw ClinicErrorFactory.invitationNotFound(
+        'Politica clinica-profissional nao encontrada para o profissional convidado',
+      );
+    }
+
+    if (!this.isChannelAllowed(professionalPolicy.channelScope, channel)) {
+      throw ClinicErrorFactory.invalidClinicData(
+        'Politica clinica-profissional nao permite agendamentos pelo canal informado',
+      );
+    }
+
+    const policyServiceType = professionalPolicy.economicSummary.items.find(
+      (item) => item.serviceTypeId === serviceType.id,
+    );
+
+    if (!policyServiceType) {
+      throw ClinicErrorFactory.invalidClinicData(
+        'Politica clinica-profissional nao contempla o tipo de servico selecionado',
+      );
+    }
+
+    if (
+      policyServiceType.price !== serviceType.price ||
+      policyServiceType.currency !== serviceType.currency
+    ) {
+      throw ClinicErrorFactory.invalidClinicData(
+        'Politica clinica-profissional divergente dos precos configurados para o servico',
+      );
     }
 
     const now = new Date();
@@ -236,6 +286,16 @@ export class CreateClinicHoldUseCase
       };
     }
 
+    metadata.channel = channel;
+    metadata.professionalPolicy = {
+      policyId: professionalPolicy.id,
+      channelScope: professionalPolicy.channelScope,
+      effectiveAt: professionalPolicy.effectiveAt.toISOString(),
+      sourceInvitationId: professionalPolicy.sourceInvitationId,
+      acceptedBy: professionalPolicy.acceptedBy,
+      economicSummary: JSON.parse(JSON.stringify(professionalPolicy.economicSummary)),
+    };
+
     const hold = await this.clinicHoldRepository.create({
       ...input,
       start,
@@ -258,6 +318,8 @@ export class CreateClinicHoldUseCase
         start,
         end,
         ttlExpiresAt,
+        channel,
+        professionalPolicyId: professionalPolicy.id,
         overbooking: overbookingMetadata ?? null,
       },
     });
@@ -284,6 +346,8 @@ export class CreateClinicHoldUseCase
         professionalId: input.professionalId,
         patientId: input.patientId,
         serviceTypeId: input.serviceTypeId,
+        professionalPolicyId: professionalPolicy.id,
+        channel,
         riskScore: overbookingMetadata.riskScore,
         threshold: overbookingMetadata.threshold,
         reasons: overbookingMetadata.reasons,
@@ -314,6 +378,16 @@ export class CreateClinicHoldUseCase
     }
 
     return hold;
+  }
+
+  private isChannelAllowed(
+    scope: ClinicInvitationChannelScope,
+    channel: ClinicAppointmentChannel,
+  ): boolean {
+    if (scope === 'both') {
+      return true;
+    }
+    return scope === channel;
   }
 }
 

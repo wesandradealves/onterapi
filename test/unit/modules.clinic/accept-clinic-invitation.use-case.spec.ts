@@ -6,6 +6,7 @@ import type { IClinicInvitationRepository } from '../../../src/domain/clinic/int
 import type { IClinicMemberRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-member.repository.interface';
 import type { IClinicConfigurationRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
 import type { IClinicAppointmentRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-appointment.repository.interface';
+import type { IClinicProfessionalPolicyRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-professional-policy.repository.interface';
 import { ClinicInvitationTokenService } from '../../../src/modules/clinic/services/clinic-invitation-token.service';
 import { ClinicAuditService } from '../../../src/infrastructure/clinic/services/clinic-audit.service';
 import { ClinicInvitation } from '../../../src/domain/clinic/types/clinic.types';
@@ -22,6 +23,7 @@ describe('AcceptClinicInvitationUseCase', () => {
     status: 'pending',
     tokenHash: 'token-hash',
     channel: 'email',
+    channelScope: 'direct',
     expiresAt: new Date('2099-12-31T23:59:59.000Z'),
     economicSummary: {
       items: [
@@ -46,6 +48,7 @@ describe('AcceptClinicInvitationUseCase', () => {
   let memberRepository: jest.Mocked<IClinicMemberRepository>;
   let configurationRepository: jest.Mocked<IClinicConfigurationRepository>;
   let appointmentRepository: jest.Mocked<IClinicAppointmentRepository>;
+  let professionalPolicyRepository: jest.Mocked<IClinicProfessionalPolicyRepository>;
   let auditService: ClinicAuditService;
   let auditRegisterSpy: jest.SpyInstance;
   let tokenService: ClinicInvitationTokenService;
@@ -104,6 +107,24 @@ describe('AcceptClinicInvitationUseCase', () => {
       countByProfessionalAndPaymentStatus: jest.fn().mockResolvedValue(0),
     } as unknown as jest.Mocked<IClinicAppointmentRepository>;
 
+    professionalPolicyRepository = {
+      replacePolicy: jest.fn().mockResolvedValue({
+        id: 'policy-1',
+        clinicId: baseInvitation.clinicId,
+        tenantId: baseInvitation.tenantId,
+        professionalId: baseInvitation.professionalId ?? 'professional-1',
+        channelScope: 'direct',
+        economicSummary: baseInvitation.economicSummary,
+        effectiveAt: new Date('2025-10-11T10:00:00.000Z'),
+        endedAt: undefined,
+        sourceInvitationId: baseInvitation.id,
+        acceptedBy: 'professional-1',
+        createdAt: new Date('2025-10-11T10:00:00.000Z'),
+        updatedAt: new Date('2025-10-11T10:00:00.000Z'),
+      }),
+      findActivePolicy: jest.fn().mockResolvedValue(null),
+    } as unknown as jest.Mocked<IClinicProfessionalPolicyRepository>;
+
     auditService = new ClinicAuditService({
       create: jest.fn().mockResolvedValue(undefined),
     } as never);
@@ -121,6 +142,8 @@ describe('AcceptClinicInvitationUseCase', () => {
       issuedAt: new Date('2025-10-10T09:00:00.000Z'),
       nonce: 'nonce',
       hash: baseInvitation.tokenHash,
+      professionalId: baseInvitation.professionalId,
+      targetEmail: undefined,
     });
 
     economicSummaryValidator = {
@@ -131,6 +154,7 @@ describe('AcceptClinicInvitationUseCase', () => {
       invitationRepository,
       clinicRepository,
       memberRepository,
+      professionalPolicyRepository,
       configurationRepository,
       appointmentRepository,
       auditService,
@@ -160,6 +184,15 @@ describe('AcceptClinicInvitationUseCase', () => {
       acceptedBy: 'professional-1',
       token: 'signed-token',
     });
+    expect(professionalPolicyRepository.replacePolicy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clinicId: baseInvitation.clinicId,
+        tenantId: baseInvitation.tenantId,
+        professionalId: baseInvitation.professionalId,
+        channelScope: 'direct',
+        sourceInvitationId: baseInvitation.id,
+      }),
+    );
 
     expect(auditRegisterSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -171,12 +204,38 @@ describe('AcceptClinicInvitationUseCase', () => {
           invitationId: baseInvitation.id,
           professionalId: 'professional-1',
           economicSnapshot: expect.any(Object),
+          policyId: 'policy-1',
         }),
       }),
     );
 
     const auditPayload = auditRegisterSpy.mock.calls[0][0];
     expect(auditPayload.detail?.economicSnapshot).toEqual(baseInvitation.economicSummary);
+  });
+
+  it('should reject acceptance when token does not match invited professional', async () => {
+    (tokenService.verifyToken as jest.Mock).mockReturnValueOnce({
+      invitationId: baseInvitation.id,
+      clinicId: baseInvitation.clinicId,
+      tenantId: baseInvitation.tenantId,
+      expiresAt: new Date('2099-12-31T23:59:59.000Z'),
+      issuedAt: new Date('2025-10-10T09:00:00.000Z'),
+      nonce: 'nonce',
+      hash: baseInvitation.tokenHash,
+      professionalId: 'another-professional',
+      targetEmail: undefined,
+    });
+
+    await expect(
+      useCase.executeOrThrow({
+        invitationId: baseInvitation.id,
+        tenantId: baseInvitation.tenantId,
+        acceptedBy: 'professional-1',
+        token: 'signed-token',
+      }),
+    ).rejects.toThrow('Token nao corresponde ao profissional convidado');
+
+    expect(professionalPolicyRepository.replacePolicy).not.toHaveBeenCalled();
   });
 
   it('should block acceptance when financial clearance is required and pendencias exist', async () => {

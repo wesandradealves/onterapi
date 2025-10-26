@@ -14,6 +14,10 @@ import {
   IClinicMemberRepository as IClinicMemberRepositoryToken,
 } from '../../../domain/clinic/interfaces/repositories/clinic-member.repository.interface';
 import {
+  type IClinicProfessionalPolicyRepository,
+  IClinicProfessionalPolicyRepository as IClinicProfessionalPolicyRepositoryToken,
+} from '../../../domain/clinic/interfaces/repositories/clinic-professional-policy.repository.interface';
+import {
   type IClinicConfigurationRepository,
   IClinicConfigurationRepository as IClinicConfigurationRepositoryToken,
 } from '../../../domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
@@ -50,6 +54,8 @@ export class AcceptClinicInvitationUseCase
     private readonly clinicRepository: IClinicRepository,
     @Inject(IClinicMemberRepositoryToken)
     private readonly memberRepository: IClinicMemberRepository,
+    @Inject(IClinicProfessionalPolicyRepositoryToken)
+    private readonly professionalPolicyRepository: IClinicProfessionalPolicyRepository,
     @Inject(IClinicConfigurationRepositoryToken)
     private readonly configurationRepository: IClinicConfigurationRepository,
     @Inject(IClinicAppointmentRepositoryToken)
@@ -94,6 +100,26 @@ export class AcceptClinicInvitationUseCase
 
     if (decodedToken.hash !== invitation.tokenHash) {
       throw ClinicErrorFactory.invitationInvalidToken('Token invalido para o convite');
+    }
+
+    if (invitation.professionalId) {
+      if (
+        !decodedToken.professionalId ||
+        decodedToken.professionalId !== invitation.professionalId
+      ) {
+        throw ClinicErrorFactory.invitationInvalidToken(
+          'Token nao corresponde ao profissional convidado',
+        );
+      }
+    }
+
+    if (invitation.targetEmail) {
+      const tokenEmail = decodedToken.targetEmail?.toLowerCase();
+      if (!tokenEmail || tokenEmail !== invitation.targetEmail.toLowerCase()) {
+        throw ClinicErrorFactory.invitationInvalidToken(
+          'Token nao corresponde ao contato convidado',
+        );
+      }
     }
 
     await this.economicSummaryValidator.validate(
@@ -151,6 +177,18 @@ export class AcceptClinicInvitationUseCase
     });
 
     const accepted = await this.invitationRepository.markAccepted(input);
+    const economicSnapshot = accepted.acceptedEconomicSnapshot ?? accepted.economicSummary;
+
+    const policy = await this.professionalPolicyRepository.replacePolicy({
+      clinicId: invitation.clinicId,
+      tenantId: invitation.tenantId,
+      professionalId,
+      channelScope: invitation.channelScope ?? 'direct',
+      economicSummary: economicSnapshot,
+      effectiveAt: accepted.acceptedAt ?? new Date(),
+      sourceInvitationId: invitation.id,
+      acceptedBy: input.acceptedBy,
+    });
 
     await this.auditService.register({
       event: 'clinic.invitation.accepted',
@@ -160,9 +198,8 @@ export class AcceptClinicInvitationUseCase
       detail: {
         invitationId: invitation.id,
         professionalId: input.acceptedBy,
-        economicSnapshot: this.cloneEconomicSnapshot(
-          accepted.acceptedEconomicSnapshot ?? accepted.economicSummary,
-        ),
+        economicSnapshot: this.cloneEconomicSnapshot(economicSnapshot),
+        policyId: policy.id,
       },
     });
 

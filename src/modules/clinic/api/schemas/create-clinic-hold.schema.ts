@@ -10,6 +10,7 @@ export const createClinicHoldSchema = z.object({
   locationId: z.string().uuid().optional(),
   resources: z.array(z.string()).optional(),
   idempotencyKey: z.string().min(6),
+  channel: z.enum(['direct', 'marketplace']).optional(),
   metadata: z.record(z.unknown()).optional(),
 });
 

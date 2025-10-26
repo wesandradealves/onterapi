@@ -39,6 +39,10 @@ export type ClinicInvitationStatus = 'pending' | 'accepted' | 'declined' | 'revo
 
 export type ClinicInvitationChannel = 'email' | 'whatsapp';
 
+export type ClinicInvitationChannelScope = 'direct' | 'marketplace' | 'both';
+
+export type ClinicAppointmentChannel = 'direct' | 'marketplace';
+
 export type ClinicDocumentType = 'cnpj' | 'cpf' | 'mei';
 
 export type ClinicPayoutModel = 'fixed' | 'percentage';
@@ -626,6 +630,7 @@ export interface ClinicInvitation {
   status: ClinicInvitationStatus;
   tokenHash: string;
   channel: ClinicInvitationChannel;
+  channelScope: ClinicInvitationChannelScope;
   expiresAt: Date;
   acceptedAt?: Date;
   acceptedBy?: string;
@@ -705,6 +710,8 @@ export interface ClinicHold {
   resources?: string[];
   idempotencyKey: string;
   createdBy: string;
+  channel?: ClinicAppointmentChannel;
+  professionalPolicySnapshot?: ClinicHoldProfessionalPolicySnapshot;
   confirmedAt?: Date;
   confirmedBy?: string;
   cancelledAt?: Date;
@@ -778,6 +785,47 @@ export interface ReissueClinicInvitationInput {
   reissuedBy: string;
   expiresAt: Date;
   channel?: ClinicInvitationChannel;
+  channelScope?: ClinicInvitationChannelScope;
+}
+
+export interface DeclineClinicInvitationInput {
+  invitationId: string;
+  tenantId: string;
+  declinedBy: string;
+  reason?: string;
+}
+
+export interface ClinicProfessionalPolicy {
+  id: string;
+  clinicId: string;
+  tenantId: string;
+  professionalId: string;
+  channelScope: ClinicInvitationChannelScope;
+  economicSummary: ClinicInvitationEconomicSummary;
+  effectiveAt: Date;
+  endedAt?: Date;
+  sourceInvitationId: string;
+  acceptedBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateClinicProfessionalPolicyInput {
+  clinicId: string;
+  tenantId: string;
+  professionalId: string;
+  channelScope: ClinicInvitationChannelScope;
+  economicSummary: ClinicInvitationEconomicSummary;
+  effectiveAt: Date;
+  sourceInvitationId: string;
+  acceptedBy: string;
+}
+
+export interface ClinicInvitationExpirationRecord {
+  invitationId: string;
+  clinicId: string;
+  tenantId: string;
+  expiredAt: Date;
 }
 
 export interface ClinicPaymentLedgerSettlement {
@@ -1183,6 +1231,7 @@ export interface InviteClinicProfessionalInput {
   professionalId?: string;
   email?: string;
   channel: ClinicInvitationChannel;
+  channelScope: ClinicInvitationChannelScope;
   economicSummary: ClinicInvitationEconomicSummary;
   expiresAt: Date;
   metadata?: Record<string, unknown>;
@@ -1215,7 +1264,17 @@ export interface ClinicHoldRequestInput {
   locationId?: string;
   resources?: string[];
   idempotencyKey: string;
+  channel?: ClinicAppointmentChannel;
   metadata?: Record<string, unknown>;
+}
+
+export interface ClinicHoldProfessionalPolicySnapshot {
+  policyId: string;
+  channelScope: ClinicInvitationChannelScope;
+  acceptedBy: string;
+  sourceInvitationId: string;
+  effectiveAt: Date;
+  economicSummary: ClinicInvitationEconomicSummary;
 }
 
 export interface ClinicHoldConfirmationInput {

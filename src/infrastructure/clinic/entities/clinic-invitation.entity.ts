@@ -11,6 +11,7 @@ import {
 
 import {
   ClinicInvitationChannel,
+  ClinicInvitationChannelScope,
   ClinicInvitationEconomicSummary,
   ClinicInvitationStatus,
 } from '../../../domain/clinic/types/clinic.types';
@@ -48,6 +49,9 @@ export class ClinicInvitationEntity {
 
   @Column({ name: 'channel', type: 'varchar', length: 20 })
   channel!: ClinicInvitationChannel;
+
+  @Column({ name: 'channel_scope', type: 'varchar', length: 20, default: 'direct' })
+  channelScope!: ClinicInvitationChannelScope;
 
   @Column({ name: 'expires_at', type: 'timestamp with time zone' })
   expiresAt!: Date;

@@ -87,6 +87,7 @@ export interface IClinicRepository {
     documentValue: string,
     excludeClinicId?: string,
   ): Promise<boolean>;
+  listTenantIds(): Promise<string[]>;
 }
 
 export const IClinicRepository = Symbol('IClinicRepository');

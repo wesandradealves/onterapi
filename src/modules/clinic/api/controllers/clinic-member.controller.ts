@@ -32,6 +32,7 @@ import { ClinicPresenter } from '../presenters/clinic.presenter';
 import { ClinicMemberResponseDto } from '../dtos/clinic-member-response.dto';
 import { ClinicMemberListResponseDto } from '../dtos/clinic-member-list-response.dto';
 import { ClinicProfessionalFinancialClearanceResponseDto } from '../dtos/clinic-professional-financial-clearance-response.dto';
+import { ClinicProfessionalPolicyResponseDto } from '../dtos/clinic-professional-policy-response.dto';
 import {
   listClinicMembersSchema,
   ListClinicMembersSchema,
@@ -50,6 +51,10 @@ import {
   type ICheckClinicProfessionalFinancialClearanceUseCase,
   ICheckClinicProfessionalFinancialClearanceUseCase as ICheckClinicProfessionalFinancialClearanceUseCaseToken,
 } from '../../../../domain/clinic/interfaces/use-cases/check-clinic-professional-financial-clearance.use-case.interface';
+import {
+  type IGetClinicProfessionalPolicyUseCase,
+  IGetClinicProfessionalPolicyUseCase as IGetClinicProfessionalPolicyUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/get-clinic-professional-policy.use-case.interface';
 import { ClinicStaffRole } from '../../../../domain/clinic/types/clinic.types';
 
 @ApiTags('Clinics')
@@ -64,6 +69,8 @@ export class ClinicMemberController {
     private readonly manageMemberUseCase: IManageClinicMemberUseCase,
     @Inject(ICheckClinicProfessionalFinancialClearanceUseCaseToken)
     private readonly checkFinancialClearanceUseCase: ICheckClinicProfessionalFinancialClearanceUseCase,
+    @Inject(IGetClinicProfessionalPolicyUseCaseToken)
+    private readonly getProfessionalPolicyUseCase: IGetClinicProfessionalPolicyUseCase,
   ) {}
 
   @Get()
@@ -135,6 +142,34 @@ export class ClinicMemberController {
       pendingCount: status.pendingCount,
       statusesEvaluated: status.statusesEvaluated,
     };
+  }
+
+  @Get('professional/:professionalId/policy')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Consultar politica clinica-profissional ativa' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiParam({ name: 'professionalId', type: String })
+  @ApiQuery({ name: 'tenantId', required: false })
+  @ApiResponse({ status: 200, type: ClinicProfessionalPolicyResponseDto })
+  async getProfessionalPolicy(
+    @Param('clinicId') clinicId: string,
+    @Param('professionalId') professionalId: string,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Query('tenantId') tenantQuery?: string,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicProfessionalPolicyResponseDto> {
+    const tenantId = tenantHeader ?? tenantQuery ?? currentUser.tenantId;
+    if (!tenantId) {
+      throw new BadRequestException('Tenant nao informado');
+    }
+
+    const policy = await this.getProfessionalPolicyUseCase.executeOrThrow({
+      clinicId,
+      tenantId,
+      professionalId,
+    });
+
+    return ClinicPresenter.professionalPolicy(policy);
   }
 
   @Patch(':memberId')

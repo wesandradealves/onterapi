@@ -7,6 +7,7 @@ import { ClinicConfigurationController } from '@modules/clinic/api/controllers/c
 import { ClinicInvitationController } from '@modules/clinic/api/controllers/clinic-invitation.controller';
 import { ClinicHoldController } from '@modules/clinic/api/controllers/clinic-hold.controller';
 import { ClinicAuditController } from '@modules/clinic/api/controllers/clinic-audit.controller';
+import { ClinicMemberController } from '@modules/clinic/api/controllers/clinic-member.controller';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@modules/auth/guards/roles.guard';
 import { ClinicScopeGuard } from '@modules/clinic/guards/clinic-scope.guard';
@@ -14,6 +15,7 @@ import { ClinicAccessService } from '@modules/clinic/services/clinic-access.serv
 import { RolesEnum } from '@domain/auth/enums/roles.enum';
 import { ICurrentUser } from '@domain/auth/interfaces/current-user.interface';
 import {
+  CheckClinicProfessionalFinancialClearanceInput,
   Clinic,
   ClinicAppointmentConfirmationResult,
   ClinicAuditLog,
@@ -23,9 +25,14 @@ import {
   ClinicHoldSettings,
   ClinicInvitation,
   ClinicInvitationEconomicSummary,
+  ClinicMember,
   ClinicOverbookingReviewInput,
+  ClinicProfessionalFinancialClearanceStatus,
+  ClinicProfessionalPolicy,
+  ClinicStaffRole,
   ClinicTemplatePropagationInput,
   CreateClinicInput,
+  DeclineClinicInvitationInput,
 } from '@domain/clinic/types/clinic.types';
 import { IListClinicsUseCase as IListClinicsUseCaseToken } from '@domain/clinic/interfaces/use-cases/list-clinics.use-case.interface';
 import { IGetClinicUseCase as IGetClinicUseCaseToken } from '@domain/clinic/interfaces/use-cases/get-clinic.use-case.interface';
@@ -93,6 +100,7 @@ import {
   IReissueClinicInvitationUseCase as IReissueClinicInvitationUseCaseToken,
   ReissueClinicInvitationInput,
 } from '@domain/clinic/interfaces/use-cases/reissue-clinic-invitation.use-case.interface';
+import { IDeclineClinicInvitationUseCase as IDeclineClinicInvitationUseCaseToken } from '@domain/clinic/interfaces/use-cases/decline-clinic-invitation.use-case.interface';
 import {
   ClinicHoldRequestInput,
   ICreateClinicHoldUseCase as ICreateClinicHoldUseCaseToken,
@@ -103,6 +111,13 @@ import {
   IListClinicAuditLogsUseCase as IListClinicAuditLogsUseCaseToken,
   ListClinicAuditLogsUseCaseInput,
 } from '@domain/clinic/interfaces/use-cases/list-clinic-audit-logs.use-case.interface';
+import { IListClinicMembersUseCase as IListClinicMembersUseCaseToken } from '@domain/clinic/interfaces/use-cases/list-clinic-members.use-case.interface';
+import { IManageClinicMemberUseCase as IManageClinicMemberUseCaseToken } from '@domain/clinic/interfaces/use-cases/manage-clinic-member.use-case.interface';
+import { ICheckClinicProfessionalFinancialClearanceUseCase as ICheckClinicProfessionalFinancialClearanceUseCaseToken } from '@domain/clinic/interfaces/use-cases/check-clinic-professional-financial-clearance.use-case.interface';
+import {
+  GetClinicProfessionalPolicyInput,
+  IGetClinicProfessionalPolicyUseCase as IGetClinicProfessionalPolicyUseCaseToken,
+} from '@domain/clinic/interfaces/use-cases/get-clinic-professional-policy.use-case.interface';
 
 type UseCaseMock<TInput, TOutput> = {
   execute: jest.Mock;
@@ -210,6 +225,15 @@ describe('Clinic module (e2e)', () => {
     reason?: string;
   };
 
+  type ListClinicMembersInputShape = {
+    clinicId: string;
+    tenantId: string;
+    status?: string[];
+    roles?: ClinicStaffRole[];
+    page?: number;
+    limit?: number;
+  };
+
   const createClinicUseCase = createUseCaseMock<CreateClinicInput, Clinic>();
   const listClinicsUseCase = createUseCaseMock<
     ListClinicsInputShape,
@@ -288,6 +312,10 @@ describe('Clinic module (e2e)', () => {
     ReissueClinicInvitationInput,
     ClinicInvitation
   >();
+  const declineInvitationUseCase = createUseCaseMock<
+    DeclineClinicInvitationInput,
+    ClinicInvitation
+  >();
 
   const createHoldUseCase = createUseCaseMock<ClinicHoldRequestInput, ClinicHold>();
   const processOverbookingUseCase = createUseCaseMock<ClinicOverbookingReviewInput, ClinicHold>();
@@ -299,6 +327,19 @@ describe('Clinic module (e2e)', () => {
     ListClinicAuditLogsUseCaseInput,
     { data: ClinicAuditLog[]; total: number }
   >();
+  const listMembersUseCase = createUseCaseMock<
+    ListClinicMembersInputShape,
+    { data: ClinicMember[]; total: number }
+  >();
+  const manageMemberUseCase = createUseCaseMock<unknown, ClinicMember>();
+  const checkFinancialClearanceUseCase = createUseCaseMock<
+    CheckClinicProfessionalFinancialClearanceInput,
+    ClinicProfessionalFinancialClearanceStatus
+  >();
+  const getProfessionalPolicyUseCase = createUseCaseMock<
+    GetClinicProfessionalPolicyInput,
+    ClinicProfessionalPolicy
+  >();
 
   beforeAll(async () => {
     const moduleRef: TestingModule = await Test.createTestingModule({
@@ -308,6 +349,7 @@ describe('Clinic module (e2e)', () => {
         ClinicInvitationController,
         ClinicHoldController,
         ClinicAuditController,
+        ClinicMemberController,
       ],
       providers: [
         { provide: IListClinicsUseCaseToken, useValue: listClinicsUseCase },
@@ -352,10 +394,21 @@ describe('Clinic module (e2e)', () => {
         { provide: IAcceptClinicInvitationUseCaseToken, useValue: acceptInvitationUseCase },
         { provide: IRevokeClinicInvitationUseCaseToken, useValue: revokeInvitationUseCase },
         { provide: IReissueClinicInvitationUseCaseToken, useValue: reissueInvitationUseCase },
+        { provide: IDeclineClinicInvitationUseCaseToken, useValue: declineInvitationUseCase },
         { provide: ICreateClinicHoldUseCaseToken, useValue: createHoldUseCase },
         { provide: IProcessClinicOverbookingUseCaseToken, useValue: processOverbookingUseCase },
         { provide: IConfirmClinicAppointmentUseCaseToken, useValue: confirmAppointmentUseCase },
         { provide: IListClinicAuditLogsUseCaseToken, useValue: listAuditLogsUseCase },
+        { provide: IListClinicMembersUseCaseToken, useValue: listMembersUseCase },
+        { provide: IManageClinicMemberUseCaseToken, useValue: manageMemberUseCase },
+        {
+          provide: ICheckClinicProfessionalFinancialClearanceUseCaseToken,
+          useValue: checkFinancialClearanceUseCase,
+        },
+        {
+          provide: IGetClinicProfessionalPolicyUseCaseToken,
+          useValue: getProfessionalPolicyUseCase,
+        },
         { provide: ClinicAccessService, useValue: clinicAccessService },
       ],
     })
@@ -407,10 +460,15 @@ describe('Clinic module (e2e)', () => {
       acceptInvitationUseCase,
       revokeInvitationUseCase,
       reissueInvitationUseCase,
+      declineInvitationUseCase,
       createHoldUseCase,
       processOverbookingUseCase,
       confirmAppointmentUseCase,
       listAuditLogsUseCase,
+      listMembersUseCase,
+      manageMemberUseCase,
+      checkFinancialClearanceUseCase,
+      getProfessionalPolicyUseCase,
     ].forEach((mock) => {
       mock.execute.mockReset();
       mock.executeOrThrow.mockReset();
@@ -612,6 +670,7 @@ describe('Clinic module (e2e)', () => {
       tenantId: FIXTURES.tenant,
       professionalId: FIXTURES.professional,
       channel: 'email',
+      channelScope: 'direct',
       economicSummary: generalEconomicSummary,
       expiresAt: '2025-10-18T10:00:00.000Z',
     };
@@ -738,5 +797,137 @@ describe('Clinic module (e2e)', () => {
     expect(csvLines[1]).toContain('"log-2"');
     expect(csvLines[1]).toContain('"clinic.updated"');
     expect(csvLines[1]).toContain('""section"":""general""');
+  });
+
+  it('deve recusar convite de clinica com motivo opcional', async () => {
+    const economicSummary: ClinicInvitationEconomicSummary = {
+      items: [
+        {
+          serviceTypeId: 'service-1',
+          price: 250,
+          currency: 'BRL',
+          payoutModel: 'percentage',
+          payoutValue: 60,
+        },
+      ],
+      orderOfRemainders: ['taxes', 'gateway', 'clinic', 'professional', 'platform'],
+      roundingStrategy: 'half_even',
+    };
+
+    const declinedAt = new Date('2025-10-15T12:30:00.000Z');
+
+    declineInvitationUseCase.executeOrThrow.mockResolvedValueOnce({
+      id: FIXTURES.invitation,
+      clinicId: FIXTURES.clinic,
+      tenantId: FIXTURES.tenant,
+      professionalId: FIXTURES.professional,
+      issuedBy: currentUser.id,
+      status: 'declined',
+      tokenHash: 'hash',
+      channel: 'email',
+      channelScope: 'direct',
+      expiresAt: new Date('2025-10-18T10:00:00.000Z'),
+      economicSummary,
+      acceptedEconomicSnapshot: undefined,
+      createdAt: new Date('2025-10-10T09:00:00.000Z'),
+      updatedAt: declinedAt,
+      declinedAt,
+      declinedBy: currentUser.id,
+      targetEmail: undefined,
+      acceptedAt: undefined,
+      acceptedBy: undefined,
+      revokedAt: undefined,
+      revokedBy: undefined,
+      revocationReason: null,
+      metadata: { source: 'portal' },
+    });
+
+    const response = await request(app.getHttpServer())
+      .post(`/clinics/invitations/${FIXTURES.invitation}/decline`)
+      .send({ tenantId: FIXTURES.tenant, reason: 'Agenda cheia' })
+      .expect(201);
+
+    expect(declineInvitationUseCase.executeOrThrow).toHaveBeenCalledWith({
+      invitationId: FIXTURES.invitation,
+      tenantId: FIXTURES.tenant,
+      declinedBy: currentUser.id,
+      reason: 'Agenda cheia',
+    });
+    expect(response.body.status).toBe('declined');
+    expect(response.body.declinedBy).toBe(currentUser.id);
+    expect(response.body.economicSummary.items[0].payoutValue).toBe(60);
+  });
+
+  it('deve retornar status financeiro do profissional da clinica', async () => {
+    const clearance: ClinicProfessionalFinancialClearanceStatus = {
+      requiresClearance: true,
+      hasPendencies: false,
+      pendingCount: 0,
+      statusesEvaluated: ['chargeback', 'failed'],
+    };
+
+    checkFinancialClearanceUseCase.executeOrThrow.mockResolvedValueOnce(clearance);
+
+    const response = await request(app.getHttpServer())
+      .get(
+        `/clinics/${FIXTURES.clinic}/members/professional/${FIXTURES.professional}/financial-clearance`,
+      )
+      .set('x-tenant-id', FIXTURES.tenant)
+      .expect(200);
+
+    expect(checkFinancialClearanceUseCase.executeOrThrow).toHaveBeenCalledWith({
+      clinicId: FIXTURES.clinic,
+      tenantId: FIXTURES.tenant,
+      professionalId: FIXTURES.professional,
+    });
+    expect(response.body.requiresClearance).toBe(true);
+    expect(response.body.statusesEvaluated).toEqual(['chargeback', 'failed']);
+  });
+
+  it('deve retornar politica clinica-profissional ativa', async () => {
+    const economicSummary: ClinicInvitationEconomicSummary = {
+      items: [
+        {
+          serviceTypeId: 'service-2',
+          price: 320,
+          currency: 'BRL',
+          payoutModel: 'fixed',
+          payoutValue: 120,
+        },
+      ],
+      orderOfRemainders: ['taxes', 'gateway', 'clinic', 'professional', 'platform'],
+      roundingStrategy: 'half_even',
+    };
+
+    const policy: ClinicProfessionalPolicy = {
+      id: 'policy-123',
+      clinicId: FIXTURES.clinic,
+      tenantId: FIXTURES.tenant,
+      professionalId: FIXTURES.professional,
+      channelScope: 'both',
+      economicSummary,
+      effectiveAt: new Date('2025-10-11T08:00:00.000Z'),
+      endedAt: undefined,
+      sourceInvitationId: FIXTURES.invitation,
+      acceptedBy: currentUser.id,
+      createdAt: new Date('2025-10-11T09:00:00.000Z'),
+      updatedAt: new Date('2025-10-11T09:30:00.000Z'),
+    };
+
+    getProfessionalPolicyUseCase.executeOrThrow.mockResolvedValueOnce(policy);
+
+    const response = await request(app.getHttpServer())
+      .get(`/clinics/${FIXTURES.clinic}/members/professional/${FIXTURES.professional}/policy`)
+      .set('x-tenant-id', FIXTURES.tenant)
+      .expect(200);
+
+    expect(getProfessionalPolicyUseCase.executeOrThrow).toHaveBeenCalledWith({
+      clinicId: FIXTURES.clinic,
+      tenantId: FIXTURES.tenant,
+      professionalId: FIXTURES.professional,
+    });
+    expect(response.body.id).toBe('policy-123');
+    expect(response.body.channelScope).toBe('both');
+    expect(response.body.economicSummary.items[0].payoutValue).toBe(120);
   });
 });

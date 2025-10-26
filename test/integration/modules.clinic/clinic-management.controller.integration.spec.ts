@@ -31,6 +31,10 @@ import {
   IResolveClinicAlertUseCase,
   IResolveClinicAlertUseCase as IResolveClinicAlertUseCaseToken,
 } from '../../../src/domain/clinic/interfaces/use-cases/resolve-clinic-alert.use-case.interface';
+import {
+  IEvaluateClinicAlertsUseCase,
+  IEvaluateClinicAlertsUseCase as IEvaluateClinicAlertsUseCaseToken,
+} from '../../../src/domain/clinic/interfaces/use-cases/evaluate-clinic-alerts.use-case.interface';
 import { ClinicManagementController } from '../../../src/modules/clinic/api/controllers/clinic-management.controller';
 import { JwtAuthGuard } from '../../../src/modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../src/modules/auth/guards/roles.guard';
@@ -55,12 +59,15 @@ describe('ClinicManagementController (integration)', () => {
   let transferUseCase: jest.Mocked<ITransferClinicProfessionalUseCase>;
   let alertsUseCase: jest.Mocked<IListClinicAlertsUseCase>;
   let resolveAlertUseCase: jest.Mocked<IResolveClinicAlertUseCase>;
+  let evaluateAlertsUseCase: jest.Mocked<IEvaluateClinicAlertsUseCase>;
   let clinicAccessService: {
     resolveAuthorizedClinicIds: jest.Mock;
     assertClinicAccess: jest.Mock;
     assertAlertAccess: jest.Mock;
   };
   const tenantCtx = '00000000-0000-0000-0000-000000000000';
+  const clinicOneId = '11111111-1111-1111-1111-111111111111';
+  const clinicTwoId = '22222222-2222-2222-2222-222222222222';
   const binaryParser = (res: any, callback: (err: Error | null, body: Buffer) => void) => {
     const chunks: Buffer[] = [];
     res.on('data', (chunk) => chunks.push(chunk));
@@ -80,7 +87,7 @@ describe('ClinicManagementController (integration)', () => {
     },
     clinics: [
       {
-        clinicId: 'clinic-1',
+        clinicId: clinicOneId,
         name: 'Clinic One',
         status: 'active',
         primaryOwnerId: 'owner-1',
@@ -94,7 +101,7 @@ describe('ClinicManagementController (integration)', () => {
           contributionMargin: 0.3,
         },
         financials: {
-          clinicId: 'clinic-1',
+          clinicId: clinicOneId,
           revenue: 10000,
           expenses: 5000,
           profit: 5000,
@@ -104,7 +111,7 @@ describe('ClinicManagementController (integration)', () => {
         alerts: [
           {
             id: 'alert-active',
-            clinicId: 'clinic-1',
+            clinicId: clinicOneId,
             tenantId: tenantCtx,
             type: 'revenue_drop',
             channel: 'push',
@@ -116,7 +123,7 @@ describe('ClinicManagementController (integration)', () => {
           } as ClinicAlert,
           {
             id: 'alert-resolved',
-            clinicId: 'clinic-1',
+            clinicId: clinicOneId,
             tenantId: tenantCtx,
             type: 'compliance',
             channel: 'email',
@@ -163,15 +170,20 @@ describe('ClinicManagementController (integration)', () => {
       executeOrThrow: jest.fn(),
     } as unknown as jest.Mocked<IResolveClinicAlertUseCase>;
 
+    evaluateAlertsUseCase = {
+      execute: jest.fn(),
+      executeOrThrow: jest.fn(),
+    } as unknown as jest.Mocked<IEvaluateClinicAlertsUseCase>;
+
     clinicAccessService = {
       resolveAuthorizedClinicIds: jest.fn(
         async ({ requestedClinicIds }: { requestedClinicIds?: string[] | null }) =>
-          requestedClinicIds && requestedClinicIds.length > 0 ? requestedClinicIds : ['clinic-1'],
+          requestedClinicIds && requestedClinicIds.length > 0 ? requestedClinicIds : [clinicOneId],
       ),
       assertClinicAccess: jest.fn(async () => undefined),
       assertAlertAccess: jest.fn(async () => ({
         id: 'alert-1',
-        clinicId: 'clinic-1',
+        clinicId: clinicOneId,
         tenantId: tenantCtx,
         type: 'revenue_drop',
         channel: 'system',
@@ -199,6 +211,10 @@ describe('ClinicManagementController (integration)', () => {
         {
           provide: IResolveClinicAlertUseCaseToken,
           useValue: resolveAlertUseCase,
+        },
+        {
+          provide: IEvaluateClinicAlertsUseCaseToken,
+          useValue: evaluateAlertsUseCase,
         },
         { provide: ClinicAccessService, useValue: clinicAccessService },
         ClinicManagementExportService,
@@ -291,7 +307,7 @@ describe('ClinicManagementController (integration)', () => {
 
     expect(alertsUseCase.executeOrThrow).toHaveBeenCalledWith({
       tenantId: tenantHeader,
-      clinicIds: ['clinic-1'],
+      clinicIds: [clinicOneId],
       types: undefined,
       activeOnly: undefined,
       limit: 1000,
@@ -317,6 +333,85 @@ describe('ClinicManagementController (integration)', () => {
     expect(lines[1]).toContain('"{""delta"":-12.5}"');
   });
 
+  it('permite forcar avaliacao de alertas com escopo autorizado', async () => {
+    const tenantHeader = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
+    const clinicId = clinicOneId;
+
+    const alert: ClinicAlert = {
+      id: 'alert-eval',
+      clinicId,
+      tenantId: tenantHeader,
+      type: 'revenue_drop',
+      channel: 'push',
+      triggeredBy: 'system',
+      triggeredAt: new Date('2025-05-10T08:00:00Z'),
+      resolvedAt: undefined,
+      resolvedBy: undefined,
+      payload: { variation: -15 },
+    };
+
+    evaluateAlertsUseCase.executeOrThrow.mockResolvedValue({
+      tenantId: tenantHeader,
+      evaluatedClinics: 1,
+      triggered: 1,
+      skipped: 1,
+      alerts: [alert],
+      skippedDetails: [
+        {
+          clinicId: clinicTwoId,
+          type: 'revenue_drop',
+          reason: 'clinic_not_authorized',
+        },
+      ],
+    });
+
+    const response = await request(app.getHttpServer())
+      .post('/management/alerts/evaluate')
+      .set('x-tenant-id', tenantHeader)
+      .send({ clinicIds: [clinicOneId, clinicTwoId] })
+      .expect(201);
+
+    expect(clinicAccessService.resolveAuthorizedClinicIds).toHaveBeenCalledWith({
+      tenantId: tenantHeader,
+      user: expect.objectContaining({ id: 'user-ctx' }),
+      requestedClinicIds: [clinicOneId, clinicTwoId],
+    });
+
+    expect(evaluateAlertsUseCase.executeOrThrow).toHaveBeenCalledWith({
+      tenantId: tenantHeader,
+      clinicIds: [clinicOneId, clinicTwoId],
+      triggeredBy: 'user-ctx',
+    });
+
+    expect(response.body).toEqual({
+      tenantId: tenantHeader,
+      evaluatedClinics: 1,
+      triggered: 1,
+      skipped: 1,
+      alerts: [
+        {
+          id: 'alert-eval',
+          clinicId,
+          tenantId: tenantHeader,
+          type: 'revenue_drop',
+          channel: 'push',
+          triggeredBy: 'system',
+          triggeredAt: alert.triggeredAt.toISOString(),
+          resolvedAt: undefined,
+          resolvedBy: undefined,
+          payload: { variation: -15 },
+        },
+      ],
+      skippedDetails: [
+        {
+          clinicId: clinicTwoId,
+          type: 'revenue_drop',
+          reason: 'clinic_not_authorized',
+        },
+      ],
+    });
+  });
+
   it('exporta overview consolidada em CSV respeitando escopo', async () => {
     const overview = buildOverviewFixture();
 
@@ -336,9 +431,8 @@ describe('ClinicManagementController (integration)', () => {
     expect(lines[0]).toBe(
       'clinicId,nome,status,ultimoAtivoEm,receita,consultas,pacientesAtivos,ocupacao,satisfacao,margemContribuicao,alertasAtivos,tiposAlertasAtivos,owners,gestores,profissionais,secretarias',
     );
-    expect(lines[1]).toBe(
-      '"clinic-1","Clinic One","active","2025-01-15T12:00:00.000Z","10000","120","80","0.82","4.5","55","1","revenue_drop","1","2","3","1"',
-    );
+    const expectedRow = `"${clinicOneId}","Clinic One","active","2025-01-15T12:00:00.000Z","10000","120","80","0.82","4.5","55","1","revenue_drop","1","2","3","1"`;
+    expect(lines[1]).toBe(expectedRow);
 
     expect(clinicAccessService.resolveAuthorizedClinicIds).toHaveBeenCalledWith({
       tenantId: tenantCtx,
@@ -677,7 +771,7 @@ describe('ClinicManagementController (integration)', () => {
 
       expect(alertsUseCase.executeOrThrow).toHaveBeenCalledWith({
         tenantId: tenantCtx,
-        clinicIds: ['clinic-1'],
+        clinicIds: [clinicOneId],
         types: undefined,
         activeOnly: undefined,
         limit: undefined,

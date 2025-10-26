@@ -36,6 +36,7 @@ export const inviteClinicProfessionalSchema = z
     professionalId: z.string().uuid().optional(),
     email: z.string().email().optional(),
     channel: z.enum(['email', 'whatsapp']),
+    channelScope: z.enum(['direct', 'marketplace', 'both']),
     economicSummary: z
       .object({
         items: z.array(invitationEconomicItemSchema).min(1),
@@ -91,6 +92,13 @@ export const acceptClinicInvitationSchema = z.object({
 });
 
 export type AcceptClinicInvitationSchema = z.infer<typeof acceptClinicInvitationSchema>;
+
+export const declineClinicInvitationSchema = z.object({
+  tenantId: z.string().uuid(),
+  reason: z.string().max(500).optional(),
+});
+
+export type DeclineClinicInvitationSchema = z.infer<typeof declineClinicInvitationSchema>;
 
 export const revokeClinicInvitationSchema = z.object({
   tenantId: z.string().uuid(),

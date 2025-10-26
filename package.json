@@ -1,6 +1,6 @@
 {
     "name": "@onterapi/backend",
-    "version": "0.16.1",
+    "version": "0.19.0",
     "description": "OnTerapi v4 - Sistema de Gestao para Terapias Integrativas",
     "private": true,
     "license": "PROPRIETARY",

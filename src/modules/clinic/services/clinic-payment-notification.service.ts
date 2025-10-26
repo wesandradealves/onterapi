@@ -20,9 +20,7 @@ import {
   IWhatsAppService,
   WhatsAppMessagePayload,
 } from '../../../domain/integrations/interfaces/services/whatsapp.service.interface';
-import {
-  IPushNotificationService,
-} from '../../../domain/integrations/interfaces/services/push-notification.service.interface';
+import { IPushNotificationService } from '../../../domain/integrations/interfaces/services/push-notification.service.interface';
 import {
   ClinicPaymentChargebackEvent,
   ClinicPaymentFailedEvent,
@@ -723,39 +721,51 @@ export class ClinicPaymentNotificationService {
       amountCents: input.amountCents,
     });
 
+    const pushData: Record<string, string | number | boolean> = {
+      appointmentId: input.appointment.id,
+      transactionId: input.transactionId,
+      status: input.status,
+      clinicId: input.clinicId,
+      eventAt: input.eventAt.toISOString(),
+    };
+
+    if (input.amountCents !== undefined) {
+      pushData.amountCents = String(input.amountCents);
+    }
+
+    if (input.netAmountCents !== undefined && input.netAmountCents !== null) {
+      pushData.netAmountCents = String(input.netAmountCents);
+    }
+
     const pushResult = await this.pushNotificationService.sendNotification({
       tokens,
       title,
       body,
-      data: {
-        appointmentId: input.appointment.id,
-        transactionId: input.transactionId,
-        status: input.status,
-        clinicId: input.clinicId,
-        amountCents:
-          input.amountCents !== undefined ? String(input.amountCents) : undefined,
-        netAmountCents:
-          input.netAmountCents !== undefined && input.netAmountCents !== null
-            ? String(input.netAmountCents)
-            : undefined,
-        eventAt: input.eventAt.toISOString(),
-      },
+      data: pushData,
       category: PAYMENT_PUSH_CATEGORY,
       tenantId: input.appointment.tenantId,
       clinicId: input.clinicId,
     });
 
     if (pushResult.error) {
-      this.logger.error(
-        'Falha ao enviar notificacao de pagamento por push',
-        pushResult.error,
-        {
-          clinicId: input.clinicId,
-          appointmentId: input.appointment.id,
-          status: input.status,
-        },
-      );
+      this.logger.error('Falha ao enviar notificacao de pagamento por push', pushResult.error, {
+        clinicId: input.clinicId,
+        appointmentId: input.appointment.id,
+        status: input.status,
+      });
     } else {
+      const rejectedTokens = pushResult.data?.rejectedTokens ?? [];
+
+      if (rejectedTokens.length > 0) {
+        await this.notificationContext.removeInvalidPushTokens({
+          tenantId: input.appointment.tenantId,
+          clinicId: input.clinicId,
+          recipients: pushRecipients,
+          rejectedTokens,
+          scope: 'clinic-payments',
+        });
+      }
+
       this.logger.debug('Notificacao de pagamento enviada por push', {
         clinicId: input.clinicId,
         appointmentId: input.appointment.id,
@@ -772,9 +782,7 @@ export class ClinicPaymentNotificationService {
     amountCents?: number;
   }): { title: string; body: string } {
     const formattedAmount =
-      input.amountCents !== undefined
-        ? this.formatCurrency(input.amountCents / 100)
-        : undefined;
+      input.amountCents !== undefined ? this.formatCurrency(input.amountCents / 100) : undefined;
 
     switch (input.status) {
       case 'settled':

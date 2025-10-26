@@ -5062,6 +5062,161 @@
         ]
       }
     },
+    "/management/overview/export": {
+      "get": {
+        "operationId": "exportOverview",
+        "summary": "Exportar visao consolidada das clinicas (CSV)",
+        "parameters": [
+          {
+            "name": "includeFinancials",
+            "required": false,
+            "in": "query",
+            "description": "Incluir resumo financeiro consolidado",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "includeTeamDistribution",
+            "required": false,
+            "in": "query",
+            "description": "Incluir distribuicao da equipe por papel",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "includeAlerts",
+            "required": false,
+            "in": "query",
+            "description": "Incluir alertas consolidados",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "includeComparisons",
+            "required": false,
+            "in": "query",
+            "description": "Incluir comparativos de metricas",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "includeForecast",
+            "required": false,
+            "in": "query",
+            "description": "Incluir projecoes de forecast",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Data final (ISO 8601)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Data inicial (ISO 8601)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filtrar por status das clinicas",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "pending",
+                  "active",
+                  "inactive",
+                  "suspended"
+                ]
+              }
+            }
+          },
+          {
+            "name": "clinicIds",
+            "required": false,
+            "in": "query",
+            "description": "IDs de clinicas (UUIDs) separados por virgula ou multiplos parametros",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Clinic Management"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/management/overview/export.xls": {
+      "get": {
+        "operationId": "exportOverviewExcel",
+        "summary": "Exportar visao consolidada das clinicas (Excel)",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Clinic Management"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/management/overview/export.pdf": {
+      "get": {
+        "operationId": "exportOverviewPdf",
+        "summary": "Exportar visao consolidada das clinicas (PDF)",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Clinic Management"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/management/alerts": {
       "get": {
         "operationId": "listAlerts",
@@ -5140,6 +5295,26 @@
                 }
               }
             }
+          }
+        },
+        "tags": [
+          "Clinic Management"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/management/alerts/export": {
+      "get": {
+        "operationId": "exportAlerts",
+        "summary": "Exportar alertas das clinicas (CSV)",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
           }
         },
         "tags": [
@@ -5232,6 +5407,42 @@
         ]
       }
     },
+    "/management/alerts/evaluate": {
+      "post": {
+        "operationId": "evaluateAlerts",
+        "summary": "Forcar avaliacao dos alertas automaticos das clinicas",
+        "parameters": [
+          {
+            "name": "x-tenant-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClinicAlertEvaluationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Clinic Management"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/clinics/{clinicId}/holds": {
       "post": {
         "operationId": "createHold",
@@ -5299,6 +5510,13 @@
                   "idempotencyKey": {
                     "type": "string",
                     "minLength": 6
+                  },
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "direct",
+                      "marketplace"
+                    ]
                   },
                   "metadata": {
                     "type": "object",
@@ -6033,6 +6251,14 @@
                       "whatsapp"
                     ]
                   },
+                  "channelScope": {
+                    "type": "string",
+                    "enum": [
+                      "direct",
+                      "marketplace",
+                      "both"
+                    ]
+                  },
                   "economicSummary": {
                     "type": "object",
                     "properties": {
@@ -6122,6 +6348,7 @@
                 "required": [
                   "tenantId",
                   "channel",
+                  "channelScope",
                   "economicSummary",
                   "expiresAt"
                 ],
@@ -6263,6 +6490,67 @@
         ]
       }
     },
+    "/clinics/invitations/{invitationId}/decline": {
+      "post": {
+        "operationId": "declineInvitation",
+        "summary": "Recusar convite de clinica",
+        "parameters": [
+          {
+            "name": "invitationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Request payload",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenantId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "tenantId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClinicInvitationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Clinics"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/clinics/invitations/{invitationId}/revoke": {
       "post": {
         "operationId": "revokeInvitation",
@@ -6358,6 +6646,14 @@
                     "enum": [
                       "email",
                       "whatsapp"
+                    ]
+                  },
+                  "channelScope": {
+                    "type": "string",
+                    "enum": [
+                      "direct",
+                      "marketplace",
+                      "both"
                     ]
                   }
                 },
@@ -7028,6 +7324,125 @@
         ]
       }
     },
+    "/integrations/google-calendar/webhook": {
+      "post": {
+        "operationId": "handleGoogleEvent",
+        "summary": "Webhook de eventos do Google Calendar",
+        "description": "Recebe eventos externos do Google Calendar e registra bloqueios pendentes conforme regras da clinica.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "description": "Request payload",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenantId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "clinicId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "professionalId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "triggeredBy": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "event": {
+                    "type": "object",
+                    "properties": {
+                      "externalEventId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "confirmed",
+                          "tentative",
+                          "cancelled"
+                        ]
+                      },
+                      "startAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "endAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "timezone": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "summary": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "locationId": {
+                        "type": "string"
+                      },
+                      "resources": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "calendarId": {
+                        "type": "string"
+                      },
+                      "rawPayload": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    },
+                    "required": [
+                      "externalEventId",
+                      "status",
+                      "startAt",
+                      "endAt",
+                      "timezone"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "tenantId",
+                  "clinicId",
+                  "professionalId",
+                  "event"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Evento recebido para processamento.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClinicExternalCalendarEventResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Clinic Webhooks"
+        ]
+      }
+    },
     "/integrations/asaas/webhook": {
       "post": {
         "operationId": "handleWebhook",
@@ -7096,40 +7511,6 @@
         "responses": {
           "202": {
             "description": "Evento recebido para processamento."
-          }
-        },
-        "tags": [
-          "Clinic Webhooks"
-        ]
-      }
-    },
-    "/integrations/google-calendar/webhook": {
-      "post": {
-        "operationId": "handleGoogleEvent",
-        "summary": "Webhook de eventos do Google Calendar",
-        "description": "Recebe eventos externos do Google Calendar e registra bloqueios pendentes conforme regras da clinica.",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "description": "Request payload",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ClinicGoogleWebhookSchema"
-              }
-            }
-          }
-        },
-        "responses": {
-          "202": {
-            "description": "Evento recebido para processamento.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ClinicExternalCalendarEventResponseDto"
-                }
-              }
-            }
           }
         },
         "tags": [
@@ -7282,7 +7663,7 @@
   "info": {
     "title": "OnTerapi API",
     "description": "API for OnTerapi Platform",
-    "version": "0.16.1",
+    "version": "0.19.0",
     "contact": {}
   },
   "tags": [],
@@ -13463,6 +13844,208 @@
           "transferPatients"
         ]
       },
+      "ClinicAlertSkippedDetailDto": {
+        "type": "object",
+        "properties": {
+          "clinicId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "clinicId",
+          "type",
+          "reason"
+        ]
+      },
+      "ClinicAlertEvaluationResponseDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string"
+          },
+          "evaluatedClinics": {
+            "type": "number"
+          },
+          "triggered": {
+            "type": "number"
+          },
+          "skipped": {
+            "type": "number"
+          },
+          "alerts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClinicDashboardAlertDto"
+            }
+          },
+          "skippedDetails": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClinicAlertSkippedDetailDto"
+            }
+          }
+        },
+        "required": [
+          "tenantId",
+          "evaluatedClinics",
+          "triggered",
+          "skipped",
+          "alerts",
+          "skippedDetails"
+        ]
+      },
+      "ClinicEconomicAgreementDto": {
+        "type": "object",
+        "properties": {
+          "serviceTypeId": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "BRL",
+              "USD",
+              "EUR"
+            ]
+          },
+          "payoutModel": {
+            "type": "string",
+            "enum": [
+              "fixed",
+              "percentage"
+            ]
+          },
+          "payoutValue": {
+            "type": "number",
+            "description": "Valor de repasse ao profissional. Em percentual o intervalo permitido e de 0 a 100; em valor fixo deve ser maior ou igual a zero seguindo a mesma moeda do preco.",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "serviceTypeId",
+          "price",
+          "currency",
+          "payoutModel",
+          "payoutValue"
+        ]
+      },
+      "ClinicInvitationEconomicExampleDto": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string",
+            "enum": [
+              "BRL",
+              "USD",
+              "EUR"
+            ]
+          },
+          "patientPays": {
+            "type": "number"
+          },
+          "professionalReceives": {
+            "type": "number"
+          },
+          "remainder": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "currency",
+          "patientPays",
+          "professionalReceives",
+          "remainder"
+        ]
+      },
+      "ClinicInvitationEconomicSummaryDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClinicEconomicAgreementDto"
+            }
+          },
+          "orderOfRemainders": {
+            "type": "array",
+            "minItems": 5,
+            "maxItems": 5,
+            "description": "Ordem fixa das sobras: impostos -> gateway -> clinica -> profissional -> plataforma. Qualquer divergencia gera erro de validacao.",
+            "items": {
+              "type": "string",
+              "enum": [
+                "taxes",
+                "gateway",
+                "clinic",
+                "professional",
+                "platform"
+              ]
+            }
+          },
+          "roundingStrategy": {
+            "type": "string",
+            "enum": [
+              "half_even"
+            ]
+          },
+          "examples": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClinicInvitationEconomicExampleDto"
+            }
+          }
+        },
+        "required": [
+          "items",
+          "orderOfRemainders",
+          "roundingStrategy"
+        ]
+      },
+      "ClinicHoldProfessionalPolicySnapshotDto": {
+        "type": "object",
+        "properties": {
+          "policyId": {
+            "type": "string"
+          },
+          "channelScope": {
+            "type": "string",
+            "enum": [
+              "direct",
+              "marketplace",
+              "both"
+            ]
+          },
+          "acceptedBy": {
+            "type": "string"
+          },
+          "sourceInvitationId": {
+            "type": "string"
+          },
+          "effectiveAt": {
+            "type": "string"
+          },
+          "economicSummary": {
+            "$ref": "#/components/schemas/ClinicInvitationEconomicSummaryDto"
+          }
+        },
+        "required": [
+          "policyId",
+          "channelScope",
+          "acceptedBy",
+          "sourceInvitationId",
+          "effectiveAt",
+          "economicSummary"
+        ]
+      },
       "ClinicHoldResponseDto": {
         "type": "object",
         "properties": {
@@ -13511,6 +14094,16 @@
           "createdBy": {
             "type": "string"
           },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "direct",
+              "marketplace"
+            ]
+          },
+          "professionalPolicySnapshot": {
+            "$ref": "#/components/schemas/ClinicHoldProfessionalPolicySnapshotDto"
+          },
           "confirmedAt": {
             "type": "string"
           },
@@ -13551,161 +14144,6 @@
           "createdBy",
           "createdAt",
           "updatedAt"
-        ]
-      },
-      "ClinicExternalCalendarEventResponseDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "professionalId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "externalEventId": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "pending",
-              "approved",
-              "rejected",
-              "cancelled"
-            ]
-          },
-          "startAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "endAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "timezone": {
-            "type": "string"
-          },
-          "validationErrors": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "nullable": true
-          },
-          "calendarId": {
-            "type": "string",
-            "nullable": true
-          },
-          "source": {
-            "type": "string",
-            "enum": [
-              "google_calendar"
-            ]
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "id",
-          "professionalId",
-          "externalEventId",
-          "status",
-          "startAt",
-          "endAt",
-          "timezone",
-          "source",
-          "createdAt",
-          "updatedAt"
-        ]
-      },
-      "ClinicGoogleWebhookSchema": {
-        "type": "object",
-        "properties": {
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "clinicId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "professionalId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "triggeredBy": {
-            "type": "string"
-          },
-          "event": {
-            "type": "object",
-            "properties": {
-              "externalEventId": {
-                "type": "string"
-              },
-              "status": {
-                "type": "string",
-                "enum": [
-                  "confirmed",
-                  "tentative",
-                  "cancelled"
-                ]
-              },
-              "startAt": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "endAt": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "timezone": {
-                "type": "string"
-              },
-              "summary": {
-                "type": "string"
-              },
-              "description": {
-                "type": "string"
-              },
-              "locationId": {
-                "type": "string"
-              },
-              "resources": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "calendarId": {
-                "type": "string"
-              },
-              "rawPayload": {
-                "type": "object",
-                "additionalProperties": {}
-              }
-            },
-            "required": [
-              "externalEventId",
-              "status",
-              "startAt",
-              "endAt",
-              "timezone"
-            ]
-          }
-        },
-        "required": [
-          "tenantId",
-          "clinicId",
-          "professionalId",
-          "event"
         ]
       },
       "ClinicAppointmentConfirmationResponseDto": {
@@ -13994,116 +14432,6 @@
           "updatedAt"
         ]
       },
-      "ClinicEconomicAgreementDto": {
-        "type": "object",
-        "properties": {
-          "serviceTypeId": {
-            "type": "string"
-          },
-          "price": {
-            "type": "number"
-          },
-          "currency": {
-            "type": "string",
-            "enum": [
-              "BRL",
-              "USD",
-              "EUR"
-            ]
-          },
-          "payoutModel": {
-            "type": "string",
-            "enum": [
-              "fixed",
-              "percentage"
-            ]
-          },
-          "payoutValue": {
-            "type": "number",
-            "description": "Valor de repasse ao profissional. Em percentual o intervalo permitido e de 0 a 100; em valor fixo deve ser maior ou igual a zero seguindo a mesma moeda do preco.",
-            "minimum": 0
-          }
-        },
-        "required": [
-          "serviceTypeId",
-          "price",
-          "currency",
-          "payoutModel",
-          "payoutValue"
-        ]
-      },
-      "ClinicInvitationEconomicExampleDto": {
-        "type": "object",
-        "properties": {
-          "currency": {
-            "type": "string",
-            "enum": [
-              "BRL",
-              "USD",
-              "EUR"
-            ]
-          },
-          "patientPays": {
-            "type": "number"
-          },
-          "professionalReceives": {
-            "type": "number"
-          },
-          "remainder": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "currency",
-          "patientPays",
-          "professionalReceives",
-          "remainder"
-        ]
-      },
-      "ClinicInvitationEconomicSummaryDto": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ClinicEconomicAgreementDto"
-            }
-          },
-          "orderOfRemainders": {
-            "type": "array",
-            "minItems": 5,
-            "maxItems": 5,
-            "description": "Ordem fixa das sobras: impostos  gateway  cl nica  profissional  plataforma. Qualquer diverg ncia gera erro de valida  o.",
-            "items": {
-              "type": "string",
-              "enum": [
-                "taxes",
-                "gateway",
-                "clinic",
-                "professional",
-                "platform"
-              ]
-            }
-          },
-          "roundingStrategy": {
-            "type": "string",
-            "enum": [
-              "half_even"
-            ]
-          },
-          "examples": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ClinicInvitationEconomicExampleDto"
-            }
-          }
-        },
-        "required": [
-          "items",
-          "orderOfRemainders",
-          "roundingStrategy"
-        ]
-      },
       "ClinicInvitationResponseDto": {
         "type": "object",
         "properties": {
@@ -14140,6 +14468,14 @@
             "enum": [
               "email",
               "whatsapp"
+            ]
+          },
+          "channelScope": {
+            "type": "string",
+            "enum": [
+              "direct",
+              "marketplace",
+              "both"
             ]
           },
           "expiresAt": {
@@ -14193,6 +14529,7 @@
           "issuedBy",
           "status",
           "channel",
+          "channelScope",
           "expiresAt",
           "economicSummary",
           "createdAt",
@@ -14421,6 +14758,81 @@
         "required": [
           "data",
           "total"
+        ]
+      },
+      "ClinicExternalCalendarEventResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "professionalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "externalEventId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected",
+              "cancelled"
+            ]
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "validationErrors": {
+            "nullable": true,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "calendarId": {
+            "type": "object",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "google_calendar"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "professionalId",
+          "externalEventId",
+          "status",
+          "startAt",
+          "endAt",
+          "timezone",
+          "validationErrors",
+          "calendarId",
+          "source",
+          "createdAt",
+          "updatedAt"
         ]
       },
       "ClinicPaymentLedgerEventDto": {

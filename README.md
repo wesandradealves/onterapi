@@ -10,6 +10,7 @@ Plataforma SaaS multi-tenant para gestao de clinicas e terapeutas, com Supabase 
 - [Modulo de Usuarios](#modulo-de-usuarios)
 - [Modulo de Anamnese](#modulo-de-anamnese)
 - [Modulo de Agendamento](#modulo-de-agendamento)
+- [Modulo de Clinica](#modulo-de-clinica)
 - [Exportacao de Pacientes](#exportacao-de-pacientes)
 - [Documentacao Swagger](#documentacao-swagger)
 - [Como Rodar Localmente](#como-rodar-localmente)
@@ -410,6 +411,45 @@ Use `AnamnesisMetricsService.getSnapshot([tenantId])` ou o endpoint `GET /anamne
 - Testes unit rios cobrem casos de uso, presenters, servi os de billing/m tricas/notifica  es e o subscriber (`test/unit/modules.scheduling/**`), enquanto a su te de integra  o `test/integration/scheduling.controller.integration.spec.ts` valida a camada HTTP ponta a ponta.
 - **Provisionamento obrigat rio:** executar as migrations ap s atualizar o c digo (`npm run typeorm migration:run -- -d src/infrastructure/database/data-source.ts`) para criar as tabelas `scheduling_*` utilizadas pelos fluxos de hold/booking.
 
+## Modulo de Clinica
+- Configuracoes completas (dados gerais, equipe, horarios, servicos, pagamentos,
+  integracoes, notificacoes e branding) com autosave, versionamento e auditoria.
+- Convites com token de uso unico, TTL, resumo economico (tipos, preco, repasse
+  fixo ou percentual), escopo de canais (`direct`/`marketplace`/`both`) e token
+  vinculado ao profissional/email antes do aceite; aceite referencia a agenda do
+  profissional, materializa a politica economica em `clinic_professional_policies`
+  (snapshot por profissional/clinica/canal) e recusa gera auditoria
+  (`clinic.invitation.declined`).
+- Holds clinicos com TTL, validacao dupla de antecedencia, confirmacao idempotente
+  e avaliacao de overbooking controlada por heuristica de risco/adocao manual.
+- Cria  o de holds valida o canal (`direct`/`marketplace`) contra a politica clinica↔profissional
+  vigente, bloqueia combinacoes nao autorizadas e registra o snapshot da politica no metadata
+  para liquida  es futuras.
+- Integra o com ASAAS (webhooks HMAC, split half-even, ordem de sobras,
+  reconciliacao, worker de repasse), WhatsApp (templates, quiet hours), Google
+  Calendar 2-vias (evento externo pendente ate validacao) e email com tracking.
+- Tokens push rejeitados sao removidos automaticamente do metadata dos usuarios,
+  com auditoria registrada para compliance e evitando tentativas redundantes de
+  notificacao.
+- Monitoramento periodico habilitavel via variaveis de ambiente dispara alertas
+  automaticos de queda de receita, baixa ocupacao e staff insuficiente, mantendo
+  `skippedDetails` auditados para cada motivo de nao disparo.
+- Worker `ClinicInvitationExpirationWorkerService` (desabilitado por padrao) varre
+  convites pendentes e expira tokens vencidos, registrando `clinic.invitation.expired`
+  com responsavel `system:invitation-expiration-worker`.
+- Endpoint `POST /management/alerts/evaluate` permite forcar uma avaliacao
+  imediata dos alertas para as clinicas autorizadas no tenant, retornando
+  `skippedDetails` com clinica, tipo e motivo de cada alerta nao disparado.
+- Gestao multi-clinica com dashboard consolidado, comparativos, forecast,
+  transferencias com data efetiva, export CSV/Excel/PDF e alertas push.
+- RBAC multi-clinica (`ClinicScopeGuard` + `ClinicAccessService`), isolamento de
+  dados e auditoria exportavel (`ClinicAuditController`).
+- Guia completo: ver `../docs/clinic-module-clarifications.md` (workspace externo)
+- Suites recomendadas antes de merge:
+  - `npm run check:quality`
+  - `npm run test:int -- --testPathPattern=clinic`
+  - `npm run test:e2e -- --testPathPattern=clinic`
+
 ## Exportacao de Pacientes
 - `POST /patients/export` enfileira solicitacao na tabela `patient_exports`.
 - Filtros enviados sao persistidos em JSONB (`status`, `tags`, `assignedProfessionalIds`, etc.).
@@ -466,6 +506,9 @@ CLINIC_PAYOUT_WORKER_BATCH_SIZE=5
 CLINIC_PAYOUT_WORKER_MAX_ATTEMPTS=6
 CLINIC_PAYOUT_WORKER_RETRY_AFTER_MS=300000
 CLINIC_PAYOUT_WORKER_STUCK_AFTER_MS=900000
+CLINIC_INVITATION_TOKEN_SECRET=changeme-dev-token-secret
+CLINIC_INVITATION_EXPIRATION_WORKER_ENABLED=false
+CLINIC_INVITATION_EXPIRATION_WORKER_INTERVAL_MS=300000
 ```
 
 

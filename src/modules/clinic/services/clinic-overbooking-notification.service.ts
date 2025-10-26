@@ -12,9 +12,7 @@ import {
   IWhatsAppService,
   WhatsAppMessagePayload,
 } from '../../../domain/integrations/interfaces/services/whatsapp.service.interface';
-import {
-  IPushNotificationService,
-} from '../../../domain/integrations/interfaces/services/push-notification.service.interface';
+import { IPushNotificationService } from '../../../domain/integrations/interfaces/services/push-notification.service.interface';
 import {
   ClinicOverbookingReviewedEvent,
   ClinicOverbookingReviewRequestedEvent,
@@ -617,6 +615,18 @@ export class ClinicOverbookingNotificationService {
         status: input.status,
       });
     } else {
+      const rejectedTokens = pushResult.data?.rejectedTokens ?? [];
+
+      if (rejectedTokens.length > 0) {
+        await this.notificationContext.removeInvalidPushTokens({
+          tenantId: input.payload.tenantId,
+          clinicId: input.clinicId,
+          recipients: pushRecipients,
+          rejectedTokens,
+          scope: 'clinic-overbooking',
+        });
+      }
+
       this.logger.debug('Overbooking: notificacao push enviada', {
         clinicId: input.clinicId,
         holdId: input.holdId,

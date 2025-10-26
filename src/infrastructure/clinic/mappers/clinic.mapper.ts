@@ -2,6 +2,7 @@ import {
   Clinic,
   ClinicAlert,
   ClinicAppointment,
+  ClinicAppointmentChannel,
   ClinicConfigurationSection,
   ClinicConfigurationState,
   ClinicConfigurationTelemetry,
@@ -11,8 +12,12 @@ import {
   ClinicFinancialSnapshot,
   ClinicForecastProjection,
   ClinicHold,
+  ClinicHoldProfessionalPolicySnapshot,
   ClinicInvitation,
+  ClinicInvitationChannelScope,
+  ClinicInvitationEconomicSummary,
   ClinicMember,
+  ClinicProfessionalPolicy,
   ClinicServiceTypeDefinition,
   ClinicTemplateOverride,
 } from '../../../domain/clinic/types/clinic.types';
@@ -28,6 +33,7 @@ import { ClinicInvitationEntity } from '../entities/clinic-invitation.entity';
 import { ClinicMemberEntity } from '../entities/clinic-member.entity';
 import { ClinicServiceTypeEntity } from '../entities/clinic-service-type.entity';
 import { ClinicTemplateOverrideEntity } from '../entities/clinic-template-override.entity';
+import { ClinicProfessionalPolicyEntity } from '../entities/clinic-professional-policy.entity';
 
 export class ClinicMapper {
   static toClinic(entity: ClinicEntity): Clinic {
@@ -111,6 +117,7 @@ export class ClinicMapper {
       status: entity.status,
       tokenHash: entity.tokenHash,
       channel: entity.channel,
+      channelScope: (entity.channelScope ?? 'direct') as ClinicInvitation['channelScope'],
       expiresAt: entity.expiresAt,
       acceptedAt: entity.acceptedAt ?? undefined,
       acceptedBy: entity.acceptedBy ?? undefined,
@@ -152,7 +159,29 @@ export class ClinicMapper {
     };
   }
 
+  static toProfessionalPolicy(entity: ClinicProfessionalPolicyEntity): ClinicProfessionalPolicy {
+    return {
+      id: entity.id,
+      clinicId: entity.clinicId,
+      tenantId: entity.tenantId,
+      professionalId: entity.professionalId,
+      channelScope: entity.channelScope,
+      economicSummary: entity.economicSummary,
+      effectiveAt: entity.effectiveAt,
+      endedAt: entity.endedAt ?? undefined,
+      sourceInvitationId: entity.sourceInvitationId,
+      acceptedBy: entity.acceptedBy,
+      createdAt: entity.createdAt,
+      updatedAt: entity.updatedAt,
+    };
+  }
+
   static toHold(entity: ClinicHoldEntity): ClinicHold {
+    const metadata =
+      entity.metadata && Object.keys(entity.metadata).length > 0 ? entity.metadata : undefined;
+    const channel = ClinicMapper.extractHoldChannel(metadata);
+    const policySnapshot = ClinicMapper.extractHoldPolicy(metadata);
+
     return {
       id: entity.id,
       clinicId: entity.clinicId,
@@ -168,6 +197,8 @@ export class ClinicMapper {
       resources: entity.resources ?? [],
       idempotencyKey: entity.idempotencyKey,
       createdBy: entity.createdBy,
+      channel,
+      professionalPolicySnapshot: policySnapshot,
       confirmedAt: entity.confirmedAt ?? undefined,
       confirmedBy: entity.confirmedBy ?? undefined,
       cancelledAt: entity.cancelledAt ?? undefined,
@@ -175,8 +206,7 @@ export class ClinicMapper {
       cancellationReason: entity.cancellationReason ?? undefined,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
-      metadata:
-        entity.metadata && Object.keys(entity.metadata).length > 0 ? entity.metadata : undefined,
+      metadata,
     };
   }
 
@@ -324,6 +354,75 @@ export class ClinicMapper {
     }
 
     return undefined;
+  }
+
+  private static extractHoldChannel(
+    metadata: Record<string, unknown> | undefined,
+  ): ClinicAppointmentChannel | undefined {
+    if (!metadata) {
+      return undefined;
+    }
+    const value = metadata.channel;
+    if (value === 'direct' || value === 'marketplace') {
+      return value;
+    }
+    return undefined;
+  }
+
+  private static extractHoldPolicy(
+    metadata: Record<string, unknown> | undefined,
+  ): ClinicHoldProfessionalPolicySnapshot | undefined {
+    if (!metadata) {
+      return undefined;
+    }
+
+    const raw = metadata.professionalPolicy;
+    if (!raw || typeof raw !== 'object') {
+      return undefined;
+    }
+
+    const snapshot = raw as Record<string, unknown>;
+    const policyId = typeof snapshot.policyId === 'string' ? snapshot.policyId : undefined;
+    const channelScope = snapshot.channelScope;
+    const acceptedBy = typeof snapshot.acceptedBy === 'string' ? snapshot.acceptedBy : undefined;
+    const sourceInvitationId =
+      typeof snapshot.sourceInvitationId === 'string' ? snapshot.sourceInvitationId : undefined;
+    const effectiveAtRaw = snapshot.effectiveAt;
+    const economicSummaryRaw = snapshot.economicSummary;
+
+    if (
+      !policyId ||
+      !acceptedBy ||
+      !sourceInvitationId ||
+      !economicSummaryRaw ||
+      (channelScope !== 'direct' && channelScope !== 'marketplace' && channelScope !== 'both')
+    ) {
+      return undefined;
+    }
+
+    const effectiveAt =
+      effectiveAtRaw instanceof Date
+        ? effectiveAtRaw
+        : typeof effectiveAtRaw === 'string'
+          ? new Date(effectiveAtRaw)
+          : undefined;
+
+    if (!effectiveAt || Number.isNaN(effectiveAt.getTime())) {
+      return undefined;
+    }
+
+    const economicSummary = economicSummaryRaw as ClinicInvitationEconomicSummary;
+
+    return {
+      policyId,
+      channelScope: channelScope as ClinicInvitationChannelScope,
+      acceptedBy,
+      sourceInvitationId,
+      effectiveAt,
+      economicSummary: JSON.parse(
+        JSON.stringify(economicSummary),
+      ) as ClinicInvitationEconomicSummary,
+    };
   }
 
   private static toDate(value: unknown): Date | undefined {
