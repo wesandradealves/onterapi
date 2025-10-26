@@ -427,6 +427,8 @@ Use `AnamnesisMetricsService.getSnapshot([tenantId])` ou o endpoint `GET /anamne
 - Tokens de convite obedecem os limites `CLINIC_INVITATION_TOKEN_*`, bloqueando
   reutilizacao quando nao houver segredo definido e auditando tentativas acima do
   volume permitido.
+- Auditoria registra `clinic.invitation.onboarding_completed` com `invitationId`,
+  `userId`, email e `acceptedAt`, garantindo rastreabilidade do onboarding publico.
 - Holds clinicos com TTL, validacao dupla de antecedencia, confirmacao idempotente
   e avaliacao de overbooking controlada por heuristica de risco/adocao manual.
 - Cria  o de holds valida o canal (`direct`/`marketplace`) contra a politica clinica↔profissional

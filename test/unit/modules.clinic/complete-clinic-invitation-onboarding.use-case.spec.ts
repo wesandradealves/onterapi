@@ -167,14 +167,18 @@ describe('CompleteClinicInvitationOnboardingUseCase', () => {
       acceptedBy: updatedUser.id,
       token: 'token-123',
     });
-    expect(auditService.register).toHaveBeenCalledWith(
-      expect.objectContaining({
-        event: 'clinic.invitation.onboarding_completed',
-        clinicId: baseInvitation.clinicId,
-        tenantId: baseInvitation.tenantId,
-        performedBy: updatedUser.id,
-      }),
-    );
+    expect(auditService.register).toHaveBeenCalledWith({
+      event: 'clinic.invitation.onboarding_completed',
+      clinicId: baseInvitation.clinicId,
+      tenantId: baseInvitation.tenantId,
+      performedBy: updatedUser.id,
+      detail: {
+        invitationId: baseInvitation.id,
+        userId: updatedUser.id,
+        email: baseInvitation.targetEmail,
+        acceptedAt: expect.any(String),
+      },
+    });
 
     expect(result.user.id).toBe(updatedUser.id);
     expect(result.invitation.status).toBe('accepted');

@@ -4,12 +4,14 @@ import request from 'supertest';
 
 import { ClinicConfigurationController } from '@modules/clinic/api/controllers/clinic-configuration.controller';
 import { ClinicInvitationController } from '@modules/clinic/api/controllers/clinic-invitation.controller';
+import { ClinicInvitationOnboardingController } from '@modules/clinic/api/controllers/clinic-invitation-onboarding.controller';
 import { ClinicMemberController } from '@modules/clinic/api/controllers/clinic-member.controller';
 import { ClinicHoldController } from '@modules/clinic/api/controllers/clinic-hold.controller';
 import { ClinicAuditController } from '@modules/clinic/api/controllers/clinic-audit.controller';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@modules/auth/guards/roles.guard';
 import { ClinicScopeGuard } from '@modules/clinic/guards/clinic-scope.guard';
+import { UserEntity } from '@infrastructure/auth/entities/user.entity';
 import { RolesEnum } from '@domain/auth/enums/roles.enum';
 import { ICurrentUser } from '@domain/auth/interfaces/current-user.interface';
 import {
@@ -27,6 +29,11 @@ import {
   ClinicTemplatePropagationInput,
   DeclineClinicInvitationInput,
 } from '@domain/clinic/types/clinic.types';
+import {
+  CompleteClinicInvitationOnboardingInput,
+  CompleteClinicInvitationOnboardingOutput,
+  ICompleteClinicInvitationOnboardingUseCase as ICompleteClinicInvitationOnboardingUseCaseToken,
+} from '@domain/clinic/interfaces/use-cases/complete-clinic-invitation-onboarding.use-case.interface';
 import {
   IUpdateClinicGeneralSettingsUseCase as IUpdateClinicGeneralSettingsUseCaseToken,
   UpdateClinicGeneralSettingsInput,
@@ -802,6 +809,147 @@ describe('ClinicInvitationController (integration)', () => {
     expect(response.body.token).toBe('token-reissue');
     expect(response.body.metadata).toEqual({ source: 'manager' });
     expect(response.body.status).toBe('pending');
+  });
+});
+
+describe('ClinicInvitationOnboardingController (integration)', () => {
+  let app: INestApplication;
+  const useCase = createUseCaseMock<
+    CompleteClinicInvitationOnboardingInput,
+    CompleteClinicInvitationOnboardingOutput
+  >();
+
+  beforeAll(async () => {
+    const moduleRef: TestingModule = await Test.createTestingModule({
+      controllers: [ClinicInvitationOnboardingController],
+      providers: [
+        {
+          provide: ICompleteClinicInvitationOnboardingUseCaseToken,
+          useValue: useCase,
+        },
+      ],
+    }).compile();
+
+    app = moduleRef.createNestApplication();
+    await app.init();
+  });
+
+  beforeEach(() => {
+    useCase.execute.mockReset();
+    useCase.executeOrThrow.mockReset();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('POST /clinics/invitations/:invitationId/onboarding deve concluir onboarding e retornar snapshot', async () => {
+    const invitation: ClinicInvitation = {
+      id: FIXTURES.invitation,
+      clinicId: FIXTURES.clinic,
+      tenantId: FIXTURES.tenant,
+      targetEmail: 'new.pro@example.com',
+      issuedBy: currentUser.id,
+      status: 'pending',
+      tokenHash: 'hash-123',
+      channel: 'email',
+      channelScope: 'direct',
+      expiresAt: new Date('2025-10-15T10:00:00.000Z'),
+      economicSummary: {
+        items: [
+          {
+            serviceTypeId: 'service-123',
+            price: 200,
+            currency: 'BRL',
+            payoutModel: 'percentage',
+            payoutValue: 50,
+          },
+        ],
+        orderOfRemainders: ['taxes', 'gateway', 'clinic', 'professional', 'platform'],
+        roundingStrategy: 'half_even',
+      },
+      createdAt: new Date('2025-10-10T09:00:00.000Z'),
+      updatedAt: new Date('2025-10-10T09:00:00.000Z'),
+      metadata: {},
+    };
+
+    const user = {
+      id: 'user-onboarding',
+      email: invitation.targetEmail,
+      name: 'Pro Example',
+      slug: 'pro-example',
+    } as unknown as UserEntity;
+
+    useCase.executeOrThrow.mockResolvedValue({
+      invitation,
+      user,
+    });
+
+    const response = await request(app.getHttpServer())
+      .post(`/clinics/invitations/${invitation.id}/onboarding`)
+      .send({
+        tenantId: invitation.tenantId,
+        token: 'token-abc123',
+        name: 'Pro Example',
+        cpf: '123.456.789-09',
+        phone: '+55 11 91234-5678',
+        password: 'StrongPass1!',
+        passwordConfirmation: 'StrongPass1!',
+      })
+      .expect(201);
+
+    expect(useCase.executeOrThrow).toHaveBeenCalledWith({
+      invitationId: invitation.id,
+      tenantId: invitation.tenantId,
+      token: 'token-abc123',
+      name: 'Pro Example',
+      cpf: '12345678909',
+      phone: '+55 11 91234-5678',
+      password: 'StrongPass1!',
+    });
+
+    expect(response.body.user).toEqual({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      slug: user.slug,
+    });
+
+    expect(response.body.invitation).toMatchObject({
+      id: invitation.id,
+      clinicId: invitation.clinicId,
+      tenantId: invitation.tenantId,
+      targetEmail: invitation.targetEmail,
+      issuedBy: invitation.issuedBy,
+      status: invitation.status,
+      channel: invitation.channel,
+      channelScope: invitation.channelScope,
+      expiresAt: invitation.expiresAt.toISOString(),
+      createdAt: invitation.createdAt.toISOString(),
+      updatedAt: invitation.updatedAt.toISOString(),
+      economicSummary: {
+        items: [
+          {
+            serviceTypeId: 'service-123',
+            price: 200,
+            currency: 'BRL',
+            payoutModel: 'percentage',
+            payoutValue: 50,
+          },
+        ],
+        orderOfRemainders: ['taxes', 'gateway', 'clinic', 'professional', 'platform'],
+        roundingStrategy: 'half_even',
+        examples: [
+          {
+            currency: 'BRL',
+            patientPays: 200,
+            professionalReceives: 100,
+            remainder: 100,
+          },
+        ],
+      },
+      metadata: {},
+    });
   });
 });
 
