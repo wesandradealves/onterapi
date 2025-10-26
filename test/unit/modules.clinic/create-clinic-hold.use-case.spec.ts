@@ -41,7 +41,9 @@ const buildClinic = (overrides: Partial<Clinic['holdSettings']> = {}): Clinic =>
   updatedAt: new Date('2025-01-01T00:00:00Z'),
 });
 
-const buildServiceType = (): ClinicServiceTypeDefinition => ({
+const buildServiceType = (
+  overrides: Partial<ClinicServiceTypeDefinition> = {},
+): ClinicServiceTypeDefinition => ({
   id: 'service-1',
   clinicId: 'clinic-1',
   name: 'Sessao Individual',
@@ -58,6 +60,7 @@ const buildServiceType = (): ClinicServiceTypeDefinition => ({
   eligibility: { allowNewPatients: true, allowExistingPatients: true },
   createdAt: new Date('2025-01-01T00:00:00Z'),
   updatedAt: new Date('2025-01-01T00:00:00Z'),
+  ...overrides,
 });
 
 const buildHold = (): ClinicHold => ({
@@ -435,7 +438,9 @@ describe('CreateClinicHoldUseCase', () => {
   it('bloqueia holds quando existe compromisso confirmado em outra clinica do tenant', async () => {
     clinicRepository.findByTenant.mockResolvedValue(buildClinic());
     clinicHoldRepository.findByIdempotencyKey.mockResolvedValue(null);
-    clinicServiceTypeRepository.findById.mockResolvedValue(buildServiceType());
+    clinicServiceTypeRepository.findById.mockResolvedValue(
+      buildServiceType({ minAdvanceMinutes: 0 }),
+    );
     clinicHoldRepository.findActiveOverlapByProfessional.mockResolvedValue([
       { ...buildHold(), clinicId: 'other-clinic', status: 'confirmed' },
     ]);
@@ -446,6 +451,66 @@ describe('CreateClinicHoldUseCase', () => {
     );
 
     expect(clinicHoldRepository.create).not.toHaveBeenCalled();
+  });
+
+  it('bloqueia holds quando overbooking nao permitido e ja existe overlap pendente', async () => {
+    clinicRepository.findByTenant.mockResolvedValue(buildClinic({ allowOverbooking: false }));
+    clinicHoldRepository.findByIdempotencyKey.mockResolvedValue(null);
+    clinicServiceTypeRepository.findById.mockResolvedValue(buildServiceType());
+    clinicHoldRepository.findActiveOverlapByProfessional.mockResolvedValue([
+      { ...buildHold(), status: 'pending' },
+    ]);
+    clinicHoldRepository.findActiveOverlapByResources.mockResolvedValue([]);
+
+    await expect(useCase.executeOrThrow(baseInput)).rejects.toThrow(
+      'Ja existe um compromisso ativo para este profissional no periodo solicitado',
+    );
+
+    expect(clinicOverbookingEvaluator.evaluate).not.toHaveBeenCalled();
+    expect(clinicHoldRepository.create).not.toHaveBeenCalled();
+  });
+
+  it('ajusta TTL quando expiracao ultrapassa inicio do hold', async () => {
+    const now = new Date('2025-10-01T12:00:00.000Z');
+    jest.useFakeTimers().setSystemTime(now);
+
+    clinicRepository.findByTenant.mockResolvedValue(
+      buildClinic({
+        ttlMinutes: 240,
+        minAdvanceMinutes: 0,
+      }),
+    );
+    clinicHoldRepository.findByIdempotencyKey.mockResolvedValue(null);
+    clinicServiceTypeRepository.findById.mockResolvedValue(buildServiceType());
+    clinicHoldRepository.findActiveOverlapByProfessional.mockResolvedValue([]);
+    clinicHoldRepository.findActiveOverlapByResources.mockResolvedValue([]);
+
+    const expectedTtl = new Date('2025-10-01T13:29:00.000Z');
+
+    clinicHoldRepository.create.mockImplementation(async (params) => {
+      expect(params.ttlExpiresAt.toISOString()).toBe(expectedTtl.toISOString());
+      return {
+        ...buildHold(),
+        start: params.start,
+        end: params.end,
+        ttlExpiresAt: params.ttlExpiresAt,
+        metadata: params.metadata,
+      };
+    });
+
+    const input = {
+      ...baseInput,
+      start: new Date('2025-10-01T13:30:00.000Z'),
+      end: new Date('2025-10-01T14:30:00.000Z'),
+      metadata: {},
+    };
+
+    try {
+      const hold = await useCase.executeOrThrow(input);
+      expect(hold.ttlExpiresAt.toISOString()).toBe(expectedTtl.toISOString());
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('marca overbooking como pendente quando risco abaixo do limiar', async () => {

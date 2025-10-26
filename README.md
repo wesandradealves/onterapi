@@ -429,6 +429,9 @@ Use `AnamnesisMetricsService.getSnapshot([tenantId])` ou o endpoint `GET /anamne
   volume permitido.
 - Auditoria registra `clinic.invitation.onboarding_completed` com `invitationId`,
   `userId`, email e `acceptedAt`, garantindo rastreabilidade do onboarding publico.
+- Eventos de hold alimentam auditoria (`clinic.hold.created`, `clinic.hold.confirmed`,
+  `clinic.overbooking.review_requested`) mantendo a agenda unica por profissional
+  e bloqueando conflitos cross-clinic.
 - Holds clinicos com TTL, validacao dupla de antecedencia, confirmacao idempotente
   e avaliacao de overbooking controlada por heuristica de risco/adocao manual.
 - Cria  o de holds valida o canal (`direct`/`marketplace`) contra a politica clinica↔profissional
