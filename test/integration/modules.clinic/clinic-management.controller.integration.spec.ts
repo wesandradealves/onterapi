@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  CanActivate,
-  ExecutionContext,
-  INestApplication,
-} from '@nestjs/common';
+import { BadRequestException, CanActivate, ExecutionContext, ForbiddenException, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
@@ -274,6 +269,23 @@ describe('ClinicManagementController (integration)', () => {
     expect(input.tenantId).toBe('tenant-fin');
     expect(response.body.financials).toBeUndefined();
     expect(response.body.totals.revenue).toBe(15000);
+  });
+
+  it('retorna 403 quando usuario solicita clinicas sem acesso', async () => {
+    clinicAccessService.resolveAuthorizedClinicIds.mockRejectedValue(
+      new ForbiddenException('Usuario nao possui acesso a uma ou mais clinicas solicitadas'),
+    );
+
+    await request(app.getHttpServer())
+      .get('/management/overview')
+      .set('x-tenant-id', 'tenant-denied')
+      .query({ clinicIds: [clinicOneId] })
+      .expect(403)
+      .expect(({ body }) => {
+        expect(body.message).toBe('Usuario nao possui acesso a uma ou mais clinicas solicitadas');
+      });
+
+    expect(overviewUseCase.executeOrThrow).not.toHaveBeenCalled();
   });
 
   it('exporta alertas em csv respeitando filtros e escopo', async () => {
