@@ -1,4 +1,4 @@
-import { ExecutionContext, INestApplication } from '@nestjs/common';
+import { ConflictException, ExecutionContext, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
@@ -1053,6 +1053,33 @@ describe('ClinicHoldController (integration)', () => {
     expect(response.body.id).toBe(hold.id);
     expect(response.body.start).toBe(hold.start.toISOString());
     expect(response.body.ttlExpiresAt).toBe(hold.ttlExpiresAt.toISOString());
+  });
+
+  it('retorna 409 quando existe atendimento confirmado em outra clinica do tenant', async () => {
+    const payload = {
+      tenantId: FIXTURES.tenant,
+      professionalId: FIXTURES.professional,
+      patientId: FIXTURES.patient,
+      serviceTypeId: '88888888-8888-8888-8888-888888888888',
+      start: '2025-12-01T15:00:00.000Z',
+      end: '2025-12-01T16:00:00.000Z',
+      idempotencyKey: 'hold-conflict',
+    };
+
+    createHoldUseCase.executeOrThrow.mockRejectedValue(
+      new ConflictException('Profissional ja possui atendimento confirmado para este periodo'),
+    );
+
+    await request(app.getHttpServer())
+      .post(`/clinics/${FIXTURES.clinic}/holds`)
+      .set('x-tenant-id', FIXTURES.tenant)
+      .send(payload)
+      .expect(409)
+      .expect(({ body }) => {
+        expect(body.message).toBe(
+          'Profissional ja possui atendimento confirmado para este periodo',
+        );
+      });
   });
 
   it('PUT /clinics/:clinicId/holds/:holdId/overbooking decide sobre solicitacoes pendentes', async () => {
