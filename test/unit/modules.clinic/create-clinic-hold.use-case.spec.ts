@@ -432,6 +432,22 @@ describe('CreateClinicHoldUseCase', () => {
     expect(clinicHoldRepository.create).not.toHaveBeenCalled();
   });
 
+  it('bloqueia holds quando existe compromisso confirmado em outra clinica do tenant', async () => {
+    clinicRepository.findByTenant.mockResolvedValue(buildClinic());
+    clinicHoldRepository.findByIdempotencyKey.mockResolvedValue(null);
+    clinicServiceTypeRepository.findById.mockResolvedValue(buildServiceType());
+    clinicHoldRepository.findActiveOverlapByProfessional.mockResolvedValue([
+      { ...buildHold(), clinicId: 'other-clinic', status: 'confirmed' },
+    ]);
+    clinicHoldRepository.findActiveOverlapByResources.mockResolvedValue([]);
+
+    await expect(useCase.executeOrThrow(baseInput)).rejects.toThrow(
+      'Profissional ja possui atendimento confirmado para este periodo',
+    );
+
+    expect(clinicHoldRepository.create).not.toHaveBeenCalled();
+  });
+
   it('marca overbooking como pendente quando risco abaixo do limiar', async () => {
     clinicRepository.findByTenant.mockResolvedValue(
       buildClinic({ allowOverbooking: true, overbookingThreshold: 75 }),
