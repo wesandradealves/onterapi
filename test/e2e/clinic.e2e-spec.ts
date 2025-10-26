@@ -1,4 +1,4 @@
-import { ExecutionContext, INestApplication } from '@nestjs/common';
+import { ConflictException, ExecutionContext, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
@@ -734,6 +734,30 @@ describe('Clinic module (e2e)', () => {
       new Date(holdPayload.start).getTime(),
     );
     expect(holdResponse.body.status).toBe('pending');
+
+    // 4.1) Tentativa de hold com conflito confirmado em outra clinica
+    createHoldUseCase.executeOrThrow.mockRejectedValueOnce(
+      new ConflictException('Profissional ja possui atendimento confirmado para este periodo'),
+    );
+
+    await request(app.getHttpServer())
+      .post(`/clinics/${FIXTURES.clinic}/holds`)
+      .set('x-tenant-id', FIXTURES.tenant)
+      .send({
+        tenantId: FIXTURES.tenant,
+        professionalId: FIXTURES.professional,
+        patientId: FIXTURES.patient,
+        serviceTypeId: holdPayload.serviceTypeId,
+        start: '2025-10-20T16:00:00.000Z',
+        end: '2025-10-20T17:00:00.000Z',
+        idempotencyKey: 'flow-hold-conflict',
+      })
+      .expect(409)
+      .expect(({ body }) => {
+        expect(body.message).toBe(
+          'Profissional ja possui atendimento confirmado para este periodo',
+        );
+      });
 
     // 5) Listagem de auditoria
     const auditLog: ClinicAuditLog = {
