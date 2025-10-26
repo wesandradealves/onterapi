@@ -59,6 +59,22 @@ export class ClinicErrorFactory {
     return new BadRequestException(this.sanitize(message));
   }
 
+  static invitationTokenSecretMissing(message: string): BadRequestException {
+    return new BadRequestException(this.sanitize(message));
+  }
+
+  static invitationTokenRateLimited(message: string): ForbiddenException {
+    return new ForbiddenException(this.sanitize(message));
+  }
+
+  static invitationOnboardingNotSupported(message: string): BadRequestException {
+    return new BadRequestException(this.sanitize(message));
+  }
+
+  static invitationOnboardingUserExists(message: string): ConflictException {
+    return new ConflictException(this.sanitize(message));
+  }
+
   static invitationAlreadyExists(message: string): ConflictException {
     return new ConflictException(this.sanitize(message));
   }

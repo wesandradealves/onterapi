@@ -11,9 +11,20 @@ describe('ClinicInvitationTokenService', () => {
 
   beforeEach(() => {
     configService = {
-      get: jest.fn((key: string) =>
-        key === 'CLINIC_INVITATION_TOKEN_SECRET' ? secretKey : undefined,
-      ),
+      get: jest.fn((key: string) => {
+        switch (key) {
+          case 'CLINIC_INVITATION_TOKEN_SECRET':
+            return secretKey;
+          case 'CLINIC_INVITATION_TOKEN_MAX_ATTEMPTS':
+            return 3;
+          case 'CLINIC_INVITATION_TOKEN_WINDOW_MS':
+            return 600_000;
+          case 'CLINIC_INVITATION_TOKEN_BLOCK_MS':
+            return 1_800_000;
+          default:
+            return undefined;
+        }
+      }),
     } as unknown as ConfigService;
 
     service = new ClinicInvitationTokenService(configService);
@@ -65,6 +76,46 @@ describe('ClinicInvitationTokenService', () => {
     expect(() => service.verifyToken(tampered)).toThrow(
       ClinicErrorFactory.invitationInvalidToken('Assinatura do token de convite invalida')
         .constructor,
+    );
+  });
+
+  it('should refuse operations when token secret is missing', () => {
+    const insecureConfig = {
+      get: jest.fn(() => undefined),
+    } as unknown as ConfigService;
+
+    const insecureService = new ClinicInvitationTokenService(insecureConfig);
+
+    expect(() =>
+      insecureService.generateToken({
+        invitationId: 'inv-insecure',
+        clinicId: 'clinic-sec',
+        tenantId: 'tenant-sec',
+        expiresAt: new Date(Date.now() + 60_000),
+      }),
+    ).toThrow(
+      ClinicErrorFactory.invitationTokenSecretMissing(
+        'Segredo do token de convite nao configurado. Operacao bloqueada.',
+      ).constructor,
+    );
+  });
+
+  it('should enforce rate limiting when verifying token repeatedly', () => {
+    const expiresAt = new Date(Date.now() + 60_000);
+    const { token } = service.generateToken({
+      invitationId: 'inv-rl',
+      clinicId: 'clinic-rl',
+      tenantId: 'tenant-rl',
+      expiresAt,
+    });
+
+    expect(() => service.verifyToken(token)).not.toThrow();
+    expect(() => service.verifyToken(token)).not.toThrow();
+    expect(() => service.verifyToken(token)).not.toThrow();
+    expect(() => service.verifyToken(token)).toThrow(
+      ClinicErrorFactory.invitationTokenRateLimited(
+        'Numero de tentativas excedido para o token informado. Aguarde para tentar novamente.',
+      ).constructor,
     );
   });
 });

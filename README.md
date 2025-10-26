@@ -420,6 +420,13 @@ Use `AnamnesisMetricsService.getSnapshot([tenantId])` ou o endpoint `GET /anamne
   profissional, materializa a politica economica em `clinic_professional_policies`
   (snapshot por profissional/clinica/canal) e recusa gera auditoria
   (`clinic.invitation.declined`).
+- Fluxo publico `POST /clinics/invitations/{invitationId}/onboarding` permite que
+  profissionais convidados somente por email criem a conta (nome, CPF, senha) com
+  rate limit configuravel; ao concluir o onboarding o endpoint retorna o snapshot
+  atualizado do convite e o usuario criado.
+- Tokens de convite obedecem os limites `CLINIC_INVITATION_TOKEN_*`, bloqueando
+  reutilizacao quando nao houver segredo definido e auditando tentativas acima do
+  volume permitido.
 - Holds clinicos com TTL, validacao dupla de antecedencia, confirmacao idempotente
   e avaliacao de overbooking controlada por heuristica de risco/adocao manual.
 - Cria  o de holds valida o canal (`direct`/`marketplace`) contra a politica clinica↔profissional
@@ -445,6 +452,19 @@ Use `AnamnesisMetricsService.getSnapshot([tenantId])` ou o endpoint `GET /anamne
 - RBAC multi-clinica (`ClinicScopeGuard` + `ClinicAccessService`), isolamento de
   dados e auditoria exportavel (`ClinicAuditController`).
 - Guia completo: ver `../docs/clinic-module-clarifications.md` (workspace externo)
+
+### Workers e monitoramento da clinica
+- `ClinicAlertMonitorService` depende de `CLINIC_ALERT_WORKER_ENABLED=true`; ajuste
+  `CLINIC_ALERT_WORKER_INTERVAL_MS`, `CLINIC_ALERT_LOOKBACK_DAYS` e thresholds de
+  receita/ocupacao conforme o perfil das clinicas. Logs aparecem como
+  `Clinic alert monitor ...` e cada alerta ou motivo de skip e auditado em
+  `clinic_audit_logs` (`clinic.alerts.*`).
+- `ClinicInvitationExpirationWorkerService` e ativado com
+  `CLINIC_INVITATION_EXPIRATION_WORKER_ENABLED`; convites expirados geram
+  `clinic.invitation.expired` com `performedBy=system:invitation-expiration-worker`,
+  facilitando rastreabilidade.
+- Configure alertas no agregador (Grafana/Datadog) filtrando pelos nomes das
+  classes dos workers para acompanhar execucoes, warnings e erros em producao.
 - Suites recomendadas antes de merge:
   - `npm run check:quality`
   - `npm run test:int -- --testPathPattern=clinic`
@@ -506,9 +526,19 @@ CLINIC_PAYOUT_WORKER_BATCH_SIZE=5
 CLINIC_PAYOUT_WORKER_MAX_ATTEMPTS=6
 CLINIC_PAYOUT_WORKER_RETRY_AFTER_MS=300000
 CLINIC_PAYOUT_WORKER_STUCK_AFTER_MS=900000
+CLINIC_ALERT_WORKER_ENABLED=false
+CLINIC_ALERT_WORKER_INTERVAL_MS=900000
+CLINIC_ALERT_LOOKBACK_DAYS=30
+CLINIC_ALERT_REVENUE_DROP_PERCENT=20
+CLINIC_ALERT_REVENUE_MIN=5000
+CLINIC_ALERT_OCCUPANCY_THRESHOLD=0.55
+CLINIC_ALERT_STAFF_MIN_PROFESSIONALS=0
 CLINIC_INVITATION_TOKEN_SECRET=changeme-dev-token-secret
 CLINIC_INVITATION_EXPIRATION_WORKER_ENABLED=false
 CLINIC_INVITATION_EXPIRATION_WORKER_INTERVAL_MS=300000
+CLINIC_INVITATION_TOKEN_MAX_ATTEMPTS=5
+CLINIC_INVITATION_TOKEN_WINDOW_MS=600000
+CLINIC_INVITATION_TOKEN_BLOCK_MS=1800000
 ```
 
 
@@ -556,6 +586,7 @@ npm run migration:run -- -d src/infrastructure/database/data-source.ts
 4. Criar usuario secretaria (POST /users), forcar confirmacao (`confirmEmailByEmail`), validar login sem 2FA e checar bloqueios de permissao.
 5. Exportar pacientes e inspecionar `patient_exports` via REST.
 6. Logout com `{ "allDevices": true }` e verificacao de revogacao em `user_sessions`.
+7. Emitir convite com `targetEmail`, consumir `POST /clinics/invitations/{invitationId}/onboarding` (nome/cpf/senha) e verificar aceite + criacao do profissional nas auditorias e no dashboard da clinica.
 ## Guia para Novos Modulos
 1. **Planejamento de dominio**
    - Levante entidades, fluxos e integracoes externas necessarias.

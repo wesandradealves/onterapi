@@ -10,6 +10,7 @@ import { ClinicHoldController } from './api/controllers/clinic-hold.controller';
 import { ClinicDashboardController } from './api/controllers/clinic-dashboard.controller';
 import { ClinicServiceTypeController } from './api/controllers/clinic-service-type.controller';
 import { ClinicInvitationController } from './api/controllers/clinic-invitation.controller';
+import { ClinicInvitationOnboardingController } from './api/controllers/clinic-invitation-onboarding.controller';
 import { ClinicMemberController } from './api/controllers/clinic-member.controller';
 import { ClinicsController } from './api/controllers/clinics.controller';
 import { ClinicAuditController } from './api/controllers/clinic-audit.controller';
@@ -100,6 +101,7 @@ import { InviteClinicProfessionalUseCase } from './use-cases/invite-clinic-profe
 import { AcceptClinicInvitationUseCase } from './use-cases/accept-clinic-invitation.use-case';
 import { RevokeClinicInvitationUseCase } from './use-cases/revoke-clinic-invitation.use-case';
 import { ReissueClinicInvitationUseCase } from './use-cases/reissue-clinic-invitation.use-case';
+import { CompleteClinicInvitationOnboardingUseCase } from './use-cases/complete-clinic-invitation-onboarding.use-case';
 import { DeclineClinicInvitationUseCase } from './use-cases/decline-clinic-invitation.use-case';
 import { ListClinicInvitationsUseCase } from './use-cases/list-clinic-invitations.use-case';
 import { ListClinicMembersUseCase } from './use-cases/list-clinic-members.use-case';
@@ -187,6 +189,7 @@ import { IInviteClinicProfessionalUseCase as IInviteClinicProfessionalUseCaseTok
 import { IAcceptClinicInvitationUseCase as IAcceptClinicInvitationUseCaseToken } from '../../domain/clinic/interfaces/use-cases/accept-clinic-invitation.use-case.interface';
 import { IRevokeClinicInvitationUseCase as IRevokeClinicInvitationUseCaseToken } from '../../domain/clinic/interfaces/use-cases/revoke-clinic-invitation.use-case.interface';
 import { IReissueClinicInvitationUseCase as IReissueClinicInvitationUseCaseToken } from '../../domain/clinic/interfaces/use-cases/reissue-clinic-invitation.use-case.interface';
+import { ICompleteClinicInvitationOnboardingUseCase as ICompleteClinicInvitationOnboardingUseCaseToken } from '../../domain/clinic/interfaces/use-cases/complete-clinic-invitation-onboarding.use-case.interface';
 import { IDeclineClinicInvitationUseCase as IDeclineClinicInvitationUseCaseToken } from '../../domain/clinic/interfaces/use-cases/decline-clinic-invitation.use-case.interface';
 import { IListClinicInvitationsUseCase as IListClinicInvitationsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/list-clinic-invitations.use-case.interface';
 import { IListClinicMembersUseCase as IListClinicMembersUseCaseToken } from '../../domain/clinic/interfaces/use-cases/list-clinic-members.use-case.interface';
@@ -464,6 +467,10 @@ const useCaseProviders: Provider[] = [
     useClass: DeclineClinicInvitationUseCase,
   },
   {
+    provide: ICompleteClinicInvitationOnboardingUseCaseToken,
+    useClass: CompleteClinicInvitationOnboardingUseCase,
+  },
+  {
     provide: IListClinicInvitationsUseCaseToken,
     useClass: ListClinicInvitationsUseCase,
   },
@@ -537,6 +544,7 @@ const useCaseProviders: Provider[] = [
     ClinicDashboardController,
     ClinicServiceTypeController,
     ClinicInvitationController,
+    ClinicInvitationOnboardingController,
     ClinicMemberController,
     ClinicsController,
     ClinicAuditController,

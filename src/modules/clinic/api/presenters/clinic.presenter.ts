@@ -56,6 +56,10 @@ import {
   ClinicInvitationEconomicSummaryDto,
   ClinicInvitationResponseDto,
 } from '../dtos/clinic-invitation-response.dto';
+import {
+  ClinicInvitationOnboardingResponseDto,
+  ClinicInvitationOnboardingUserDto,
+} from '../dtos/clinic-invitation-onboarding-response.dto';
 import { ClinicMemberResponseDto } from '../dtos/clinic-member-response.dto';
 import { ClinicHoldSettingsResponseDto } from '../dtos/clinic-hold-settings-response.dto';
 import { ClinicTeamSettingsResponseDto } from '../dtos/clinic-team-settings-response.dto';
@@ -106,6 +110,7 @@ import {
   ClinicManagementTeamDistributionDto,
 } from '../dtos/clinic-management-overview-response.dto';
 import { ClinicExternalCalendarEventResponseDto } from '../dtos/clinic-external-calendar-event-response.dto';
+import { CompleteClinicInvitationOnboardingOutput } from '../../../../domain/clinic/interfaces/use-cases/complete-clinic-invitation-onboarding.use-case.interface';
 
 export class ClinicPresenter {
   static configuration(version: ClinicConfigurationVersion): ClinicConfigurationVersionResponseDto {
@@ -590,6 +595,23 @@ export class ClinicPresenter {
       token,
       createdAt: invitation.createdAt,
       updatedAt: invitation.updatedAt,
+    };
+  }
+
+  static invitationOnboarding(
+    payload: CompleteClinicInvitationOnboardingOutput,
+    token?: string,
+  ): ClinicInvitationOnboardingResponseDto {
+    const user: ClinicInvitationOnboardingUserDto = {
+      id: payload.user.id,
+      email: payload.user.email,
+      name: payload.user.name,
+      slug: payload.user.slug,
+    };
+
+    return {
+      invitation: ClinicPresenter.invitation(payload.invitation, token),
+      user,
     };
   }
 

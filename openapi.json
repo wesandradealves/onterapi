@@ -6490,6 +6490,91 @@
         ]
       }
     },
+    "/clinics/invitations/{invitationId}/onboarding": {
+      "post": {
+        "operationId": "completeInvitationOnboarding",
+        "summary": "Concluir onboarding de profissional convidado por e-mail",
+        "parameters": [
+          {
+            "name": "invitationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Request payload",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenantId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "token": {
+                    "type": "string",
+                    "minLength": 10
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 120
+                  },
+                  "cpf": {
+                    "type": "string",
+                    "minLength": 11,
+                    "maxLength": 14
+                  },
+                  "phone": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 128
+                  },
+                  "passwordConfirmation": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 128
+                  }
+                },
+                "required": [
+                  "tenantId",
+                  "token",
+                  "name",
+                  "cpf",
+                  "password",
+                  "passwordConfirmation"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClinicInvitationOnboardingResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Clinics"
+        ]
+      }
+    },
     "/clinics/invitations/{invitationId}/decline": {
       "post": {
         "operationId": "declineInvitation",
@@ -14534,6 +14619,44 @@
           "economicSummary",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "ClinicInvitationOnboardingUserDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "name",
+          "slug"
+        ]
+      },
+      "ClinicInvitationOnboardingResponseDto": {
+        "type": "object",
+        "properties": {
+          "invitation": {
+            "$ref": "#/components/schemas/ClinicInvitationResponseDto"
+          },
+          "user": {
+            "$ref": "#/components/schemas/ClinicInvitationOnboardingUserDto"
+          }
+        },
+        "required": [
+          "invitation",
+          "user"
         ]
       },
       "ClinicInvitationListResponseDto": {

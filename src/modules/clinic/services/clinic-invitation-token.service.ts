@@ -19,19 +19,47 @@ interface InvitationTokenPayload {
 @Injectable()
 export class ClinicInvitationTokenService {
   private readonly logger = new Logger(ClinicInvitationTokenService.name);
-  private readonly secret: string;
+  private readonly secret: string | null;
+  private readonly maxAttempts: number;
+  private readonly windowMs: number;
+  private readonly blockDurationMs: number;
+  private readonly verificationAttempts = new Map<
+    string,
+    { attempts: number; windowExpiresAt: number; blockedUntil?: number }
+  >();
 
   constructor(@Inject(ConfigService) private readonly configService: ConfigService) {
     const configuredSecret = this.configService.get<string>('CLINIC_INVITATION_TOKEN_SECRET');
 
-    if (!configuredSecret || configuredSecret.trim().length === 0) {
-      this.logger.warn(
-        'CLINIC_INVITATION_TOKEN_SECRET nao configurado. Utilizando segredo padrao apenas para desenvolvimento.',
+    this.secret =
+      configuredSecret && configuredSecret.trim().length > 0
+        ? configuredSecret.trim()
+        : null;
+
+    if (!this.secret) {
+      this.logger.error(
+        'CLINIC_INVITATION_TOKEN_SECRET nao configurado. Convites permanecerao bloqueados ate que o segredo seja definido.',
       );
-      this.secret = 'clinic-invitation-secret';
-    } else {
-      this.secret = configuredSecret.trim();
     }
+
+    this.maxAttempts = this.resolveNumber(
+      'CLINIC_INVITATION_TOKEN_MAX_ATTEMPTS',
+      5,
+      1,
+      100,
+    );
+    this.windowMs = this.resolveNumber(
+      'CLINIC_INVITATION_TOKEN_WINDOW_MS',
+      10 * 60_000,
+      5_000,
+      24 * 60 * 60 * 1000,
+    );
+    this.blockDurationMs = this.resolveNumber(
+      'CLINIC_INVITATION_TOKEN_BLOCK_MS',
+      30 * 60_000,
+      10_000,
+      48 * 60 * 60 * 1000,
+    );
   }
 
   generateToken(input: {
@@ -42,6 +70,8 @@ export class ClinicInvitationTokenService {
     professionalId?: string;
     targetEmail?: string;
   }): { token: string; hash: string } {
+    this.ensureSecret();
+
     const issuedAt = new Date();
     const payload: InvitationTokenPayload = {
       inv: input.invitationId,
@@ -81,6 +111,9 @@ export class ClinicInvitationTokenService {
     professionalId?: string;
     targetEmail?: string;
   } {
+    this.ensureSecret();
+    this.applyRateLimiting(token);
+
     const [payloadPart, signature] = token.split('.');
 
     if (!payloadPart || !signature) {
@@ -133,7 +166,8 @@ export class ClinicInvitationTokenService {
   }
 
   private sign(content: string): string {
-    return createHmac('sha256', this.secret).update(content).digest('base64url');
+    const secret = this.ensureSecret();
+    return createHmac('sha256', secret).update(content).digest('base64url');
   }
 
   private base64UrlEncode(value: string): string {
@@ -149,5 +183,87 @@ export class ClinicInvitationTokenService {
     const padLength = 4 - (normalized.length % 4 || 4);
     const padded = normalized + '='.repeat(padLength % 4);
     return Buffer.from(padded, 'base64').toString('utf8');
+  }
+
+  private ensureSecret(): string {
+    if (!this.secret) {
+      throw ClinicErrorFactory.invitationTokenSecretMissing(
+        'Segredo do token de convite nao configurado. Operacao bloqueada.',
+      );
+    }
+
+    return this.secret;
+  }
+
+  private applyRateLimiting(rawToken: string): void {
+    const key = this.hash(rawToken);
+    const now = Date.now();
+    const existing = this.verificationAttempts.get(key);
+
+    if (existing?.blockedUntil && existing.blockedUntil > now) {
+      throw ClinicErrorFactory.invitationTokenRateLimited(
+        'Numero de tentativas excedido para o token informado. Aguarde para tentar novamente.',
+      );
+    }
+
+    let state = existing;
+    if (!state || state.windowExpiresAt <= now) {
+      state = { attempts: 0, windowExpiresAt: now + this.windowMs };
+    }
+
+    state.attempts += 1;
+
+    if (state.attempts > this.maxAttempts) {
+      state.blockedUntil = now + this.blockDurationMs;
+      this.verificationAttempts.set(key, state);
+      throw ClinicErrorFactory.invitationTokenRateLimited(
+        'Seguranca ativada devido a excesso de verificacoes do token.',
+      );
+    }
+
+    this.verificationAttempts.set(key, state);
+  }
+
+  private resolveNumber(
+    key: string,
+    defaultValue: number,
+    minValue: number,
+    maxValue: number,
+  ): number {
+    const raw = this.configService.get<number | string | undefined>(key);
+
+    if (typeof raw === 'number' && Number.isFinite(raw)) {
+      return this.normalizeNumber(raw, defaultValue, minValue, maxValue);
+    }
+
+    if (typeof raw === 'string') {
+      const parsed = Number(raw);
+      if (Number.isFinite(parsed)) {
+        return this.normalizeNumber(parsed, defaultValue, minValue, maxValue);
+      }
+    }
+
+    return defaultValue;
+  }
+
+  private normalizeNumber(
+    value: number,
+    defaultValue: number,
+    minValue: number,
+    maxValue: number,
+  ): number {
+    if (!Number.isFinite(value)) {
+      return defaultValue;
+    }
+
+    if (value < minValue) {
+      return minValue;
+    }
+
+    if (value > maxValue) {
+      return maxValue;
+    }
+
+    return Math.floor(value);
   }
 }
