@@ -1331,14 +1331,19 @@ describe('ClinicAuditController (integration)', () => {
     await app.close();
   });
 
-  it('GET /clinics/:id/audit-logs deve retornar logs paginados', async () => {
+  it('GET /clinics/:id/audit-logs devolve onboarding com detalhes completos', async () => {
     const auditLog: ClinicAuditLog = {
       id: 'log-1',
       tenantId: FIXTURES.tenant,
       clinicId: FIXTURES.clinic,
-      event: 'clinic.updated',
+      event: 'clinic.invitation.onboarding_completed',
       performedBy: currentUser.id,
-      detail: { field: 'value' },
+      detail: {
+        invitationId: 'inv-42',
+        userId: currentUser.id,
+        email: 'new.pro@example.com',
+        acceptedAt: '2025-10-12T12:00:00.000Z',
+      },
       createdAt: new Date('2025-10-12T12:00:00.000Z'),
     };
     useCase.executeOrThrow.mockResolvedValue({ data: [auditLog], total: 1 });
@@ -1346,19 +1351,25 @@ describe('ClinicAuditController (integration)', () => {
     const response = await request(app.getHttpServer())
       .get(`/clinics/${FIXTURES.clinic}/audit-logs`)
       .set('x-tenant-id', FIXTURES.tenant)
-      .query({ events: 'clinic.updated', page: 2, limit: 10 })
+      .query({ events: 'clinic.invitation.onboarding_completed', page: 2, limit: 10 })
       .expect(200);
 
     expect(useCase.executeOrThrow).toHaveBeenCalledWith({
       tenantId: FIXTURES.tenant,
       clinicId: FIXTURES.clinic,
-      events: ['clinic.updated'],
+      events: ['clinic.invitation.onboarding_completed'],
       page: 2,
       limit: 10,
     });
     expect(response.body.total).toBe(1);
     expect(response.body.data).toHaveLength(1);
     expect(response.body.data[0].id).toBe(auditLog.id);
-    expect(response.body.data[0].detail).toEqual(auditLog.detail);
+    expect(response.body.data[0].detail).toEqual(
+      expect.objectContaining({
+        invitationId: 'inv-42',
+        email: 'new.pro@example.com',
+        acceptedAt: '2025-10-12T12:00:00.000Z',
+      }),
+    );
   });
 });
