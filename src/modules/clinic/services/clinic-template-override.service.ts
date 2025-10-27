@@ -24,6 +24,7 @@ import {
   mergeTemplatePayload,
 } from '../utils/template-override.util';
 import { ClinicAuditService } from '../../../infrastructure/clinic/services/clinic-audit.service';
+import { ClinicConfigurationCacheService } from './clinic-configuration-cache.service';
 
 interface TemplateSectionMetadata {
   templateClinicId: string;
@@ -46,6 +47,7 @@ export class ClinicTemplateOverrideService {
     @Inject(IClinicRepositoryToken)
     private readonly clinicRepository: IClinicRepository,
     private readonly auditService: ClinicAuditService,
+    private readonly configurationCache: ClinicConfigurationCacheService,
   ) {}
 
   async mergeWithActiveOverride(params: {
@@ -123,6 +125,12 @@ export class ClinicTemplateOverrideService {
         appliedConfigurationVersionId: params.appliedVersionId,
       },
     });
+
+    await this.configurationCache.invalidate({
+      tenantId: params.clinic.tenantId,
+      clinicId: params.clinic.id,
+      section: params.section,
+    });
   }
 
   async upsertManualOverride(params: {
@@ -149,6 +157,11 @@ export class ClinicTemplateOverrideService {
         tenantId: params.clinic.tenantId,
         section: params.section,
         override: null,
+      });
+      await this.configurationCache.invalidate({
+        tenantId: params.clinic.tenantId,
+        clinicId: params.clinic.id,
+        section: params.section,
       });
       return;
     }
@@ -197,6 +210,12 @@ export class ClinicTemplateOverrideService {
             section: params.section,
             overrideId: existingOverride.id,
           },
+        });
+
+        await this.configurationCache.invalidate({
+          tenantId: params.clinic.tenantId,
+          clinicId: params.clinic.id,
+          section: params.section,
         });
       }
 
@@ -265,10 +284,12 @@ export class ClinicTemplateOverrideService {
       return;
     }
 
+    const appliedAt = new Date();
+
     const updatedOverride = await this.overrideRepository.updateAppliedVersion({
       overrideId: activeOverride.id,
       appliedConfigurationVersionId: params.appliedVersionId,
-      appliedAt: new Date(),
+      appliedAt,
     });
 
     await this.clinicRepository.updateTemplateOverrideMetadata({
@@ -279,11 +300,17 @@ export class ClinicTemplateOverrideService {
         overrideId: activeOverride.id,
         overrideVersion: activeOverride.overrideVersion,
         overrideHash: activeOverride.overrideHash,
-        updatedAt: new Date(),
+        updatedAt: appliedAt,
         updatedBy: params.updatedBy,
         appliedConfigurationVersionId:
           updatedOverride?.appliedConfigurationVersionId ?? params.appliedVersionId,
       },
+    });
+
+    await this.configurationCache.invalidate({
+      tenantId: params.clinic.tenantId,
+      clinicId: params.clinic.id,
+      section: params.section,
     });
   }
 

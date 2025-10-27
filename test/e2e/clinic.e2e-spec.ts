@@ -31,7 +31,10 @@ import {
   ClinicProfessionalPolicy,
   ClinicStaffRole,
   ClinicTemplatePropagationInput,
+  ClinicTemplateOverride,
+  ClinicTemplateOverrideListResult,
   CreateClinicInput,
+  ListClinicTemplateOverridesInput,
   DeclineClinicInvitationInput,
 } from '@domain/clinic/types/clinic.types';
 import { IListClinicsUseCase as IListClinicsUseCaseToken } from '@domain/clinic/interfaces/use-cases/list-clinics.use-case.interface';
@@ -86,6 +89,7 @@ import {
   IGetClinicBrandingSettingsUseCase as IGetClinicBrandingSettingsUseCaseToken,
 } from '@domain/clinic/interfaces/use-cases/get-clinic-branding-settings.use-case.interface';
 import { IPropagateClinicTemplateUseCase as IPropagateClinicTemplateUseCaseToken } from '@domain/clinic/interfaces/use-cases/propagate-clinic-template.use-case.interface';
+import { IListClinicTemplateOverridesUseCase as IListClinicTemplateOverridesUseCaseToken } from '@domain/clinic/interfaces/use-cases/list-clinic-template-overrides.use-case.interface';
 import {
   IInviteClinicProfessionalUseCase as IInviteClinicProfessionalUseCaseToken,
   InviteClinicProfessionalInput,
@@ -262,6 +266,10 @@ describe('Clinic module (e2e)', () => {
     ClinicTemplatePropagationInput,
     ClinicConfigurationVersion[]
   >();
+  const listTemplateOverridesUseCase = createUseCaseMock<
+    ListClinicTemplateOverridesInput,
+    ClinicTemplateOverrideListResult
+  >();
   const getScheduleSettingsUseCase = createUseCaseMock<
     GetClinicScheduleSettingsInput,
     ClinicConfigurationVersion
@@ -363,6 +371,10 @@ describe('Clinic module (e2e)', () => {
         },
         { provide: IUpdateClinicTeamSettingsUseCaseToken, useValue: updateTeamSettingsUseCase },
         { provide: IPropagateClinicTemplateUseCaseToken, useValue: propagateTemplateUseCase },
+        {
+          provide: IListClinicTemplateOverridesUseCaseToken,
+          useValue: listTemplateOverridesUseCase,
+        },
         { provide: IGetClinicTeamSettingsUseCaseToken, useValue: getTeamSettingsUseCase },
         { provide: IGetClinicScheduleSettingsUseCaseToken, useValue: getScheduleSettingsUseCase },
         { provide: IGetClinicServiceSettingsUseCaseToken, useValue: getServiceSettingsUseCase },
@@ -448,6 +460,8 @@ describe('Clinic module (e2e)', () => {
       getNotificationSettingsUseCase,
       getBrandingSettingsUseCase,
       updateGeneralSettingsUseCase,
+      propagateTemplateUseCase,
+      listTemplateOverridesUseCase,
       holdSettingsUseCase,
       serviceSettingsUseCase,
       paymentSettingsUseCase,

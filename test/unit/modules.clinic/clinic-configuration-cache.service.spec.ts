@@ -1,3 +1,5 @@
+import { ConfigService } from '@nestjs/config';
+
 import { ClinicConfigurationCacheService } from '../../../src/modules/clinic/services/clinic-configuration-cache.service';
 import { ClinicConfigurationVersion } from '../../../src/domain/clinic/types/clinic.types';
 
@@ -23,18 +25,30 @@ describe('ClinicConfigurationCacheService', () => {
   };
 
   beforeEach(() => {
-    service = new ClinicConfigurationCacheService();
+    service = new ClinicConfigurationCacheService(new ConfigService());
   });
 
-  it('returns undefined for cache miss', () => {
-    const cached = service.get({ tenantId: 'tenant-1', clinicId: 'clinic-1', section: 'general' });
+  afterEach(async () => {
+    await service.onModuleDestroy();
+  });
+
+  it('returns undefined for cache miss', async () => {
+    const cached = await service.get({
+      tenantId: 'tenant-1',
+      clinicId: 'clinic-1',
+      section: 'general',
+    });
     expect(cached).toBeUndefined();
   });
 
-  it('stores and retrieves cloned versions', () => {
-    service.set({ tenantId: 'tenant-1', clinicId: 'clinic-1', section: 'general', version });
+  it('stores and retrieves cloned versions', async () => {
+    await service.set({ tenantId: 'tenant-1', clinicId: 'clinic-1', section: 'general', version });
 
-    const cached = service.get({ tenantId: 'tenant-1', clinicId: 'clinic-1', section: 'general' });
+    const cached = await service.get({
+      tenantId: 'tenant-1',
+      clinicId: 'clinic-1',
+      section: 'general',
+    });
 
     expect(cached).toBeDefined();
     expect(cached).not.toBe(version);
@@ -42,7 +56,7 @@ describe('ClinicConfigurationCacheService', () => {
 
     cached!.payload['mutated'] = true;
 
-    const cachedAgain = service.get({
+    const cachedAgain = await service.get({
       tenantId: 'tenant-1',
       clinicId: 'clinic-1',
       section: 'general',
@@ -50,24 +64,24 @@ describe('ClinicConfigurationCacheService', () => {
     expect(cachedAgain?.payload).not.toHaveProperty('mutated');
   });
 
-  it('invalidates entries and respects ttl', () => {
+  it('invalidates entries and respects ttl', async () => {
     const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
-    service.set({ tenantId: 'tenant-1', clinicId: 'clinic-1', section: 'general', version });
+    await service.set({ tenantId: 'tenant-1', clinicId: 'clinic-1', section: 'general', version });
 
     nowSpy.mockReturnValue(1_700_000_000_000 + 9 * 60 * 1000);
     expect(
-      service.get({ tenantId: 'tenant-1', clinicId: 'clinic-1', section: 'general' }),
+      await service.get({ tenantId: 'tenant-1', clinicId: 'clinic-1', section: 'general' }),
     ).toBeDefined();
 
     nowSpy.mockReturnValue(1_700_000_000_000 + 11 * 60 * 1000);
     expect(
-      service.get({ tenantId: 'tenant-1', clinicId: 'clinic-1', section: 'general' }),
+      await service.get({ tenantId: 'tenant-1', clinicId: 'clinic-1', section: 'general' }),
     ).toBeUndefined();
 
-    service.set({ tenantId: 'tenant-1', clinicId: 'clinic-1', section: 'general', version });
-    service.invalidate({ tenantId: 'tenant-1', clinicId: 'clinic-1', section: 'general' });
+    await service.set({ tenantId: 'tenant-1', clinicId: 'clinic-1', section: 'general', version });
+    await service.invalidate({ tenantId: 'tenant-1', clinicId: 'clinic-1', section: 'general' });
     expect(
-      service.get({ tenantId: 'tenant-1', clinicId: 'clinic-1', section: 'general' }),
+      await service.get({ tenantId: 'tenant-1', clinicId: 'clinic-1', section: 'general' }),
     ).toBeUndefined();
 
     nowSpy.mockRestore();

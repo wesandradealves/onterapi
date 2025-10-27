@@ -5,8 +5,10 @@ import { IsNull, Repository } from 'typeorm';
 import {
   ClinicConfigurationSection,
   ClinicTemplateOverride,
+  ClinicTemplateOverrideListResult,
   CreateClinicTemplateOverrideInput,
   FindClinicTemplateOverrideParams,
+  ListClinicTemplateOverridesInput,
   SupersedeClinicTemplateOverrideInput,
   UpdateClinicTemplateOverrideAppliedInput,
   UpdateClinicTemplateOverrideBaseVersionInput,
@@ -145,5 +147,39 @@ export class ClinicTemplateOverrideRepository implements IClinicTemplateOverride
 
     const entity = await this.repository.findOne({ where: { id: params.overrideId } });
     return entity ? ClinicMapper.toTemplateOverride(entity) : null;
+  }
+
+  async list(
+    params: ListClinicTemplateOverridesInput,
+  ): Promise<ClinicTemplateOverrideListResult> {
+    const page = params.page && params.page > 0 ? params.page : 1;
+    const limitCandidate = params.limit && params.limit > 0 ? params.limit : 20;
+    const limit = Math.min(limitCandidate, 100);
+    const offset = (page - 1) * limit;
+
+    const qb = this.repository
+      .createQueryBuilder('override')
+      .where('override.clinicId = :clinicId', { clinicId: params.clinicId })
+      .andWhere('override.tenantId = :tenantId', { tenantId: params.tenantId });
+
+    if (params.section) {
+      qb.andWhere('override.section = :section', { section: params.section });
+    }
+
+    if (!params.includeSuperseded) {
+      qb.andWhere('override.supersededAt IS NULL');
+    }
+
+    qb.orderBy('override.overrideVersion', 'DESC');
+    qb.skip(offset).take(limit);
+
+    const [entities, total] = await qb.getManyAndCount();
+
+    return {
+      data: entities.map((entity) => ClinicMapper.toTemplateOverride(entity)),
+      total,
+      page,
+      limit,
+    };
   }
 }

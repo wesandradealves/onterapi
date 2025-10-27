@@ -471,6 +471,7 @@ export class ClinicMapper {
       appliedConfigurationVersionId: entity.appliedConfigurationVersionId ?? undefined,
       createdBy: entity.createdBy,
       createdAt: entity.createdAt,
+      updatedAt: entity.updatedAt,
       supersededAt: entity.supersededAt ?? undefined,
       supersededBy: entity.supersededBy ?? undefined,
     };

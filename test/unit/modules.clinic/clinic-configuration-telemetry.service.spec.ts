@@ -1,3 +1,5 @@
+import { ConfigService } from '@nestjs/config';
+
 import { ClinicConfigurationTelemetryService } from '../../../src/modules/clinic/services/clinic-configuration-telemetry.service';
 import { ClinicConfigurationCacheService } from '../../../src/modules/clinic/services/clinic-configuration-cache.service';
 import { Clinic } from '../../../src/domain/clinic/types/clinic.types';
@@ -10,13 +12,12 @@ describe('ClinicConfigurationTelemetryService', () => {
   let service: ClinicConfigurationTelemetryService;
   let clinic: Clinic;
   let repository: ReturnType<typeof repositoryMock>;
+  let cacheService: ClinicConfigurationCacheService;
 
   beforeEach(() => {
     repository = repositoryMock();
-    service = new ClinicConfigurationTelemetryService(
-      repository as any,
-      new ClinicConfigurationCacheService(),
-    );
+    cacheService = new ClinicConfigurationCacheService(new ConfigService());
+    service = new ClinicConfigurationTelemetryService(repository as any, cacheService);
     clinic = {
       id: 'clinic-1',
       tenantId: 'tenant-1',
@@ -33,6 +34,10 @@ describe('ClinicConfigurationTelemetryService', () => {
       createdAt: new Date('2025-01-01T00:00:00Z'),
       updatedAt: new Date('2025-01-01T00:00:00Z'),
     } as Clinic;
+  });
+
+  afterEach(async () => {
+    await cacheService.onModuleDestroy();
   });
 
   it('marks saving and persists telemetry', async () => {

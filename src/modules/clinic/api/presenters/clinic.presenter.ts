@@ -20,6 +20,7 @@ import {
   ClinicPaymentLedgerEventEntry,
   ClinicPaymentSplitAllocation,
   ClinicProfessionalPolicy,
+  ClinicTemplateOverride,
   ClinicProfessionalTransferResult,
   ClinicServiceCustomField,
   ClinicServiceTypeDefinition,
@@ -1890,6 +1891,27 @@ export class ClinicPresenter {
       preview,
       versionLabel: branding.versionLabel !== undefined ? String(branding.versionLabel) : undefined,
       metadata,
+    };
+  }
+
+  static templateOverride(override: ClinicTemplateOverride) {
+    return {
+      id: override.id,
+      clinicId: override.clinicId,
+      tenantId: override.tenantId,
+      templateClinicId: override.templateClinicId,
+      section: override.section,
+      overrideVersion: override.overrideVersion,
+      overridePayload: override.overridePayload,
+      overrideHash: override.overrideHash,
+      baseTemplateVersionId: override.baseTemplateVersionId,
+      baseTemplateVersionNumber: override.baseTemplateVersionNumber,
+      appliedConfigurationVersionId: override.appliedConfigurationVersionId ?? undefined,
+      createdBy: override.createdBy,
+      createdAt: override.createdAt,
+      supersededAt: override.supersededAt ?? undefined,
+      supersededBy: override.supersededBy ?? undefined,
+      updatedAt: override.updatedAt ?? undefined,
     };
   }
 

@@ -1364,6 +1364,7 @@ export interface ClinicTemplateOverride {
   appliedConfigurationVersionId?: string;
   createdBy: string;
   createdAt: Date;
+  updatedAt?: Date;
   supersededAt?: Date;
   supersededBy?: string;
 }
@@ -1402,6 +1403,22 @@ export interface UpdateClinicTemplateOverrideBaseVersionInput {
   overrideId: string;
   baseTemplateVersionId: string;
   baseTemplateVersionNumber: number;
+}
+
+export interface ListClinicTemplateOverridesInput {
+  tenantId: string;
+  clinicId: string;
+  section?: ClinicConfigurationSection;
+  includeSuperseded?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+export interface ClinicTemplateOverrideListResult {
+  data: ClinicTemplateOverride[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 export interface ResolveClinicAlertInput {

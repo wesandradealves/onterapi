@@ -1,8 +1,9 @@
-# OnTerapi 
+# OnTerapi
 
 Plataforma SaaS multi-tenant para gestao de clinicas e terapeutas, com Supabase Auth, 2FA, RBAC e modulo de pacientes conectado diretamente ao storage do Supabase.
 
 ## Sumario
+
 - [Visao Geral](#visao-geral)
 - [Credenciais de Teste](#credenciais-de-teste)
 - [Fluxo de Autenticacao](#fluxo-de-autenticacao)
@@ -23,6 +24,7 @@ Plataforma SaaS multi-tenant para gestao de clinicas e terapeutas, com Supabase 
 - [Fluxograma do Projeto](#fluxograma-do-projeto)
 
 ## Visao Geral
+
 - NestJS 10 + TypeScript 5 + Result Pattern
 - Supabase Cloud (PostgreSQL + Auth) como camada de dados principal
 - TypeORM apenas para entidades/seed de apoio (sem banco local)
@@ -31,11 +33,13 @@ Plataforma SaaS multi-tenant para gestao de clinicas e terapeutas, com Supabase 
 - DRY/Clean Architecture com BaseUseCase, BaseGuard e MessageBus unificados
 
 ## Credenciais de Teste
+
 N o mantemos mais credenciais padr o em reposit rio. Gere usu rios administrativos manualmente via `/users` e armazene os acessos em um cofre seguro.
 
 > Para fluxos locais, utilize os dados de ambiente em `./.env` e gere o 2FA pelo endpoint `/auth/two-factor/send` quando necess rio.
 
 ## Fluxo de Autenticacao
+
 1. `POST /auth/sign-in` com email/senha. Super admin exige 2FA automaticamente.
 2. `POST /auth/two-factor/send` com `tempToken` recebido.
 3. Buscar codigo 2FA em `two_factor_codes` (via Supabase REST) ou pelo painel Resend ou caixa de entrada configurada.
@@ -46,15 +50,18 @@ N o mantemos mais credenciais padr o em reposit rio. Gere usu rios administrativ
    - `POST /auth/sign-out` (opcionalmente `{ "allDevices": true }`) agora cancela tambem as sessoes Supabase quando possivel e ignora tokens invalidos sem log de erro.
 
 ### Logs e Auditoria
+
 - Todos os eventos (sign-in, 2FA enviado/validado, logout) sao publicados via `MessageBus`.
 - Guardas `JwtAuthGuard`, `RolesGuard` e `TenantGuard` foram revisados para usar o contexto completo do usuario.
 
 ### Recuperacao e verificacao
+
 - `POST /auth/verification/resend` reenvia o email de verificacao para contas pendentes; exige email valido e respeita limites de tentativa.
 - `POST /auth/password/reset/request` gera token de redefinicao e aciona o email via Resend; protecao contra enumeration habilitada.
 - `POST /auth/password/reset/confirm` aplica a troca de senha com o token recebido, invalida refresh tokens anteriores e registra o evento de auditoria.
 
 ## Modulo de Pacientes
+
 - CRUD completo persistido na tabela `patients` do Supabase.
 - Filtros suportados: `status`, `riskLevel`, `tags`, `query`, paginacao e ordenacao (`createdAt`, `updatedAt`, `fullName`).
 - Transferencia, arquivamento e restauro respeitam roles (somente OWNER/MANAGER/SUPER_ADMIN).
@@ -63,6 +70,7 @@ N o mantemos mais credenciais padr o em reposit rio. Gere usu rios administrativ
 - DTOs e schemas (Zod) garantem payload limpo.
 
 Rotas principais:
+
 - `GET /patients` Lista paginada.
 - `POST /patients` Cria paciente (CPF unico por tenant).
 - `GET /patients/:slug` Retorna resumo, timeline (stub) e insights (stub).
@@ -71,6 +79,7 @@ Rotas principais:
 - `POST /patients/:slug/archive` Arquiva/soft-delete e bloqueia edicao.
 
 ## Modulo de Usuarios
+
 - `GET /users` visivel apenas para SUPER_ADMIN.
 - Cria usuarios com Supabase Auth (`POST /users`). Email precisa ser confirmado antes de login.
 - Rotas de leitura/edicao usam slug estavel (`GET /users/:slug`, `PATCH /users/:slug`, `DELETE /users/:slug`).
@@ -82,12 +91,14 @@ Rotas principais:
 ## Modulo de Anamnese
 
 ### Visao Geral
+
 - Formulario clinico multi-etapas (10 steps) utilizado antes da consulta para consolidar dados do paciente, alimentar a IA e registrar historico auditavel.
 - Suporta rascunhos idempotentes, anexos versionados, geracao de plano terapeutico, feedback supervisionado e metricas de conclusao.
 - Cancelamento soft delete preserva auditoria (`deletedAt`, `deletedBy`, `deletedReason`) e remove registros das listagens padrao.
 - Todo fluxo utiliza os guards `JwtAuthGuard`, `TenantGuard` e `RolesGuard`, devolvendo as respostas formatadas pelo `AnamnesisPresenter`.
 
 ### Autenticacao e Cabecalhos
+
 - `Authorization: Bearer <accessToken>` obrigatorio para todas as rotas autenticadas; o webhook de IA e marcado com `@Public`, mas ainda passa pelo `AnamnesisAIWebhookGuard`.
 - `x-tenant-id: <uuid>` obrigatorio. Para rotas autenticadas o guard usa `currentUser.tenantId` como fallback, enquanto o webhook exige o header explicitamente.
 - Roles permitidas:
@@ -97,11 +108,13 @@ Rotas principais:
   - `SECRETARY` e `FINANCE` nao sao autorizados.
 
 ### Enumeracoes Principais
+
 - `AnamnesisStatus`: `draft`, `submitted`, `completed`, `cancelled`.
 - `AnamnesisStepKey`: `identification`, `chiefComplaint`, `currentDisease`, `pathologicalHistory`, `familyHistory`, `systemsReview`, `lifestyle`, `psychosocial`, `medication`, `physicalExam`.
 - `approvalStatus` (feedback): `approved`, `modified`, `rejected`.
 
 ### Fluxo Sugerido no Swagger
+
 1. `POST /anamneses/start` cria ou recupera o rascunho vinculado a consulta.
 2. `PUT /anamneses/{anamnesisId}/steps/{stepNumber}` e `POST /anamneses/{anamnesisId}/auto-save` alimentam cada etapa.
 3. `POST /anamneses/{anamnesisId}/attachments` (opcional) envia exames e documentos.
@@ -110,7 +123,9 @@ Rotas principais:
 6. Consultas subsequentes usam `GET /anamneses/{anamnesisId}` e `GET /anamneses/patient/{patientId}`.
 
 > Schemas Zod e DTOs: `src/modules/anamnesis/api/schemas/anamnesis.schema.ts` e `src/modules/anamnesis/api/dtos/`.
+
 ### IA Assistida e Aceite Legal
+
 > Endpoints locais exp em as rotas diretamente em `http://localhost:3000` (sem prefixo `/api/v1`). Configure o gateway/proxy externo se precisar de versionamento no caminho.
 
 - Worker consome `ANAMNESIS_AI_REQUESTED`, monta prompt a partir de `compactAnamnesis` + `patientRollup` e envia o resultado para `POST /anamneses/:id/ai-result`.
@@ -122,22 +137,25 @@ Rotas principais:
 - O worker assina o webhook via HMAC-SHA256 usando `x-anamnesis-ai-timestamp` + `x-anamnesis-ai-signature` (payload `timestamp.body`), replica `x-tenant-id` e envia `tokensInput`, `tokensOutput` e `latencyMs` reais no retorno.
 - Webhook persiste metadados do modelo (planText, reasoningText, evidenceMap, tokens, lat ncia, rawResponse) e materializa o plano com status `generated`.
 - Aceite (`POST /anamneses/:id/plan`) exige `termsVersion`, `termsTextSnapshot`, grava hist rico em `therapeutic_plan_acceptances` e recalcula `patient_anamnesis_rollups`.
-- Fluxo, payloads e checklist da integra  o ficam detalhados nas se  es abaixo.
+- Fluxo, payloads e checklist da integra o ficam detalhados nas se es abaixo.
 - As metricas do pipeline (passos salvos, submissoes, tokens, custo, feedback) sao persistidas em `anamnesis_metrics` por tenant/dia; `AnamnesisMetricsService.getSnapshot()` agrega direto do banco e aceita janelas customizadas.
 - Endpoint `GET /anamneses/metrics` disponibiliza o snapshot consolidado usando o mesmo servico; aceita `from`/`to` (ISO) para limitar o intervalo e `tenantId` apenas para perfis internos (SUPER_ADMIN) inspecionarem outros tenants.
 - Ajuste `ANAMNESIS_AI_COST_TOKEN_INPUT`/`ANAMNESIS_AI_COST_TOKEN_OUTPUT` para refletir o custo por token e `ANAMNESIS_AI_LATENCY_ALERT_MS` para alertas operacionais.
 - Termos legais versionados usam status `draft`/`published`/`retired`, mantendo `createdBy`, `publishedBy` e `retiredBy` para auditoria e restringindo um termo `published` por `(tenant, context)`.
 
-#### Fluxo Submit   IA   Aceite
-1. `POST /anamneses/:id/submit` compacta os dados e emite `ANAMNESIS_SUBMITTED`.  
-2. Worker externo (ou modo local) consome `ANAMNESIS_AI_REQUESTED`, monta o prompt com o rollup anterior + anamnese atual e chama o provedor de IA.  
-3. A resposta chega via `POST /anamneses/:id/ai-result`, assinada com HMAC; o backend persiste plano e m tricas (tokens, lat ncia, status).  
-4. Profissional revisa/aceita (`POST /anamneses/:id/plan`), salvando snapshot de termos em `therapeutic_plan_acceptances`, status `accepted` e rollup incremental (`patient_anamnesis_rollups`).  
-5. Feedback opcional (`POST /anamneses/:id/plan/feedback`) alimenta o scoreboard (`anamnesis_ai_feedbacks`).  
-6. Exibi  es do plano s o logadas em `therapeutic_plan_access_logs` para auditoria.
+#### Fluxo Submit IA Aceite
+
+1. `POST /anamneses/:id/submit` compacta os dados e emite `ANAMNESIS_SUBMITTED`.
+2. Worker externo (ou modo local) consome `ANAMNESIS_AI_REQUESTED`, monta o prompt com o rollup anterior + anamnese atual e chama o provedor de IA.
+3. A resposta chega via `POST /anamneses/:id/ai-result`, assinada com HMAC; o backend persiste plano e m tricas (tokens, lat ncia, status).
+4. Profissional revisa/aceita (`POST /anamneses/:id/plan`), salvando snapshot de termos em `therapeutic_plan_acceptances`, status `accepted` e rollup incremental (`patient_anamnesis_rollups`).
+5. Feedback opcional (`POST /anamneses/:id/plan/feedback`) alimenta o scoreboard (`anamnesis_ai_feedbacks`).
+6. Exibi es do plano s o logadas em `therapeutic_plan_access_logs` para auditoria.
 
 #### Payloads do Worker de IA
+
 **Job enviado ao worker**
+
 ```json
 {
   "analysisId": "d64ad7c4-0dc4-4c30-b8c2-c4030e845391",
@@ -152,6 +170,7 @@ Rotas principais:
 ```
 
 **Resposta esperada da IA**
+
 ```json
 {
   "plan_text": "1) Fitoter pico X ...",
@@ -174,48 +193,52 @@ Rotas principais:
 ```
 
 #### Webhook `/anamneses/:id/ai-result`
-- Headers obrigat rios: `x-anamnesis-ai-signature`, `x-anamnesis-ai-timestamp`, `Content-Type: application/json` e, idealmente, `x-tenant-id`.  
-- Assinatura HMAC-SHA256 sobre `timestamp.body` usando `ANAMNESIS_AI_WEBHOOK_SECRET`:  
+
+- Headers obrigat rios: `x-anamnesis-ai-signature`, `x-anamnesis-ai-timestamp`, `Content-Type: application/json` e, idealmente, `x-tenant-id`.
+- Assinatura HMAC-SHA256 sobre `timestamp.body` usando `ANAMNESIS_AI_WEBHOOK_SECRET`:
   ```
   payload = `${timestamp}.${jsonBody}`
   signature = sha256(payload, secret)
   header = `sha256=${signatureHex}`
   ```
-- Janela de toler ncia configur vel via `ANAMNESIS_AI_WEBHOOK_MAX_SKEW_MS` (5 minutos por padr o).  
+- Janela de toler ncia configur vel via `ANAMNESIS_AI_WEBHOOK_MAX_SKEW_MS` (5 minutos por padr o).
 - Replays bloqueados por `analysisId` + assinatura na tabela `anamnesis_ai_webhook_requests`, registrada pelo `AnamnesisAIWebhookReplayService`.
 
 #### M tricas Persistidas
+
 `anamnesis_metrics` agrega diariamente por tenant:
 
-| Campo                        | Descri  o                                           |
-|------------------------------|-----------------------------------------------------|
-| `steps_saved`, `auto_saves`  | Contagem de passos salvos/auto-saves                |
-| `submissions`                | N mero de submiss es + completude acumulada         |
-| `ai_completed` / `ai_failed` | Resultado da IA (sucesso/falha)                     |
-| `tokens_input_sum/_output`   | Tokens consumidos (entrada/sa da)                   |
-| `ai_latency_sum/_count/_max` | Lat ncia m dia e m xima (ms)                        |
-| `ai_cost_sum`                | Custo estimado via `ANAMNESIS_AI_COST_TOKEN_*`      |
-| `feedback_*`                 | Aprova  es, modifica  es, rejei  es, likes/dislikes |
+| Campo                        | Descri o                                         |
+| ---------------------------- | ------------------------------------------------ |
+| `steps_saved`, `auto_saves`  | Contagem de passos salvos/auto-saves             |
+| `submissions`                | N mero de submiss es + completude acumulada      |
+| `ai_completed` / `ai_failed` | Resultado da IA (sucesso/falha)                  |
+| `tokens_input_sum/_output`   | Tokens consumidos (entrada/sa da)                |
+| `ai_latency_sum/_count/_max` | Lat ncia m dia e m xima (ms)                     |
+| `ai_cost_sum`                | Custo estimado via `ANAMNESIS_AI_COST_TOKEN_*`   |
+| `feedback_*`                 | Aprova es, modifica es, rejei es, likes/dislikes |
 
 Use `AnamnesisMetricsService.getSnapshot([tenantId])` ou o endpoint `GET /anamneses/metrics` para dashboards e SLA (ambos aceitam recortes por intervalo).
 
 #### Governan a de Termos Legais
-- `legal_terms` armazena `status (draft|published|retired)`, `createdBy`, `publishedBy`, `retiredBy`, `publishedAt` e `retiredAt`.  
-- Restri  o: somente um termo `published` por `(tenant, context)`; para `therapeutic_plan` usamos a vers o global seedada (`v1.0`).  
-- `/legal/terms` exp e CRUD multi-tenant (listar, criar, publicar, retirar).  
-- Aceite de plano exige `termsVersion` matching + snapshot id ntico; hist rico de aceites em `therapeutic_plan_acceptances`.
 
+- `legal_terms` armazena `status (draft|published|retired)`, `createdBy`, `publishedBy`, `retiredBy`, `publishedAt` e `retiredAt`.
+- Restri o: somente um termo `published` por `(tenant, context)`; para `therapeutic_plan` usamos a vers o global seedada (`v1.0`).
+- `/legal/terms` exp e CRUD multi-tenant (listar, criar, publicar, retirar).
+- Aceite de plano exige `termsVersion` matching + snapshot id ntico; hist rico de aceites em `therapeutic_plan_acceptances`.
 
 ### Endpoints Detalhados
 
 #### GET /anamneses/templates
+
 - Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN, PATIENT.
 - Query (`ListStepTemplatesQuerySchema`):
-| Query | Tipo | Obrigatorio | Descricao |
-| --- | --- | --- | --- |
-| `specialty` | string | nao | Prioriza templates cadastrados para a especialidade. |
-| `includeInactive` | boolean | nao | Quando `true`, retorna templates inativos para auditoria. |
+  | Query | Tipo | Obrigatorio | Descricao |
+  | --- | --- | --- | --- |
+  | `specialty` | string | nao | Prioriza templates cadastrados para a especialidade. |
+  | `includeInactive` | boolean | nao | Quando `true`, retorna templates inativos para auditoria. |
 - Resposta: array de `AnamnesisStepTemplateDto` com `id`, `key`, `title`, `schema`, `version`, `specialty`, `isActive`, `createdAt`, `updatedAt`.
+
 ```json
 [
   {
@@ -232,17 +255,19 @@ Use `AnamnesisMetricsService.getSnapshot([tenantId])` ou o endpoint `GET /anamne
 ```
 
 #### POST /anamneses/start
+
 - Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN, PATIENT.
 - Body (`StartAnamnesisRequestDto`):
-| Campo | Tipo | Obrigatorio | Descricao |
-| --- | --- | --- | --- |
-| `consultationId` | uuid | sim | Consulta relacionada. |
-| `patientId` | uuid | sim | Paciente que respondera a anamnese. |
-| `professionalId` | uuid | sim | Profissional responsavel pela consulta. |
-| `totalSteps` | inteiro (1-50) | nao | Quantidade total de etapas disponiveis. |
-| `initialStep` | inteiro | nao | Etapa inicial a ser exibida. |
-| `formData` | objeto | nao | Dados iniciais para pre-preenchimento. |
+  | Campo | Tipo | Obrigatorio | Descricao |
+  | --- | --- | --- | --- |
+  | `consultationId` | uuid | sim | Consulta relacionada. |
+  | `patientId` | uuid | sim | Paciente que respondera a anamnese. |
+  | `professionalId` | uuid | sim | Profissional responsavel pela consulta. |
+  | `totalSteps` | inteiro (1-50) | nao | Quantidade total de etapas disponiveis. |
+  | `initialStep` | inteiro | nao | Etapa inicial a ser exibida. |
+  | `formData` | objeto | nao | Dados iniciais para pre-preenchimento. |
 - Resposta (`AnamnesisDetailResponseDto`):
+
 ```json
 {
   "id": "5c4a...",
@@ -262,120 +287,134 @@ Use `AnamnesisMetricsService.getSnapshot([tenantId])` ou o endpoint `GET /anamne
 ```
 
 #### GET /anamneses/{anamnesisId}
+
 - Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN, PATIENT (somente a propria).
 - Query (`GetAnamnesisQuerySchema`):
-| Query | Tipo | Obrigatorio | Descricao |
-| --- | --- | --- | --- |
-| `includeSteps` | boolean | nao | Inclui a lista de steps preenchidos. |
-| `includeLatestPlan` | boolean | nao | Retorna o plano terapeutico mais recente. |
-| `includeAttachments` | boolean | nao | Retorna anexos vinculados. |
+  | Query | Tipo | Obrigatorio | Descricao |
+  | --- | --- | --- | --- |
+  | `includeSteps` | boolean | nao | Inclui a lista de steps preenchidos. |
+  | `includeLatestPlan` | boolean | nao | Retorna o plano terapeutico mais recente. |
+  | `includeAttachments` | boolean | nao | Retorna anexos vinculados. |
 - Resposta: `AnamnesisDetailResponseDto` com `steps`, `latestPlan` e `attachments` quando solicitados.
 
 #### PUT /anamneses/{anamnesisId}/steps/{stepNumber}
+
 - Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN, PATIENT (proprio).
 - Path: `stepNumber` (inteiro 1-50).
 - Body (`SaveAnamnesisStepRequestDto`):
-| Campo | Tipo | Obrigatorio | Descricao |
-| --- | --- | --- | --- |
-| `key` | string (`AnamnesisStepKey`) | sim | Identifica a etapa. |
-| `payload` | objeto | sim | Dados preenchidos no passo. |
-| `completed` | boolean | nao | Marca o passo como finalizado. |
-| `hasErrors` | boolean | nao | Indica erros de validacao. |
-| `validationScore` | numero (0-100) | nao | Score calculado pelo front/IA. |
+  | Campo | Tipo | Obrigatorio | Descricao |
+  | --- | --- | --- | --- |
+  | `key` | string (`AnamnesisStepKey`) | sim | Identifica a etapa. |
+  | `payload` | objeto | sim | Dados preenchidos no passo. |
+  | `completed` | boolean | nao | Marca o passo como finalizado. |
+  | `hasErrors` | boolean | nao | Indica erros de validacao. |
+  | `validationScore` | numero (0-100) | nao | Score calculado pelo front/IA. |
 - Resposta: `AnamnesisDetailResponseDto` com progresso atualizado.
 
 #### POST /anamneses/{anamnesisId}/auto-save
+
 - Mesmas roles e DTO baseando-se em `AutoSaveAnamnesisStepRequestDto` (inclui `stepNumber` e `autoSavedAt` ISO).
 - Resposta: `AnamnesisDetailResponseDto` mantendo o status `draft`.
 
 #### POST /anamneses/{anamnesisId}/submit
+
 - Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN.
 - Sem body. Retorna `AnamnesisDetailResponseDto` com `status` = `submitted` e `submittedAt` preenchido.
 
 #### POST /anamneses/{anamnesisId}/cancel
+
 - Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN.
 - Body opcional (CancelAnamnesisRequestDto):
-| Campo | Tipo | Obrigatorio | Descricao |
-| --- | --- | --- | --- |
-| `reason` | string (1-1000) | nao | Justificativa registrada no cancelamento. |
+  | Campo | Tipo | Obrigatorio | Descricao |
+  | --- | --- | --- | --- |
+  | `reason` | string (1-1000) | nao | Justificativa registrada no cancelamento. |
 - Resposta: HTTP 204 (sem corpo). Registro permanece para auditoria (`deletedAt`, `deletedBy`, `deletedReason`) e deixa de aparecer nas listagens e historico padrao.
 
 #### POST /anamneses/{anamnesisId}/plan
+
 - Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN.
 - Body (`SaveTherapeuticPlanRequestDto`):
-| Campo | Tipo | Obrigatorio | Descricao |
-| --- | --- | --- | --- |
-| `clinicalReasoning` | string | nao | Raciocinio clinico gerado. |
-| `summary` | string | nao | Resumo apresentado ao paciente. |
-| `therapeuticPlan` | objeto | nao | Representacao estruturada do plano. |
-| `riskFactors` | array | nao | Lista de fatores de risco (`id`, `description`, `severity`). |
-| `recommendations` | array | nao | Lista de recomendacoes (`id`, `description`, `priority`). |
-| `confidence` | numero (0-1) | nao | Confianca da IA. |
-| `reviewRequired` | boolean | nao | Indica necessidade de revisao humana. |
-| `termsAccepted` | boolean | sim | Confirma que o profissional assume a responsabilidade de revisar o plano gerado por IA antes de utiliza-lo com o paciente. |
-| `generatedAt` | string ISO | sim | Momento em que a IA concluiu a analise. |
+  | Campo | Tipo | Obrigatorio | Descricao |
+  | --- | --- | --- | --- |
+  | `clinicalReasoning` | string | nao | Raciocinio clinico gerado. |
+  | `summary` | string | nao | Resumo apresentado ao paciente. |
+  | `therapeuticPlan` | objeto | nao | Representacao estruturada do plano. |
+  | `riskFactors` | array | nao | Lista de fatores de risco (`id`, `description`, `severity`). |
+  | `recommendations` | array | nao | Lista de recomendacoes (`id`, `description`, `priority`). |
+  | `confidence` | numero (0-1) | nao | Confianca da IA. |
+  | `reviewRequired` | boolean | nao | Indica necessidade de revisao humana. |
+  | `termsAccepted` | boolean | sim | Confirma que o profissional assume a responsabilidade de revisar o plano gerado por IA antes de utiliza-lo com o paciente. |
+  | `generatedAt` | string ISO | sim | Momento em que a IA concluiu a analise. |
 - Resposta: `TherapeuticPlanDto` com ids, feedback, timestamps e metadados.
 
 #### POST /anamneses/{anamnesisId}/plan/feedback
+
 - Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN.
 - Body (`SavePlanFeedbackRequestDto`): campos `approvalStatus`, `liked`, `feedbackComment`.
 - Resposta: `TherapeuticPlanDto` atualizado com feedback humano (`approvalStatus`, `liked`, `feedbackGivenBy`, `feedbackGivenAt`).
 
 #### GET /anamneses/patient/{patientId}
+
 - Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN, PATIENT (proprio).
 - Query (`ListAnamnesesQuerySchema`):
-| Query | Tipo | Obrigatorio | Descricao |
-| --- | --- | --- | --- |
-| `status` | string ou array | nao | Lista de status validos (`draft`, `submitted`, `completed`, `cancelled`). |
-| `professionalId` | uuid | nao | Filtra pelo responsavel. |
-| `from` | string ISO | nao | Data/hora inicial (UTC). |
-| `to` | string ISO | nao | Data/hora final (UTC). |
+  | Query | Tipo | Obrigatorio | Descricao |
+  | --- | --- | --- | --- |
+  | `status` | string ou array | nao | Lista de status validos (`draft`, `submitted`, `completed`, `cancelled`). |
+  | `professionalId` | uuid | nao | Filtra pelo responsavel. |
+  | `from` | string ISO | nao | Data/hora inicial (UTC). |
+  | `to` | string ISO | nao | Data/hora final (UTC). |
 - Resposta: array de `AnamnesisListItemDto` (id, consultationId, patientId, professionalId, status, completionRate, submittedAt, updatedAt).
 
 #### GET /anamneses/patient/{patientId}/history
+
 - Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN, PATIENT.
 - Query (`AnamnesisHistoryQuerySchema`):
-| Query | Tipo | Obrigatorio | Descricao |
-| --- | --- | --- | --- |
-| `limit` | inteiro (1-50) | nao | Limita quantidade de registros. |
-| `status` | string ou array | nao | Filtra por status validos. |
-| `includeDrafts` | boolean | nao | Inclui anamneses em rascunho. |
+  | Query | Tipo | Obrigatorio | Descricao |
+  | --- | --- | --- | --- |
+  | `limit` | inteiro (1-50) | nao | Limita quantidade de registros. |
+  | `status` | string ou array | nao | Filtra por status validos. |
+  | `includeDrafts` | boolean | nao | Inclui anamneses em rascunho. |
 - Resposta: `AnamnesisHistoryResponseDto` com `entries` (steps, anexos, plano) e `prefill` reutilizavel.
 
 #### POST /anamneses/{anamnesisId}/attachments
+
 - Roles: PROFESSIONAL, CLINIC_OWNER, MANAGER, SUPER_ADMIN, PATIENT.
 - Consome `multipart/form-data` (`CreateAnamnesisAttachmentRequestDto`): campo `file` (binario, max 10 MB), `stepNumber` opcional, `fileName` opcional.
 - Resposta: `AnamnesisAttachmentDto` (`id`, `fileName`, `mimeType`, `size`, `storagePath`, `uploadedBy`, `uploadedAt`).
 
 #### DELETE /anamneses/{anamnesisId}/attachments/{attachmentId}
+
 - Mesmas roles. Retorna HTTP 204 e emite `DomainEvents.ANAMNESIS_ATTACHMENT_REMOVED`.
 
 #### POST /anamneses/{anamnesisId}/ai-result
+
 - `@Public` + `AnamnesisAIWebhookGuard` (valida assinatura e exige `x-tenant-id`).
 - Body (`ReceiveAIResultRequestDto`):
-| Campo | Tipo | Obrigatorio | Descricao |
-| --- | --- | --- | --- |
-| `analysisId` | uuid | sim | Identificador da an lise solicitada. |
-| `status` | enum (`completed`, `failed`) | sim | Resultado retornado pelo provider. |
-| `respondedAt` | string ISO | sim | Momento da resposta da IA. |
-| `clinicalReasoning` | string | nao | Racioc nio textual da IA. |
-| `summary` | string | nao | Resumo curto para cards/listas. |
-| `therapeuticPlan` | objeto | nao | Plano estruturado compat vel com vers es anteriores. |
-| `riskFactors` | array | nao | Fatores de risco (estrutura herdada). |
-| `recommendations` | array | nao | Recomenda  es sugeridas (estrutura herdada). |
-| `planText` | string | nao | Plano em texto corrido para exibi  o direta. |
-| `reasoningText` | string | nao | Racioc nio cl nico em texto corrido. |
-| `evidenceMap` | array | nao | Mapa `{ recommendation, evidence[], confidence }`. |
-| `confidence` | numero (0-1) | nao | Grau de confian a declarado pelo modelo. |
-| `model` | string | nao | Modelo utilizado (ex.: gpt-4o-mini-2025). |
-| `promptVersion` | string | nao | Vers o do prompt aplicado. |
-| `tokensInput` | inteiro | nao | Tokens de entrada (custo). |
-| `tokensOutput` | inteiro | nao | Tokens de sa da (custo). |
-| `latencyMs` | inteiro | nao | Lat ncia total em milissegundos. |
-| `rawResponse` | objeto | nao | Payload bruto para auditoria/reprocesso. |
-| `errorMessage` | string | nao | Motivo quando `status = failed`. |
+  | Campo | Tipo | Obrigatorio | Descricao |
+  | --- | --- | --- | --- |
+  | `analysisId` | uuid | sim | Identificador da an lise solicitada. |
+  | `status` | enum (`completed`, `failed`) | sim | Resultado retornado pelo provider. |
+  | `respondedAt` | string ISO | sim | Momento da resposta da IA. |
+  | `clinicalReasoning` | string | nao | Racioc nio textual da IA. |
+  | `summary` | string | nao | Resumo curto para cards/listas. |
+  | `therapeuticPlan` | objeto | nao | Plano estruturado compat vel com vers es anteriores. |
+  | `riskFactors` | array | nao | Fatores de risco (estrutura herdada). |
+  | `recommendations` | array | nao | Recomenda es sugeridas (estrutura herdada). |
+  | `planText` | string | nao | Plano em texto corrido para exibi o direta. |
+  | `reasoningText` | string | nao | Racioc nio cl nico em texto corrido. |
+  | `evidenceMap` | array | nao | Mapa `{ recommendation, evidence[], confidence }`. |
+  | `confidence` | numero (0-1) | nao | Grau de confian a declarado pelo modelo. |
+  | `model` | string | nao | Modelo utilizado (ex.: gpt-4o-mini-2025). |
+  | `promptVersion` | string | nao | Vers o do prompt aplicado. |
+  | `tokensInput` | inteiro | nao | Tokens de entrada (custo). |
+  | `tokensOutput` | inteiro | nao | Tokens de sa da (custo). |
+  | `latencyMs` | inteiro | nao | Lat ncia total em milissegundos. |
+  | `rawResponse` | objeto | nao | Payload bruto para auditoria/reprocesso. |
+  | `errorMessage` | string | nao | Motivo quando `status = failed`. |
 - Resposta: HTTP 202 sem body; dispara `DomainEvents.ANAMNESIS_AI_COMPLETED` e salva plano com status `generated`. Se `status = completed`, tamb m emite `DomainEvents.ANAMNESIS_PLAN_GENERATED` (status `generated`).
+
 ### Persistencia e Storage
+
 - Migrations essenciais:
   - `1738100000000-CreateAnamnesisTables`
   - `1738200000000-AddAnamnesisTemplatesAndAIResponses`
@@ -394,11 +433,12 @@ Use `AnamnesisMetricsService.getSnapshot([tenantId])` ou o endpoint `GET /anamne
 - Storage: `SupabaseAnamnesisAttachmentStorageService` salva anexos com checksum, `mimeType`, `size` e `storagePath` versionado.
 
 ### Testes
+
 - Suites unitarias/integracao/E2E: `test/unit/modules.anamnesis/**`, `test/integration/anamnesis.controller.integration.spec.ts`, `test/e2e/anamnesis.e2e-spec.ts`.
 - Pipeline recomendado: `npm run lint` -> `npx tsc --noEmit` -> `npm run test:unit` -> `npm run test:int` -> `npm run test:e2e` -> `npm run test:cov` -> `npm run build`.
 
-
 ## Modulo de Agendamento
+
 - `POST /scheduling/holds` reserva hor rios ap s validar conflitos e anteced ncia, emitindo `scheduling.hold.created`.
 - `POST /scheduling/bookings` converte holds em agendamentos e publica `scheduling.booking.created`.
 - `POST /scheduling/bookings/:bookingId/confirm` confirma o atendimento com pagamento aprovado e emite `scheduling.booking.confirmed`.
@@ -406,14 +446,20 @@ Use `AnamnesisMetricsService.getSnapshot([tenantId])` ou o endpoint `GET /anamne
 - `POST /scheduling/bookings/:bookingId/cancel` registra motivo/vers o e gera `scheduling.booking.cancelled`.
 - `POST /scheduling/bookings/:bookingId/no-show` marca aus ncia ap s validar toler ncia e emite `scheduling.booking.no_show`.
 - `PATCH /scheduling/bookings/:bookingId/payment-status` atualiza o status financeiro e propaga `scheduling.payment.status_changed`.
-- Casos de uso dispon veis: cria  o/cancelamento de booking, cria  o de hold, confirma  o, reagendamento, marca  o de no-show e atualiza  o de pagamento   todos baseados em `BaseUseCase` e integrados ao `MessageBus`.
-- Eventos de agendamento agora alimentam consumidores especializados (`SchedulingEventsSubscriber`) que disparam integra  es de billing (`billing.*`), m tricas (`analytics.scheduling.*`) e notifica  es (`notifications.scheduling.*`) via `MessageBus`.
-- Testes unit rios cobrem casos de uso, presenters, servi os de billing/m tricas/notifica  es e o subscriber (`test/unit/modules.scheduling/**`), enquanto a su te de integra  o `test/integration/scheduling.controller.integration.spec.ts` valida a camada HTTP ponta a ponta.
+- Casos de uso dispon veis: cria o/cancelamento de booking, cria o de hold, confirma o, reagendamento, marca o de no-show e atualiza o de pagamento todos baseados em `BaseUseCase` e integrados ao `MessageBus`.
+- Eventos de agendamento agora alimentam consumidores especializados (`SchedulingEventsSubscriber`) que disparam integra es de billing (`billing.*`), m tricas (`analytics.scheduling.*`) e notifica es (`notifications.scheduling.*`) via `MessageBus`.
+- Testes unit rios cobrem casos de uso, presenters, servi os de billing/m tricas/notifica es e o subscriber (`test/unit/modules.scheduling/**`), enquanto a su te de integra o `test/integration/scheduling.controller.integration.spec.ts` valida a camada HTTP ponta a ponta.
 - **Provisionamento obrigat rio:** executar as migrations ap s atualizar o c digo (`npm run typeorm migration:run -- -d src/infrastructure/database/data-source.ts`) para criar as tabelas `scheduling_*` utilizadas pelos fluxos de hold/booking.
 
 ## Modulo de Clinica
+
 - Configuracoes completas (dados gerais, equipe, horarios, servicos, pagamentos,
   integracoes, notificacoes e branding) com autosave, versionamento e auditoria.
+- Cache distribuido de configuracoes via Redis (TTL padrao 10 min) com fallback em memoria
+  quando `CLINIC_CONFIGURATION_CACHE_REDIS_URL` nao estiver definido; ajustar TTL via
+  `CLINIC_CONFIGURATION_CACHE_TTL_SECONDS` ou `CLINIC_CONFIGURATION_CACHE_TTL_MS`.
+- Endpoint `GET /clinics/:clinicId/settings/template-overrides` lista overrides ativos e
+  historicos por secao com paginacao e opcao de incluir registros superseded.
 - Convites com token de uso unico, TTL, resumo economico (tipos, preco, repasse
   fixo ou percentual), escopo de canais (`direct`/`marketplace`/`both`) e token
   vinculado ao profissional/email antes do aceite; aceite referencia a agenda do
@@ -434,9 +480,9 @@ Use `AnamnesisMetricsService.getSnapshot([tenantId])` ou o endpoint `GET /anamne
   e bloqueando conflitos cross-clinic.
 - Holds clinicos com TTL, validacao dupla de antecedencia, confirmacao idempotente
   e avaliacao de overbooking controlada por heuristica de risco/adocao manual.
-- Cria  o de holds valida o canal (`direct`/`marketplace`) contra a politica clinica↔profissional
+- Cria o de holds valida o canal (`direct`/`marketplace`) contra a politica clinica↔profissional
   vigente, bloqueia combinacoes nao autorizadas e registra o snapshot da politica no metadata
-  para liquida  es futuras.
+  para liquida es futuras.
 - Integra o com ASAAS (webhooks HMAC, split half-even, ordem de sobras,
   reconciliacao, worker de repasse), WhatsApp (templates, quiet hours), Google
   Calendar 2-vias (evento externo pendente ate validacao) e email com tracking.
@@ -459,6 +505,7 @@ Use `AnamnesisMetricsService.getSnapshot([tenantId])` ou o endpoint `GET /anamne
 - Guia completo: ver `../docs/clinic-module-clarifications.md` (workspace externo)
 
 ### Workers e monitoramento da clinica
+
 - `ClinicAlertMonitorService` depende de `CLINIC_ALERT_WORKER_ENABLED=true`; ajuste
   `CLINIC_ALERT_WORKER_INTERVAL_MS`, `CLINIC_ALERT_LOOKBACK_DAYS` e thresholds de
   receita/ocupacao conforme o perfil das clinicas. Logs aparecem como
@@ -476,19 +523,22 @@ Use `AnamnesisMetricsService.getSnapshot([tenantId])` ou o endpoint `GET /anamne
   - `npm run test:e2e -- --testPathPattern=clinic`
 
 ## Exportacao de Pacientes
+
 - `POST /patients/export` enfileira solicitacao na tabela `patient_exports`.
 - Filtros enviados sao persistidos em JSONB (`status`, `tags`, `assignedProfessionalIds`, etc.).
 - Resposta imediata `202 { "fileUrl": "" }` indicando job pendente.
 - Worker (externo) deve preencher `file_path` posteriormente.
+
 ## Documentacao Swagger
+
 - Interface interativa disponivel em `http://localhost:3000/docs` (desenvolvimento).
 - Definicao JSON em `http://localhost:3000/docs-json` para import em Postman/Insomnia.
 - Autentique-se com um token Bearer gerado via fluxo de login descrito neste README.
 - Ajuste `SWAGGER_SERVER_URL` no `.env` para refletir o host publico em staging/producao.
 - Para regenerar `openapi.json` execute `npx ts-node -P tsconfig.json scripts/generate-openapi.ts` com o servidor desligado.
 
-
 ## Como Rodar Localmente
+
 ```bash
 npm install
 npm run build
@@ -546,10 +596,10 @@ CLINIC_INVITATION_TOKEN_WINDOW_MS=600000
 CLINIC_INVITATION_TOKEN_BLOCK_MS=1800000
 ```
 
-
 > Para evitar erros IPv6 use o pooler do Supabase (`aws-0-sa-east-1.pooler.supabase.com:6543`) e defina `NODE_OPTIONS=--dns-result-order=ipv4first`.
 
 ### Migracoes obrigatorias
+
 Novos ambientes precisam aplicar as migrations `1738606000000`, `1738607000000` e `1738608000000` para habilitar metricas,
 auditoria de webhooks e governanca de termos. Execute a sequencia abaixo com as credenciais do Supabase/Postgres:
 
@@ -558,6 +608,7 @@ npm run migration:run -- -d src/infrastructure/database/data-source.ts
 ```
 
 ### Worker de IA em producao
+
 1. Provisionar uma VM/servico (Render, Fly, EC2, etc.) com Node 20+.
 2. Exportar as variaveis do bloco **AI Worker Configuration** (`ANAMNESIS_AI_WORKER_URL`, `ANAMNESIS_AI_WORKER_TOKEN`,
    `ANAMNESIS_AI_WEBHOOK_SECRET`, custos por token, etc.) tanto no backend quanto no servico externo.
@@ -580,11 +631,13 @@ npm run migration:run -- -d src/infrastructure/database/data-source.ts
   6. O backend envia automaticamente `x-worker-token` e replica `webhookBaseUrl`/`webhookSecret` via `metadata` em cada job.
 
 ### Metricas e observabilidade
+
 - Snapshot consolidado disponivel em `GET /anamneses/metrics`, aceitando filtros `from`/`to` (ISO 8601).
 - Usuarios internos (SUPER_ADMIN) podem informar `tenantId`; demais perfis usam o tenant do header/guard.
 - As metricas persistem em `anamnesis_metrics` por (`tenant_id`, `metric_date`); utilize o endpoint ou consultas SQL para dashboards (Metabase, Grafana, etc.).
 
 ## Testes Manuais Recomendados
+
 1. Login SUPER_ADMIN + fluxo 2FA completo.
 2. Listar usuarios e pacientes com access token.
 3. Criar paciente, atualizar, transferir, arquivar e confirmar estado.
@@ -592,7 +645,9 @@ npm run migration:run -- -d src/infrastructure/database/data-source.ts
 5. Exportar pacientes e inspecionar `patient_exports` via REST.
 6. Logout com `{ "allDevices": true }` e verificacao de revogacao em `user_sessions`.
 7. Emitir convite com `targetEmail`, consumir `POST /clinics/invitations/{invitationId}/onboarding` (nome/cpf/senha) e verificar aceite + criacao do profissional nas auditorias e no dashboard da clinica.
+
 ## Guia para Novos Modulos
+
 1. **Planejamento de dominio**
    - Levante entidades, fluxos e integracoes externas necessarias.
    - Defina antecipadamente as roles (`RolesEnum`) autorizadas e as regras de tenant por endpoint.
@@ -624,29 +679,34 @@ npm run migration:run -- -d src/infrastructure/database/data-source.ts
    - Revise a secao "Linha de Base de Qualidade" com notas/metas apos cada entrega relevante.
 
 ## Matriz de Testes Automatizados
-| Suite | Comando | Escopo | Observacoes |
-| --- | --- | --- | --- |
-| Unit | `npm run test:unit` | Schemas, mappers, presenters, use cases isolados | Usa ts-jest com `collectCoverageFrom` cobrindo `src/modules/**`. |
-| Integracao | `npm run test:int` | Controllers (Auth, Users, Patients) com Nest TestingModule | Exercita guards, pipes e resolucao de tenant sem integrar com terceiros. |
-| E2E | `npm run test:e2e` | Fluxos HTTP completos via supertest | Requer Supabase configurado; usa fixtures em `test/e2e`. |
-| Cobertura | `npm run test:cov` | Agrega suites unit e integracao com cobertura 100% | Mantem thresholds globais em 100% para statements/branches/functions/lines. |
+
+| Suite      | Comando             | Escopo                                                     | Observacoes                                                                 |
+| ---------- | ------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Unit       | `npm run test:unit` | Schemas, mappers, presenters, use cases isolados           | Usa ts-jest com `collectCoverageFrom` cobrindo `src/modules/**`.            |
+| Integracao | `npm run test:int`  | Controllers (Auth, Users, Patients) com Nest TestingModule | Exercita guards, pipes e resolucao de tenant sem integrar com terceiros.    |
+| E2E        | `npm run test:e2e`  | Fluxos HTTP completos via supertest                        | Requer Supabase configurado; usa fixtures em `test/e2e`.                    |
+| Cobertura  | `npm run test:cov`  | Agrega suites unit e integracao com cobertura 100%         | Mantem thresholds globais em 100% para statements/branches/functions/lines. |
 
 Resultados recentes: `npm run test:cov` reportou 266 testes (unit + integracao) com cobertura global 100%. As suites dedicadas registraram 226 unit, 40 integracao e 27 e2e.
 
 ## Fluxo Completo de Teste via cURL
+
 > Observacoes:
+>
 > - Utilize `curl.exe` no PowerShell para evitar o alias `Invoke-WebRequest`.
 > - Centralize arquivos temporarios em `payloads/` e limpe-os ao final.
 > - Confirme que a API esta ativa (`http://localhost:3000/health`) e que `.env` contem `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` validos.
 > - Garanta que o bucket configurado em `ANAMNESIS_STORAGE_BUCKET` exista no Supabase Storage (ex.: `anamneses`) antes de testar uploads de anexos.
 
 1. **Preparacao**
+
    ```powershell
    Set-Location D:\\www\\Onterapi\\onterarapi-v4
    New-Item -ItemType Directory -Force payloads | Out-Null
    ```
 
 2. **Sign-in com 2FA habilitado**
+
    ```powershell
    '{"email":"<EMAIL>","password":"<PASSWORD>"}' |
      Set-Content -NoNewline -Path payloads/auth-sign-in.json
@@ -658,6 +718,7 @@ Resultados recentes: `npm run test:cov` reportou 266 testes (unit + integracao) 
    ```
 
 3. **Envio e leitura do codigo 2FA**
+
    ```powershell
    '{"tempToken":"' + $tempToken + '","method":"email"}' |
      Set-Content -NoNewline -Path payloads/auth-two-fa-send.json
@@ -675,6 +736,7 @@ Resultados recentes: `npm run test:cov` reportou 266 testes (unit + integracao) 
    ```
 
 4. **Validacao do 2FA e captura dos tokens**
+
    ```powershell
    '{"tempToken":"' + $tempToken + '","code":"' + $code + '","trustDevice":false,"deviceInfo":{"userAgent":"curl-tests","ip":"127.0.0.1"}}' |
      Set-Content -NoNewline -Path payloads/auth-two-fa-validate.json
@@ -688,6 +750,7 @@ Resultados recentes: `npm run test:cov` reportou 266 testes (unit + integracao) 
    ```
 
 5. **Fluxo completo de USERS**
+
    ```powershell
    '{"email":"curl.user.<timestamp>@onterapi.com","password":"Teste@12345","name":"Usuaria Teste Curl","cpf":"39053344705","phone":"11999990000","role":"SECRETARY","tenantId":"645d883f-535a-4c3e-9d93-4f1204bd489d"}' |
      Set-Content -NoNewline -Path payloads/users-create.json
@@ -705,6 +768,7 @@ Resultados recentes: `npm run test:cov` reportou 266 testes (unit + integracao) 
    ```
 
 6. **Fluxo completo de PATIENTS**
+
    ```powershell
    '{"fullName":"Paciente Curl","cpf":"<CPF_VALIDO>","birthDate":"1990-05-01T00:00:00.000Z","email":"paciente.curl.<timestamp>@onterapi.com","phone":"11988887777","whatsapp":"11988887777","zipCode":"01310930","street":"Rua Curl","number":"123","district":"Centro","city":"Sao Paulo","state":"SP","country":"BR","tags":["curl-test"],"preExistingConditions":["hipertensao"],"continuousMedications":[{"name":"Losartana","dosage":"50mg","frequency":"1x ao dia"}],"heightCm":170,"weightKg":72.5,"acceptedTerms":true,"professionalId":"38f5f077-2042-4283-9308-b6bb73e18183"}' |
      Set-Content -NoNewline -Path payloads/patients-create.json
@@ -730,6 +794,7 @@ Resultados recentes: `npm run test:cov` reportou 266 testes (unit + integracao) 
    ```
 
 7. **Fluxo completo de SCHEDULING (hold -> booking -> confirm -> reschedule -> cancel)**
+
    ```powershell
    $clinicId = $tenantId
    $professionalId = $tokens.user.id
@@ -798,9 +863,11 @@ Resultados recentes: `npm run test:cov` reportou 266 testes (unit + integracao) 
    > Reaproveite sempre o campo `version` retornado nas respostas para manter o lock otimista nas chamadas seguintes.
 
 8. **Fluxo completo de ANAMNESES (incluindo anexos)**
+
    > Requer que o bucket configurado em `ANAMNESIS_STORAGE_BUCKET` exista no Supabase Storage.
 
    Inicie o rascunho:
+
    ```powershell
    $patientId = $createdPatient.id
    $professionalId = if ($createdPatient.professionalId) { $createdPatient.professionalId } else { $tokens.user.id }
@@ -821,6 +888,7 @@ Resultados recentes: `npm run test:cov` reportou 266 testes (unit + integracao) 
    ```
 
    Preencha as etapas (exemplo simplificado):
+
    ```powershell
    $steps = @(
      @{ number = 1; key = 'identification'; payload = @{ personalInfo = @{ fullName = 'Paciente Fluxo API'; birthDate = '1990-01-10'; gender = 'female' }; contactInfo = @{ phone = '11999999999' } } }
@@ -852,6 +920,7 @@ Resultados recentes: `npm run test:cov` reportou 266 testes (unit + integracao) 
    ```
 
    Gerar anexos de teste e enviar:
+
    ```powershell
    'Laudo gerado via curl em ' + (Get-Date -Format o) | Set-Content -NoNewline -Path payloads/anamnesis-attachment.txt
 
@@ -859,6 +928,7 @@ Resultados recentes: `npm run test:cov` reportou 266 testes (unit + integracao) 
    ```
 
    Submeter, registrar plano e feedback:
+
    ```powershell
    curl.exe -s -X POST "$BASE_URL/anamneses/$anamnesisId/submit" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" -H "Content-Type: application/json" --data '{}' | Out-Null
 
@@ -885,6 +955,7 @@ Resultados recentes: `npm run test:cov` reportou 266 testes (unit + integracao) 
    ```
 
    Consultar detalhes e hist rico:
+
    ```powershell
    curl.exe -s "$BASE_URL/anamneses/$anamnesisId?includeSteps=true&includeLatestPlan=true&includeAttachments=true" -H "Authorization: Bearer $accessToken" -H "x-tenant-id: $tenantId" > payloads/anamnesis-detail.json
 
@@ -894,22 +965,25 @@ Resultados recentes: `npm run test:cov` reportou 266 testes (unit + integracao) 
    > Para anexar novos arquivos, repita o `POST /attachments` com outro nome; o storage n o permite sobrescrita (upsert=false).
 
 9. **Remover o paciente de teste no Supabase (opcional)**
+
    ```powershell
    curl.exe -s -X DELETE "$SUPABASE_URL/rest/v1/patients?id=eq.$($createdPatient.id)" -H "apikey: $SERVICE_ROLE_KEY" -H "Authorization: Bearer $SERVICE_ROLE_KEY" | Out-Null
    ```
 
 10. **Logout**
-   ```powershell
-   '{"allDevices":true,"refreshToken":"' + $refreshToken + '"}' |
-     Set-Content -NoNewline -Path payloads/auth-sign-out.json
-   curl.exe -s -X POST "$BASE_URL/auth/sign-out" -H "Authorization: Bearer $accessToken" \
-     -H "Content-Type: application/json" --data @payloads/auth-sign-out.json | Out-Null
-   ```
+
+```powershell
+'{"allDevices":true,"refreshToken":"' + $refreshToken + '"}' |
+  Set-Content -NoNewline -Path payloads/auth-sign-out.json
+curl.exe -s -X POST "$BASE_URL/auth/sign-out" -H "Authorization: Bearer $accessToken" \
+  -H "Content-Type: application/json" --data @payloads/auth-sign-out.json | Out-Null
+```
 
 11. **Limpeza**
-   ```powershell
-   Remove-Item -Recurse -Force payloads
-   ```
+
+```powershell
+Remove-Item -Recurse -Force payloads
+```
 
 O fluxo acima garante que o usuario de teste e o paciente temporario sejam arquivados e, em seguida, removidos definitivamente do Supabase, finalizando com logout e limpeza dos arquivos temporarios.
 
@@ -921,45 +995,52 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 
 ## Pontuacao Atual
 
-| Criterio | Nota atual (0-10) | Meta | Evidencias chave |
-| --- | --- | --- | --- |
-| DRY / Reuso de codigo | 9.7 | >= 9.0 | Controllers de Auth, Patients, Scheduling e Anamnesis continuam delegando normalizacao a mappers/presenters; casos de uso de scheduling reutilizam `BookingValidationService`/`SchedulingRequestContext` evitando condicionais duplicadas e repeticao de logs. |
-| Automacao de qualidade | 9.0 | >= 8.5 | Sequencia manual revalidada em 10/10 (14:28h) com Node 22.18.0: npm run lint -> npx tsc --noEmit -> npm run test:unit -> npm run test:int -> npm run test:e2e -> npm run test:cov -> npm run build (incluso controlador de scheduling). |
-| Testes automatizados | 10.0 | >= 9.5 | 226 testes unitarios (24.4 s), 40 de integracao (13.6 s) e 27 e2e (19.0 s) executados na sequencia atual; suite com cobertura completa (test:cov) consolidou 266 testes em 16.2 s mantendo 100%. |
-| Validacoes e contratos | 9.6 | >= 9.0 | Controllers de Anamnesis e Scheduling aplicam Zod (`rescheduleBookingSchema`, `createHoldSchema`, etc.) antes de chamar os casos de uso, disparando erros traduzidos via `SchedulingErrorFactory`/`AuthErrorFactory` e garantindo payload sanitizado. |
-| Governanca de dominio / RBAC | 9.1 | >= 9.0 | Casos de uso de Anamnesis e Scheduling reforcam ensureCanModifyAnamnesis/resolveContext; rotas de anexos, historico, scheduling e webhook usam TenantGuard + RolesGuard dedicados para cada perfil. |
+| Criterio                     | Nota atual (0-10) | Meta   | Evidencias chave                                                                                                                                                                                                                                               |
+| ---------------------------- | ----------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DRY / Reuso de codigo        | 9.7               | >= 9.0 | Controllers de Auth, Patients, Scheduling e Anamnesis continuam delegando normalizacao a mappers/presenters; casos de uso de scheduling reutilizam `BookingValidationService`/`SchedulingRequestContext` evitando condicionais duplicadas e repeticao de logs. |
+| Automacao de qualidade       | 9.0               | >= 8.5 | Sequencia manual revalidada em 10/10 (14:28h) com Node 22.18.0: npm run lint -> npx tsc --noEmit -> npm run test:unit -> npm run test:int -> npm run test:e2e -> npm run test:cov -> npm run build (incluso controlador de scheduling).                        |
+| Testes automatizados         | 10.0              | >= 9.5 | 226 testes unitarios (24.4 s), 40 de integracao (13.6 s) e 27 e2e (19.0 s) executados na sequencia atual; suite com cobertura completa (test:cov) consolidou 266 testes em 16.2 s mantendo 100%.                                                               |
+| Validacoes e contratos       | 9.6               | >= 9.0 | Controllers de Anamnesis e Scheduling aplicam Zod (`rescheduleBookingSchema`, `createHoldSchema`, etc.) antes de chamar os casos de uso, disparando erros traduzidos via `SchedulingErrorFactory`/`AuthErrorFactory` e garantindo payload sanitizado.          |
+| Governanca de dominio / RBAC | 9.1               | >= 9.0 | Casos de uso de Anamnesis e Scheduling reforcam ensureCanModifyAnamnesis/resolveContext; rotas de anexos, historico, scheduling e webhook usam TenantGuard + RolesGuard dedicados para cada perfil.                                                            |
 
 ## Observacoes Detalhadas
 
 ### DRY e reuso
+
 - Controllers (Auth, TwoFactor, Patients, Users, Anamnesis) compartilham helpers de contexto e mappers, evitando spreads e normalizacoes ad-hoc nos endpoints.
-- Repositorio de anamnese usa `TemplateSelectionContext`, `getTemplatePriority` e `shouldReplaceTemplate` para escolher templates por tenant/especialidade sem condi  es duplicadas.
+- Repositorio de anamnese usa `TemplateSelectionContext`, `getTemplatePriority` e `shouldReplaceTemplate` para escolher templates por tenant/especialidade sem condi es duplicadas.
 - SupabaseAnamnesisAttachmentStorageService e AnamnesisMetricsService concentram storage/metricas e reutilizam factories/eventos multi-tenant.
 
 ### Automacao e scripts
+
 - Bateria manual confirmada em 30/09 (10:06h) com Node 22.18.0: lint -> tsc -> test:unit -> test:int -> test:e2e -> test:cov -> build, com logs arquivados.
 - coverage-summary.json segue versionado como referencia; migrations `1738200000000` e `1738300000000` foram exercitadas com `npm run typeorm migration:run -- -d src/infrastructure/database/data-source.ts` antes de aplicacao em ambientes compartilhados.
 
 ### Testes
+
 - Novos specs cobrem selecao de templates, metrics service, feedback scoreboard e fluxo webhook; mocks em memoria mantem branches do repositorio alinhados com as entidades reais.
 - 219 (unit, 23.5 s) + 35 (integracao, 12.7 s) garantem o pipeline unit/int; 27 (e2e, 18.5 s) roda isolado. `npm run test:cov` consolidou 255 casos em 15.9 s com 100% de cobertura, incluindo o fluxo start -> auto-save -> submit -> cancel -> webhook -> feedback com anexos Supabase.
 - Cenarios negativos validam RBAC (PATIENT vs PROFESSIONAL), conflitos de autosave, erros de storage e webhooks nao autorizados sem gerar falsos positivos.
 
-### Integra  o IA & M tricas
+### Integra o IA & M tricas
+
 - SubmitAnamnesisUseCase publica evento completo para CrewAI; webhook `/anamneses/:id/ai-result` persiste `analysisId`, reasoning, risk e recommendations e dispara ANAMNESIS_AI_COMPLETED.
 - SavePlanFeedbackUseCase grava scoreboard em `anamnesis_ai_feedbacks` (approvalStatus, liked, comentario) e emite ANAMNESIS_PLAN_FEEDBACK_SAVED para alimentar treinamento supervisionado.
-- AnamnesisEventsSubscriber atualiza `anamnesis_metrics` via `AnamnesisMetricsRepository`, removendo caches em mem ria e permitindo agrega  es por tenant/dia com custo/token/lat ncia.
+- AnamnesisEventsSubscriber atualiza `anamnesis_metrics` via `AnamnesisMetricsRepository`, removendo caches em mem ria e permitindo agrega es por tenant/dia com custo/token/lat ncia.
 - AnamnesisEventsSubscriber alimenta `AnamnesisMetricsService` (steps salvos, autosaves, completude, feedbacks aprovados) mantendo indicadores por tenant prontos para dashboards.
 
 ### Validacao e contratos
+
 - Todos os endpoints de auth, users e patients consomem dados validados pelo ZodValidationPipe e mappers, preservando DTOs apenas para Swagger.
 - Fallbacks de device/ip e tenantId estao centralizados, evitando divergencias futuras.
 
 ### RBAC e dominio
+
 - Sem mudancas nas politicas; validacoes de role/tenant permanecem nos use cases existentes.
 - Necessario expandir cobertura para agenda/financeiro antes de elevar a meta.
 
 ## Testes Executados
+
 - npm run lint
 - npx tsc --noEmit
 - npm run test:unit
@@ -969,7 +1050,9 @@ O fluxo acima garante que o usuario de teste e o paciente temporario sejam arqui
 - npm run build
 
 Este documento serve como baseline; reavalie os criterios depois de cada entrega significativa.
+
 ## Fluxograma do Projeto
+
 ```mermaid
 flowchart LR
     Client[Clientes Web/Mobile] --> API[NestJS API]
@@ -992,6 +1075,7 @@ flowchart LR
 ```
 
 ## Troubleshooting
+
 - **Supabase signOut error: invalid JWT**: agora tratado como `debug`, fluxo segue normalmente.
 - **Token nao fornecido**: verifique header `Authorization: Bearer <accessToken>`.
 - **Tenant invalido**: sempre enviar o tenant real ou deixar o guard resolver via metadata. Execute `npm run assign-super-admin-tenant` apos criar/atualizar tenants internos para garantir que os SUPER_ADMIN recebam o tenant padrao.

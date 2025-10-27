@@ -1,3 +1,5 @@
+import { ConfigService } from '@nestjs/config';
+
 import { ClinicConfigurationTelemetryService } from '../../../src/modules/clinic/services/clinic-configuration-telemetry.service';
 import { ClinicConfigurationCacheService } from '../../../src/modules/clinic/services/clinic-configuration-cache.service';
 import { GetClinicGeneralSettingsUseCase } from '../../../src/modules/clinic/use-cases/get-clinic-general-settings.use-case';
@@ -27,7 +29,7 @@ describe('GetClinicGeneralSettingsUseCase', () => {
   beforeEach(() => {
     clinicRepository = clinicRepositoryMock();
     configurationRepository = configurationRepositoryMock();
-    cacheService = new ClinicConfigurationCacheService();
+    cacheService = new ClinicConfigurationCacheService(new ConfigService());
     telemetryService = new ClinicConfigurationTelemetryService(
       clinicRepository as any,
       cacheService,
@@ -78,6 +80,10 @@ describe('GetClinicGeneralSettingsUseCase', () => {
 
     clinicRepository.findByTenant.mockResolvedValue(clinic);
     configurationRepository.findLatestAppliedVersion.mockResolvedValue(version);
+  });
+
+  afterEach(async () => {
+    await cacheService.onModuleDestroy();
   });
 
   it('returns configuration with telemetry and caches result', async () => {

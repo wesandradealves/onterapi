@@ -5,6 +5,7 @@ import { ClinicAuditService } from '../../../src/infrastructure/clinic/services/
 import { MessageBus } from '../../../src/shared/messaging/message-bus';
 import { ClinicTemplateOverrideService } from '../../../src/modules/clinic/services/clinic-template-override.service';
 import { DomainEvents } from '../../../src/shared/events/domain-events';
+import { ClinicConfigurationCacheService } from '../../../src/modules/clinic/services/clinic-configuration-cache.service';
 import {
   Clinic,
   ClinicConfigurationVersion,
@@ -54,6 +55,7 @@ describe('PropagateClinicTemplateUseCase', () => {
   let useCase: PropagateClinicTemplateUseCase;
   let messageBus: Mocked<MessageBus>;
   let templateOverrideService: Mocked<ClinicTemplateOverrideService>;
+  let configurationCache: Mocked<ClinicConfigurationCacheService>;
 
   beforeEach(() => {
     clinicRepository = {
@@ -85,6 +87,10 @@ describe('PropagateClinicTemplateUseCase', () => {
       markOverrideApplied: jest.fn(),
     } as unknown as Mocked<ClinicTemplateOverrideService>;
 
+    configurationCache = {
+      set: jest.fn(),
+    } as unknown as Mocked<ClinicConfigurationCacheService>;
+
     (templateOverrideService.mergeWithActiveOverride as jest.Mock).mockImplementation(
       async ({ templateVersion }) => ({
         payload: templateVersion.payload ?? {},
@@ -98,6 +104,7 @@ describe('PropagateClinicTemplateUseCase', () => {
       auditService,
       messageBus,
       templateOverrideService,
+      configurationCache,
     );
   });
 
@@ -166,6 +173,38 @@ describe('PropagateClinicTemplateUseCase', () => {
     expect(auditService.register).toHaveBeenCalledTimes(4);
     expect(templateOverrideService.mergeWithActiveOverride).toHaveBeenCalledTimes(4);
     expect(templateOverrideService.markOverrideApplied).not.toHaveBeenCalled();
+    expect(configurationCache.set).toHaveBeenCalledTimes(4);
+
+    const cacheCalls = configurationCache.set.mock.calls.map((call) => call[0]);
+
+    expect(cacheCalls).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          clinicId: 'clinic-a',
+          section: 'general',
+          version: expect.objectContaining({ id: 'new-version-1' }),
+        }),
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          clinicId: 'clinic-b',
+          section: 'general',
+          version: expect.objectContaining({ id: 'new-version-2' }),
+        }),
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          clinicId: 'clinic-a',
+          section: 'services',
+          version: expect.objectContaining({ id: 'new-version-3' }),
+        }),
+        expect.objectContaining({
+          tenantId: 'tenant-1',
+          clinicId: 'clinic-b',
+          section: 'services',
+          version: expect.objectContaining({ id: 'new-version-4' }),
+        }),
+      ]),
+    );
     expect(clinicRepository.updateTemplateOverrideMetadata).toHaveBeenCalledTimes(4);
     expect(messageBus.publish).toHaveBeenCalledTimes(4);
 

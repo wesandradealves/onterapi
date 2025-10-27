@@ -108,7 +108,7 @@ export class UpdateClinicNotificationSettingsUseCase
 
       version.telemetry = telemetry;
 
-      this.configurationCache.set({
+      await this.configurationCache.set({
         tenantId: input.tenantId,
         clinicId: input.clinicId,
         section: 'notifications',

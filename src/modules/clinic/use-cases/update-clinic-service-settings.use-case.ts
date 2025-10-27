@@ -108,7 +108,7 @@ export class UpdateClinicServiceSettingsUseCase
 
       version.telemetry = telemetry;
 
-      this.configurationCache.set({
+      await this.configurationCache.set({
         tenantId: input.tenantId,
         clinicId: input.clinicId,
         section: 'services',

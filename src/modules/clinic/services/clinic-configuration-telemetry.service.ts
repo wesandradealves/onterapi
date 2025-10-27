@@ -62,7 +62,7 @@ export class ClinicConfigurationTelemetryService {
     };
 
     await this.persistTelemetry(params.clinic, telemetry);
-    this.invalidateCache(params.clinic, params.section);
+    await this.invalidateCache(params.clinic, params.section);
 
     return telemetry;
   }
@@ -92,7 +92,7 @@ export class ClinicConfigurationTelemetryService {
     };
 
     await this.persistTelemetry(params.clinic, telemetry);
-    this.invalidateCache(params.clinic, params.section);
+    await this.invalidateCache(params.clinic, params.section);
 
     return telemetry;
   }
@@ -116,7 +116,7 @@ export class ClinicConfigurationTelemetryService {
     };
 
     await this.persistTelemetry(params.clinic, telemetry);
-    this.invalidateCache(params.clinic, params.section);
+    await this.invalidateCache(params.clinic, params.section);
 
     return telemetry;
   }
@@ -203,8 +203,11 @@ export class ClinicConfigurationTelemetryService {
     });
   }
 
-  private invalidateCache(clinic: Clinic, section: ClinicConfigurationSection): void {
-    this.cacheService.invalidate({
+  private async invalidateCache(
+    clinic: Clinic,
+    section: ClinicConfigurationSection,
+  ): Promise<void> {
+    await this.cacheService.invalidate({
       tenantId: clinic.tenantId,
       clinicId: clinic.id,
       section,

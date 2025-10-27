@@ -38,7 +38,7 @@ export class GetClinicTeamSettingsUseCase
   }
 
   protected async handle(input: GetClinicTeamSettingsInput): Promise<ClinicConfigurationVersion> {
-    const cached = this.configurationCache.get({
+    const cached = await this.configurationCache.get({
       tenantId: input.tenantId,
       clinicId: input.clinicId,
       section: 'team',
@@ -74,7 +74,7 @@ export class GetClinicTeamSettingsUseCase
       autoApply: version.autoApply,
     });
 
-    this.configurationCache.set({
+    await this.configurationCache.set({
       tenantId: input.tenantId,
       clinicId: input.clinicId,
       section: 'team',

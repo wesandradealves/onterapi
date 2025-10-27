@@ -40,7 +40,7 @@ export class GetClinicBrandingSettingsUseCase
   protected async handle(
     input: GetClinicBrandingSettingsInput,
   ): Promise<ClinicConfigurationVersion> {
-    const cached = this.configurationCache.get({
+    const cached = await this.configurationCache.get({
       tenantId: input.tenantId,
       clinicId: input.clinicId,
       section: 'branding',
@@ -76,7 +76,7 @@ export class GetClinicBrandingSettingsUseCase
       autoApply: version.autoApply,
     });
 
-    this.configurationCache.set({
+    await this.configurationCache.set({
       tenantId: input.tenantId,
       clinicId: input.clinicId,
       section: 'branding',

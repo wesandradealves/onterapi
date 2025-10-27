@@ -9,6 +9,7 @@ import {
   ClinicTemplateOverride,
 } from '../../../src/domain/clinic/types/clinic.types';
 import { hashOverridePayload } from '../../../src/modules/clinic/utils/template-override.util';
+import { ClinicConfigurationCacheService } from '../../../src/modules/clinic/services/clinic-configuration-cache.service';
 
 type Mocked<T> = jest.Mocked<T>;
 
@@ -78,6 +79,7 @@ describe('ClinicTemplateOverrideService', () => {
   let configurationRepository: Mocked<IClinicConfigurationRepository>;
   let clinicRepository: Mocked<IClinicRepository>;
   let auditService: Mocked<ClinicAuditService>;
+  let configurationCache: Mocked<ClinicConfigurationCacheService>;
   let service: ClinicTemplateOverrideService;
 
   beforeEach(() => {
@@ -108,11 +110,16 @@ describe('ClinicTemplateOverrideService', () => {
       register: jest.fn(),
     } as unknown as Mocked<ClinicAuditService>;
 
+    configurationCache = {
+      invalidate: jest.fn(),
+    } as unknown as Mocked<ClinicConfigurationCacheService>;
+
     service = new ClinicTemplateOverrideService(
       overrideRepository,
       configurationRepository,
       clinicRepository,
       auditService,
+      configurationCache,
     );
   });
 
@@ -199,6 +206,12 @@ describe('ClinicTemplateOverrideService', () => {
           }),
         }),
       );
+      expect(configurationCache.invalidate).toHaveBeenCalledTimes(1);
+      expect(configurationCache.invalidate).toHaveBeenCalledWith({
+        tenantId: clinic.tenantId,
+        clinicId: clinic.id,
+        section: 'general',
+      });
     });
   });
 
@@ -227,6 +240,12 @@ describe('ClinicTemplateOverrideService', () => {
         override: null,
       });
       expect(overrideRepository.create).not.toHaveBeenCalled();
+      expect(configurationCache.invalidate).toHaveBeenCalledTimes(1);
+      expect(configurationCache.invalidate).toHaveBeenCalledWith({
+        tenantId: clinic.tenantId,
+        clinicId: clinic.id,
+        section: 'general',
+      });
     });
 
     it('remove override ativo quando diff esti vazio', async () => {
@@ -277,6 +296,12 @@ describe('ClinicTemplateOverrideService', () => {
           }),
         }),
       );
+      expect(configurationCache.invalidate).toHaveBeenCalledTimes(1);
+      expect(configurationCache.invalidate).toHaveBeenCalledWith({
+        tenantId: clinic.tenantId,
+        clinicId: clinic.id,
+        section: 'general',
+      });
     });
 
     it('cria novo override e aplica imediatamente quando diff existe', async () => {
@@ -354,6 +379,12 @@ describe('ClinicTemplateOverrideService', () => {
           overrideHash: createdOverride.overrideHash,
           appliedConfigurationVersionId: 'config-version',
         }),
+      });
+      expect(configurationCache.invalidate).toHaveBeenCalledTimes(1);
+      expect(configurationCache.invalidate).toHaveBeenCalledWith({
+        tenantId: clinic.tenantId,
+        clinicId: clinic.id,
+        section: 'general',
       });
     });
   });

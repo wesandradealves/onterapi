@@ -26,8 +26,11 @@ import {
   ClinicOverbookingReviewInput,
   ClinicProfessionalFinancialClearanceStatus,
   ClinicProfessionalPolicy,
+  ClinicTemplateOverride,
+  ClinicTemplateOverrideListResult,
   ClinicTemplatePropagationInput,
   DeclineClinicInvitationInput,
+  ListClinicTemplateOverridesInput,
 } from '@domain/clinic/types/clinic.types';
 import {
   CompleteClinicInvitationOnboardingInput,
@@ -71,6 +74,7 @@ import {
   UpdateClinicScheduleSettingsInput,
 } from '@domain/clinic/interfaces/use-cases/update-clinic-schedule-settings.use-case.interface';
 import { IPropagateClinicTemplateUseCase as IPropagateClinicTemplateUseCaseToken } from '@domain/clinic/interfaces/use-cases/propagate-clinic-template.use-case.interface';
+import { IListClinicTemplateOverridesUseCase as IListClinicTemplateOverridesUseCaseToken } from '@domain/clinic/interfaces/use-cases/list-clinic-template-overrides.use-case.interface';
 import {
   GetClinicGeneralSettingsInput,
   IGetClinicGeneralSettingsUseCase as IGetClinicGeneralSettingsUseCaseToken,
@@ -233,6 +237,10 @@ describe('ClinicConfigurationController (integration)', () => {
       ClinicTemplatePropagationInput,
       ClinicConfigurationVersion[]
     >(),
+    listTemplateOverrides: createUseCaseMock<
+      ListClinicTemplateOverridesInput,
+      ClinicTemplateOverrideListResult
+    >(),
     getGeneral: createUseCaseMock<GetClinicGeneralSettingsInput, ClinicConfigurationVersion>(),
     getTeam: createUseCaseMock<GetClinicTeamSettingsInput, ClinicConfigurationVersion>(),
     getSchedule: createUseCaseMock<GetClinicScheduleSettingsInput, ClinicConfigurationVersion>(),
@@ -272,6 +280,10 @@ describe('ClinicConfigurationController (integration)', () => {
         {
           provide: IPropagateClinicTemplateUseCaseToken,
           useValue: useCases.propagateTemplate,
+        },
+        {
+          provide: IListClinicTemplateOverridesUseCaseToken,
+          useValue: useCases.listTemplateOverrides,
         },
         { provide: IGetClinicGeneralSettingsUseCaseToken, useValue: useCases.getGeneral },
         { provide: IGetClinicTeamSettingsUseCaseToken, useValue: useCases.getTeam },
@@ -350,6 +362,82 @@ describe('ClinicConfigurationController (integration)', () => {
     expect(response.body.appliedAt).toBe(version.appliedAt?.toISOString());
     expect(response.body.state).toBe('saved');
     expect(response.body.autoApply).toBe(true);
+  });
+
+  it('GET /clinics/:id/settings/template-overrides retorna overrides paginados', async () => {
+    const override: ClinicTemplateOverride = {
+      id: 'override-1',
+      clinicId: FIXTURES.clinic,
+      tenantId: FIXTURES.tenant,
+      templateClinicId: 'template-clinic',
+      section: 'services',
+      overrideVersion: 3,
+      overridePayload: { allowOnline: false },
+      overrideHash: 'hash-123',
+      baseTemplateVersionId: 'template-version-5',
+      baseTemplateVersionNumber: 5,
+      appliedConfigurationVersionId: 'config-version-2',
+      createdBy: currentUser.id,
+      createdAt: new Date('2025-09-10T10:00:00.000Z'),
+      supersededAt: undefined,
+      supersededBy: undefined,
+      updatedAt: new Date('2025-09-11T08:30:00.000Z'),
+    };
+
+    useCases.listTemplateOverrides.executeOrThrow.mockResolvedValue({
+      data: [override],
+      total: 11,
+      page: 2,
+      limit: 5,
+    });
+
+    const response = await request(app.getHttpServer())
+      .get(`/clinics/${FIXTURES.clinic}/settings/template-overrides`)
+      .set('x-tenant-id', FIXTURES.tenant)
+      .query({
+        tenantId: FIXTURES.tenant,
+        section: 'services',
+        includeSuperseded: 'true',
+        page: 2,
+        limit: 5,
+      })
+      .expect(200);
+
+    expect(useCases.listTemplateOverrides.executeOrThrow).toHaveBeenCalledWith({
+      tenantId: FIXTURES.tenant,
+      clinicId: FIXTURES.clinic,
+      section: 'services',
+      includeSuperseded: true,
+      page: 2,
+      limit: 5,
+    });
+
+    expect(response.body).toEqual({
+      data: [
+        {
+          id: override.id,
+          clinicId: override.clinicId,
+          tenantId: override.tenantId,
+          templateClinicId: override.templateClinicId,
+          section: override.section,
+          overrideVersion: override.overrideVersion,
+          overridePayload: override.overridePayload,
+          overrideHash: override.overrideHash,
+          baseTemplateVersionId: override.baseTemplateVersionId,
+          baseTemplateVersionNumber: override.baseTemplateVersionNumber,
+          appliedConfigurationVersionId: override.appliedConfigurationVersionId,
+          createdBy: override.createdBy,
+          createdAt: override.createdAt.toISOString(),
+          supersededAt: undefined,
+          supersededBy: undefined,
+          updatedAt: override.updatedAt?.toISOString(),
+        },
+      ],
+      total: 11,
+      page: 2,
+      limit: 5,
+      hasNextPage: true,
+    });
   });
 
   it('PATCH /clinics/:id/settings/general deve mapear payload e aplicar versao', async () => {

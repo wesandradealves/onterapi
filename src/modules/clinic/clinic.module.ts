@@ -78,6 +78,7 @@ import { UpdateClinicBrandingSettingsUseCase } from './use-cases/update-clinic-b
 import { UpdateClinicScheduleSettingsUseCase } from './use-cases/update-clinic-schedule-settings.use-case';
 import { UpdateClinicTeamSettingsUseCase } from './use-cases/update-clinic-team-settings.use-case';
 import { PropagateClinicTemplateUseCase } from './use-cases/propagate-clinic-template.use-case';
+import { ListClinicTemplateOverridesUseCase } from './use-cases/list-clinic-template-overrides.use-case';
 import { CreateClinicUseCase } from './use-cases/create-clinic.use-case';
 import { CreateClinicHoldUseCase } from './use-cases/create-clinic-hold.use-case';
 import { ProcessClinicOverbookingUseCase } from './use-cases/process-clinic-overbooking.use-case';
@@ -200,6 +201,7 @@ import { IListClinicsUseCase as IListClinicsUseCaseToken } from '../../domain/cl
 import { IGetClinicUseCase as IGetClinicUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic.use-case.interface';
 import { IUpdateClinicStatusUseCase as IUpdateClinicStatusUseCaseToken } from '../../domain/clinic/interfaces/use-cases/update-clinic-status.use-case.interface';
 import { IListClinicAuditLogsUseCase as IListClinicAuditLogsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/list-clinic-audit-logs.use-case.interface';
+import { IListClinicTemplateOverridesUseCase as IListClinicTemplateOverridesUseCaseToken } from '../../domain/clinic/interfaces/use-cases/list-clinic-template-overrides.use-case.interface';
 
 const repositoryProviders: Provider[] = [
   {
@@ -509,6 +511,10 @@ const useCaseProviders: Provider[] = [
   {
     provide: IListClinicAuditLogsUseCaseToken,
     useClass: ListClinicAuditLogsUseCase,
+  },
+  {
+    provide: IListClinicTemplateOverridesUseCaseToken,
+    useClass: ListClinicTemplateOverridesUseCase,
   },
 ];
 

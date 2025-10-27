@@ -22,6 +22,7 @@ import { MessageBus } from '../../../shared/messaging/message-bus';
 import { DomainEvents } from '../../../shared/events/domain-events';
 import { ClinicErrorFactory } from '../../../shared/factories/clinic-error.factory';
 import { ClinicTemplateOverrideService } from '../services/clinic-template-override.service';
+import { ClinicConfigurationCacheService } from '../services/clinic-configuration-cache.service';
 
 @Injectable()
 export class PropagateClinicTemplateUseCase
@@ -38,6 +39,7 @@ export class PropagateClinicTemplateUseCase
     private readonly auditService: ClinicAuditService,
     private readonly messageBus: MessageBus,
     private readonly templateOverrideService: ClinicTemplateOverrideService,
+    private readonly configurationCache: ClinicConfigurationCacheService,
   ) {
     super();
   }
@@ -200,6 +202,13 @@ export class PropagateClinicTemplateUseCase
             triggeredBy: input.triggeredBy,
           }),
         );
+
+        await this.configurationCache.set({
+          tenantId: targetClinic.tenantId,
+          clinicId: targetClinic.id,
+          section,
+          version: createdVersion,
+        });
 
         propagatedVersions.push(createdVersion);
       }

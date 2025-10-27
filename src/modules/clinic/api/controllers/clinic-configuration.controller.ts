@@ -7,9 +7,17 @@ import {
   Inject,
   Param,
   Patch,
+  Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../auth/guards/roles.guard';
@@ -32,6 +40,7 @@ import { ClinicNotificationSettingsResponseDto } from '../dtos/clinic-notificati
 import { ClinicBrandingSettingsResponseDto } from '../dtos/clinic-branding-settings-response.dto';
 import { ClinicSummaryDto } from '../dtos/clinic-summary.dto';
 import { ClinicTemplatePropagationResponseDto } from '../dtos/clinic-template-propagation-response.dto';
+import { ClinicTemplateOverrideListResponseDto } from '../dtos/clinic-template-overrides-response.dto';
 import {
   updateClinicGeneralSettingsSchema,
   UpdateClinicGeneralSettingsSchema,
@@ -73,6 +82,10 @@ import {
   propagateClinicTemplateSchema,
   PropagateClinicTemplateSchema,
 } from '../schemas/propagate-clinic-template.schema';
+import {
+  listClinicTemplateOverridesSchema,
+  ListClinicTemplateOverridesSchema,
+} from '../schemas/list-clinic-template-overrides.schema';
 import {
   ClinicRequestContext,
   toPropagateClinicTemplateInput,
@@ -122,6 +135,10 @@ import {
   type IPropagateClinicTemplateUseCase,
   IPropagateClinicTemplateUseCase as IPropagateClinicTemplateUseCaseToken,
 } from '../../../../domain/clinic/interfaces/use-cases/propagate-clinic-template.use-case.interface';
+import {
+  type IListClinicTemplateOverridesUseCase,
+  IListClinicTemplateOverridesUseCase as IListClinicTemplateOverridesUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/list-clinic-template-overrides.use-case.interface';
 import {
   type IUpdateClinicScheduleSettingsUseCase,
   IUpdateClinicScheduleSettingsUseCase as IUpdateClinicScheduleSettingsUseCaseToken,
@@ -205,6 +222,8 @@ export class ClinicConfigurationController {
     private readonly getClinicNotificationSettingsUseCase: IGetClinicNotificationSettingsUseCase,
     @Inject(IGetClinicBrandingSettingsUseCaseToken)
     private readonly getClinicBrandingSettingsUseCase: IGetClinicBrandingSettingsUseCase,
+    @Inject(IListClinicTemplateOverridesUseCaseToken)
+    private readonly listClinicTemplateOverridesUseCase: IListClinicTemplateOverridesUseCase,
     @Inject(IGetClinicUseCaseToken)
     private readonly getClinicUseCase: IGetClinicUseCase,
   ) {}
@@ -227,6 +246,57 @@ export class ClinicConfigurationController {
     });
 
     return ClinicPresenter.generalSettings(version);
+  }
+
+  @Get('template-overrides')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Listar overrides de template da clinica' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiQuery({
+    name: 'section',
+    required: false,
+    enum: [
+      'general',
+      'team',
+      'schedule',
+      'services',
+      'payments',
+      'integrations',
+      'notifications',
+      'branding',
+    ],
+  })
+  @ApiQuery({ name: 'includeSuperseded', required: false, type: Boolean })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiResponse({ status: 200, type: ClinicTemplateOverrideListResponseDto })
+  async listTemplateOverrides(
+    @Param('clinicId') clinicId: string,
+    @Query(new ZodValidationPipe(listClinicTemplateOverridesSchema))
+    query: ListClinicTemplateOverridesSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicTemplateOverrideListResponseDto> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+
+    const result = await this.listClinicTemplateOverridesUseCase.executeOrThrow({
+      tenantId: context.tenantId,
+      clinicId,
+      section: query.section,
+      includeSuperseded: query.includeSuperseded,
+      page: query.page,
+      limit: query.limit,
+    });
+
+    const hasNextPage = result.page * result.limit < result.total;
+
+    return {
+      data: result.data.map((item) => ClinicPresenter.templateOverride(item)),
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+      hasNextPage,
+    };
   }
 
   @Patch('services')
