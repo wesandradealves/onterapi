@@ -30,7 +30,14 @@ import {
   IClinicServiceTypeRepository,
   IClinicServiceTypeRepository as IClinicServiceTypeRepositoryToken,
 } from '../../../domain/clinic/interfaces/repositories/clinic-service-type.repository.interface';
-import { ClinicHoldSettings } from '../../../domain/clinic/types/clinic.types';
+import {
+  ClinicHoldSettings,
+  ClinicProfessionalCoverage,
+} from '../../../domain/clinic/types/clinic.types';
+import {
+  IClinicProfessionalCoverageRepository,
+  IClinicProfessionalCoverageRepository as IClinicProfessionalCoverageRepositoryToken,
+} from '../../../domain/clinic/interfaces/repositories/clinic-professional-coverage.repository.interface';
 import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
 
 @Injectable()
@@ -49,6 +56,8 @@ export class CreateHoldUseCase
     private readonly clinicRepository: IClinicRepository,
     @Inject(IClinicServiceTypeRepositoryToken)
     private readonly clinicServiceTypeRepository: IClinicServiceTypeRepository,
+    @Inject(IClinicProfessionalCoverageRepositoryToken)
+    private readonly coverageRepository: IClinicProfessionalCoverageRepository,
     private readonly messageBus: MessageBus,
   ) {
     super();
@@ -99,9 +108,18 @@ export class CreateHoldUseCase
 
     const holdSettings = this.resolveHoldSettings(clinic.holdSettings);
 
+    const { professionalId: resolvedProfessionalId, coverage } =
+      await this.resolveProfessionalCoverage({
+        tenantId,
+        clinicId,
+        professionalId,
+        startAtUtc,
+        endAtUtc,
+      });
+
     const activeBookings = await this.bookingRepository.listByProfessionalAndRange(
       tenantId,
-      professionalId,
+      resolvedProfessionalId,
       startAtUtc,
       endAtUtc,
     );
@@ -122,7 +140,7 @@ export class CreateHoldUseCase
 
     const overlappingHolds = await this.holdRepository.findActiveOverlap(
       tenantId,
-      professionalId,
+      resolvedProfessionalId,
       startAtUtc,
       endAtUtc,
     );
@@ -166,10 +184,15 @@ export class CreateHoldUseCase
 
     const ttlExpiresAtUtc = this.computeHoldTtl(startAtUtc, nowUtc, holdSettings.ttlMinutes);
 
+    const originalProfessionalId = coverage ? professionalId : null;
+    const coverageId = coverage?.id ?? null;
+
     const hold = await this.holdRepository.create({
       tenantId,
       clinicId,
-      professionalId,
+      professionalId: resolvedProfessionalId,
+      originalProfessionalId,
+      coverageId,
       patientId,
       serviceTypeId: input.serviceTypeId,
       startAtUtc,
@@ -181,7 +204,9 @@ export class CreateHoldUseCase
       DomainEvents.schedulingHoldCreated(hold.id, {
         tenantId,
         clinicId,
-        professionalId,
+        professionalId: resolvedProfessionalId,
+        originalProfessionalId: originalProfessionalId ?? undefined,
+        coverageId: coverageId ?? undefined,
         patientId,
         serviceTypeId: input.serviceTypeId,
         startAtUtc,
@@ -221,16 +246,30 @@ export class CreateHoldUseCase
     };
 
     const resolved = settings ?? fallback;
-    const minAdvanceMinutes = Math.max(resolved.minAdvanceMinutes ?? 0, 0);
 
-    const normalizedMaxMinutes =
-      resolved.maxAdvanceMinutes !== undefined
-        ? Math.max(resolved.maxAdvanceMinutes, 0)
-        : undefined;
-    const candidateMinutes =
-      normalizedMaxMinutes !== undefined && normalizedMaxMinutes > 0
-        ? normalizedMaxMinutes
-        : 60 * 24 * 90;
+    let baseMinAdvance = resolved.minAdvanceMinutes;
+    if (baseMinAdvance === undefined || baseMinAdvance === null) {
+      baseMinAdvance = 0;
+    }
+    const minAdvanceMinutes = Math.max(baseMinAdvance, 0);
+
+    let normalizedMaxMinutes: number | undefined;
+    if (resolved.maxAdvanceMinutes !== undefined) {
+      normalizedMaxMinutes = Math.max(resolved.maxAdvanceMinutes, 0);
+    } else {
+      normalizedMaxMinutes = undefined;
+    }
+
+    let candidateMinutes: number;
+    if (normalizedMaxMinutes !== undefined) {
+      if (normalizedMaxMinutes > 0) {
+        candidateMinutes = normalizedMaxMinutes;
+      } else {
+        candidateMinutes = 60 * 24 * 90;
+      }
+    } else {
+      candidateMinutes = 60 * 24 * 90;
+    }
     const maxAdvanceDays = Math.max(1, Math.ceil(candidateMinutes / (60 * 24)));
 
     return {
@@ -242,11 +281,67 @@ export class CreateHoldUseCase
     };
   }
 
+  private async resolveProfessionalCoverage(params: {
+    tenantId: string;
+    clinicId: string;
+    professionalId: string;
+    startAtUtc: Date;
+    endAtUtc: Date;
+  }): Promise<{ professionalId: string; coverage?: ClinicProfessionalCoverage }> {
+    const coverages = await this.coverageRepository.findActiveOverlapping({
+      tenantId: params.tenantId,
+      clinicId: params.clinicId,
+      professionalId: params.professionalId,
+      startAt: params.startAtUtc,
+      endAt: params.endAtUtc,
+    });
+
+    if (!coverages || coverages.length === 0) {
+      return { professionalId: params.professionalId };
+    }
+
+    const [selected] = [...coverages].sort(
+      (a, b) => a.startAt.getTime() - b.startAt.getTime(),
+    );
+
+    if (
+      !selected ||
+      !selected.coverageProfessionalId ||
+      selected.coverageProfessionalId === params.professionalId
+    ) {
+      return { professionalId: params.professionalId };
+    }
+
+    this.logger.debug('Cobertura aplicada na criacao de hold (scheduling)', {
+      tenantId: params.tenantId,
+      clinicId: params.clinicId,
+      originalProfessionalId: params.professionalId,
+      coverageProfessionalId: selected.coverageProfessionalId,
+      coverageId: selected.id,
+    });
+
+    return {
+      professionalId: selected.coverageProfessionalId,
+      coverage: selected,
+    };
+  }
+
   private computeHoldTtl(startAtUtc: Date, nowUtc: Date, ttlMinutes: number): Date {
     const ttlMilliseconds = ttlMinutes * 60000;
     const rawExpiryMillis = nowUtc.getTime() + ttlMilliseconds;
-    const cappedAtStartMillis = Math.min(rawExpiryMillis, startAtUtc.getTime() - 60000);
-    const safeExpiryMillis = Math.max(cappedAtStartMillis, nowUtc.getTime());
+    const startLimit = startAtUtc.getTime() - 60000;
+    let cappedAtStartMillis: number;
+    if (rawExpiryMillis > startLimit) {
+      cappedAtStartMillis = startLimit;
+    } else {
+      cappedAtStartMillis = rawExpiryMillis;
+    }
+
+    let safeExpiryMillis = cappedAtStartMillis;
+
+    if (safeExpiryMillis < nowUtc.getTime()) {
+      safeExpiryMillis = nowUtc.getTime();
+    }
 
     return new Date(safeExpiryMillis);
   }

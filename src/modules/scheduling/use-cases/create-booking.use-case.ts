@@ -85,10 +85,15 @@ export class CreateBookingUseCase
       status: 'confirmed',
     });
 
+    const originalProfessionalId = hold.originalProfessionalId ?? null;
+    const coverageId = hold.coverageId ?? null;
+
     const bookingData: NewBooking = {
       tenantId,
       clinicId: hold.clinicId,
       professionalId: hold.professionalId,
+      originalProfessionalId,
+      coverageId,
       patientId: hold.patientId,
       source,
       status: 'scheduled',
@@ -115,6 +120,8 @@ export class CreateBookingUseCase
         tenantId,
         clinicId: booking.clinicId,
         professionalId: booking.professionalId,
+        originalProfessionalId: originalProfessionalId ?? undefined,
+        coverageId: coverageId ?? undefined,
         patientId: booking.patientId,
         startAtUtc: booking.startAtUtc,
         endAtUtc: booking.endAtUtc,

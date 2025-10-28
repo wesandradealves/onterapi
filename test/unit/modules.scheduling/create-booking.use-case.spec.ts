@@ -13,6 +13,8 @@ const baseHold = () => ({
   tenantId: 'tenant-1',
   clinicId: 'clinic-1',
   professionalId: 'prof-1',
+  originalProfessionalId: null,
+  coverageId: null,
   patientId: 'patient-1',
   serviceTypeId: 'service-1',
   startAtUtc: new Date('2025-10-10T10:00:00Z'),
@@ -29,6 +31,8 @@ const baseBooking = (): Booking => ({
   tenantId: 'tenant-1',
   clinicId: 'clinic-1',
   professionalId: 'prof-1',
+  originalProfessionalId: 'prof-1',
+  coverageId: null,
   patientId: 'patient-1',
   source: 'clinic_portal',
   status: 'scheduled',
@@ -71,6 +75,45 @@ describe('CreateBookingUseCase', () => {
     jest.useRealTimers();
   });
 
+  it('propaga dados de cobertura quando hold possui substituto', async () => {
+    const hold = {
+      ...baseHold(),
+      professionalId: 'prof-cover',
+      originalProfessionalId: 'prof-1',
+      coverageId: 'coverage-1',
+    };
+    const booking = {
+      ...baseBooking(),
+      professionalId: 'prof-cover',
+      originalProfessionalId: 'prof-1',
+      coverageId: 'coverage-1',
+    };
+
+    holdRepository.findById.mockResolvedValue(hold as any);
+    bookingRepository.findByHold.mockResolvedValue(null);
+    holdRepository.updateStatus.mockResolvedValue({
+      ...hold,
+      status: 'confirmed',
+      version: hold.version + 1,
+    } as any);
+    bookingRepository.create.mockResolvedValue(booking);
+
+    const result = await useCase.executeOrThrow(createInput());
+
+    expect(result.professionalId).toBe('prof-cover');
+    expect(bookingRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        professionalId: 'prof-cover',
+        originalProfessionalId: 'prof-1',
+        coverageId: 'coverage-1',
+      }),
+    );
+    const eventPayload = messageBus.publish.mock.calls[0][0].payload;
+    expect(eventPayload.professionalId).toBe('prof-cover');
+    expect(eventPayload.originalProfessionalId).toBe('prof-1');
+    expect(eventPayload.coverageId).toBe('coverage-1');
+  });
+
   beforeEach(() => {
     bookingRepository = {
       create: jest.fn(),
@@ -110,6 +153,8 @@ describe('CreateBookingUseCase', () => {
         tenantId: hold.tenantId,
         clinicId: hold.clinicId,
         professionalId: hold.professionalId,
+        originalProfessionalId: null,
+        coverageId: null,
         patientId: hold.patientId,
         status: 'scheduled',
         paymentStatus: 'pending',
@@ -124,6 +169,9 @@ describe('CreateBookingUseCase', () => {
         aggregateId: booking.id,
       }),
     );
+    const defaultEventPayload = messageBus.publish.mock.calls[0][0].payload;
+    expect(defaultEventPayload.originalProfessionalId).toBeUndefined();
+    expect(defaultEventPayload.coverageId).toBeUndefined();
   });
 
   it('lan a not found quando o hold n o   encontrado', async () => {

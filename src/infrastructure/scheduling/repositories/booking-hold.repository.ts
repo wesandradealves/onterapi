@@ -23,7 +23,9 @@ export class BookingHoldRepository implements IBookingHoldRepository {
   async create(data: CreateHoldInput): Promise<BookingHold> {
     const entity = this.repository.create({
       tenantId: data.tenantId,
+      originalProfessionalId: data.originalProfessionalId ?? null,
       professionalId: data.professionalId,
+      coverageId: data.coverageId ?? null,
       clinicId: data.clinicId,
       patientId: data.patientId,
       serviceTypeId: data.serviceTypeId ?? null,

@@ -17,6 +17,8 @@ export const mapBookingEntityToDomain = (entity: BookingEntity): Booking => ({
   id: entity.id,
   tenantId: entity.tenantId,
   professionalId: entity.professionalId,
+  originalProfessionalId: entity.originalProfessionalId ?? null,
+  coverageId: entity.coverageId ?? null,
   clinicId: entity.clinicId,
   patientId: entity.patientId,
   source: entity.source,
@@ -43,7 +45,9 @@ export const mapBookingEntityToDomain = (entity: BookingEntity): Booking => ({
 export const mapBookingHoldEntityToDomain = (entity: BookingHoldEntity): BookingHold => ({
   id: entity.id,
   tenantId: entity.tenantId,
+  originalProfessionalId: entity.originalProfessionalId ?? null,
   professionalId: entity.professionalId,
+  coverageId: entity.coverageId ?? null,
   clinicId: entity.clinicId,
   patientId: entity.patientId,
   serviceTypeId: entity.serviceTypeId ?? null,

@@ -69,6 +69,8 @@ export interface BookingHold {
   id: string;
   tenantId: string;
   professionalId: string;
+  originalProfessionalId?: string | null;
+  coverageId?: string | null;
   clinicId: string;
   patientId: string;
   serviceTypeId: string | null;
@@ -94,6 +96,8 @@ export interface Booking {
   holdExpiresAtUtc: Date | null;
   startAtUtc: Date;
   endAtUtc: Date;
+  originalProfessionalId?: string | null;
+  coverageId?: string | null;
   timezone: string;
   lateToleranceMinutes: number;
   recurrenceSeriesId: string | null;
@@ -191,6 +195,8 @@ export interface UpdateBookingStatusInput {
 export interface CreateHoldInput {
   tenantId: string;
   professionalId: string;
+  originalProfessionalId?: string | null;
+  coverageId?: string | null;
   clinicId: string;
   patientId: string;
   serviceTypeId: string;

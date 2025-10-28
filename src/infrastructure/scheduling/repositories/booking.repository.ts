@@ -28,7 +28,9 @@ export class BookingRepository implements IBookingRepository {
     const entityData = {
       tenantId: data.tenantId,
       clinicId: data.clinicId,
+      originalProfessionalId: data.originalProfessionalId ?? null,
       professionalId: data.professionalId,
+      coverageId: data.coverageId ?? null,
       patientId: data.patientId,
       source: data.source,
       status: data.status,

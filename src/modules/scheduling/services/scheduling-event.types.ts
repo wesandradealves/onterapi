@@ -5,6 +5,8 @@ export interface SchedulingHoldCreatedPayload {
   tenantId: string;
   clinicId: string;
   professionalId: string;
+  originalProfessionalId?: string;
+  coverageId?: string;
   patientId: string;
   serviceTypeId: string;
   startAtUtc: Date;
@@ -18,6 +20,8 @@ export interface SchedulingBookingCreatedPayload {
   tenantId: string;
   clinicId: string;
   professionalId: string;
+  originalProfessionalId?: string | null;
+  coverageId?: string | null;
   patientId: string;
   startAtUtc: Date;
   endAtUtc: Date;

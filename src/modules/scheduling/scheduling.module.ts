@@ -43,6 +43,9 @@ import { IClinicRepository as IClinicRepositoryToken } from '../../domain/clinic
 import { ClinicServiceTypeEntity } from '../../infrastructure/clinic/entities/clinic-service-type.entity';
 import { ClinicServiceTypeRepository } from '../../infrastructure/clinic/repositories/clinic-service-type.repository';
 import { IClinicServiceTypeRepository as IClinicServiceTypeRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-service-type.repository.interface';
+import { IClinicProfessionalCoverageRepository as IClinicProfessionalCoverageRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-professional-coverage.repository.interface';
+import { ClinicProfessionalCoverageEntity } from '../../infrastructure/clinic/entities/clinic-professional-coverage.entity';
+import { ClinicProfessionalCoverageRepository } from '../../infrastructure/clinic/repositories/clinic-professional-coverage.repository';
 
 @Module({
   imports: [
@@ -56,6 +59,7 @@ import { IClinicServiceTypeRepository as IClinicServiceTypeRepositoryToken } fro
       ExternalCalendarEventEntity,
       ClinicEntity,
       ClinicServiceTypeEntity,
+      ClinicProfessionalCoverageEntity,
     ]),
   ],
   providers: [
@@ -115,6 +119,10 @@ import { IClinicServiceTypeRepository as IClinicServiceTypeRepositoryToken } fro
       provide: IClinicServiceTypeRepositoryToken,
       useClass: ClinicServiceTypeRepository,
     },
+    {
+      provide: IClinicProfessionalCoverageRepositoryToken,
+      useClass: ClinicProfessionalCoverageRepository,
+    },
     SchedulingBillingService,
     SchedulingMetricsService,
     SchedulingNotificationService,
@@ -136,6 +144,7 @@ import { IClinicServiceTypeRepository as IClinicServiceTypeRepositoryToken } fro
     IExternalCalendarEventsRepositoryToken,
     IClinicRepositoryToken,
     IClinicServiceTypeRepositoryToken,
+    IClinicProfessionalCoverageRepositoryToken,
   ],
 })
 export class SchedulingModule {}

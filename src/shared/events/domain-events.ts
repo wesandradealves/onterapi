@@ -447,6 +447,8 @@ export class DomainEvents {
       tenantId: string;
       clinicId: string;
       professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
       patientId: string;
       serviceTypeId: string;
       startAtUtc: Date;
@@ -464,6 +466,8 @@ export class DomainEvents {
       tenantId: string;
       clinicId: string;
       professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
       patientId: string;
       startAtUtc: Date;
       endAtUtc: Date;
@@ -887,6 +891,8 @@ export class DomainEvents {
       tenantId: string;
       clinicId: string;
       professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
       patientId: string;
       serviceTypeId: string;
       startAtUtc: Date;
@@ -979,6 +985,7 @@ export class DomainEvents {
       tenantId: string;
       clinicId: string;
       professionalId: string;
+      originalProfessionalId?: string;
       patientId: string;
       serviceTypeId: string;
       riskScore: number;
@@ -1014,6 +1021,7 @@ export class DomainEvents {
       tenantId: string;
       clinicId: string;
       professionalId: string;
+      originalProfessionalId?: string;
       patientId: string;
       serviceTypeId: string;
       riskScore: number;
@@ -1075,6 +1083,8 @@ export class DomainEvents {
       tenantId: string;
       clinicId: string;
       professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
       patientId: string;
       startAtUtc: Date;
       endAtUtc: Date;

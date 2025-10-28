@@ -1,6 +1,4 @@
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import path from 'path';
-
 import { CreateHoldUseCase } from '@modules/scheduling/use-cases/create-hold.use-case';
 import { IBookingRepository } from '@domain/scheduling/interfaces/repositories/booking.repository.interface';
 import { IBookingHoldRepository } from '@domain/scheduling/interfaces/repositories/booking-hold.repository.interface';
@@ -8,8 +6,9 @@ import { MessageBus } from '@shared/messaging/message-bus';
 import { DomainEvents } from '@shared/events/domain-events';
 import { IClinicRepository } from '@domain/clinic/interfaces/repositories/clinic.repository.interface';
 import { IClinicServiceTypeRepository } from '@domain/clinic/interfaces/repositories/clinic-service-type.repository.interface';
+import { IClinicProfessionalCoverageRepository } from '@domain/clinic/interfaces/repositories/clinic-professional-coverage.repository.interface';
 import { RolesEnum } from '@domain/auth/enums/roles.enum';
-import { Clinic, ClinicServiceTypeDefinition } from '@domain/clinic/types/clinic.types';
+import { Clinic, ClinicProfessionalCoverage, ClinicServiceTypeDefinition } from '@domain/clinic/types/clinic.types';
 import { BookingValidationService } from '@domain/scheduling/services/booking-validation.service';
 
 const createInput = () => ({
@@ -44,25 +43,6 @@ const buildClinic = (overrides: Partial<Clinic['holdSettings']> = {}): Clinic =>
   createdAt: new Date('2025-01-01T00:00:00Z'),
   updatedAt: new Date('2025-01-01T00:00:00Z'),
 });
-
-const coverBranch = (branchId: string) => {
-  const coverage = (global as any).__coverage__;
-  if (!coverage) {
-    return;
-  }
-  const coveragePath = path.resolve(
-    __dirname,
-    '../../../src/modules/scheduling/use-cases/create-hold.use-case.ts',
-  );
-  const fileCoverage = coverage[coveragePath];
-  if (!fileCoverage?.b?.[branchId]) {
-    return;
-  }
-  const branchHits = fileCoverage.b[branchId];
-  if (Array.isArray(branchHits) && branchHits.length > 1) {
-    branchHits[1] = Math.max(branchHits[1], 1);
-  }
-};
 
 const buildServiceType = (
   overrides: Partial<ClinicServiceTypeDefinition> = {},
@@ -103,6 +83,7 @@ describe('CreateHoldUseCase', () => {
   let messageBus: jest.Mocked<MessageBus>;
   let clinicRepository: jest.Mocked<IClinicRepository>;
   let clinicServiceTypeRepository: jest.Mocked<IClinicServiceTypeRepository>;
+  let coverageRepository: jest.Mocked<IClinicProfessionalCoverageRepository>;
   let useCase: CreateHoldUseCase;
 
   beforeEach(() => {
@@ -123,17 +104,23 @@ describe('CreateHoldUseCase', () => {
 
     clinicRepository = {
       findByTenant: jest.fn().mockResolvedValue(buildClinic()),
+      listComplianceDocuments: jest.fn(),
     } as unknown as jest.Mocked<IClinicRepository>;
 
     clinicServiceTypeRepository = {
       findById: jest.fn().mockResolvedValue(buildServiceType()),
     } as unknown as jest.Mocked<IClinicServiceTypeRepository>;
 
+    coverageRepository = {
+      findActiveOverlapping: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<IClinicProfessionalCoverageRepository>;
+
     useCase = new CreateHoldUseCase(
       holdRepository,
       bookingRepository,
       clinicRepository,
       clinicServiceTypeRepository,
+      coverageRepository,
       messageBus,
     );
   });
@@ -170,10 +157,19 @@ describe('CreateHoldUseCase', () => {
       input.clinicId,
       input.serviceTypeId,
     );
+    expect(coverageRepository.findActiveOverlapping).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: input.tenantId,
+        clinicId: input.clinicId,
+        professionalId: input.professionalId,
+      }),
+    );
     expect(holdRepository.create.mock.calls[0][0].serviceTypeId).toBe(input.serviceTypeId);
     expect(holdRepository.create.mock.calls[0][0].ttlExpiresAtUtc).toEqual(
       new Date('2025-10-08T08:45:00.000Z'),
     );
+    expect(holdRepository.create.mock.calls[0][0].originalProfessionalId).toBeNull();
+    expect(holdRepository.create.mock.calls[0][0].coverageId).toBeNull();
     expect(messageBus.publish).toHaveBeenCalledWith(
       expect.objectContaining({
         eventName: DomainEvents.SCHEDULING_HOLD_CREATED,
@@ -182,7 +178,70 @@ describe('CreateHoldUseCase', () => {
     );
     const publishedEvent = messageBus.publish.mock.calls[0][0];
     expect(publishedEvent.payload.serviceTypeId).toBe(input.serviceTypeId);
+    expect(publishedEvent.payload.originalProfessionalId).toBeUndefined();
     expect(hold.status).toBe('active');
+  });
+
+  it('applies coverage professional when active coverage overlaps', async () => {
+    const input = createInput();
+    const coverage: ClinicProfessionalCoverage = {
+      id: 'coverage-1',
+      tenantId: input.tenantId,
+      clinicId: input.clinicId,
+      professionalId: input.professionalId,
+      coverageProfessionalId: 'prof-cover',
+      startAt: new Date('2025-10-09T00:00:00Z'),
+      endAt: new Date('2025-10-11T00:00:00Z'),
+      status: 'active',
+      reason: 'Ferias',
+      notes: 'Substituicao integral',
+      createdBy: 'manager-1',
+      createdAt: new Date('2025-09-20T10:00:00Z'),
+      updatedBy: 'manager-1',
+      updatedAt: new Date('2025-09-20T10:00:00Z'),
+      metadata: {},
+    };
+
+    coverageRepository.findActiveOverlapping.mockResolvedValue([coverage]);
+    bookingRepository.listByProfessionalAndRange.mockResolvedValue([]);
+    holdRepository.findActiveOverlap.mockResolvedValue([]);
+    holdRepository.create.mockImplementation(async (payload) => ({
+      id: 'hold-1',
+      tenantId: payload.tenantId,
+      clinicId: payload.clinicId,
+      professionalId: payload.professionalId,
+      patientId: payload.patientId,
+      serviceTypeId: payload.serviceTypeId ?? null,
+      startAtUtc: payload.startAtUtc,
+      endAtUtc: payload.endAtUtc,
+      ttlExpiresAtUtc: payload.ttlExpiresAtUtc,
+      status: 'active',
+      createdAt: new Date('2025-10-08T10:00:00Z'),
+      updatedAt: new Date('2025-10-08T10:00:00Z'),
+      version: 1,
+    }));
+
+    const hold = await useCase.executeOrThrow(input);
+
+    expect(hold.professionalId).toBe('prof-cover');
+    expect(bookingRepository.listByProfessionalAndRange).toHaveBeenCalledWith(
+      input.tenantId,
+      'prof-cover',
+      input.startAtUtc,
+      input.endAtUtc,
+    );
+    expect(holdRepository.findActiveOverlap).toHaveBeenCalledWith(
+      input.tenantId,
+      'prof-cover',
+      input.startAtUtc,
+      input.endAtUtc,
+    );
+    expect(holdRepository.create.mock.calls[0][0].originalProfessionalId).toBe(input.professionalId);
+    expect(holdRepository.create.mock.calls[0][0].coverageId).toBe(coverage.id);
+    const publishedEvent = messageBus.publish.mock.calls[0][0];
+    expect(publishedEvent.payload.professionalId).toBe('prof-cover');
+    expect(publishedEvent.payload.originalProfessionalId).toBe(input.professionalId);
+    expect(publishedEvent.payload.coverageId).toBe(coverage.id);
   });
 
   it('throws conflict when professional already booked', async () => {
@@ -398,8 +457,6 @@ describe('CreateHoldUseCase', () => {
     expect(resolved.maxAdvanceMinutes).toBeUndefined();
     expect(resolved.maxAdvanceDays).toBe(90);
     expect(resolved.bufferBetweenBookingsMinutes).toBe(15);
-
-    coverBranch('15');
   });
 
   it('resolveHoldSettings normaliza maxAdvanceMinutes positivos', () => {
@@ -428,8 +485,6 @@ describe('CreateHoldUseCase', () => {
 
     expect(resolved.maxAdvanceMinutes).toBe(0);
     expect(resolved.maxAdvanceDays).toBe(90);
-
-    coverBranch('15');
   });
 
   it('resolveHoldSettings usa fallback de 90 dias quando limite indefinido', () => {
@@ -442,8 +497,64 @@ describe('CreateHoldUseCase', () => {
 
     expect(resolved.maxAdvanceMinutes).toBeUndefined();
     expect(resolved.maxAdvanceDays).toBe(90);
+  });
 
-    coverBranch('15');
+  it('resolveHoldSettings define minAdvance zero quando nao informado', () => {
+    const resolved = (useCase as any).resolveHoldSettings({
+      ttlMinutes: 15,
+      allowOverbooking: false,
+      resourceMatchingStrict: true,
+    });
+
+    expect(resolved.minAdvanceMinutes).toBe(0);
+  });
+
+  it('resolveHoldSettings normaliza minAdvance quando definido como undefined', () => {
+    const resolved = (useCase as any).resolveHoldSettings({
+      ttlMinutes: 20,
+      minAdvanceMinutes: undefined,
+      allowOverbooking: false,
+      resourceMatchingStrict: true,
+    });
+
+    expect(resolved.minAdvanceMinutes).toBe(0);
+  });
+
+  it('resolveHoldSettings preserva limite positivo configurado', () => {
+    const resolved = (useCase as any).resolveHoldSettings({
+      ttlMinutes: 25,
+      minAdvanceMinutes: 15,
+      maxAdvanceMinutes: 720,
+      allowOverbooking: false,
+      resourceMatchingStrict: true,
+    });
+
+    expect(resolved.maxAdvanceMinutes).toBe(720);
+    expect(resolved.maxAdvanceDays).toBe(Math.max(1, Math.ceil(720 / (60 * 24))));
+  });
+
+  it('resolveHoldSettings considera maxAdvance zero como sem limite efetivo', () => {
+    const resolved = (useCase as any).resolveHoldSettings({
+      ttlMinutes: 15,
+      minAdvanceMinutes: 5,
+      maxAdvanceMinutes: 0,
+      allowOverbooking: false,
+      resourceMatchingStrict: true,
+    });
+
+    expect(resolved.maxAdvanceMinutes).toBe(0);
+    expect(resolved.maxAdvanceDays).toBe(90);
+  });
+
+  it('resolveHoldSettings aplica ttl fallback quando indefinido', () => {
+    const resolved = (useCase as any).resolveHoldSettings({
+      minAdvanceMinutes: 5,
+      maxAdvanceMinutes: 120,
+      allowOverbooking: false,
+      resourceMatchingStrict: true,
+    });
+
+    expect(resolved.ttlMinutes).toBe(30);
   });
 
   it('computeHoldTtl mantem valor quando ttl nao ultrapassa limites', () => {
@@ -636,8 +747,6 @@ describe('CreateHoldUseCase', () => {
     expect(hold.ttlExpiresAtUtc.getTime()).toBeGreaterThanOrEqual(
       new Date('2025-10-08T08:00:00Z').getTime(),
     );
-
-    coverBranch('19');
   });
 
   it('resolveHoldSettings usa fallback de 90 dias quando limite indefinido', () => {
@@ -689,8 +798,16 @@ describe('CreateHoldUseCase', () => {
     }));
 
     await useCase.executeOrThrow(input);
+  });
 
-    coverBranch('19');
+  it('computeHoldTtl limita expiração para antes do horario inicial', () => {
+    const now = new Date('2025-10-08T08:00:00Z');
+    const start = new Date('2025-10-08T08:45:00Z');
+
+    const ttlMinutes = 180;
+    const result = (useCase as any).computeHoldTtl(start, now, ttlMinutes);
+
+    expect(result.getTime()).toBe(new Date('2025-10-08T08:44:00Z').getTime());
   });
 
   it('ajusta TTL para nao retornar antes do presente quando start proximo', async () => {
@@ -727,7 +844,5 @@ describe('CreateHoldUseCase', () => {
 
     const ttlCall = holdRepository.create.mock.calls.pop()?.[0];
     expect(ttlCall!.ttlExpiresAtUtc.getTime()).toBe(new Date('2025-10-08T08:00:00Z').getTime());
-
-    coverBranch('19');
   });
 });

@@ -31,8 +31,14 @@ export class BookingEntity {
   @Column({ name: 'clinic_id', type: 'uuid' })
   clinicId!: string;
 
+  @Column({ name: 'original_professional_id', type: 'uuid', nullable: true })
+  originalProfessionalId?: string | null;
+
   @Column({ name: 'professional_id', type: 'uuid' })
   professionalId!: string;
+
+  @Column({ name: 'coverage_id', type: 'uuid', nullable: true })
+  coverageId?: string | null;
 
   @Column({ name: 'patient_id', type: 'uuid' })
   patientId!: string;
