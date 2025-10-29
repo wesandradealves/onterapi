@@ -21,7 +21,7 @@ import { ICurrentUser } from '../../../../domain/auth/interfaces/current-user.in
 import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
 import { ZodApiBody } from '../../../../shared/decorators/zod-api-body.decorator';
-import { ClinicScopeGuard } from '@modules/clinic/guards/clinic-scope.guard';
+import { ClinicScopeGuard } from '../../guards/clinic-scope.guard';
 import { ClinicHoldResponseDto } from '../dtos/clinic-hold-response.dto';
 import { ClinicAppointmentConfirmationResponseDto } from '../dtos/clinic-appointment-confirmation-response.dto';
 import { ClinicPresenter } from '../presenters/clinic.presenter';

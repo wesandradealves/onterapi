@@ -23,7 +23,7 @@ import { Roles } from '../../../auth/decorators/roles.decorator';
 import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import { ICurrentUser } from '../../../../domain/auth/interfaces/current-user.interface';
 import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
-import { ClinicScopeGuard } from '@modules/clinic/guards/clinic-scope.guard';
+import { ClinicScopeGuard } from '../../guards/clinic-scope.guard';
 import {
   IGetClinicPaymentLedgerUseCase,
   IGetClinicPaymentLedgerUseCase as IGetClinicPaymentLedgerUseCaseToken,

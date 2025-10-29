@@ -32,7 +32,7 @@ import { ICurrentUser } from '../../../../domain/auth/interfaces/current-user.in
 import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
 import { ZodApiBody } from '../../../../shared/decorators/zod-api-body.decorator';
-import { ClinicScopeGuard } from '@modules/clinic/guards/clinic-scope.guard';
+import { ClinicScopeGuard } from '../../guards/clinic-scope.guard';
 import { ClinicPresenter } from '../presenters/clinic.presenter';
 import { ClinicServiceTypeResponseDto } from '../dtos/clinic-service-type-response.dto';
 import { ClinicRequestContext } from '../mappers/clinic-request.mapper';

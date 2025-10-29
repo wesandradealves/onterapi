@@ -87,7 +87,7 @@ import {
   updateClinicSecuritySettingsSchema,
   UpdateClinicSecuritySettingsSchema,
 } from '../schemas/update-clinic-security-settings.schema';
-import { ClinicScopeGuard } from '@modules/clinic/guards/clinic-scope.guard';
+import { ClinicScopeGuard } from '../../guards/clinic-scope.guard';
 import {
   propagateClinicTemplateSchema,
   PropagateClinicTemplateSchema,
