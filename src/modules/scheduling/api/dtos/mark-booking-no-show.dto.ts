@@ -3,7 +3,7 @@ import { IsInt, IsISO8601, IsOptional, Min } from 'class-validator';
 
 export class MarkBookingNoShowDto {
   @ApiProperty({
-    description: 'Versão esperada do agendamento para controle otimista',
+    description: 'Vers o esperada do agendamento para controle otimista',
     example: 3,
   })
   @IsInt()

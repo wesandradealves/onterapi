@@ -1,0 +1,538 @@
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { In, IsNull, Repository } from 'typeorm';
+
+import {
+  ClinicAlert,
+  ClinicAlertType,
+  ClinicComparisonEntry,
+  ClinicComparisonQuery,
+  ClinicDashboardMetric,
+  ClinicDashboardQuery,
+  ClinicDashboardSnapshot,
+  ClinicFinancialSnapshot,
+  ClinicFinancialSummary,
+  ClinicForecastProjection,
+  ClinicTrendDirection,
+  TriggerClinicAlertInput,
+} from '../../../domain/clinic/types/clinic.types';
+import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
+import { IClinicMetricsRepository } from '../../../domain/clinic/interfaces/repositories/clinic-metrics.repository.interface';
+import { ClinicAlertEntity } from '../entities/clinic-alert.entity';
+import { ClinicFinancialSnapshotEntity } from '../entities/clinic-financial-snapshot.entity';
+import { ClinicDashboardMetricEntity } from '../entities/clinic-dashboard-metric.entity';
+import { ClinicForecastProjectionEntity } from '../entities/clinic-forecast-projection.entity';
+import { ClinicMemberEntity } from '../entities/clinic-member.entity';
+import { ClinicEntity } from '../entities/clinic.entity';
+import { ClinicMapper } from '../mappers/clinic.mapper';
+
+interface AggregatedMetrics {
+  revenue: number;
+  appointments: number;
+  activePatients: number;
+  occupancyRate: number;
+  satisfactionScore: number;
+  samples: number;
+  periods: number;
+}
+
+interface AggregatedFinancialMetrics {
+  revenue: number;
+  expenses: number;
+  profit: number;
+  marginSum: number;
+  marginSamples: number;
+}
+
+@Injectable()
+export class ClinicMetricsRepository implements IClinicMetricsRepository {
+  constructor(
+    @InjectRepository(ClinicDashboardMetricEntity)
+    private readonly dashboardRepository: Repository<ClinicDashboardMetricEntity>,
+    @InjectRepository(ClinicForecastProjectionEntity)
+    private readonly forecastRepository: Repository<ClinicForecastProjectionEntity>,
+    @InjectRepository(ClinicAlertEntity)
+    private readonly alertRepository: Repository<ClinicAlertEntity>,
+    @InjectRepository(ClinicFinancialSnapshotEntity)
+    private readonly financialRepository: Repository<ClinicFinancialSnapshotEntity>,
+    @InjectRepository(ClinicMemberEntity)
+    private readonly memberRepository: Repository<ClinicMemberEntity>,
+    @InjectRepository(ClinicEntity)
+    private readonly clinicRepository: Repository<ClinicEntity>,
+  ) {}
+
+  async getDashboardSnapshot(query: ClinicDashboardQuery): Promise<ClinicDashboardSnapshot> {
+    const periodStart = query.filters?.from ?? new Date(0);
+    const periodEnd = query.filters?.to ?? new Date();
+    const monthKeys = this.buildMonthKeys(periodStart, periodEnd);
+
+    const metricsEntities = await this.dashboardRepository.find({
+      where: {
+        tenantId: query.tenantId,
+        ...(query.filters?.clinicIds && query.filters.clinicIds.length > 0
+          ? { clinicId: In(query.filters.clinicIds) }
+          : {}),
+        ...(monthKeys.length > 0 ? { month: In(monthKeys) } : {}),
+      },
+      order: { month: 'DESC' },
+    });
+
+    const metrics = metricsEntities.map(ClinicMapper.toDashboardMetric);
+
+    const clinics = new Set(metrics.map((metric) => metric.clinicId));
+    const revenueTotal = metrics.reduce((sum, metric) => sum + metric.revenue, 0);
+    const activePatientsTotal = metrics.reduce((sum, metric) => sum + metric.activePatients, 0);
+
+    const professionals = await this.memberRepository.count({
+      where: {
+        tenantId: query.tenantId,
+        role: RolesEnum.PROFESSIONAL,
+        endedAt: IsNull(),
+        ...(query.filters?.clinicIds && query.filters.clinicIds.length > 0
+          ? { clinicId: In(query.filters.clinicIds) }
+          : {}),
+      },
+    });
+
+    const alerts = await this.alertRepository.find({
+      where: {
+        tenantId: query.tenantId,
+        ...(query.filters?.clinicIds && query.filters.clinicIds.length > 0
+          ? { clinicId: In(query.filters.clinicIds) }
+          : {}),
+      },
+      order: { triggeredAt: 'DESC' },
+      take: 20,
+    });
+
+    return {
+      period: { start: periodStart, end: periodEnd },
+      totals: {
+        clinics: clinics.size,
+        professionals,
+        activePatients: activePatientsTotal,
+        revenue: revenueTotal,
+      },
+      metrics,
+      alerts: alerts.map(ClinicMapper.toAlert),
+    };
+  }
+
+  async getComparison(query: ClinicComparisonQuery): Promise<ClinicComparisonEntry[]> {
+    const currentMonths = this.buildMonthKeys(query.period.start, query.period.end);
+    const rangeMs = query.period.end.getTime() - query.period.start.getTime();
+    const previousStart = new Date(query.period.start.getTime() - rangeMs - 1);
+    const previousMonths = this.buildMonthKeys(previousStart, query.period.start);
+
+    const clinicIds = query.clinicIds && query.clinicIds.length > 0 ? query.clinicIds : undefined;
+
+    const currentMetrics = await this.dashboardRepository.find({
+      where: {
+        tenantId: query.tenantId,
+        ...(clinicIds ? { clinicId: In(clinicIds) } : {}),
+        ...(currentMonths.length > 0 ? { month: In(currentMonths) } : {}),
+      },
+    });
+
+    const previousMetrics = previousMonths.length
+      ? await this.dashboardRepository.find({
+          where: {
+            tenantId: query.tenantId,
+            ...(clinicIds ? { clinicId: In(clinicIds) } : {}),
+            month: In(previousMonths),
+          },
+        })
+      : [];
+
+    const currentGrouped = this.groupMetricsByClinic(
+      currentMetrics.map(ClinicMapper.toDashboardMetric),
+    );
+    const previousGrouped = this.groupMetricsByClinic(
+      previousMetrics.map(ClinicMapper.toDashboardMetric),
+    );
+
+    const entries = Object.keys(currentGrouped).map((clinicId) => {
+      const current = currentGrouped[clinicId];
+      const previous = previousGrouped[clinicId];
+      const occupancy = current.periods > 0 ? current.occupancyRate / current.periods : 0;
+      const satisfaction =
+        current.samples > 0 ? current.satisfactionScore / current.samples : undefined;
+
+      const previousOccupancy =
+        previous && previous.periods > 0 ? previous.occupancyRate / previous.periods : 0;
+      const previousSatisfaction =
+        previous && previous.samples > 0
+          ? previous.satisfactionScore / previous.samples
+          : undefined;
+
+      const revenueVariation = previous
+        ? this.calculateVariation(current.revenue, previous.revenue)
+        : 0;
+      const appointmentsVariation = previous
+        ? this.calculateVariation(current.appointments, previous.appointments)
+        : 0;
+      const patientsVariation = previous
+        ? this.calculateVariation(current.activePatients, previous.activePatients)
+        : 0;
+      const occupancyVariation = previous
+        ? this.calculateVariation(occupancy, previousOccupancy)
+        : 0;
+      const satisfactionVariation =
+        satisfaction !== undefined && previousSatisfaction !== undefined
+          ? this.calculateVariation(satisfaction, previousSatisfaction)
+          : undefined;
+
+      return {
+        clinicId,
+        name: clinicId,
+        revenue: current.revenue,
+        revenueVariationPercentage: revenueVariation,
+        appointments: current.appointments,
+        appointmentsVariationPercentage: appointmentsVariation,
+        activePatients: current.activePatients,
+        activePatientsVariationPercentage: patientsVariation,
+        occupancyRate: occupancy,
+        occupancyVariationPercentage: occupancyVariation,
+        satisfactionScore: satisfaction,
+        satisfactionVariationPercentage: satisfactionVariation,
+        rankingPosition: 0,
+      } as ClinicComparisonEntry;
+    });
+
+    entries.sort(
+      (a, b) => this.metricValueByField(b, query.metric) - this.metricValueByField(a, query.metric),
+    );
+
+    const metricValues = entries.map((entry) => this.metricValueByField(entry, query.metric));
+    const benchmarkAverage =
+      metricValues.length > 0
+        ? metricValues.reduce((sum, value) => sum + value, 0) / metricValues.length
+        : 0;
+
+    entries.forEach((entry, index) => {
+      entry.rankingPosition = index + 1;
+      const metricValue = metricValues[index];
+      const variation = this.metricVariationByField(entry, query.metric);
+      entry.trendPercentage = variation;
+      entry.trendDirection = this.resolveTrendDirection(variation);
+      entry.benchmarkValue = benchmarkAverage;
+      entry.benchmarkGapPercentage =
+        benchmarkAverage !== 0 ? ((metricValue - benchmarkAverage) / benchmarkAverage) * 100 : 0;
+      entry.benchmarkPercentile =
+        entries.length > 0 ? ((entries.length - index) / entries.length) * 100 : 0;
+    });
+
+    if (entries.length > 0) {
+      const clinicIds = entries.map((entry) => entry.clinicId);
+      const clinics = await this.clinicRepository.find({
+        where: {
+          id: In(clinicIds),
+          tenantId: query.tenantId,
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      });
+      const nameMap = new Map(clinics.map((clinic) => [clinic.id, clinic.name]));
+      entries.forEach((entry) => {
+        entry.name = nameMap.get(entry.clinicId) ?? entry.clinicId;
+      });
+    }
+
+    if (query.limit && query.limit > 0) {
+      return entries.slice(0, query.limit);
+    }
+
+    return entries;
+  }
+
+  async getForecast(query: ClinicDashboardQuery): Promise<ClinicForecastProjection[]> {
+    const periodStart = query.filters?.from ?? new Date();
+    const periodEnd =
+      query.filters?.to ?? new Date(periodStart.getTime() + 1000 * 60 * 60 * 24 * 30);
+    const clinicFilter = query.filters?.clinicIds;
+    const monthKeys = this.buildMonthKeys(periodStart, periodEnd);
+
+    const entities = await this.forecastRepository.find({
+      where: {
+        tenantId: query.tenantId,
+        ...(clinicFilter && clinicFilter.length > 0 ? { clinicId: In(clinicFilter) } : {}),
+        ...(monthKeys.length > 0 ? { month: In(monthKeys) } : {}),
+      },
+    });
+
+    return entities.map(ClinicMapper.toForecastProjection);
+  }
+
+  async getFinancialSummary(query: ClinicDashboardQuery): Promise<ClinicFinancialSummary> {
+    const periodStart = query.filters?.from ?? new Date(0);
+    const periodEnd = query.filters?.to ?? new Date();
+    const monthKeys = this.buildMonthKeys(periodStart, periodEnd);
+    const clinicFilter = query.filters?.clinicIds;
+
+    const entities = await this.financialRepository.find({
+      where: {
+        tenantId: query.tenantId,
+        ...(clinicFilter && clinicFilter.length > 0 ? { clinicId: In(clinicFilter) } : {}),
+        ...(monthKeys.length > 0 ? { month: In(monthKeys) } : {}),
+      },
+    });
+
+    if (entities.length === 0) {
+      return {
+        totalRevenue: 0,
+        totalExpenses: 0,
+        totalProfit: 0,
+        averageMargin: 0,
+        clinics: [],
+      };
+    }
+
+    const aggregated = this.aggregateFinancialSnapshots(
+      entities.map(ClinicMapper.toFinancialSnapshot),
+    );
+
+    const clinics: ClinicFinancialSnapshot[] = [];
+    let totalRevenue = 0;
+    let totalExpenses = 0;
+    let totalProfit = 0;
+    let marginAccumulator = 0;
+
+    aggregated.forEach((metrics, clinicId) => {
+      totalRevenue += metrics.revenue;
+      totalExpenses += metrics.expenses;
+      totalProfit += metrics.profit;
+
+      const margin =
+        metrics.marginSamples > 0
+          ? metrics.marginSum / metrics.marginSamples
+          : metrics.revenue > 0
+            ? (metrics.profit / metrics.revenue) * 100
+            : 0;
+
+      marginAccumulator += margin;
+
+      clinics.push({
+        clinicId,
+        revenue: metrics.revenue,
+        expenses: metrics.expenses,
+        profit: metrics.profit,
+        margin,
+        contributionPercentage: 0,
+      });
+    });
+
+    const averageMargin = clinics.length > 0 ? marginAccumulator / clinics.length : 0;
+    clinics.forEach((snapshot) => {
+      snapshot.contributionPercentage =
+        totalRevenue > 0 ? (snapshot.revenue / totalRevenue) * 100 : 0;
+    });
+
+    return {
+      totalRevenue,
+      totalExpenses,
+      totalProfit,
+      averageMargin,
+      clinics,
+    };
+  }
+
+  async recordAlert(input: TriggerClinicAlertInput): Promise<ClinicAlert> {
+    const entity = this.alertRepository.create({
+      clinicId: input.clinicId,
+      tenantId: input.tenantId,
+      type: input.type,
+      channel: input.channel,
+      triggeredBy: input.triggeredBy,
+      payload: input.payload,
+    });
+
+    const saved = await this.alertRepository.save(entity);
+    return ClinicMapper.toAlert(saved);
+  }
+
+  async resolveAlert(params: {
+    alertId: string;
+    resolvedBy: string;
+    resolvedAt?: Date;
+  }): Promise<ClinicAlert | null> {
+    await this.alertRepository.update(
+      { id: params.alertId },
+      { resolvedAt: params.resolvedAt ?? new Date(), resolvedBy: params.resolvedBy },
+    );
+
+    const entity = await this.alertRepository.findOne({ where: { id: params.alertId } });
+    return entity ? ClinicMapper.toAlert(entity) : null;
+  }
+
+  async listAlerts(params: {
+    tenantId: string;
+    clinicIds?: string[];
+    types?: ClinicAlertType[];
+    activeOnly?: boolean;
+    limit?: number;
+  }): Promise<ClinicAlert[]> {
+    const query = this.alertRepository
+      .createQueryBuilder('alert')
+      .where('alert.tenant_id = :tenantId', { tenantId: params.tenantId });
+
+    if (params.clinicIds && params.clinicIds.length > 0) {
+      query.andWhere('alert.clinic_id IN (:...clinicIds)', { clinicIds: params.clinicIds });
+    }
+
+    if (params.types && params.types.length > 0) {
+      query.andWhere('alert.type IN (:...types)', { types: params.types });
+    }
+
+    if (params.activeOnly) {
+      query.andWhere('alert.resolved_at IS NULL');
+    }
+
+    query.orderBy('alert.triggered_at', 'DESC');
+
+    if (params.limit) {
+      query.take(params.limit);
+    }
+
+    const entities = await query.getMany();
+    return entities.map(ClinicMapper.toAlert);
+  }
+
+  async findAlertById(alertId: string): Promise<ClinicAlert | null> {
+    const entity = await this.alertRepository.findOne({ where: { id: alertId } });
+    return entity ? ClinicMapper.toAlert(entity) : null;
+  }
+
+  private buildMonthKeys(from: Date, to: Date): string[] {
+    const result: string[] = [];
+    const start = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), 1));
+    const end = new Date(Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), 1));
+
+    let cursor = start;
+    let guard = 0;
+    while (cursor <= end && guard < 60) {
+      result.push(this.formatMonth(cursor));
+      cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1));
+      guard += 1;
+    }
+
+    return result;
+  }
+
+  private formatMonth(date: Date): string {
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+  }
+
+  private groupMetricsByClinic(
+    metrics: ClinicDashboardMetric[],
+  ): Record<string, AggregatedMetrics> {
+    return metrics.reduce<Record<string, AggregatedMetrics>>((acc, metric) => {
+      const current = acc[metric.clinicId] ?? {
+        revenue: 0,
+        appointments: 0,
+        activePatients: 0,
+        occupancyRate: 0,
+        satisfactionScore: 0,
+        samples: 0,
+        periods: 0,
+      };
+
+      current.revenue += metric.revenue;
+      current.appointments += metric.appointments;
+      current.activePatients += metric.activePatients;
+      current.occupancyRate += metric.occupancyRate;
+      current.periods += 1;
+      if (metric.satisfactionScore !== undefined) {
+        current.satisfactionScore += metric.satisfactionScore;
+        current.samples += 1;
+      }
+
+      acc[metric.clinicId] = current;
+      return acc;
+    }, {});
+  }
+
+  private metricValueByField(
+    entry: ClinicComparisonEntry,
+    metric: ClinicComparisonQuery['metric'],
+  ): number {
+    switch (metric) {
+      case 'appointments':
+        return entry.appointments;
+      case 'patients':
+        return entry.activePatients;
+      case 'occupancy':
+        return entry.occupancyRate;
+      case 'satisfaction':
+        return entry.satisfactionScore ?? 0;
+      default:
+        return entry.revenue;
+    }
+  }
+
+  private metricVariationByField(
+    entry: ClinicComparisonEntry,
+    metric: ClinicComparisonQuery['metric'],
+  ): number {
+    switch (metric) {
+      case 'appointments':
+        return entry.appointmentsVariationPercentage;
+      case 'patients':
+        return entry.activePatientsVariationPercentage;
+      case 'occupancy':
+        return entry.occupancyVariationPercentage;
+      case 'satisfaction':
+        return entry.satisfactionVariationPercentage ?? 0;
+      default:
+        return entry.revenueVariationPercentage;
+    }
+  }
+
+  private resolveTrendDirection(change: number | undefined): ClinicTrendDirection {
+    if (change === undefined || Number.isNaN(change)) {
+      return 'stable';
+    }
+
+    const normalized = Number(change);
+    if (normalized > 0.1) {
+      return 'upward';
+    }
+    if (normalized < -0.1) {
+      return 'downward';
+    }
+    return 'stable';
+  }
+
+  private calculateVariation(current: number, previous?: number): number {
+    if (!previous || previous === 0) {
+      return 0;
+    }
+    return ((current - previous) / previous) * 100;
+  }
+
+  private aggregateFinancialSnapshots(
+    snapshots: ClinicFinancialSnapshot[],
+  ): Map<string, AggregatedFinancialMetrics> {
+    return snapshots.reduce<Map<string, AggregatedFinancialMetrics>>((acc, snapshot) => {
+      const current = acc.get(snapshot.clinicId) ?? {
+        revenue: 0,
+        expenses: 0,
+        profit: 0,
+        marginSum: 0,
+        marginSamples: 0,
+      };
+
+      current.revenue += snapshot.revenue;
+      current.expenses += snapshot.expenses;
+      current.profit += snapshot.profit;
+      current.marginSum += snapshot.margin;
+      current.marginSamples += 1;
+
+      acc.set(snapshot.clinicId, current);
+      return acc;
+    }, new Map<string, AggregatedFinancialMetrics>());
+  }
+}

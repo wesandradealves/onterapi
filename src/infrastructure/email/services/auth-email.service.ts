@@ -85,7 +85,7 @@ export class AuthEmailService {
   }
 
   async sendTwoFactorCodeEmail(data: TwoFactorCodeData): Promise<Result<void>> {
-    const subject = 'Código de verificação - Onterapi';
+    const subject = 'C digo de verifica  o - Onterapi';
     const html = this.getTwoFactorCodeTemplate(data);
 
     return this.sendEmail({
@@ -127,16 +127,16 @@ export class AuthEmailService {
         </head>
         <body>
           <div class="container">
-            <h2>Verificação de E-mail</h2>
-            <p>Olá ${data.name},</p>
-            <p>Obrigado por se cadastrar na Onterapi! Para completar seu cadastro, por favor verifique seu e-mail clicando no botão abaixo:</p>
+            <h2>Verifica  o de E-mail</h2>
+            <p>Ol  ${data.name},</p>
+            <p>Obrigado por se cadastrar na Onterapi! Para completar seu cadastro, por favor verifique seu e-mail clicando no bot o abaixo:</p>
             <a href="${data.verificationLink}" class="button">Verificar E-mail</a>
             <p>Ou copie e cole este link no seu navegador:</p>
             <p>${data.verificationLink}</p>
             <p>Este link expira em ${data.expiresIn}.</p>
             <div class="footer">
-              <p>Se você não criou uma conta na Onterapi, por favor ignore este e-mail.</p>
-              <p>© 2024 Onterapi. Todos os direitos reservados.</p>
+              <p>Se voc  n o criou uma conta na Onterapi, por favor ignore este e-mail.</p>
+              <p>  2024 Onterapi. Todos os direitos reservados.</p>
             </div>
           </div>
         </body>
@@ -167,15 +167,15 @@ export class AuthEmailService {
         <body>
           <div class="container">
             <h2>Redefinir Senha</h2>
-            <p>Olá ${data.name},</p>
-            <p>Recebemos uma solicitação para redefinir a senha da sua conta. Clique no botão abaixo para criar uma nova senha:</p>
+            <p>Ol  ${data.name},</p>
+            <p>Recebemos uma solicita  o para redefinir a senha da sua conta. Clique no bot o abaixo para criar uma nova senha:</p>
             <a href="${data.resetLink}" class="button">Redefinir Senha</a>
             <p>Ou copie e cole este link no seu navegador:</p>
             <p>${data.resetLink}</p>
             <p>Este link expira em ${data.expiresIn}.</p>
             <div class="footer">
-              <p>Se você não solicitou a redefinição de senha, por favor ignore este e-mail.</p>
-              <p>© 2024 Onterapi. Todos os direitos reservados.</p>
+              <p>Se voc  n o solicitou a redefini  o de senha, por favor ignore este e-mail.</p>
+              <p>  2024 Onterapi. Todos os direitos reservados.</p>
             </div>
           </div>
         </body>
@@ -206,13 +206,13 @@ export class AuthEmailService {
         </head>
         <body>
           <div class="container">
-            <h2>Código de Verificação</h2>
-            <p>Use o código abaixo para completar seu login:</p>
+            <h2>C digo de Verifica  o</h2>
+            <p>Use o c digo abaixo para completar seu login:</p>
             <div class="code">${data.code}</div>
-            <p>Este código expira em ${data.expiresIn}.</p>
+            <p>Este c digo expira em ${data.expiresIn}.</p>
             <div class="footer">
-              <p>Se você não solicitou este código, por favor ignore este e-mail.</p>
-              <p>© 2024 Onterapi. Todos os direitos reservados.</p>
+              <p>Se voc  n o solicitou este c digo, por favor ignore este e-mail.</p>
+              <p>  2024 Onterapi. Todos os direitos reservados.</p>
             </div>
           </div>
         </body>
@@ -237,19 +237,19 @@ export class AuthEmailService {
           <div class="container">
             <h2>Novo Login Detectado</h2>
             <div class="alert">
-              <p><strong>Atenção:</strong> Detectamos um novo login em sua conta.</p>
+              <p><strong>Aten  o:</strong> Detectamos um novo login em sua conta.</p>
             </div>
             <div class="details">
               <p><strong>Detalhes do acesso:</strong></p>
               <ul>
                 <li>Data/Hora: ${new Date().toLocaleString('pt-BR')}</li>
-                <li>Localização: ${data.location}</li>
+                <li>Localiza  o: ${data.location}</li>
                 <li>Dispositivo: ${data.device}</li>
               </ul>
             </div>
-            <p>Se foi você, pode ignorar este e-mail. Se não reconhece este acesso, por favor altere sua senha imediatamente.</p>
+            <p>Se foi voc , pode ignorar este e-mail. Se n o reconhece este acesso, por favor altere sua senha imediatamente.</p>
             <div class="footer">
-              <p>© 2024 Onterapi. Todos os direitos reservados.</p>
+              <p>  2024 Onterapi. Todos os direitos reservados.</p>
             </div>
           </div>
         </body>

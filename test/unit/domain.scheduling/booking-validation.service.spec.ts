@@ -48,6 +48,7 @@ const createHold = (overrides: Partial<BookingHold> = {}): BookingHold => ({
   professionalId: 'prof-1',
   clinicId: 'clinic-1',
   patientId: 'patient-1',
+  serviceTypeId: 'service-1',
   startAtUtc: new Date('2025-10-10T10:00:00Z'),
   endAtUtc: new Date('2025-10-10T11:00:00Z'),
   ttlExpiresAtUtc: new Date('2025-10-08T09:50:00Z'),

@@ -15,13 +15,13 @@ export class BaseAuthResponseDto {
   refreshToken!: string;
 
   @ApiProperty({
-    description: 'Tempo de expiração em segundos',
+    description: 'Tempo de expira  o em segundos',
     example: 900,
   })
   expiresIn!: number;
 
   @ApiProperty({
-    description: 'Dados do usuário autenticado',
+    description: 'Dados do usu rio autenticado',
   })
   user!: ICurrentUser;
 }

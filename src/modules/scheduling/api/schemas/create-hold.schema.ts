@@ -4,6 +4,7 @@ export const createHoldSchema = z.object({
   clinicId: z.string().uuid(),
   professionalId: z.string().uuid(),
   patientId: z.string().uuid(),
+  serviceTypeId: z.string().uuid(),
   startAtUtc: z.string().datetime(),
   endAtUtc: z.string().datetime(),
 });

@@ -1,1 +1,1 @@
-﻿import './anamnesis-ai-worker/server';
+import './anamnesis-ai-worker/server';

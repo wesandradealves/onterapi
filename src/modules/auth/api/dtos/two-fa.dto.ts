@@ -3,13 +3,13 @@ import { DeviceInfo } from '../../../../shared/types/device.types';
 
 export class ValidateTwoFADto {
   @ApiProperty({
-    description: 'Token temporário recebido no login',
+    description: 'Token tempor rio recebido no login',
     example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
   })
   tempToken!: string;
 
   @ApiProperty({
-    description: 'Código de 6 dígitos',
+    description: 'C digo de 6 d gitos',
     example: '123456',
     minLength: 6,
     maxLength: 6,
@@ -25,7 +25,7 @@ export class ValidateTwoFADto {
   trustDevice?: boolean;
 
   @ApiProperty({
-    description: 'Informações do dispositivo',
+    description: 'Informa  es do dispositivo',
     required: false,
   })
   deviceInfo?: DeviceInfo;
@@ -45,13 +45,13 @@ export class ValidateTwoFAResponseDto {
   refreshToken!: string;
 
   @ApiProperty({
-    description: 'Tempo de expiração em segundos',
+    description: 'Tempo de expira  o em segundos',
     example: 900,
   })
   expiresIn!: number;
 
   @ApiProperty({
-    description: 'Dados do usuário autenticado',
+    description: 'Dados do usu rio autenticado',
   })
   user!: {
     id: string;

@@ -1,8 +1,8 @@
-﻿import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class RequestPasswordResetDto {
   @ApiProperty({
-    description: 'Email do usuário que receberá as instruções de redefinição',
+    description: 'Email do usu rio que receber  as instru  es de redefini  o',
     example: 'usuario@example.com',
   })
   email!: string;
@@ -14,7 +14,7 @@ export class RequestPasswordResetResponseDto {
 
   @ApiProperty({
     description: 'Mensagem de retorno',
-    example: 'Email de recuperação enviado com sucesso',
+    example: 'Email de recupera  o enviado com sucesso',
   })
   message!: string;
 }

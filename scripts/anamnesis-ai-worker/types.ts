@@ -1,4 +1,4 @@
-﻿import {
+import {
   AnamnesisAIRequestPayload,
   AnamnesisCompactSummary,
   TherapeuticPlanRecommendation,

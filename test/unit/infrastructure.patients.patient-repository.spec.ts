@@ -1,4 +1,4 @@
-﻿import { PatientRepository } from '@infrastructure/patients/repositories/patient.repository';
+import { PatientRepository } from '@infrastructure/patients/repositories/patient.repository';
 import { SupabaseService } from '@infrastructure/auth/services/supabase.service';
 import { TransferPatientInput } from '@domain/patients/types/patient.types';
 
@@ -136,7 +136,7 @@ describe('PatientRepository', () => {
         professional_id: 'professional-2',
         medical_history: {
           ...existingHistory,
-          lastTransferReason: 'Mudança de agenda',
+          lastTransferReason: 'Mudan a de agenda',
         },
         emergency_contact: null,
         allergies: [],
@@ -176,7 +176,7 @@ describe('PatientRepository', () => {
         requestedBy: 'admin-1',
         requesterRole: 'SUPER_ADMIN',
         toProfessionalId: 'professional-2',
-        reason: 'Mudança de agenda',
+        reason: 'Mudan a de agenda',
         effectiveAt: undefined,
       };
 
@@ -187,7 +187,7 @@ describe('PatientRepository', () => {
         fullName: 'Paciente Curl Teste',
         acceptedTerms: true,
         tags: ['curl-test'],
-        lastTransferReason: 'Mudança de agenda',
+        lastTransferReason: 'Mudan a de agenda',
       });
 
       expect(result.fullName).toBe('Paciente Curl Teste');

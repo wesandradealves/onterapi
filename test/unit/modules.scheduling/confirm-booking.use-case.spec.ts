@@ -1,4 +1,4 @@
-﻿import { ForbiddenException, GoneException, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, GoneException, NotFoundException } from '@nestjs/common';
 
 import { ConfirmBookingUseCase } from '@modules/scheduling/use-cases/confirm-booking.use-case';
 import { IBookingRepository } from '@domain/scheduling/interfaces/repositories/booking.repository.interface';
@@ -16,6 +16,8 @@ function baseBooking() {
     id: 'booking-1',
     tenantId: 'tenant-1',
     professionalId: 'prof-1',
+    originalProfessionalId: null,
+    coverageId: null,
     clinicId: 'clinic-1',
     patientId: 'patient-1',
     source: 'clinic_portal',
@@ -88,6 +90,7 @@ describe('ConfirmBookingUseCase', () => {
       clinicId: 'clinic-1',
       professionalId: 'prof-1',
       patientId: 'patient-1',
+      serviceTypeId: 'service-1',
       startAtUtc: booking.startAtUtc,
       endAtUtc: booking.endAtUtc,
       ttlExpiresAtUtc: new Date('2025-10-08T09:55:00Z'),
@@ -133,13 +136,57 @@ describe('ConfirmBookingUseCase', () => {
     );
   });
 
-  it('lança not found quando o agendamento não existe', async () => {
+  it('propaga dados de cobertura ao confirmar agendamento coberto', async () => {
+    const booking = createBooking({
+      professionalId: 'prof-cover',
+      originalProfessionalId: 'prof-owner',
+      coverageId: 'coverage-1',
+    });
+    const hold = {
+      id: 'hold-1',
+      tenantId: 'tenant-1',
+      clinicId: 'clinic-1',
+      professionalId: 'prof-cover',
+      patientId: 'patient-1',
+      serviceTypeId: 'service-1',
+      startAtUtc: booking.startAtUtc,
+      endAtUtc: booking.endAtUtc,
+      ttlExpiresAtUtc: new Date('2025-10-08T09:55:00Z'),
+      status: 'active',
+      createdAt: new Date('2025-10-08T09:00:00Z'),
+      updatedAt: new Date('2025-10-08T09:00:00Z'),
+      version: 1,
+    };
+
+    bookingRepository.findById.mockResolvedValue(booking);
+    holdRepository.findById.mockResolvedValue(hold);
+    bookingRepository.updateStatus.mockResolvedValue({
+      ...booking,
+      status: 'confirmed',
+      paymentStatus: 'approved',
+    });
+
+    await useCase.executeOrThrow(createInput());
+
+    const event = messageBus.publish.mock.calls[0][0];
+    expect(event.payload.originalProfessionalId).toBe('prof-owner');
+    expect(event.payload.coverageId).toBe('coverage-1');
+  });
+
+  it('lan a not found quando o agendamento n o existe', async () => {
     bookingRepository.findById.mockResolvedValue(null);
 
     await expect(useCase.executeOrThrow(createInput())).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('lança gone quando o hold expirou', async () => {
+  it('lan a not found quando o hold n o existe', async () => {
+    bookingRepository.findById.mockResolvedValue(createBooking());
+    holdRepository.findById.mockResolvedValue(null);
+
+    await expect(useCase.executeOrThrow(createInput())).rejects.toThrow('Hold nao encontrado');
+  });
+
+  it('lan a gone quando o hold expirou', async () => {
     const booking = createBooking();
     bookingRepository.findById.mockResolvedValue(booking);
     holdRepository.findById.mockResolvedValue({
@@ -165,7 +212,7 @@ describe('ConfirmBookingUseCase', () => {
     ).rejects.toBeInstanceOf(GoneException);
   });
 
-  it('lança erro de pagamento quando o status informado não é aprovado', async () => {
+  it('lan a erro de pagamento quando o status informado n o   aprovado', async () => {
     const booking = createBooking({ paymentStatus: 'pending' });
     bookingRepository.findById.mockResolvedValue(booking);
     holdRepository.findById.mockResolvedValue({
@@ -189,5 +236,41 @@ describe('ConfirmBookingUseCase', () => {
         paymentStatus: 'pending',
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('usa data atual quando confirma  o n o possui timestamp', async () => {
+    const booking = createBooking();
+    const hold = {
+      id: 'hold-1',
+      tenantId: 'tenant-1',
+      clinicId: 'clinic-1',
+      professionalId: 'prof-1',
+      patientId: 'patient-1',
+      serviceTypeId: 'service-1',
+      startAtUtc: booking.startAtUtc,
+      endAtUtc: booking.endAtUtc,
+      ttlExpiresAtUtc: new Date('2025-10-08T09:55:00Z'),
+      status: 'active',
+      createdAt: new Date('2025-10-08T09:00:00Z'),
+      updatedAt: new Date('2025-10-08T09:00:00Z'),
+      version: 1,
+    };
+    bookingRepository.findById.mockResolvedValue(booking);
+    holdRepository.findById.mockResolvedValue(hold);
+    bookingRepository.updateStatus.mockResolvedValue({
+      ...booking,
+      status: 'confirmed',
+      paymentStatus: 'approved',
+    });
+    const now = new Date('2025-10-08T09:35:00Z');
+    jest.setSystemTime(now);
+
+    await useCase.executeOrThrow({
+      ...createInput(),
+      confirmationAtUtc: undefined,
+    });
+
+    const event = messageBus.publish.mock.calls[0][0];
+    expect(event.payload.confirmedAt.toISOString()).toBe(now.toISOString());
   });
 });

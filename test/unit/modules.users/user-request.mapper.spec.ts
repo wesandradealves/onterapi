@@ -76,7 +76,7 @@ describe('user-request.mapper', () => {
     });
   });
 
-  it('mantém tenantId informado no filtro mesmo com contexto presente', () => {
+  it('mant m tenantId informado no filtro mesmo com contexto presente', () => {
     const filters: ListUsersSchema = {
       page: 1,
       limit: 10,

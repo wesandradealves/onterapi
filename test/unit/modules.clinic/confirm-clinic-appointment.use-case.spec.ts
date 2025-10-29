@@ -1,0 +1,711 @@
+import { ConflictException, ForbiddenException } from '@nestjs/common';
+
+import { ConfirmClinicAppointmentUseCase } from '../../../src/modules/clinic/use-cases/confirm-clinic-appointment.use-case';
+import { IClinicRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic.repository.interface';
+import { IClinicHoldRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-hold.repository.interface';
+import { IClinicServiceTypeRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-service-type.repository.interface';
+import { IClinicAppointmentRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-appointment.repository.interface';
+import { IClinicConfigurationRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-configuration.repository.interface';
+import { IClinicPaymentCredentialsService } from '../../../src/domain/clinic/interfaces/services/clinic-payment-credentials.service.interface';
+import { IClinicPaymentGatewayService } from '../../../src/domain/clinic/interfaces/services/clinic-payment-gateway.service.interface';
+import { IClinicProfessionalPolicyRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-professional-policy.repository.interface';
+import { IExternalCalendarEventsRepository } from '../../../src/domain/scheduling/interfaces/repositories/external-calendar-events.repository.interface';
+import { ClinicAuditService } from '../../../src/infrastructure/clinic/services/clinic-audit.service';
+import {
+  Clinic,
+  ClinicAppointment,
+  ClinicAppointmentConfirmationResult,
+  ClinicHold,
+  ClinicServiceTypeDefinition,
+} from '../../../src/domain/clinic/types/clinic.types';
+
+type Mocked<T> = jest.Mocked<T>;
+
+const createClinic = (): Clinic => ({
+  id: 'clinic-1',
+  tenantId: 'tenant-1',
+  name: 'Clinica Alpha',
+  slug: 'clinica-alpha',
+  status: 'active',
+  primaryOwnerId: 'owner-1',
+  holdSettings: {
+    ttlMinutes: 30,
+    minAdvanceMinutes: 60,
+    maxAdvanceMinutes: 240,
+    allowOverbooking: false,
+    overbookingThreshold: undefined,
+    resourceMatchingStrict: true,
+  },
+  configurationVersions: {},
+  createdAt: new Date('2025-01-01T00:00:00Z'),
+  updatedAt: new Date('2025-01-01T00:00:00Z'),
+});
+
+const createHold = (): ClinicHold => ({
+  id: 'hold-1',
+  clinicId: 'clinic-1',
+  tenantId: 'tenant-1',
+  professionalId: 'professional-1',
+  patientId: 'patient-1',
+  serviceTypeId: 'service-1',
+  start: new Date('2099-01-01T12:00:00Z'),
+  end: new Date('2099-01-01T12:30:00Z'),
+  ttlExpiresAt: new Date('2099-01-01T11:45:00Z'),
+  status: 'pending',
+  idempotencyKey: 'create-hold-1',
+  createdBy: 'user-hold',
+  resources: [],
+  createdAt: new Date('2098-12-31T10:00:00Z'),
+  updatedAt: new Date('2098-12-31T10:00:00Z'),
+});
+
+const createServiceType = (): ClinicServiceTypeDefinition => ({
+  id: 'service-1',
+  clinicId: 'clinic-1',
+  name: 'Sessao Individual',
+  slug: 'sessao-individual',
+  durationMinutes: 60,
+  price: 200,
+  currency: 'BRL',
+  isActive: true,
+  requiresAnamnesis: false,
+  enableOnlineScheduling: true,
+  minAdvanceMinutes: 45,
+  cancellationPolicy: { type: 'percentage', windowMinutes: 120, percentage: 50 },
+  eligibility: { allowNewPatients: true, allowExistingPatients: true },
+  createdAt: new Date('2025-01-01T00:00:00Z'),
+  updatedAt: new Date('2025-01-01T00:00:00Z'),
+});
+
+const createAppointment = (): ClinicAppointment => ({
+  id: 'appointment-1',
+  clinicId: 'clinic-1',
+  tenantId: 'tenant-1',
+  holdId: 'hold-1',
+  professionalId: 'professional-1',
+  patientId: 'patient-1',
+  serviceTypeId: 'service-1',
+  start: new Date('2099-01-01T12:00:00Z'),
+  end: new Date('2099-01-01T12:30:00Z'),
+  status: 'scheduled',
+  paymentStatus: 'approved',
+  paymentTransactionId: 'trx-123',
+  confirmedAt: new Date('2098-12-31T12:00:00Z'),
+  createdAt: new Date('2098-12-31T12:00:00Z'),
+  updatedAt: new Date('2098-12-31T12:00:00Z'),
+  metadata: { confirmationIdempotencyKey: 'idem-123' },
+});
+
+describe('ConfirmClinicAppointmentUseCase', () => {
+  let clinicRepository: Mocked<IClinicRepository>;
+  let clinicHoldRepository: Mocked<IClinicHoldRepository>;
+  let clinicServiceTypeRepository: Mocked<IClinicServiceTypeRepository>;
+  let clinicAppointmentRepository: Mocked<IClinicAppointmentRepository>;
+  let clinicConfigurationRepository: Mocked<IClinicConfigurationRepository>;
+  let clinicPaymentCredentialsService: Mocked<IClinicPaymentCredentialsService>;
+  let clinicPaymentGatewayService: Mocked<IClinicPaymentGatewayService>;
+  let professionalPolicyRepository: Mocked<IClinicProfessionalPolicyRepository>;
+  let externalCalendarEventsRepository: Mocked<IExternalCalendarEventsRepository>;
+  let auditService: ClinicAuditService;
+  let useCase: ConfirmClinicAppointmentUseCase;
+
+  beforeEach(() => {
+    clinicRepository = {
+      findByTenant: jest.fn(),
+      listComplianceDocuments: jest.fn(),
+    } as unknown as Mocked<IClinicRepository>;
+
+    clinicHoldRepository = {
+      findById: jest.fn(),
+      findActiveOverlapByProfessional: jest.fn(),
+      findActiveOverlapByResources: jest.fn(),
+      confirmHold: jest.fn(),
+      expireHold: jest.fn(),
+    } as unknown as Mocked<IClinicHoldRepository>;
+
+    clinicHoldRepository.findActiveOverlapByProfessional.mockResolvedValue([]);
+    clinicHoldRepository.findActiveOverlapByResources.mockResolvedValue([]);
+
+    clinicServiceTypeRepository = {
+      findById: jest.fn(),
+    } as unknown as Mocked<IClinicServiceTypeRepository>;
+
+    clinicAppointmentRepository = {
+      findByHoldId: jest.fn(),
+      findActiveOverlap: jest.fn(),
+      create: jest.fn(),
+    } as unknown as Mocked<IClinicAppointmentRepository>;
+
+    clinicAppointmentRepository.findActiveOverlap.mockResolvedValue([]);
+
+    clinicConfigurationRepository = {
+      findLatestAppliedVersion: jest.fn(),
+    } as unknown as Mocked<IClinicConfigurationRepository>;
+
+    clinicPaymentCredentialsService = {
+      resolveCredentials: jest.fn(),
+    } as unknown as Mocked<IClinicPaymentCredentialsService>;
+
+    clinicPaymentGatewayService = {
+      verifyPayment: jest.fn(),
+      executePayout: jest.fn(),
+    } as unknown as Mocked<IClinicPaymentGatewayService>;
+
+    professionalPolicyRepository = {
+      findActivePolicy: jest.fn(),
+      replacePolicy: jest.fn(),
+    } as unknown as Mocked<IClinicProfessionalPolicyRepository>;
+
+    externalCalendarEventsRepository = {
+      findApprovedOverlap: jest.fn(),
+    } as unknown as Mocked<IExternalCalendarEventsRepository>;
+
+    externalCalendarEventsRepository.findApprovedOverlap.mockResolvedValue([]);
+
+    auditService = {
+      register: jest.fn().mockResolvedValue(undefined),
+    } as unknown as ClinicAuditService;
+
+    professionalPolicyRepository.findActivePolicy.mockResolvedValue({
+      id: 'policy-1',
+      clinicId: 'clinic-1',
+      tenantId: 'tenant-1',
+      professionalId: 'professional-1',
+      channelScope: 'direct',
+      economicSummary: {
+        items: [
+          {
+            serviceTypeId: 'service-1',
+            price: 200,
+            currency: 'BRL',
+            payoutModel: 'percentage',
+            payoutValue: 50,
+          },
+        ],
+        orderOfRemainders: ['taxes', 'gateway', 'clinic', 'professional', 'platform'],
+        roundingStrategy: 'half_even',
+      },
+      effectiveAt: new Date('2098-12-01T00:00:00Z'),
+      endedAt: undefined,
+      sourceInvitationId: 'inv-1',
+      acceptedBy: 'professional-1',
+      createdAt: new Date('2098-12-01T00:00:00Z'),
+      updatedAt: new Date('2098-12-01T00:00:00Z'),
+    });
+
+    useCase = new ConfirmClinicAppointmentUseCase(
+      clinicRepository,
+      clinicHoldRepository,
+      clinicServiceTypeRepository,
+      clinicAppointmentRepository,
+      clinicConfigurationRepository,
+      clinicPaymentCredentialsService,
+      clinicPaymentGatewayService,
+      externalCalendarEventsRepository,
+      professionalPolicyRepository,
+      auditService,
+    );
+  });
+
+  it('should confirm hold and create appointment when inputs are valid', async () => {
+    const clinic = createClinic();
+    const hold = createHold();
+    const serviceType = createServiceType();
+    const appointment = createAppointment();
+    const confirmedAt = appointment.confirmedAt;
+
+    const paymentVersion = {
+      id: 'version-1',
+      clinicId: clinic.id,
+      tenantId: clinic.tenantId,
+      section: 'payments' as const,
+      version: 1,
+      payload: {
+        paymentSettings: {
+          provider: 'asaas',
+          credentialsId: 'cred-1',
+          sandboxMode: false,
+          splitRules: [],
+          roundingStrategy: 'half_even',
+          antifraud: { enabled: false },
+          inadimplencyRule: { gracePeriodDays: 0, actions: [] },
+          refundPolicy: {
+            type: 'manual',
+            processingTimeHours: 0,
+            allowPartialRefund: false,
+          },
+          cancellationPolicies: [],
+        },
+      },
+      createdBy: 'user-config',
+      createdAt: new Date('2098-01-01T00:00:00Z'),
+      appliedAt: new Date('2098-01-02T00:00:00Z'),
+      notes: null,
+      autoApply: true,
+    };
+
+    clinicRepository.findByTenant.mockResolvedValue(clinic);
+    clinicHoldRepository.findById.mockResolvedValue(hold);
+    clinicServiceTypeRepository.findById.mockResolvedValue(serviceType);
+    clinicHoldRepository.findActiveOverlapByProfessional.mockResolvedValue([]);
+    clinicAppointmentRepository.findActiveOverlap.mockResolvedValue([]);
+    clinicAppointmentRepository.findByHoldId.mockResolvedValue(null);
+    clinicConfigurationRepository.findLatestAppliedVersion.mockResolvedValue(
+      paymentVersion as never,
+    );
+    clinicPaymentCredentialsService.resolveCredentials.mockResolvedValue({
+      provider: 'asaas',
+      productionApiKey: 'api-key',
+      sandboxApiKey: 'sandbox-key',
+    });
+    clinicPaymentGatewayService.verifyPayment.mockResolvedValue({
+      status: 'approved',
+      providerStatus: 'RECEIVED',
+      paidAt: confirmedAt,
+      metadata: { provider: 'asaas' },
+    });
+    clinicAppointmentRepository.create.mockResolvedValue(appointment);
+    clinicHoldRepository.confirmHold.mockResolvedValue({
+      ...hold,
+      status: 'confirmed',
+      confirmedAt,
+      confirmedBy: 'user-hold',
+      metadata: {
+        confirmation: {
+          appointmentId: appointment.id,
+          idempotencyKey: 'idem-123',
+          paymentStatus: 'approved',
+          gatewayStatus: 'RECEIVED',
+        },
+        paymentTransactionId: 'trx-123',
+        paymentStatus: 'approved',
+        gatewayStatus: 'RECEIVED',
+      },
+    });
+
+    const input = {
+      clinicId: 'clinic-1',
+      tenantId: 'tenant-1',
+      holdId: 'hold-1',
+      confirmedBy: 'user-hold',
+      paymentTransactionId: 'trx-123',
+      idempotencyKey: 'idem-123',
+    };
+
+    const result = await useCase.executeOrThrow(input);
+
+    expect(clinicConfigurationRepository.findLatestAppliedVersion).toHaveBeenCalledWith(
+      clinic.id,
+      'payments',
+    );
+    expect(clinicPaymentCredentialsService.resolveCredentials).toHaveBeenCalledWith({
+      credentialsId: 'cred-1',
+      clinicId: clinic.id,
+      tenantId: clinic.tenantId,
+    });
+    expect(clinicPaymentGatewayService.verifyPayment).toHaveBeenCalledWith({
+      provider: 'asaas',
+      credentials: {
+        provider: 'asaas',
+        productionApiKey: 'api-key',
+        sandboxApiKey: 'sandbox-key',
+      },
+      sandboxMode: false,
+      paymentId: input.paymentTransactionId,
+    });
+
+    expect(clinicAppointmentRepository.create).toHaveBeenCalledWith({
+      clinicId: hold.clinicId,
+      tenantId: hold.tenantId,
+      holdId: hold.id,
+      professionalId: hold.professionalId,
+      patientId: hold.patientId,
+      serviceTypeId: hold.serviceTypeId,
+      start: hold.start,
+      end: hold.end,
+      paymentTransactionId: input.paymentTransactionId,
+      paymentStatus: 'approved',
+      confirmedAt: expect.any(Date),
+      metadata: expect.objectContaining({
+        confirmationIdempotencyKey: input.idempotencyKey,
+        gatewayStatus: 'RECEIVED',
+        sandboxMode: false,
+        professionalPolicy: expect.objectContaining({
+          policyId: 'policy-1',
+          economicSummary: expect.objectContaining({
+            items: expect.arrayContaining([
+              expect.objectContaining({
+                serviceTypeId: hold.serviceTypeId,
+                payoutModel: 'percentage',
+                payoutValue: 50,
+              }),
+            ]),
+          }),
+        }),
+      }),
+    });
+
+    expect(clinicHoldRepository.confirmHold).toHaveBeenCalledWith({
+      ...input,
+      confirmedAt: expect.any(Date),
+      status: 'confirmed',
+      appointmentId: appointment.id,
+      paymentStatus: 'approved',
+      gatewayStatus: 'RECEIVED',
+    });
+
+    expect(result).toEqual<ClinicAppointmentConfirmationResult>({
+      appointmentId: appointment.id,
+      clinicId: appointment.clinicId,
+      holdId: appointment.holdId,
+      paymentTransactionId: appointment.paymentTransactionId,
+      confirmedAt: appointment.confirmedAt,
+      paymentStatus: 'approved',
+    });
+
+    expect(auditService.register).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'clinic.hold.confirmed',
+        tenantId: hold.tenantId,
+        clinicId: hold.clinicId,
+        performedBy: input.confirmedBy,
+        detail: expect.objectContaining({
+          holdId: hold.id,
+          appointmentId: appointment.id,
+          paymentTransactionId: input.paymentTransactionId,
+          paymentStatus: 'approved',
+          gatewayStatus: 'RECEIVED',
+          channel: 'direct',
+          professionalPolicyId: 'policy-1',
+          coverage: null,
+        }),
+      }),
+    );
+  });
+
+  it('should propagate coverage metadata when hold has temporary coverage', async () => {
+    const clinic = createClinic();
+    const coverageMetadata = {
+      coverageId: 'coverage-1',
+      originalProfessionalId: 'professional-1',
+      coverageProfessionalId: 'professional-coverage',
+      status: 'active',
+      startAt: '2099-01-01T00:00:00.000Z',
+      endAt: '2099-01-02T00:00:00.000Z',
+    };
+    const hold = {
+      ...createHold(),
+      professionalId: 'professional-coverage',
+      metadata: {
+        coverage: coverageMetadata,
+      },
+    };
+    const serviceType = createServiceType();
+    const appointment = {
+      ...createAppointment(),
+      professionalId: hold.professionalId,
+    };
+
+    professionalPolicyRepository.findActivePolicy.mockResolvedValue({
+      id: 'policy-coverage',
+      clinicId: clinic.id,
+      tenantId: clinic.tenantId,
+      professionalId: hold.professionalId,
+      channelScope: 'direct',
+      economicSummary: {
+        items: [
+          {
+            serviceTypeId: serviceType.id,
+            price: serviceType.price,
+            currency: serviceType.currency,
+            payoutModel: 'percentage',
+            payoutValue: 55,
+          },
+        ],
+        orderOfRemainders: ['taxes', 'gateway', 'clinic', 'professional', 'platform'],
+        roundingStrategy: 'half_even',
+      },
+      effectiveAt: new Date('2098-12-01T00:00:00Z'),
+      endedAt: undefined,
+      sourceInvitationId: 'inv-coverage',
+      acceptedBy: hold.professionalId,
+      createdAt: new Date('2098-12-01T00:00:00Z'),
+      updatedAt: new Date('2098-12-01T00:00:00Z'),
+    });
+
+    clinicRepository.findByTenant.mockResolvedValue(clinic);
+    clinicHoldRepository.findById.mockResolvedValue(hold as ClinicHold);
+    clinicServiceTypeRepository.findById.mockResolvedValue(serviceType);
+    clinicHoldRepository.findActiveOverlapByProfessional.mockResolvedValue([]);
+    clinicAppointmentRepository.findActiveOverlap.mockResolvedValue([]);
+    clinicAppointmentRepository.findByHoldId.mockResolvedValue(null);
+    clinicConfigurationRepository.findLatestAppliedVersion.mockResolvedValue({
+      id: 'version-coverage',
+      clinicId: clinic.id,
+      tenantId: clinic.tenantId,
+      section: 'payments',
+      version: 1,
+      payload: {
+        paymentSettings: {
+          provider: 'asaas',
+          credentialsId: 'cred-coverage',
+          sandboxMode: true,
+          splitRules: [],
+          roundingStrategy: 'half_even',
+          antifraud: { enabled: false },
+          inadimplencyRule: { gracePeriodDays: 0, actions: [] },
+          refundPolicy: {
+            type: 'manual',
+            processingTimeHours: 0,
+            allowPartialRefund: false,
+          },
+          cancellationPolicies: [],
+        },
+      },
+      createdBy: 'user-config',
+      createdAt: new Date('2098-01-01T00:00:00Z'),
+      appliedAt: new Date('2098-01-02T00:00:00Z'),
+      notes: null,
+      autoApply: true,
+    });
+    clinicPaymentCredentialsService.resolveCredentials.mockResolvedValue({
+      provider: 'asaas',
+      productionApiKey: 'api-key',
+      sandboxApiKey: 'sandbox-key',
+    });
+    clinicPaymentGatewayService.verifyPayment.mockResolvedValue({
+      status: 'approved',
+      providerStatus: 'RECEIVED',
+      paidAt: new Date('2098-12-31T12:00:00Z'),
+      metadata: { provider: 'asaas' },
+    });
+    clinicAppointmentRepository.create.mockResolvedValue(appointment);
+    clinicHoldRepository.confirmHold.mockResolvedValue({
+      ...hold,
+      status: 'confirmed' as ClinicHold['status'],
+    });
+
+    const input = {
+      clinicId: clinic.id,
+      tenantId: clinic.tenantId,
+      holdId: hold.id,
+      confirmedBy: 'user-hold',
+      paymentTransactionId: 'trx-coverage',
+      idempotencyKey: 'idem-coverage',
+    };
+
+    await useCase.executeOrThrow(input);
+
+    expect(clinicAppointmentRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          coverage: expect.objectContaining({
+            coverageId: coverageMetadata.coverageId,
+            originalProfessionalId: coverageMetadata.originalProfessionalId,
+            coverageProfessionalId: coverageMetadata.coverageProfessionalId,
+            status: coverageMetadata.status,
+            startAt: coverageMetadata.startAt,
+            endAt: coverageMetadata.endAt,
+          }),
+        }),
+      }),
+    );
+
+    expect(auditService.register).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          coverage: expect.objectContaining({
+            coverageId: coverageMetadata.coverageId,
+            originalProfessionalId: coverageMetadata.originalProfessionalId,
+            coverageProfessionalId: coverageMetadata.coverageProfessionalId,
+          }),
+        }),
+      }),
+    );
+  });
+
+  it('should throw when professional policy is not found', async () => {
+    const clinic = createClinic();
+    const hold = createHold();
+    const serviceType = createServiceType();
+
+    clinicRepository.findByTenant.mockResolvedValue(clinic);
+    clinicHoldRepository.findById.mockResolvedValue(hold);
+    clinicServiceTypeRepository.findById.mockResolvedValue(serviceType);
+    clinicAppointmentRepository.findByHoldId.mockResolvedValue(null);
+    clinicHoldRepository.findActiveOverlapByProfessional.mockResolvedValue([]);
+    clinicAppointmentRepository.findActiveOverlap.mockResolvedValue([]);
+    professionalPolicyRepository.findActivePolicy.mockResolvedValueOnce(null);
+
+    await expect(
+      useCase.executeOrThrow({
+        clinicId: hold.clinicId,
+        tenantId: hold.tenantId,
+        holdId: hold.id,
+        confirmedBy: 'user-hold',
+        paymentTransactionId: 'trx-404',
+        idempotencyKey: 'idem-missing-policy',
+      }),
+    ).rejects.toThrow('Politica clinica-profissional nao encontrada');
+
+    expect(clinicAppointmentRepository.create).not.toHaveBeenCalled();
+    expect(clinicPaymentGatewayService.verifyPayment).not.toHaveBeenCalled();
+  });
+
+  it('should throw when professional policy does not include the service type', async () => {
+    const clinic = createClinic();
+    const hold = createHold();
+    const serviceType = createServiceType();
+
+    clinicRepository.findByTenant.mockResolvedValue(clinic);
+    clinicHoldRepository.findById.mockResolvedValue(hold);
+    clinicServiceTypeRepository.findById.mockResolvedValue(serviceType);
+    clinicAppointmentRepository.findByHoldId.mockResolvedValue(null);
+    clinicHoldRepository.findActiveOverlapByProfessional.mockResolvedValue([]);
+    clinicAppointmentRepository.findActiveOverlap.mockResolvedValue([]);
+    professionalPolicyRepository.findActivePolicy.mockResolvedValueOnce({
+      id: 'policy-2',
+      clinicId: clinic.id,
+      tenantId: clinic.tenantId,
+      professionalId: hold.professionalId,
+      channelScope: 'direct',
+      economicSummary: {
+        items: [
+          {
+            serviceTypeId: 'other-service',
+            price: 180,
+            currency: 'BRL',
+            payoutModel: 'fixed',
+            payoutValue: 90,
+          },
+        ],
+        orderOfRemainders: ['taxes', 'gateway', 'clinic', 'professional', 'platform'],
+        roundingStrategy: 'half_even',
+      },
+      effectiveAt: new Date('2098-12-01T00:00:00Z'),
+      endedAt: undefined,
+      sourceInvitationId: 'inv-2',
+      acceptedBy: 'professional-1',
+      createdAt: new Date('2098-12-01T00:00:00Z'),
+      updatedAt: new Date('2098-12-01T00:00:00Z'),
+    });
+
+    await expect(
+      useCase.executeOrThrow({
+        clinicId: hold.clinicId,
+        tenantId: hold.tenantId,
+        holdId: hold.id,
+        confirmedBy: 'user-hold',
+        paymentTransactionId: 'trx-405',
+        idempotencyKey: 'idem-policy-mismatch',
+      }),
+    ).rejects.toThrow('Politica clinica-profissional nao contempla o tipo de servico do hold');
+
+    expect(clinicAppointmentRepository.create).not.toHaveBeenCalled();
+  });
+
+  it('should reuse existing confirmation when idempotency key matches', async () => {
+    const clinic = createClinic();
+    const hold = {
+      ...createHold(),
+      status: 'confirmed' as ClinicHold['status'],
+      metadata: {
+        confirmation: { idempotencyKey: 'idem-xyz' },
+      },
+    };
+    const appointment = createAppointment();
+
+    clinicRepository.findByTenant.mockResolvedValue(clinic);
+    clinicHoldRepository.findById.mockResolvedValue(hold);
+    clinicAppointmentRepository.findByHoldId.mockResolvedValue(appointment);
+
+    const result = await useCase.executeOrThrow({
+      clinicId: 'clinic-1',
+      tenantId: 'tenant-1',
+      holdId: hold.id,
+      confirmedBy: 'user-hold',
+      paymentTransactionId: 'trx-123',
+      idempotencyKey: 'idem-xyz',
+    });
+
+    expect(clinicAppointmentRepository.create).not.toHaveBeenCalled();
+    expect(clinicHoldRepository.confirmHold).not.toHaveBeenCalled();
+    expect(result.appointmentId).toBe(appointment.id);
+    expect(clinicConfigurationRepository.findLatestAppliedVersion).not.toHaveBeenCalled();
+    expect(clinicPaymentCredentialsService.resolveCredentials).not.toHaveBeenCalled();
+    expect(clinicPaymentGatewayService.verifyPayment).not.toHaveBeenCalled();
+  });
+
+  it('should throw conflict when there is an approved external calendar event overlap', async () => {
+    const clinic = createClinic();
+    const hold = createHold();
+    const serviceType = createServiceType();
+
+    clinicRepository.findByTenant.mockResolvedValue(clinic);
+    clinicHoldRepository.findById.mockResolvedValue(hold);
+    clinicServiceTypeRepository.findById.mockResolvedValue(serviceType);
+    clinicAppointmentRepository.findByHoldId.mockResolvedValue(null);
+
+    externalCalendarEventsRepository.findApprovedOverlap.mockResolvedValue([
+      {
+        id: 'event-1',
+        tenantId: hold.tenantId,
+        professionalId: hold.professionalId,
+        source: 'google_calendar',
+        externalId: 'ext-1',
+        startAtUtc: new Date(hold.start),
+        endAtUtc: new Date(hold.end),
+        timezone: 'UTC',
+        status: 'approved',
+        validationErrors: null,
+        resourceId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any,
+    ]);
+
+    await expect(
+      useCase.executeOrThrow({
+        clinicId: hold.clinicId,
+        tenantId: hold.tenantId,
+        holdId: hold.id,
+        confirmedBy: 'user-hold',
+        paymentTransactionId: 'trx-789',
+        idempotencyKey: 'idem-external',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(clinicPaymentCredentialsService.resolveCredentials).not.toHaveBeenCalled();
+    expect(clinicPaymentGatewayService.verifyPayment).not.toHaveBeenCalled();
+    expect(clinicHoldRepository.confirmHold).not.toHaveBeenCalled();
+  });
+
+  it('should expire hold and throw when TTL already elapsed', async () => {
+    const clinic = createClinic();
+    const hold = {
+      ...createHold(),
+      ttlExpiresAt: new Date('2000-01-01T00:00:00Z'),
+    };
+
+    clinicRepository.findByTenant.mockResolvedValue(clinic);
+    clinicHoldRepository.findById.mockResolvedValue(hold);
+
+    await expect(
+      useCase.executeOrThrow({
+        clinicId: 'clinic-1',
+        tenantId: 'tenant-1',
+        holdId: hold.id,
+        confirmedBy: 'user-hold',
+        paymentTransactionId: 'trx-123',
+        idempotencyKey: 'idem-expired',
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    expect(clinicHoldRepository.expireHold).toHaveBeenCalledWith(hold.id, expect.any(Date));
+    expect(clinicAppointmentRepository.create).not.toHaveBeenCalled();
+    expect(clinicHoldRepository.confirmHold).not.toHaveBeenCalled();
+    expect(clinicConfigurationRepository.findLatestAppliedVersion).not.toHaveBeenCalled();
+    expect(clinicPaymentCredentialsService.resolveCredentials).not.toHaveBeenCalled();
+    expect(clinicPaymentGatewayService.verifyPayment).not.toHaveBeenCalled();
+  });
+});

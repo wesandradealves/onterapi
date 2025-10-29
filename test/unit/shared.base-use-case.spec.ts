@@ -72,7 +72,7 @@ describe('BaseUseCase', () => {
     expect(useCase.errors[0].message).toContain('boom');
   });
 
-  it('aplica mensagem padrao quando erro indefinido e lançado', async () => {
+  it('aplica mensagem padrao quando erro indefinido e lan ado', async () => {
     const useCase = new NonErrorExampleUseCase();
 
     await expect(useCase.execute(0)).rejects.toThrow('Unknown error');

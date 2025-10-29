@@ -1,4 +1,4 @@
-﻿import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import {
@@ -53,7 +53,7 @@ export class ResendVerificationEmailUseCase
       return {
         delivered: false,
         alreadyVerified: false,
-        message: 'Se o email estiver cadastrado, reenviamos as instruções de confirmação.',
+        message: 'Se o email estiver cadastrado, reenviamos as instru  es de confirma  o.',
       };
     }
 
@@ -62,7 +62,7 @@ export class ResendVerificationEmailUseCase
       return {
         delivered: false,
         alreadyVerified: true,
-        message: 'Este email já está verificado. Você pode fazer login normalmente.',
+        message: 'Este email j  est  verificado. Voc  pode fazer login normalmente.',
       };
     }
 

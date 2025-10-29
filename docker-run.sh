@@ -6,7 +6,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}🚀 OnTerapi Docker Production Simulation${NC}"
+echo -e "${GREEN}[OnTerapi] Docker Production Simulation${NC}"
 echo "=========================================="
 
 # Function to show usage
@@ -51,9 +51,9 @@ case "$1" in
     up)
         echo -e "${YELLOW}Starting containers...${NC}"
         $DOCKER_COMPOSE up -d
-        echo -e "${GREEN}✅ Application is running at http://localhost:3000${NC}"
-        echo -e "${GREEN}✅ Health check at http://localhost:3000/health${NC}"
-        echo -e "${GREEN}✅ Swagger docs at http://localhost:3000/api${NC}"
+        echo -e "${GREEN}[OK] Application is running at http://localhost:3000${NC}"
+        echo -e "${GREEN}[OK] Health check at http://localhost:3000/health${NC}"
+        echo -e "${GREEN}[OK] Swagger docs at http://localhost:3000/api${NC}"
         ;;
     down)
         echo -e "${YELLOW}Stopping containers...${NC}"
@@ -74,7 +74,7 @@ case "$1" in
         echo -e "${YELLOW}Cleaning up containers and images...${NC}"
         $DOCKER_COMPOSE down -v
         docker rmi onterarapi-v4_app 2>/dev/null || true
-        echo -e "${GREEN}✅ Cleanup complete${NC}"
+        echo -e "${GREEN}[OK] Cleanup complete${NC}"
         ;;
     *)
         show_usage

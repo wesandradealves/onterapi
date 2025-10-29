@@ -50,6 +50,6 @@ import { FindUserBySlugUseCaseToken } from '../../domain/users/interfaces/use-ca
     UserOwnerGuard,
     SupabaseService,
   ],
-  exports: [],
+  exports: ['IUserRepository', 'ICreateUserUseCase'],
 })
 export class UsersModule {}

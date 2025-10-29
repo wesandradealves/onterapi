@@ -19,6 +19,14 @@ export class SchedulingErrorFactory {
     return new NotFoundException(message);
   }
 
+  static clinicNotFound(message: string): NotFoundException {
+    return new NotFoundException(message);
+  }
+
+  static serviceTypeNotFound(message: string): NotFoundException {
+    return new NotFoundException(message);
+  }
+
   static holdInvalidState(message: string): ConflictException {
     return new ConflictException(message);
   }
@@ -28,6 +36,10 @@ export class SchedulingErrorFactory {
   }
 
   static paymentNotApproved(message: string): ForbiddenException {
+    return new ForbiddenException(message);
+  }
+
+  static holdNotAllowed(message: string): ForbiddenException {
     return new ForbiddenException(message);
   }
 

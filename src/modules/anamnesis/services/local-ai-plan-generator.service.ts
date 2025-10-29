@@ -88,7 +88,7 @@ export class LocalAIPlanGeneratorService {
     const description = this.toSentence((node as Record<string, unknown>)['description']);
     const duration = this.toSentence((node as Record<string, unknown>)['duration']);
     if (description && duration) {
-      return `${description} (h� ${duration})`;
+      return `${description} (ha ${duration})`;
     }
     return description ?? duration ?? undefined;
   }

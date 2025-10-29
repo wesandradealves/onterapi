@@ -107,23 +107,23 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Autenticar usuário',
-    description: `Autentica um usuário com email e senha.
+    summary: 'Autenticar usu rio',
+    description: `Autentica um usu rio com email e senha.
 
 **Funcionalidades:**
 - Valida credenciais no Supabase Auth
 - Gera tokens JWT (access e refresh)
-- Envia email de alerta de login com IP, dispositivo e localização
-- Suporta autenticação em dois fatores (2FA)
+- Envia email de alerta de login com IP, dispositivo e localiza  o
+- Suporta autentica  o em dois fatores (2FA)
 
 **Emails enviados:**
 - Email de alerta de login bem-sucedido com detalhes do acesso
 
-**Roles:** Público`,
+**Roles:** P blico`,
   })
   @ApiBody({
     type: SignInDto,
-    description: 'Credenciais de autenticação',
+    description: 'Credenciais de autentica  o',
     examples: {
       example1: {
         summary: 'Login simples',
@@ -151,7 +151,7 @@ export class AuthController {
     description: 'Login realizado com sucesso',
     type: SignInResponseDto,
   })
-  @ApiResponse({ status: 401, description: 'Credenciais inválidas' })
+  @ApiResponse({ status: 401, description: 'Credenciais inv lidas' })
   @ApiResponse({ status: 423, description: 'Conta bloqueada' })
   async signIn(
     @Body(new ZodValidationPipe(signInInputSchema)) dto: SignInInputDTO,
@@ -170,14 +170,14 @@ export class AuthController {
     summary: 'Renovar token de acesso',
     description: `Usa o refresh token para obter um novo access token.
 
-**Roles:** Público`,
+**Roles:** P blico`,
   })
   @ApiBody({
     type: RefreshTokenDto,
-    description: 'Refresh token para renovação',
+    description: 'Refresh token para renova  o',
     examples: {
       example1: {
-        summary: 'Renovação de token',
+        summary: 'Renova  o de token',
         value: {
           refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
         },
@@ -189,7 +189,7 @@ export class AuthController {
     description: 'Token renovado com sucesso',
     type: RefreshTokenResponseDto,
   })
-  @ApiResponse({ status: 401, description: 'Refresh token inválido' })
+  @ApiResponse({ status: 401, description: 'Refresh token invalido' })
   async refresh(
     @Body(new ZodValidationPipe(refreshTokenInputSchema)) dto: RefreshTokenInputDTO,
     @Ip() ip: string,
@@ -314,13 +314,13 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Fazer logout',
-    description: `Encerra a sessão do usuário, invalidando tokens.
+    description: `Encerra a sessao do usuario, invalidando tokens.
 
-**Roles:** Qualquer usuário autenticado`,
+**Roles:** Qualquer usuario autenticado`,
   })
   @ApiBody({
     type: SignOutDto,
-    description: 'Opções de logout',
+    description: 'Op  es de logout',
     required: false,
     examples: {
       example1: {
@@ -346,7 +346,7 @@ export class AuthController {
     description: 'Logout realizado com sucesso',
     type: SignOutResponseDto,
   })
-  @ApiResponse({ status: 401, description: 'Token inválido ou expirado' })
+  @ApiResponse({ status: 401, description: 'Token invalido ou expirado' })
   async signOut(
     @CurrentUser() user: ICurrentUser,
     @Body(new ZodValidationPipe(signOutSchema)) dto: SignOutSchemaType,
@@ -361,17 +361,17 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Obter dados do usuário autenticado',
-    description: `Retorna as informações do usuário atualmente autenticado.
+    summary: 'Obter dados do usu rio autenticado',
+    description: `Retorna as informa  es do usu rio atualmente autenticado.
 
-**Roles:** Qualquer usuário autenticado`,
+**Roles:** Qualquer usu rio autenticado`,
   })
   @ApiResponse({
     status: 200,
-    description: 'Dados do usuário',
+    description: 'Dados do usu rio',
     type: MeResponseDto,
   })
-  @ApiResponse({ status: 401, description: 'Não autenticado' })
+  @ApiResponse({ status: 401, description: 'N o autenticado' })
   async me(@CurrentUser() user: ICurrentUser) {
     return {
       id: user.id,
@@ -388,22 +388,22 @@ export class AuthController {
   @Get('verify-email')
   @Public()
   @ApiOperation({
-    summary: 'Verificar email do usuário',
-    description: `Confirma o email do usuário usando o token enviado por email.
+    summary: 'Verificar email do usu rio',
+    description: `Confirma o email do usu rio usando o token enviado por email.
 
-**Roles:** Público`,
+**Roles:** P blico`,
   })
   @ApiQuery({
     name: 'token',
     required: true,
     type: String,
-    description: 'Token de verificação enviado por email',
+    description: 'Token de verifica  o enviado por email',
   })
   @ApiQuery({
     name: 'email',
     required: true,
     type: String,
-    description: 'Email do usuário a ser verificado',
+    description: 'Email do usu rio a ser verificado',
   })
   @ApiResponse({
     status: 200,
@@ -416,7 +416,7 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Token inválido ou expirado' })
+  @ApiResponse({ status: 400, description: 'Token invalido ou expirado' })
   async verifyEmail(@Query('token') token: string, @Query('email') email: string) {
     const maskedEmail = maskEmailForLog(email);
     const maskedToken = maskSecret(token, { visiblePrefix: 3, visibleSuffix: 2 });
@@ -445,7 +445,7 @@ export class AuthController {
 
     return {
       success: true,
-      message: 'Email verificado com sucesso! Você já pode fazer login.',
+      message: 'Email verificado com sucesso! Voc  j  pode fazer login.',
     };
   }
 }

@@ -1,4 +1,4 @@
-﻿import { ExecutionContext, INestApplication, UnauthorizedException } from '@nestjs/common';
+import { ExecutionContext, INestApplication, UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
@@ -51,14 +51,14 @@ class StubSignInUseCase implements ISignInUseCase {
     this.lastInput = input;
 
     if (input.password !== 'SenhaForte123!') {
-      return failure(new UnauthorizedException('Credenciais inválidas'));
+      return failure(new UnauthorizedException('Credenciais invalidas'));
     }
 
     return success<SignInOutput>({
       accessToken: 'access-token',
       refreshToken: 'refresh-token',
       expiresIn: 3600,
-      user: { id: 'user-1', email: input.email, name: 'Usuário', role: 'PATIENT' },
+      user: { id: 'user-1', email: input.email, name: 'Usuario', role: 'PATIENT' },
     });
   }
 
@@ -76,7 +76,7 @@ class StubRefreshTokenUseCase implements IRefreshTokenUseCase {
       accessToken: 'new-access',
       refreshToken: 'new-refresh',
       expiresIn: 7200,
-      user: { id: 'user-1', email: 'user@example.com', name: 'Usuário', role: 'PATIENT' },
+      user: { id: 'user-1', email: 'user@example.com', name: 'Usuario', role: 'PATIENT' },
     });
   }
 
@@ -91,7 +91,7 @@ class StubSignOutUseCase implements ISignOutUseCase {
   async execute(input: SignOutInput) {
     this.lastInput = input;
     return success<SignOutOutput>({
-      message: 'Sessões revogadas',
+      message: 'Sess es revogadas',
       revokedSessions: input.allDevices ? 2 : 1,
     });
   }
@@ -145,7 +145,7 @@ class StubConfirmPasswordResetUseCase implements IConfirmPasswordResetUseCase {
 
   async execute(input: ConfirmPasswordResetInput) {
     if (!input.accessToken) {
-      return failure(new UnauthorizedException('Token inválido'));
+      return failure(new UnauthorizedException('Token invalido'));
     }
     this.lastInput = input;
     return success(this.response);
@@ -162,19 +162,19 @@ class StubSupabaseAuthService implements ISupabaseAuthService {
   async verifyEmail(token: string, email?: string) {
     this.verifiedTokens.push({ token, email });
     if (token === 'invalid') {
-      return failure(new UnauthorizedException('Token inválido'));
+      return failure(new UnauthorizedException('Token invalido'));
     }
     return success<void>(undefined);
   }
 
   async confirmEmailByEmail(email: string) {
     if (email === 'missing@example.com') {
-      return failure(new UnauthorizedException('Conta não encontrada'));
+      return failure(new UnauthorizedException('Conta n o encontrada'));
     }
     return success<void>(undefined);
   }
 
-  // Métodos não exercitados nestes cenários
+  // M todos n o exercitados nestes cen rios
   /* eslint-disable @typescript-eslint/no-unused-vars */
   async signUp(): Promise<Result<SupabaseUser>> {
     return failure(new Error('Not implemented'));
@@ -227,7 +227,7 @@ class StubSupabaseAuthService implements ISupabaseAuthService {
 const currentUser: ICurrentUser = {
   id: 'user-1',
   email: 'user@example.com',
-  name: 'Usuário',
+  name: 'Usuario',
   role: 'PATIENT',
   tenantId: 'tenant-1',
   sessionId: 'session-1',
@@ -305,7 +305,7 @@ describe('AuthController (e2e)', () => {
     });
   });
 
-  it('retorna 401 em sign-in com senha inválida', async () => {
+  it('retorna 401 em sign-in com senha invalida', async () => {
     await request(app.getHttpServer())
       .post('/auth/sign-in')
       .send({ email: 'user@example.com', password: 'senha-errada' })
@@ -331,7 +331,7 @@ describe('AuthController (e2e)', () => {
     });
   });
 
-  it('realiza sign-out revogando sessões', async () => {
+  it('realiza sign-out revogando sess es', async () => {
     await request(app.getHttpServer())
       .post('/auth/sign-out')
       .set('authorization', 'Bearer access-token')
@@ -401,14 +401,14 @@ describe('AuthController (e2e)', () => {
     });
   });
 
-  it('retorna 400 quando confirmacao de reset é inválida', async () => {
+  it('retorna 400 quando confirmacao de reset e invalida', async () => {
     await request(app.getHttpServer())
       .post('/auth/password/reset/confirm')
       .send({ accessToken: '', newPassword: '123' })
       .expect(400);
   });
 
-  it('retorna dados do usuário autenticado em /me', async () => {
+  it('retorna dados do usu rio autenticado em /me', async () => {
     await request(app.getHttpServer())
       .get('/auth/me')
       .expect(200)
@@ -433,7 +433,7 @@ describe('AuthController (e2e)', () => {
     });
   });
 
-  it('retorna 401 quando token de verificação é inválido', async () => {
+  it('retorna 401 quando token de verificacao e invalido', async () => {
     await request(app.getHttpServer())
       .get('/auth/verify-email')
       .query({ token: 'invalid', email: 'user@example.com' })

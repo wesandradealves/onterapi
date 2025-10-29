@@ -72,6 +72,9 @@ export class ConfirmBookingUseCase
       throw paymentValidation.error;
     }
 
+    const originalProfessionalId = booking.originalProfessionalId ?? null;
+    const coverageId = booking.coverageId ?? null;
+
     const updatedBooking = await this.bookingRepository.updateStatus({
       tenantId,
       bookingId,
@@ -96,6 +99,8 @@ export class ConfirmBookingUseCase
         startAtUtc: updatedBooking.startAtUtc,
         endAtUtc: updatedBooking.endAtUtc,
         source: booking.source,
+        originalProfessionalId: originalProfessionalId ?? undefined,
+        coverageId: coverageId ?? undefined,
       }),
     );
 

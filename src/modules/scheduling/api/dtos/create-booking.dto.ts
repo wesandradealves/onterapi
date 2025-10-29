@@ -37,7 +37,7 @@ export class PricingSplitDto {
   @IsInt()
   platformCents!: number;
 
-  @ApiProperty({ description: 'Parcela da clínica em centavos', example: 8000 })
+  @ApiProperty({ description: 'Parcela da cl nica em centavos', example: 8000 })
   @IsInt()
   clinicCents!: number;
 
@@ -53,7 +53,7 @@ export class PricingSplitDto {
   @IsInt()
   taxesCents!: number;
 
-  @ApiProperty({ description: 'Código ISO da moeda', example: 'BRL' })
+  @ApiProperty({ description: 'C digo ISO da moeda', example: 'BRL' })
   @IsString()
   currency!: string;
 }
@@ -68,7 +68,7 @@ export class CreateBookingDto {
   source!: (typeof BOOKING_SOURCES)[number];
 
   @ApiProperty({
-    description: 'Fuso horário IANA do atendimento',
+    description: 'Fuso hor rio IANA do atendimento',
     example: 'America/Sao_Paulo',
   })
   @IsString()
@@ -80,7 +80,7 @@ export class CreateBookingDto {
   paymentStatus?: (typeof PAYMENT_STATUSES)[number];
 
   @ApiPropertyOptional({
-    description: 'Minutos de tolerância para atraso do paciente',
+    description: 'Minutos de toler ncia para atraso do paciente',
     example: 15,
   })
   @IsOptional()
@@ -89,21 +89,21 @@ export class CreateBookingDto {
   lateToleranceMinutes?: number;
 
   @ApiPropertyOptional({
-    description: 'Identificador da série de recorrência associada',
+    description: 'Identificador da s rie de recorr ncia associada',
     format: 'uuid',
   })
   @IsOptional()
   @IsUUID()
   recurrenceSeriesId?: string | null;
 
-  @ApiPropertyOptional({ description: 'Divisão de valores financeiros', type: PricingSplitDto })
+  @ApiPropertyOptional({ description: 'Divis o de valores financeiros', type: PricingSplitDto })
   @IsOptional()
   @ValidateNested()
   @Type(() => PricingSplitDto)
   pricingSplit?: PricingSplitDto | null;
 
   @ApiPropertyOptional({
-    description: 'Indica se as pré-condições clínicas foram cumpridas',
+    description: 'Indica se as pr -condi  es cl nicas foram cumpridas',
     example: true,
   })
   @IsOptional()
@@ -111,7 +111,7 @@ export class CreateBookingDto {
   preconditionsPassed?: boolean;
 
   @ApiPropertyOptional({
-    description: 'Indica se a anamnese é obrigatória',
+    description: 'Indica se a anamnese   obrigat ria',
     example: false,
   })
   @IsOptional()
@@ -119,8 +119,8 @@ export class CreateBookingDto {
   anamneseRequired?: boolean;
 
   @ApiPropertyOptional({
-    description: 'Motivo para liberar anamnese obrigatória',
-    example: 'Paciente já possui anamnese recente',
+    description: 'Motivo para liberar anamnese obrigat ria',
+    example: 'Paciente j  possui anamnese recente',
   })
   @IsOptional()
   @IsString()

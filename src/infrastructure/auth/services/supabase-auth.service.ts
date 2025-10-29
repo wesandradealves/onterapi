@@ -1,4 +1,4 @@
-﻿import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { AuthErrorFactory } from '../../../shared/factories/auth-error.factory';
@@ -151,11 +151,11 @@ export class SupabaseAuthService implements ISupabaseAuthService {
   async verifyEmail(token: string, email?: string): Promise<Result<void>> {
     try {
       if (!token || token.length < 6) {
-        return { error: new Error('Token invÃ¡lido') };
+        return { error: new Error('Token invA!lido') };
       }
 
       if (token.includes('test-token') || token === '123456') {
-        return { error: new Error('Token de teste nÃ£o Ã© vÃ¡lido') };
+        return { error: new Error('Token de teste nA o AC vA!lido') };
       }
 
       if (email) {
@@ -170,7 +170,7 @@ export class SupabaseAuthService implements ISupabaseAuthService {
             .single();
 
           if (tokenError || !tokenData) {
-            return { error: new Error('Token invÃ¡lido ou expirado') };
+            return { error: new Error('Token invA!lido ou expirado') };
           }
 
           await this.supabase
@@ -191,24 +191,24 @@ export class SupabaseAuthService implements ISupabaseAuthService {
 
           if (error) {
             this.logger.error(`Erro ao verificar token OTP: ${error.message}`);
-            return { error: new Error('Token invÃ¡lido ou expirado') };
+            return { error: new Error('Token invA!lido ou expirado') };
           }
 
           if (!data.user) {
-            return { error: new Error('Token invÃ¡lido') };
+            return { error: new Error('Token invA!lido') };
           }
 
-          this.logger.log(`Email verificado com sucesso para usuÃ¡rio: ${data.user.email}`);
+          this.logger.log(`Email verificado com sucesso para usuA!rio: ${data.user.email}`);
           return { data: undefined };
         }
       }
 
       const tokenRegex = /^[a-f0-9]{64}$/;
       if (!tokenRegex.test(token)) {
-        return { error: new Error('Formato de token invÃ¡lido') };
+        return { error: new Error('Formato de token invA!lido') };
       }
 
-      return { error: new Error('Email Ã© necessÃ¡rio para validaÃ§Ã£o completa') };
+      return { error: new Error('Email AC necessA!rio para validaASA o completa') };
     } catch (error) {
       this.logger.error('Erro inesperado ao verificar email', error);
       return { error: error as Error };
@@ -223,19 +223,19 @@ export class SupabaseAuthService implements ISupabaseAuthService {
       } = await this.supabase.auth.admin.listUsers();
 
       if (listError) {
-        this.logger.error(`Erro ao listar usuÃ¡rios: ${listError.message}`);
-        return { error: new Error('Erro ao buscar usuÃ¡rio') };
+        this.logger.error(`Erro ao listar usuA!rios: ${listError.message}`);
+        return { error: new Error('Erro ao buscar usuA!rio') };
       }
 
       const user = users.find((u) => u.email === email);
 
       if (!user) {
-        return { error: new Error('UsuÃ¡rio nÃ£o encontrado') };
+        return { error: new Error('UsuA!rio nA o encontrado') };
       }
 
       if (user.email_confirmed_at) {
-        this.logger.warn(`Email jÃ¡ confirmado para: ${email}`);
-        return { error: new Error('Email jÃ¡ foi confirmado anteriormente') };
+        this.logger.warn(`Email jA! confirmado para: ${email}`);
+        return { error: new Error('Email jA! foi confirmado anteriormente') };
       }
 
       const { error } = await this.supabase.auth.admin.updateUserById(user.id, {

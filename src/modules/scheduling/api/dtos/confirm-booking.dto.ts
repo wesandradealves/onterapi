@@ -9,7 +9,7 @@ export class ConfirmBookingDto {
   holdId!: string;
 
   @ApiProperty({
-    description: 'Status financeiro que permite a confirmação',
+    description: 'Status financeiro que permite a confirma  o',
     enum: CONFIRM_PAYMENT_STATUS,
     example: 'approved',
   })
@@ -17,7 +17,7 @@ export class ConfirmBookingDto {
   paymentStatus!: (typeof CONFIRM_PAYMENT_STATUS)[number];
 
   @ApiPropertyOptional({
-    description: 'Momento da confirmação em UTC (ISO 8601)',
+    description: 'Momento da confirma  o em UTC (ISO 8601)',
     example: '2025-10-08T12:00:00Z',
   })
   @IsOptional()

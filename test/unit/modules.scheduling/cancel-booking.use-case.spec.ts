@@ -11,6 +11,8 @@ const baseBooking = (overrides: Partial<Booking> = {}): Booking => ({
   tenantId: 'tenant-1',
   clinicId: 'clinic-1',
   professionalId: 'prof-1',
+  originalProfessionalId: null,
+  coverageId: null,
   patientId: 'patient-1',
   source: 'clinic_portal',
   status: 'scheduled',
@@ -48,6 +50,10 @@ describe('CancelBookingUseCase', () => {
   let bookingRepository: jest.Mocked<IBookingRepository>;
   let messageBus: jest.Mocked<MessageBus>;
   let useCase: CancelBookingUseCase;
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
 
   beforeEach(() => {
     bookingRepository = {
@@ -90,16 +96,19 @@ describe('CancelBookingUseCase', () => {
         aggregateId: 'booking-1',
       }),
     );
+    const event = messageBus.publish.mock.calls[0][0];
+    expect(event.payload.originalProfessionalId).toBeUndefined();
+    expect(event.payload.coverageId).toBeUndefined();
   });
 
-  it('lança not found quando o agendamento não existe', async () => {
+  it('lan a not found quando o agendamento n o existe', async () => {
     bookingRepository.findById.mockResolvedValue(null);
 
     await expect(useCase.executeOrThrow(createInput())).rejects.toBeInstanceOf(NotFoundException);
     expect(bookingRepository.updateStatus).not.toHaveBeenCalled();
   });
 
-  it('lança conflito quando o agendamento já está cancelado', async () => {
+  it('lan a conflito quando o agendamento j  est  cancelado', async () => {
     bookingRepository.findById.mockResolvedValue(
       baseBooking({ status: 'cancelled', cancellationReason: 'system' }),
     );
@@ -108,12 +117,72 @@ describe('CancelBookingUseCase', () => {
     expect(bookingRepository.updateStatus).not.toHaveBeenCalled();
   });
 
-  it('lança conflito quando o agendamento já foi concluído', async () => {
+  it('lan a conflito quando o agendamento j  foi conclu do', async () => {
     bookingRepository.findById.mockResolvedValue(
       baseBooking({ status: 'completed', paymentStatus: 'settled' }),
     );
 
     await expect(useCase.executeOrThrow(createInput())).rejects.toBeInstanceOf(ConflictException);
     expect(bookingRepository.updateStatus).not.toHaveBeenCalled();
+  });
+
+  it('usa valores padr o quando motivo e horario n o informados', async () => {
+    const booking = baseBooking();
+    bookingRepository.findById.mockResolvedValue(booking);
+    const cancelled = baseBooking({
+      status: 'cancelled',
+      cancellationReason: null,
+    });
+    bookingRepository.updateStatus.mockResolvedValue(cancelled);
+    const now = new Date('2025-10-08T15:00:00Z');
+    jest.useFakeTimers().setSystemTime(now);
+    const logSpy = jest.spyOn(useCase['logger'], 'log');
+
+    const input = {
+      ...createInput(),
+      reason: undefined,
+      cancelledAtUtc: undefined,
+    };
+
+    await useCase.executeOrThrow(input as any);
+
+    expect(bookingRepository.updateStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ cancellationReason: null }),
+    );
+    const event = messageBus.publish.mock.calls[0][0];
+    expect(event.payload.reason).toBeUndefined();
+    expect(event.payload.originalProfessionalId).toBeUndefined();
+    expect(event.payload.coverageId).toBeUndefined();
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Agendamento booking-1 cancelado'),
+      expect.objectContaining({
+        cancelledAt: now,
+        reason: null,
+      }),
+    );
+    logSpy.mockRestore();
+  });
+
+  it('propaga dados de cobertura ao cancelar agendamento coberto', async () => {
+    const booking = baseBooking({
+      professionalId: 'prof-cover',
+      originalProfessionalId: 'prof-owner',
+      coverageId: 'coverage-1',
+    });
+    const cancelled = baseBooking({
+      status: 'cancelled',
+      cancellationReason: 'patient_request',
+      originalProfessionalId: 'prof-owner',
+      coverageId: 'coverage-1',
+    });
+
+    bookingRepository.findById.mockResolvedValue(booking);
+    bookingRepository.updateStatus.mockResolvedValue(cancelled);
+
+    await useCase.executeOrThrow(createInput());
+
+    const event = messageBus.publish.mock.calls[0][0];
+    expect(event.payload.originalProfessionalId).toBe('prof-owner');
+    expect(event.payload.coverageId).toBe('coverage-1');
   });
 });

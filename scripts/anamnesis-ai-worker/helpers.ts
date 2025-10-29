@@ -1,4 +1,4 @@
-﻿import { randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 
 import {
   AnamnesisCompactSummary,
@@ -68,5 +68,5 @@ export function buildSummary(text: string, maxLength: number): string {
   if (trimmed.length <= maxLength) {
     return trimmed;
   }
-  return `${trimmed.slice(0, maxLength - 1)}…`;
+  return `${trimmed.slice(0, Math.max(0, maxLength - 3))}...`;
 }

@@ -25,6 +25,8 @@ export class SchedulingMetricsService {
       tenantId: payload.tenantId,
       clinicId: payload.clinicId,
       professionalId: payload.professionalId,
+      originalProfessionalId: payload.originalProfessionalId ?? undefined,
+      coverageId: payload.coverageId ?? undefined,
       patientId: payload.patientId,
     });
 
@@ -33,6 +35,8 @@ export class SchedulingMetricsService {
       tenantId: payload.tenantId,
       clinicId: payload.clinicId,
       professionalId: payload.professionalId,
+      originalProfessionalId: payload.originalProfessionalId ?? null,
+      coverageId: payload.coverageId ?? null,
       patientId: payload.patientId,
       startAtUtc: payload.startAtUtc.toISOString(),
       endAtUtc: payload.endAtUtc.toISOString(),
@@ -46,6 +50,8 @@ export class SchedulingMetricsService {
       tenantId: payload.tenantId,
       clinicId: payload.clinicId,
       professionalId: payload.professionalId,
+      originalProfessionalId: payload.originalProfessionalId ?? undefined,
+      coverageId: payload.coverageId ?? undefined,
       patientId: payload.patientId,
     });
 
@@ -54,6 +60,8 @@ export class SchedulingMetricsService {
       tenantId: payload.tenantId,
       clinicId: payload.clinicId,
       professionalId: payload.professionalId,
+      originalProfessionalId: payload.originalProfessionalId ?? null,
+      coverageId: payload.coverageId ?? null,
       patientId: payload.patientId,
       source: payload.source,
       timezone: payload.timezone,
@@ -67,6 +75,8 @@ export class SchedulingMetricsService {
       tenantId: payload.tenantId,
       clinicId: payload.clinicId,
       professionalId: payload.professionalId,
+      originalProfessionalId: payload.originalProfessionalId ?? undefined,
+      coverageId: payload.coverageId ?? undefined,
       patientId: payload.patientId,
     });
 
@@ -87,6 +97,8 @@ export class SchedulingMetricsService {
       tenantId: payload.tenantId,
       clinicId: payload.clinicId,
       professionalId: payload.professionalId,
+      originalProfessionalId: payload.originalProfessionalId ?? undefined,
+      coverageId: payload.coverageId ?? undefined,
       patientId: payload.patientId,
     });
 
@@ -108,6 +120,8 @@ export class SchedulingMetricsService {
       tenantId: payload.tenantId,
       clinicId: payload.clinicId,
       professionalId: payload.professionalId,
+      originalProfessionalId: payload.originalProfessionalId ?? undefined,
+      coverageId: payload.coverageId ?? undefined,
       patientId: payload.patientId,
     });
 
@@ -129,6 +143,8 @@ export class SchedulingMetricsService {
       tenantId: payload.tenantId,
       clinicId: payload.clinicId,
       professionalId: payload.professionalId,
+      originalProfessionalId: payload.originalProfessionalId ?? undefined,
+      coverageId: payload.coverageId ?? undefined,
       patientId: payload.patientId,
     });
 
@@ -149,6 +165,8 @@ export class SchedulingMetricsService {
       tenantId: payload.tenantId,
       clinicId: payload.clinicId,
       professionalId: payload.professionalId,
+      originalProfessionalId: payload.originalProfessionalId ?? undefined,
+      coverageId: payload.coverageId ?? undefined,
       patientId: payload.patientId,
     });
 
@@ -169,9 +187,28 @@ export class SchedulingMetricsService {
       tenantId: string;
       clinicId: string;
       professionalId: string;
+      originalProfessionalId?: string | null;
+      coverageId?: string | null;
       patientId: string;
     },
   ): Promise<void> {
-    await this.messageBus.publish(DomainEvents.analyticsSchedulingMetricIncremented(metric, data));
+    const normalized = {
+      ...data,
+      originalProfessionalId: this.normalizeIdentifier(data.originalProfessionalId),
+      coverageId: this.normalizeIdentifier(data.coverageId),
+    };
+
+    await this.messageBus.publish(
+      DomainEvents.analyticsSchedulingMetricIncremented(metric, normalized),
+    );
+  }
+
+  private normalizeIdentifier(value: string | null | undefined): string | undefined {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
   }
 }

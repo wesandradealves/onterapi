@@ -1,4 +1,4 @@
-﻿import { LegalTerm } from '../../../../domain/legal/types/legal-term.types';
+import { LegalTerm } from '../../../../domain/legal/types/legal-term.types';
 import { LegalTermResponseDto } from '../dtos/legal-term-response.dto';
 
 export class LegalTermPresenter {

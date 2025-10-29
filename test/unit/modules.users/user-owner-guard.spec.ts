@@ -33,7 +33,7 @@ describe('UserOwnerGuard', () => {
     expect(guard.canActivate(context)).toBe(true);
   });
 
-  it('lan�a quando n�o possui permiss�o', () => {
+  it('lanca quando nao possui permissao', () => {
     const context = buildContext(
       {
         id: 'user-1',

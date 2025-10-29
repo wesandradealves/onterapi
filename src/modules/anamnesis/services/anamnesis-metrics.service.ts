@@ -192,7 +192,7 @@ export class AnamnesisMetricsService {
 
   async reset(): Promise<void> {
     this.logger.warn(
-      'AnamnesisMetricsService.reset() foi invocado; nenhuma ação executada porque os dados agora são persistentes.',
+      'AnamnesisMetricsService.reset() foi invocado; nenhuma a  o executada porque os dados agora s o persistentes.',
     );
   }
 

@@ -157,7 +157,7 @@ export function getUserDisplayName(userData: unknown): string {
     const user = extractSupabaseUser(userData);
     return user.name || user.email.split(AUTH_PATTERNS.EMAIL_SPLIT_CHAR)[0];
   } catch {
-    return 'Usuário';
+    return 'Usuario';
   }
 }
 

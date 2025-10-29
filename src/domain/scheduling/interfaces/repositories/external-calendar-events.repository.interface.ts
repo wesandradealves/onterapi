@@ -1,4 +1,4 @@
-﻿import { ExternalCalendarEvent, ExternalCalendarEventStatus } from '../../types/scheduling.types';
+import { ExternalCalendarEvent, ExternalCalendarEventStatus } from '../../types/scheduling.types';
 
 export interface UpsertExternalCalendarEventInput
   extends Omit<ExternalCalendarEvent, 'id' | 'createdAt' | 'updatedAt'> {
@@ -23,6 +23,13 @@ export interface IExternalCalendarEventsRepository {
     tenantId: string,
     professionalId: string,
   ): Promise<ExternalCalendarEvent[]>;
+  findApprovedOverlap(params: {
+    tenantId: string;
+    professionalId: string;
+    start: Date;
+    end: Date;
+    excludeEventId?: string;
+  }): Promise<ExternalCalendarEvent[]>;
   updateStatus(data: UpdateExternalCalendarEventStatusInput): Promise<ExternalCalendarEvent>;
 }
 

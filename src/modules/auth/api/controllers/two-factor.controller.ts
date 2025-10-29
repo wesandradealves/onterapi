@@ -43,17 +43,17 @@ export class TwoFactorController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Validar código 2FA',
-    description: `Valida o código de autenticação de dois fatores e retorna os tokens de acesso.
+    summary: 'Validar c digo 2FA',
+    description: `Valida o c digo de autentica  o de dois fatores e retorna os tokens de acesso.
 
-**Roles:** Público`,
+**Roles:** P blico`,
   })
   @ApiBody({
     type: ValidateTwoFADto,
-    description: 'Payload necessário para validar o código 2FA gerado após o login.',
+    description: 'Payload necess rio para validar o c digo 2FA gerado ap s o login.',
     examples: {
       padrao: {
-        summary: 'Validação padrão',
+        summary: 'Valida  o padr o',
         value: {
           tempToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
           code: '123456',

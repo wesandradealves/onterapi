@@ -130,7 +130,7 @@ export class SchedulingController {
   )
   @ApiOperation({
     summary: 'Criar hold de agendamento',
-    description: 'Reserva um horário na agenda considerando conflitos e janela mínima.',
+    description: 'Reserva um hor rio na agenda considerando conflitos e janela m nima.',
   })
   @ApiBody({ type: CreateHoldDto })
   @ApiResponse({ status: 201, type: BookingHoldResponseDto })
@@ -242,7 +242,7 @@ export class SchedulingController {
   @ApiOperation({
     summary: 'Reagendar atendimento',
     description:
-      'Atualiza horário do atendimento e aplica controles de recorrência, emitindo o evento de reagendamento.',
+      'Atualiza hor rio do atendimento e aplica controles de recorr ncia, emitindo o evento de reagendamento.',
   })
   @ApiParam({ name: 'bookingId', description: 'Identificador do agendamento' })
   @ApiBody({ type: RescheduleBookingDto })
@@ -365,7 +365,7 @@ export class SchedulingController {
   @ApiOperation({
     summary: 'Marcar no-show',
     description:
-      'Marca o agendamento como no-show após validar a tolerância configurada e publica o evento correspondente.',
+      'Marca o agendamento como no-show ap s validar a toler ncia configurada e publica o evento correspondente.',
   })
   @ApiParam({ name: 'bookingId', description: 'Identificador do agendamento' })
   @ApiBody({ type: MarkBookingNoShowDto })

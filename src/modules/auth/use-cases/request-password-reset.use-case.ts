@@ -1,4 +1,4 @@
-﻿import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import {
@@ -50,7 +50,7 @@ export class RequestPasswordResetUseCase
       this.logger.warn(`Password reset requested for non-existent email: ${maskedEmail}`);
       return {
         delivered: false,
-        message: 'Se o email estiver cadastrado, enviaremos instruções para redefinir a senha.',
+        message: 'Se o email estiver cadastrado, enviaremos instru  es para redefinir a senha.',
       };
     }
 

@@ -142,7 +142,7 @@ describe('UsersController (integration)', () => {
     currentUser.metadata = { slug: 'admin-slug' };
   });
 
-  it('cria usu�rio mapeando payload via mapper compartilhado', async () => {
+  it('cria usuario mapeando payload via mapper compartilhado', async () => {
     const createdUser = buildUser();
     createUseCase.execute.mockResolvedValue({ data: createdUser });
 
@@ -179,7 +179,7 @@ describe('UsersController (integration)', () => {
     });
   });
 
-  it('lista usu�rios aplicando fallback de tenant e formato do presenter', async () => {
+  it('lista usuarios aplicando fallback de tenant e formato do presenter', async () => {
     const user = buildUser();
     findAllUseCase.execute.mockResolvedValue({
       data: {
@@ -211,7 +211,7 @@ describe('UsersController (integration)', () => {
     expect(listCallArgs.isActive).toBeUndefined();
   });
 
-  it('mant�m tenant informado quando recebido no filtro', async () => {
+  it('mantem tenant informado quando recebido no filtro', async () => {
     findAllUseCase.execute.mockResolvedValue({
       data: {
         data: [],
@@ -231,7 +231,7 @@ describe('UsersController (integration)', () => {
     expect(explicitCallArgs.isActive).toBeUndefined();
   });
 
-  it('recupera usu�rio por slug delegando ao use case', async () => {
+  it('recupera usuario por slug delegando ao use case', async () => {
     const user = buildUser();
     findBySlugUseCase.execute.mockResolvedValue({ data: user });
 
@@ -250,15 +250,15 @@ describe('UsersController (integration)', () => {
     expect(findBySlugUseCase.execute).toHaveBeenCalledWith('ana-souza');
   });
 
-  it('propaga erro 404 quando usu�rio n�o encontrado', async () => {
+  it('propaga erro 404 quando usuario nao encontrado', async () => {
     findBySlugUseCase.execute.mockResolvedValue({
-      error: new NotFoundException('Usu�rio n�o encontrado'),
+      error: new NotFoundException('Usuario nao encontrado'),
     });
 
     await request(app.getHttpServer()).get('/users/desconhecido').expect(404);
   });
 
-  it('atualiza usu�rio convertendo input para contrato de dom�nio', async () => {
+  it('atualiza usuario convertendo input para contrato de dominio', async () => {
     const updatedUser = buildUser({ name: 'Ana Atualizada' });
     updateUseCase.execute.mockResolvedValue({ data: updatedUser });
     currentUser.metadata = { slug: 'ana-souza' };
@@ -288,7 +288,7 @@ describe('UsersController (integration)', () => {
     );
   });
 
-  it('deleta usu�rio via use case mantendo contexto', async () => {
+  it('deleta usuario via use case mantendo contexto', async () => {
     deleteUseCase.execute.mockResolvedValue({ data: undefined });
 
     await request(app.getHttpServer()).delete('/users/ana-souza').expect(204);
@@ -296,7 +296,7 @@ describe('UsersController (integration)', () => {
     expect(deleteUseCase.execute).toHaveBeenCalledWith('ana-souza', currentUser.id);
   });
 
-  it('bloqueia cria��o com payload inv�lido retornando 400', async () => {
+  it('bloqueia criacao com payload invalido retornando 400', async () => {
     await request(app.getHttpServer())
       .post('/users')
       .send({ email: 'invalido', password: '123', cpf: '999' })

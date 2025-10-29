@@ -62,7 +62,7 @@ export class AuthErrorFactory {
         return new UnauthorizedException(AUTH_MESSAGES.ERRORS.INVALID_TOKEN);
 
       case AuthErrorType.TOKEN_NOT_PROVIDED:
-        return new UnauthorizedException('Token não fornecido');
+        return new UnauthorizedException('Token nao fornecido');
 
       case AuthErrorType.USER_NOT_FOUND:
         return new NotFoundException(AUTH_MESSAGES.ERRORS.USER_NOT_FOUND);
@@ -71,7 +71,7 @@ export class AuthErrorFactory {
         return new BadRequestException(AUTH_MESSAGES.ERRORS.USER_ID_NOT_FOUND);
 
       case AuthErrorType.USER_NOT_AUTHENTICATED:
-        return new UnauthorizedException('Usuário não autenticado');
+        return new UnauthorizedException('Usuario nao autenticado');
 
       case AuthErrorType.EMAIL_NOT_VERIFIED:
         return new ForbiddenException(AUTH_MESSAGES.ERRORS.EMAIL_NOT_VERIFIED);
@@ -84,7 +84,7 @@ export class AuthErrorFactory {
 
       case AuthErrorType.INSUFFICIENT_PERMISSION:
       case AuthErrorType.INSUFFICIENT_PERMISSIONS:
-        return new ForbiddenException('Permissão insuficiente para esta operação');
+        return new ForbiddenException('Permissao insuficiente para esta operacao');
 
       case AuthErrorType.ACCESS_DENIED:
         return new ForbiddenException(context?.reason || 'Acesso negado');
@@ -99,28 +99,28 @@ export class AuthErrorFactory {
         return new BadRequestException(AUTH_MESSAGES.ERRORS.INVALID_CODE);
 
       case AuthErrorType.TWO_FACTOR_REQUIRED:
-        return new BadRequestException('Autenticação de dois fatores requerida');
+        return new BadRequestException('Autenticacao de dois fatores requerida');
 
       case AuthErrorType.TOO_MANY_ATTEMPTS:
         return new BadRequestException(AUTH_MESSAGES.ERRORS.TOO_MANY_ATTEMPTS);
 
       case AuthErrorType.EMAIL_ALREADY_EXISTS:
-        return new ConflictException('Email já cadastrado no sistema');
+        return new ConflictException('Email ja cadastrado no sistema');
 
       case AuthErrorType.WEAK_PASSWORD:
-        return new BadRequestException('Senha não atende aos requisitos mínimos de segurança');
+        return new BadRequestException('Senha nao atende aos requisitos minimos de seguranca');
 
       case AuthErrorType.EMAIL_SEND_ERROR:
         return new BadRequestException(AUTH_MESSAGES.ERRORS.EMAIL_SEND_ERROR);
 
       case AuthErrorType.INVALID_RESET_TOKEN:
-        return new BadRequestException('Token de reset inválido ou expirado');
+        return new BadRequestException('Token de reset invalido ou expirado');
 
       case AuthErrorType.METHOD_NOT_IMPLEMENTED:
         return new BadRequestException(AUTH_MESSAGES.ERRORS.METHOD_NOT_IMPLEMENTED);
 
       default:
-        return new BadRequestException('Erro na autenticação');
+        return new BadRequestException('Erro na autenticacao');
     }
   }
 
@@ -156,7 +156,7 @@ export class AuthErrorFactory {
   }
 
   static badRequest(message?: string): BadRequestException {
-    return new BadRequestException(message || 'Requisição inválida');
+    return new BadRequestException(message || 'Requisicao invalida');
   }
 
   static internalServerError(message?: string): HttpException {

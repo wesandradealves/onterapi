@@ -26,6 +26,8 @@ describe('SchedulingMetricsService', () => {
     tenantId: 'tenant-1',
     clinicId: 'clinic-1',
     professionalId: 'prof-1',
+    originalProfessionalId: 'prof-owner',
+    coverageId: 'coverage-1',
     patientId: 'patient-1',
   } as const;
 
@@ -46,6 +48,7 @@ describe('SchedulingMetricsService', () => {
           payload: {
             holdId: 'hold-1',
             ...baseContext,
+            serviceTypeId: 'service-1',
             startAtUtc: new Date('2025-10-10T10:00:00Z'),
             endAtUtc: new Date('2025-10-10T11:00:00Z'),
             ttlExpiresAtUtc: new Date('2025-10-10T09:45:00Z'),
@@ -171,7 +174,7 @@ describe('SchedulingMetricsService', () => {
           metadata: {},
         } as SchedulingPaymentStatusChangedEvent),
     },
-  ])('publica m�trica quando $description', async ({ invoke, expectedMetric }) => {
+  ])('publica metrica quando $description', async ({ invoke, expectedMetric }) => {
     messageBus.publish.mockClear();
 
     await invoke();
@@ -182,5 +185,41 @@ describe('SchedulingMetricsService', () => {
         aggregateId: expectedMetric,
       }),
     );
+    const published = messageBus.publish.mock.calls[0][0];
+    if (published && published.payload) {
+      expect(published.payload.originalProfessionalId).toBe('prof-owner');
+      expect(published.payload.coverageId).toBe('coverage-1');
+    }
+  });
+
+  it('normaliza identificadores vazios ou nulos antes de publicar', async () => {
+    messageBus.publish.mockClear();
+
+    await service.recordBookingCreated({
+      eventId: 'evt-null',
+      eventName: DomainEvents.SCHEDULING_BOOKING_CREATED,
+      aggregateId: 'booking-null',
+      occurredOn: new Date(),
+      payload: {
+        bookingId: 'booking-null',
+        tenantId: 'tenant-1',
+        clinicId: 'clinic-1',
+        professionalId: 'prof-1',
+        originalProfessionalId: null,
+        coverageId: '   ',
+        patientId: 'patient-1',
+        startAtUtc: new Date('2025-10-10T10:00:00Z'),
+        endAtUtc: new Date('2025-10-10T11:00:00Z'),
+        source: 'clinic_portal',
+        timezone: 'America/Sao_Paulo',
+        createdAt: new Date('2025-10-09T10:05:00Z'),
+      },
+      metadata: {},
+    } as SchedulingBookingCreatedEvent);
+
+    expect(messageBus.publish).toHaveBeenCalledTimes(1);
+    const published = messageBus.publish.mock.calls[0][0];
+    expect(published.payload.originalProfessionalId).toBeUndefined();
+    expect(published.payload.coverageId).toBeUndefined();
   });
 });

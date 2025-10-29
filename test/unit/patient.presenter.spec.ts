@@ -1,4 +1,4 @@
-﻿import { Patient, PatientListItem } from '@domain/patients/types/patient.types';
+import { Patient, PatientListItem } from '@domain/patients/types/patient.types';
 import { PatientPresenter } from '@modules/patients/api/presenters/patient.presenter';
 
 const buildPatient = (overrides: Partial<Patient> = {}): Patient => {

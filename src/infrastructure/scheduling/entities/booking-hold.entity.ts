@@ -1,4 +1,4 @@
-﻿import {
+import {
   Column,
   CreateDateColumn,
   Entity,
@@ -19,14 +19,23 @@ export class BookingHoldEntity {
   @Column({ name: 'tenant_id', type: 'uuid' })
   tenantId!: string;
 
+  @Column({ name: 'original_professional_id', type: 'uuid', nullable: true })
+  originalProfessionalId?: string | null;
+
   @Column({ name: 'professional_id', type: 'uuid' })
   professionalId!: string;
+
+  @Column({ name: 'coverage_id', type: 'uuid', nullable: true })
+  coverageId?: string | null;
 
   @Column({ name: 'clinic_id', type: 'uuid' })
   clinicId!: string;
 
   @Column({ name: 'patient_id', type: 'uuid' })
   patientId!: string;
+
+  @Column({ name: 'service_type_id', type: 'uuid', nullable: true })
+  serviceTypeId!: string | null;
 
   @Column({ name: 'start_at_utc', type: 'timestamp with time zone' })
   startAtUtc!: Date;

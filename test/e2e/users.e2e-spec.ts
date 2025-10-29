@@ -98,7 +98,7 @@ class InMemoryUsersStore {
   public update(slug: string, data: IUpdateUser): UserEntity {
     const user = this.findBySlug(slug);
     if (!user) {
-      throw new NotFoundException('Usu�rio n�o encontrado');
+      throw new NotFoundException('Usuario nao encontrado');
     }
 
     if (data.name) {
@@ -189,7 +189,7 @@ class InMemoryFindUserBySlugUseCase implements IFindUserBySlugUseCase {
   async execute(slug: string): Promise<Result<UserEntity>> {
     const user = this.store.findBySlug(slug);
     if (!user) {
-      return failure(new NotFoundException('Usu�rio n�o encontrado'));
+      return failure(new NotFoundException('Usuario nao encontrado'));
     }
     return success(user);
   }
@@ -247,7 +247,7 @@ describe('UsersController (e2e)', () => {
     supabaseId: 'supabase-seed',
     slug: 'joao-silva',
     email: 'joao@clinic.com',
-    name: 'Jo�o Silva',
+    name: 'Joao Silva',
     cpf: '52998224725',
     phone: '11999990000',
     role: RolesEnum.PROFESSIONAL,
@@ -333,7 +333,7 @@ describe('UsersController (e2e)', () => {
     await app.close();
   });
 
-  it('lista usu�rios existentes com pagina��o padr�o', async () => {
+  it('lista usuarios existentes com paginacao padrao', async () => {
     await request(app.getHttpServer())
       .get('/users')
       .expect(200)
@@ -343,7 +343,7 @@ describe('UsersController (e2e)', () => {
       });
   });
 
-  it('cria, atualiza e remove um usu�rio mantendo cobertura do fluxo completo', async () => {
+  it('cria, atualiza e remove um usuario mantendo cobertura do fluxo completo', async () => {
     // Create
     const createResponse = await request(app.getHttpServer())
       .post('/users')

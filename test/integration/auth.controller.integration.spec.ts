@@ -58,7 +58,7 @@ describe('AuthController (integration)', () => {
   const currentUser: ICurrentUser = {
     id: 'user-1',
     email: 'user@example.com',
-    name: 'Usu�rio',
+    name: 'Usuario',
     role: 'PATIENT',
     tenantId: 'tenant-1',
     sessionId: 'session-1',
@@ -120,7 +120,7 @@ describe('AuthController (integration)', () => {
         accessToken: 'access-token',
         refreshToken: 'refresh-token',
         expiresIn: 3600,
-        user: { id: 'user-1', email: 'user@example.com', name: 'Usu�rio', role: 'PATIENT' },
+        user: { id: 'user-1', email: 'user@example.com', name: 'Usuario', role: 'PATIENT' },
       },
     });
 
@@ -152,7 +152,7 @@ describe('AuthController (integration)', () => {
         accessToken: 'novo-access',
         refreshToken: 'novo-refresh',
         expiresIn: 7200,
-        user: { id: 'user-1', email: 'user@example.com', name: 'Usu�rio', role: 'PATIENT' },
+        user: { id: 'user-1', email: 'user@example.com', name: 'Usuario', role: 'PATIENT' },
       },
     });
 
@@ -174,7 +174,7 @@ describe('AuthController (integration)', () => {
   it('executa sign-out extraindo bearer token e user atual', async () => {
     signOutUseCase.execute.mockResolvedValue({
       data: {
-        message: 'Sess�es revogadas',
+        message: 'Sessoes revogadas',
         revokedSessions: 1,
       },
     });
@@ -185,7 +185,7 @@ describe('AuthController (integration)', () => {
       .send({ allDevices: true })
       .expect(200)
       .expect(({ body }) => {
-        expect(body.message).toBe('Sess�es revogadas');
+        expect(body.message).toBe('Sessoes revogadas');
         expect(body.revokedSessions).toBe(1);
       });
 
@@ -271,7 +271,7 @@ describe('AuthController (integration)', () => {
     expect(confirmResetUseCase.execute).not.toHaveBeenCalled();
   });
 
-  it('retorna dados do usu�rio autenticado em /me', async () => {
+  it('retorna dados do usuario autenticado em /me', async () => {
     const now = new Date('2025-03-10T10:00:00.000Z');
     currentUser.createdAt = now;
     currentUser.emailVerified = true;
@@ -284,7 +284,7 @@ describe('AuthController (integration)', () => {
         expect(body).toEqual({
           id: 'user-1',
           email: 'user@example.com',
-          name: 'Usu�rio',
+          name: 'Usuario',
           role: 'PATIENT',
           tenantId: 'tenant-1',
           createdAt: now.toISOString(),
@@ -294,7 +294,7 @@ describe('AuthController (integration)', () => {
       });
   });
 
-  it('verifica email delegando ao servi�o do Supabase', async () => {
+  it('verifica email delegando ao servico do Supabase', async () => {
     (supabaseAuthService.verifyEmail as jest.Mock).mockResolvedValue({ data: undefined });
     (supabaseAuthService.confirmEmailByEmail as jest.Mock).mockResolvedValue({ data: undefined });
 
@@ -311,7 +311,7 @@ describe('AuthController (integration)', () => {
     expect(supabaseAuthService.confirmEmailByEmail).toHaveBeenCalledWith('user@example.com');
   });
 
-  it('bloqueia sign-in com payload inv�lido retornando 400', async () => {
+  it('bloqueia sign-in com payload invalido retornando 400', async () => {
     await request(app.getHttpServer())
       .post('/auth/sign-in')
       .send({ email: 'invalido', password: '123' })

@@ -1,4 +1,4 @@
-﻿import { Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -57,6 +57,31 @@ export class ExternalCalendarEventsRepository implements IExternalCalendarEvents
       order: { createdAt: 'ASC' },
     });
 
+    return entities.map(mapExternalCalendarEventEntityToDomain);
+  }
+
+  async findApprovedOverlap(params: {
+    tenantId: string;
+    professionalId: string;
+    start: Date;
+    end: Date;
+    excludeEventId?: string;
+  }): Promise<ExternalCalendarEvent[]> {
+    const query = this.repository
+      .createQueryBuilder('event')
+      .where('event.tenant_id = :tenantId', { tenantId: params.tenantId })
+      .andWhere('event.professional_id = :professionalId', {
+        professionalId: params.professionalId,
+      })
+      .andWhere('event.status = :status', { status: 'approved' })
+      .andWhere('event.start_at_utc < :end', { end: params.end })
+      .andWhere('event.end_at_utc > :start', { start: params.start });
+
+    if (params.excludeEventId) {
+      query.andWhere('event.id <> :excludeEventId', { excludeEventId: params.excludeEventId });
+    }
+
+    const entities = await query.getMany();
     return entities.map(mapExternalCalendarEventEntityToDomain);
   }
 

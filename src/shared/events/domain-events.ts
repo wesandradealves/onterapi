@@ -2,6 +2,10 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { DomainEvent, DomainEventMetadata } from './domain-event.interface';
 import { AnamnesisAIRequestedEventPayload } from '../../domain/anamnesis/types/anamnesis.types';
+import {
+  ClinicCurrency,
+  ClinicPaymentSplitAllocation,
+} from '../../domain/clinic/types/clinic.types';
 
 export class DomainEvents {
   static USER_CREATED = 'user.created';
@@ -41,9 +45,23 @@ export class DomainEvents {
   static SCHEDULING_BOOKING_CANCELLED = 'scheduling.booking.cancelled';
   static SCHEDULING_BOOKING_NO_SHOW = 'scheduling.booking.no_show';
   static SCHEDULING_PAYMENT_STATUS_CHANGED = 'scheduling.payment.status_changed';
+  static CLINIC_PAYMENT_STATUS_CHANGED = 'clinic.payment.status_changed';
+  static CLINIC_PAYMENT_SETTLED = 'clinic.payment.settled';
+  static CLINIC_PAYMENT_REFUNDED = 'clinic.payment.refunded';
+  static CLINIC_PAYMENT_CHARGEBACK = 'clinic.payment.chargeback';
+  static CLINIC_PAYMENT_FAILED = 'clinic.payment.failed';
+  static CLINIC_TEMPLATE_PROPAGATED = 'clinic.template.propagated';
+  static CLINIC_ALERT_TRIGGERED = 'clinic.alert.triggered';
+  static CLINIC_ALERT_RESOLVED = 'clinic.alert.resolved';
+  static CLINIC_OVERBOOKING_REVIEW_REQUESTED = 'clinic.overbooking.review_requested';
+  static CLINIC_OVERBOOKING_REVIEWED = 'clinic.overbooking.reviewed';
+  static CLINIC_PROFESSIONAL_TRANSFERRED = 'clinic.professional.transferred';
+  static CLINIC_COVERAGE_APPLIED = 'clinic.coverage.applied';
+  static CLINIC_COVERAGE_RELEASED = 'clinic.coverage.released';
   static BILLING_INVOICE_REQUESTED = 'billing.invoice.requested';
   static BILLING_INVOICE_CANCELLATION_REQUESTED = 'billing.invoice.cancellation_requested';
   static BILLING_PAYMENT_STATUS_SYNC_REQUESTED = 'billing.payment.status_sync_requested';
+  static BILLING_CLINIC_PAYMENT_PAYOUT_REQUESTED = 'billing.clinic.payment_payout.requested';
   static ANALYTICS_SCHEDULING_METRIC_INCREMENTED = 'analytics.scheduling.metric.incremented';
   static NOTIFICATION_SCHEDULING_HOLD_CREATED = 'notifications.scheduling.hold.created';
   static NOTIFICATION_SCHEDULING_BOOKING_CREATED = 'notifications.scheduling.booking.created';
@@ -54,6 +72,17 @@ export class DomainEvents {
   static NOTIFICATION_SCHEDULING_BOOKING_NO_SHOW = 'notifications.scheduling.booking.no_show';
   static NOTIFICATION_SCHEDULING_PAYMENT_STATUS_CHANGED =
     'notifications.scheduling.payment.status_changed';
+  static NOTIFICATION_CLINIC_PAYMENT_SETTLED = 'notifications.clinic.payment.settled';
+  static NOTIFICATION_CLINIC_PAYMENT_REFUNDED = 'notifications.clinic.payment.refunded';
+  static NOTIFICATION_CLINIC_PAYMENT_CHARGEBACK = 'notifications.clinic.payment.chargeback';
+  static NOTIFICATION_CLINIC_PAYMENT_FAILED = 'notifications.clinic.payment.failed';
+  static NOTIFICATION_CLINIC_ALERT_TRIGGERED = 'notifications.clinic.alert.triggered';
+  static NOTIFICATION_CLINIC_ALERT_RESOLVED = 'notifications.clinic.alert.resolved';
+  static NOTIFICATION_CLINIC_OVERBOOKING_REVIEW_REQUESTED =
+    'notifications.clinic.overbooking.review_requested';
+  static NOTIFICATION_CLINIC_OVERBOOKING_REVIEWED = 'notifications.clinic.overbooking.reviewed';
+  static NOTIFICATION_CLINIC_COVERAGE_APPLIED = 'notifications.clinic.coverage.applied';
+  static NOTIFICATION_CLINIC_COVERAGE_RELEASED = 'notifications.clinic.coverage.released';
 
   static createEvent<
     TPayload = Record<string, unknown>,
@@ -422,7 +451,10 @@ export class DomainEvents {
       tenantId: string;
       clinicId: string;
       professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
       patientId: string;
+      serviceTypeId: string;
       startAtUtc: Date;
       endAtUtc: Date;
       ttlExpiresAtUtc: Date;
@@ -438,6 +470,8 @@ export class DomainEvents {
       tenantId: string;
       clinicId: string;
       professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
       patientId: string;
       startAtUtc: Date;
       endAtUtc: Date;
@@ -477,6 +511,8 @@ export class DomainEvents {
       startAtUtc: Date;
       endAtUtc: Date;
       source: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
     },
     metadata?: DomainEventMetadata,
   ): DomainEvent {
@@ -499,6 +535,8 @@ export class DomainEvents {
       previousEndAtUtc: Date;
       newStartAtUtc: Date;
       newEndAtUtc: Date;
+      originalProfessionalId?: string;
+      coverageId?: string;
     },
     metadata?: DomainEventMetadata,
   ): DomainEvent {
@@ -519,6 +557,8 @@ export class DomainEvents {
       patientId: string;
       cancelledBy: string;
       reason?: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
     },
     metadata?: DomainEventMetadata,
   ): DomainEvent {
@@ -532,7 +572,14 @@ export class DomainEvents {
 
   static schedulingBookingNoShow(
     bookingId: string,
-    data: { tenantId: string; professionalId: string; clinicId: string; patientId: string },
+    data: {
+      tenantId: string;
+      professionalId: string;
+      clinicId: string;
+      patientId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
+    },
     metadata?: DomainEventMetadata,
   ): DomainEvent {
     return this.createEvent(
@@ -552,6 +599,8 @@ export class DomainEvents {
       patientId: string;
       previousStatus: string;
       newStatus: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
     },
     metadata?: DomainEventMetadata,
   ): DomainEvent {
@@ -563,11 +612,191 @@ export class DomainEvents {
     );
   }
 
+  static clinicPaymentStatusChanged(
+    appointmentId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
+      patientId: string;
+      holdId: string;
+      serviceTypeId: string;
+      paymentTransactionId: string;
+      previousStatus: string;
+      newStatus: string;
+      gatewayStatus: string;
+      eventType?: string;
+      sandbox: boolean;
+      fingerprint?: string;
+      payloadId?: string;
+      amount?: { value?: number | null; netValue?: number | null };
+      receivedAt: Date;
+      paidAt?: Date;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    const { receivedAt, ...rest } = data;
+
+    return this.createEvent(
+      this.CLINIC_PAYMENT_STATUS_CHANGED,
+      appointmentId,
+      {
+        appointmentId,
+        ...rest,
+        receivedAt,
+        processedAt: new Date(),
+      },
+      metadata,
+    );
+  }
+
+  static clinicPaymentSettled(
+    appointmentId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
+      patientId: string;
+      holdId: string;
+      serviceTypeId: string;
+      paymentTransactionId: string;
+      gatewayStatus: string;
+      eventType?: string;
+      sandbox: boolean;
+      fingerprint?: string;
+      payloadId?: string;
+      amount?: { value?: number | null; netValue?: number | null };
+      settledAt: Date;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.CLINIC_PAYMENT_SETTLED,
+      appointmentId,
+      {
+        appointmentId,
+        ...data,
+        processedAt: new Date(),
+      },
+      metadata,
+    );
+  }
+
+  static clinicPaymentRefunded(
+    appointmentId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
+      patientId: string;
+      holdId: string;
+      serviceTypeId: string;
+      paymentTransactionId: string;
+      gatewayStatus: string;
+      eventType?: string;
+      sandbox: boolean;
+      fingerprint?: string;
+      payloadId?: string;
+      amount?: { value?: number | null; netValue?: number | null };
+      refundedAt: Date;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.CLINIC_PAYMENT_REFUNDED,
+      appointmentId,
+      {
+        appointmentId,
+        ...data,
+        processedAt: new Date(),
+      },
+      metadata,
+    );
+  }
+
+  static clinicPaymentChargeback(
+    appointmentId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
+      patientId: string;
+      holdId: string;
+      serviceTypeId: string;
+      paymentTransactionId: string;
+      gatewayStatus: string;
+      eventType?: string;
+      sandbox: boolean;
+      fingerprint?: string;
+      payloadId?: string;
+      amount?: { value?: number | null; netValue?: number | null };
+      chargebackAt: Date;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.CLINIC_PAYMENT_CHARGEBACK,
+      appointmentId,
+      {
+        appointmentId,
+        ...data,
+        processedAt: new Date(),
+      },
+      metadata,
+    );
+  }
+
+  static clinicPaymentFailed(
+    appointmentId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
+      patientId: string;
+      holdId: string;
+      serviceTypeId: string;
+      paymentTransactionId: string;
+      gatewayStatus: string;
+      eventType?: string;
+      sandbox?: boolean;
+      fingerprint?: string | null;
+      payloadId?: string | null;
+      amount?: { value?: number | null; netValue?: number | null };
+      failedAt: Date;
+      processedAt: Date;
+      reason?: string | null;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.CLINIC_PAYMENT_FAILED,
+      appointmentId,
+      {
+        appointmentId,
+        ...data,
+        processedAt: data.processedAt ?? new Date(),
+      },
+      metadata,
+    );
+  }
+
   static billingInvoiceRequested(
     bookingId: string,
     data: {
       tenantId: string;
       professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
       clinicId: string;
       patientId: string;
       source: string;
@@ -590,6 +819,8 @@ export class DomainEvents {
     data: {
       tenantId: string;
       professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
       clinicId: string;
       patientId: string;
       cancelledAt: Date;
@@ -610,6 +841,8 @@ export class DomainEvents {
     data: {
       tenantId: string;
       professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
       clinicId: string;
       patientId: string;
       previousStatus: string;
@@ -626,12 +859,56 @@ export class DomainEvents {
     );
   }
 
+  static billingClinicPaymentPayoutRequested(
+    appointmentId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
+      patientId: string;
+      holdId: string;
+      serviceTypeId: string;
+      paymentTransactionId: string;
+      provider: string;
+      credentialsId: string;
+      sandboxMode: boolean;
+      bankAccountId?: string;
+      settledAt: Date;
+      baseAmountCents: number;
+      netAmountCents?: number | null;
+      split: ClinicPaymentSplitAllocation[];
+      remainderCents: number;
+      currency: ClinicCurrency;
+      gatewayStatus: string;
+      eventType?: string;
+      fingerprint?: string;
+      payloadId?: string;
+      sandbox: boolean;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.BILLING_CLINIC_PAYMENT_PAYOUT_REQUESTED,
+      appointmentId,
+      {
+        appointmentId,
+        ...data,
+        requestedAt: new Date(),
+      },
+      metadata,
+    );
+  }
+
   static analyticsSchedulingMetricIncremented(
     metric: string,
     data: {
       tenantId: string;
       clinicId?: string;
       professionalId?: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
       patientId?: string;
       value?: number;
     },
@@ -653,7 +930,10 @@ export class DomainEvents {
       tenantId: string;
       clinicId: string;
       professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
       patientId: string;
+      serviceTypeId: string;
       startAtUtc: Date;
       endAtUtc: Date;
     },
@@ -667,12 +947,240 @@ export class DomainEvents {
     );
   }
 
+  static clinicTemplatePropagated(
+    templateClinicId: string,
+    data: {
+      tenantId: string;
+      templateVersionId: string;
+      propagatedVersionId: string;
+      targetClinicId: string;
+      section: string;
+      triggeredBy: string;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.CLINIC_TEMPLATE_PROPAGATED,
+      templateClinicId,
+      { templateClinicId, ...data, propagatedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static clinicAlertTriggered(
+    alertId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      type: string;
+      channel: string;
+      triggeredBy: string;
+      payload: Record<string, unknown>;
+      triggeredAt?: Date;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.CLINIC_ALERT_TRIGGERED,
+      alertId,
+      {
+        alertId,
+        ...data,
+        triggeredAt: data.triggeredAt ?? new Date(),
+      },
+      metadata,
+    );
+  }
+
+  static clinicAlertResolved(
+    alertId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      type: string;
+      channel?: string;
+      resolvedBy: string;
+      resolvedAt: Date;
+      triggeredAt?: Date;
+      triggeredBy?: string;
+      payload?: Record<string, unknown>;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.CLINIC_ALERT_RESOLVED,
+      alertId,
+      {
+        alertId,
+        ...data,
+      },
+      metadata,
+    );
+  }
+
+  static clinicOverbookingReviewRequested(
+    holdId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      originalProfessionalId?: string;
+      patientId: string;
+      serviceTypeId: string;
+      riskScore: number;
+      threshold: number;
+      reasons?: string[] | null;
+      context?: Record<string, unknown> | null;
+      requestedBy: string;
+      requestedAt?: Date;
+      autoApproved?: boolean;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    const { requestedAt, autoApproved = false, reasons, context, ...rest } = data;
+
+    return this.createEvent(
+      this.CLINIC_OVERBOOKING_REVIEW_REQUESTED,
+      holdId,
+      {
+        holdId,
+        ...rest,
+        reasons: reasons ?? null,
+        context: context ?? null,
+        requestedAt: requestedAt ?? new Date(),
+        autoApproved,
+      },
+      metadata,
+    );
+  }
+
+  static clinicOverbookingReviewed(
+    holdId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      originalProfessionalId?: string;
+      patientId: string;
+      serviceTypeId: string;
+      riskScore: number;
+      threshold: number;
+      status: 'approved' | 'rejected';
+      reviewedBy: string;
+      reviewedAt?: Date;
+      justification?: string | null;
+      reasons?: string[] | null;
+      context?: Record<string, unknown> | null;
+      autoApproved?: boolean;
+      requestedBy?: string;
+      requestedAt?: Date;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    const { reviewedAt, justification, reasons, context, autoApproved = false, ...rest } = data;
+
+    return this.createEvent(
+      this.CLINIC_OVERBOOKING_REVIEWED,
+      holdId,
+      {
+        holdId,
+        ...rest,
+        reviewedAt: reviewedAt ?? new Date(),
+        justification: justification ?? null,
+        reasons: reasons ?? null,
+        context: context ?? null,
+        autoApproved,
+      },
+      metadata,
+    );
+  }
+
+  static clinicProfessionalTransferred(
+    professionalId: string,
+    data: {
+      tenantId: string;
+      fromClinicId: string;
+      toClinicId: string;
+      effectiveDate: Date;
+      transferPatients: boolean;
+      fromMembershipId: string;
+      toMembershipId: string;
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.CLINIC_PROFESSIONAL_TRANSFERRED,
+      professionalId,
+      { professionalId, ...data },
+      metadata,
+    );
+  }
+
+  static clinicCoverageApplied(
+    coverageId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      originalProfessionalId: string;
+      coverageProfessionalId: string;
+      startAt: Date;
+      endAt: Date;
+      triggerSource: 'manual' | 'automatic';
+      triggeredBy: string;
+      triggeredAt: Date;
+      summary: {
+        clinicHolds: number;
+        schedulingHolds: number;
+        bookings: number;
+        appointments: number;
+      };
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.CLINIC_COVERAGE_APPLIED,
+      coverageId,
+      { coverageId, ...data },
+      metadata,
+    );
+  }
+
+  static clinicCoverageReleased(
+    coverageId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      originalProfessionalId: string;
+      coverageProfessionalId: string;
+      reference: Date;
+      triggerSource: 'manual' | 'automatic';
+      triggeredBy: string;
+      triggeredAt: Date;
+      summary: {
+        clinicHolds: number;
+        schedulingHolds: number;
+        bookings: number;
+        appointments: number;
+      };
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.CLINIC_COVERAGE_RELEASED,
+      coverageId,
+      { coverageId, ...data },
+      metadata,
+    );
+  }
+
   static notificationsSchedulingBookingCreated(
     bookingId: string,
     data: {
       tenantId: string;
       clinicId: string;
       professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
       patientId: string;
       startAtUtc: Date;
       endAtUtc: Date;
@@ -697,6 +1205,8 @@ export class DomainEvents {
       professionalId: string;
       patientId: string;
       confirmedAt: Date;
+      originalProfessionalId?: string;
+      coverageId?: string;
     },
     metadata?: DomainEventMetadata,
   ): DomainEvent {
@@ -718,6 +1228,8 @@ export class DomainEvents {
       previousStartAtUtc: Date;
       newStartAtUtc: Date;
       newEndAtUtc: Date;
+      originalProfessionalId?: string;
+      coverageId?: string;
     },
     metadata?: DomainEventMetadata,
   ): DomainEvent {
@@ -738,6 +1250,8 @@ export class DomainEvents {
       patientId: string;
       cancelledAt: Date;
       reason?: string | null;
+      originalProfessionalId?: string;
+      coverageId?: string;
     },
     metadata?: DomainEventMetadata,
   ): DomainEvent {
@@ -757,6 +1271,8 @@ export class DomainEvents {
       professionalId: string;
       patientId: string;
       markedAt: Date;
+      originalProfessionalId?: string;
+      coverageId?: string;
     },
     metadata?: DomainEventMetadata,
   ): DomainEvent {
@@ -778,6 +1294,8 @@ export class DomainEvents {
       previousStatus: string;
       newStatus: string;
       changedAt: Date;
+      originalProfessionalId?: string;
+      coverageId?: string;
     },
     metadata?: DomainEventMetadata,
   ): DomainEvent {
@@ -785,6 +1303,317 @@ export class DomainEvents {
       this.NOTIFICATION_SCHEDULING_PAYMENT_STATUS_CHANGED,
       bookingId,
       { bookingId, ...data, queuedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static notificationsClinicPaymentSettled(
+    appointmentId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      serviceTypeId: string;
+      paymentTransactionId: string;
+      settledAt: Date;
+      amount: { baseAmountCents: number; netAmountCents?: number | null };
+      split: Array<Record<string, unknown>>;
+      remainderCents: number;
+      recipientIds: string[];
+      gatewayStatus: string;
+      sandbox?: boolean;
+      fingerprint?: string | null;
+      payloadId?: string | null;
+      channels?: string[];
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_CLINIC_PAYMENT_SETTLED,
+      appointmentId,
+      {
+        appointmentId,
+        status: 'settled',
+        ...data,
+        queuedAt: new Date(),
+      },
+      metadata,
+    );
+  }
+
+  static notificationsClinicPaymentRefunded(
+    appointmentId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      serviceTypeId: string;
+      paymentTransactionId: string;
+      refundedAt: Date;
+      amount: { valueCents?: number | null; netValueCents?: number | null };
+      reason?: string | null;
+      recipientIds: string[];
+      gatewayStatus: string;
+      sandbox?: boolean;
+      fingerprint?: string | null;
+      payloadId?: string | null;
+      channels?: string[];
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_CLINIC_PAYMENT_REFUNDED,
+      appointmentId,
+      {
+        appointmentId,
+        status: 'refunded',
+        ...data,
+        queuedAt: new Date(),
+      },
+      metadata,
+    );
+  }
+
+  static notificationsClinicPaymentChargeback(
+    appointmentId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      serviceTypeId: string;
+      paymentTransactionId: string;
+      chargebackAt: Date;
+      reason?: string | null;
+      recipientIds: string[];
+      gatewayStatus: string;
+      sandbox?: boolean;
+      fingerprint?: string | null;
+      payloadId?: string | null;
+      channels?: string[];
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_CLINIC_PAYMENT_CHARGEBACK,
+      appointmentId,
+      {
+        appointmentId,
+        status: 'chargeback',
+        ...data,
+        queuedAt: new Date(),
+      },
+      metadata,
+    );
+  }
+
+  static notificationsClinicPaymentFailed(
+    appointmentId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      serviceTypeId: string;
+      paymentTransactionId: string;
+      failedAt: Date;
+      reason?: string | null;
+      gatewayStatus: string;
+      sandbox?: boolean;
+      fingerprint?: string | null;
+      payloadId?: string | null;
+      channels?: string[];
+      recipientIds: string[];
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_CLINIC_PAYMENT_FAILED,
+      appointmentId,
+      {
+        appointmentId,
+        status: 'failed',
+        ...data,
+        queuedAt: new Date(),
+      },
+      metadata,
+    );
+  }
+
+  static notificationsClinicOverbookingReviewRequested(
+    holdId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      serviceTypeId: string;
+      riskScore: number;
+      threshold: number;
+      requestedBy: string;
+      requestedAt: Date;
+      reasons?: string[] | null;
+      context?: Record<string, unknown> | null;
+      autoApproved?: boolean;
+      recipientIds: string[];
+      channels: string[];
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_CLINIC_OVERBOOKING_REVIEW_REQUESTED,
+      holdId,
+      {
+        holdId,
+        status: 'pending_review',
+        ...data,
+        queuedAt: new Date(),
+      },
+      metadata,
+    );
+  }
+
+  static notificationsClinicOverbookingReviewed(
+    holdId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      professionalId: string;
+      patientId: string;
+      serviceTypeId: string;
+      status: 'approved' | 'rejected';
+      riskScore: number;
+      threshold: number;
+      reviewedBy: string;
+      reviewedAt: Date;
+      justification?: string | null;
+      reasons?: string[] | null;
+      context?: Record<string, unknown> | null;
+      autoApproved?: boolean;
+      requestedBy?: string;
+      requestedAt?: Date;
+      recipientIds: string[];
+      channels: string[];
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_CLINIC_OVERBOOKING_REVIEWED,
+      holdId,
+      {
+        holdId,
+        ...data,
+        queuedAt: new Date(),
+      },
+      metadata,
+    );
+  }
+
+  static notificationsClinicCoverageApplied(
+    coverageId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      originalProfessionalId: string;
+      coverageProfessionalId: string;
+      startAt: Date;
+      endAt: Date;
+      triggerSource: 'manual' | 'automatic';
+      triggeredBy: string;
+      triggeredAt: Date;
+      channels: string[];
+      recipientIds: string[];
+      summary: {
+        clinicHolds: number;
+        schedulingHolds: number;
+        bookings: number;
+        appointments: number;
+      };
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_CLINIC_COVERAGE_APPLIED,
+      coverageId,
+      { coverageId, ...data, queuedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static notificationsClinicCoverageReleased(
+    coverageId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      originalProfessionalId: string;
+      coverageProfessionalId: string;
+      reference: Date;
+      triggerSource: 'manual' | 'automatic';
+      triggeredBy: string;
+      triggeredAt: Date;
+      channels: string[];
+      recipientIds: string[];
+      summary: {
+        clinicHolds: number;
+        schedulingHolds: number;
+        bookings: number;
+        appointments: number;
+      };
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_CLINIC_COVERAGE_RELEASED,
+      coverageId,
+      { coverageId, ...data, queuedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static notificationsClinicAlertTriggered(
+    alertId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      type: string;
+      channel: string;
+      triggeredBy: string;
+      triggeredAt: Date;
+      payload: Record<string, unknown>;
+      recipientIds: string[];
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_CLINIC_ALERT_TRIGGERED,
+      alertId,
+      { alertId, ...data, queuedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static notificationsClinicAlertResolved(
+    alertId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      type: string;
+      channel?: string;
+      resolvedBy: string;
+      resolvedAt: Date;
+      triggeredAt?: Date;
+      triggeredBy?: string;
+      payload?: Record<string, unknown>;
+      recipientIds: string[];
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_CLINIC_ALERT_RESOLVED,
+      alertId,
+      { alertId, ...data, queuedAt: new Date() },
       metadata,
     );
   }

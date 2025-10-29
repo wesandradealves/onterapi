@@ -14,9 +14,9 @@ interface Schemas {
 }
 
 enum ErrorPrefix {
-  body = 'Erro ao validar o corpo da requisição',
-  query = 'Erro ao validar os parâmetros de query',
-  params = 'Erro ao validar os parâmetros de rota',
+  body = 'Erro ao validar o corpo da requisi  o',
+  query = 'Erro ao validar os par metros de query',
+  params = 'Erro ao validar os par metros de rota',
   headers = 'Erro ao validar os headers',
 }
 

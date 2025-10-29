@@ -1,4 +1,4 @@
-﻿export type PatientStatus = 'new' | 'active' | 'inactive' | 'in_treatment' | 'finished';
+export type PatientStatus = 'new' | 'active' | 'inactive' | 'in_treatment' | 'finished';
 
 export type PatientRiskLevel = 'low' | 'medium' | 'high';
 

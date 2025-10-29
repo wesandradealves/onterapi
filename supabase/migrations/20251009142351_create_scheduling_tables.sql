@@ -1,4 +1,4 @@
-﻿-- Scheduling schema objects
+-- Scheduling schema objects
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE OR REPLACE FUNCTION public.is_service_role()

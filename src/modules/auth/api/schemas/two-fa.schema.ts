@@ -1,11 +1,11 @@
 import { z } from 'zod';
 
 export const validateTwoFAInputSchema = z.object({
-  tempToken: z.string().min(1, 'Token temporário é obrigatório'),
+  tempToken: z.string().min(1, 'Token tempor rio   obrigat rio'),
   code: z
     .string()
-    .length(6, 'Código deve ter 6 dígitos')
-    .regex(/^\d{6}$/, 'Código deve conter apenas números'),
+    .length(6, 'C digo deve ter 6 d gitos')
+    .regex(/^\d{6}$/, 'C digo deve conter apenas n meros'),
   trustDevice: z.boolean().default(false),
   deviceInfo: z
     .object({
@@ -32,7 +32,7 @@ export const validateTwoFAOutputSchema = z.object({
 export type ValidateTwoFAInputDTO = z.infer<typeof validateTwoFAInputSchema>;
 export type ValidateTwoFAOutputDTO = z.infer<typeof validateTwoFAOutputSchema>;
 export const sendTwoFAInputSchema = z.object({
-  tempToken: z.string().min(1, 'Token temporário é obrigatório'),
+  tempToken: z.string().min(1, 'Token tempor rio   obrigat rio'),
   method: z.enum(['email', 'sms']).default('email'),
 });
 

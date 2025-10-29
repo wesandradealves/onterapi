@@ -1,4 +1,4 @@
-﻿import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import { IListAnamnesesByPatientUseCase } from '../../../domain/anamnesis/interfaces/use-cases/list-anamneses-by-patient.use-case.interface';

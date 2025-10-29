@@ -1,4 +1,4 @@
-﻿export type PricingMode = 'fixed' | 'percentage' | 'tiered';
+export type PricingMode = 'fixed' | 'percentage' | 'tiered';
 
 export type RepasseMode = 'fixed' | 'percentage';
 
@@ -69,8 +69,11 @@ export interface BookingHold {
   id: string;
   tenantId: string;
   professionalId: string;
+  originalProfessionalId?: string | null;
+  coverageId?: string | null;
   clinicId: string;
   patientId: string;
+  serviceTypeId: string | null;
   startAtUtc: Date;
   endAtUtc: Date;
   ttlExpiresAtUtc: Date;
@@ -93,6 +96,8 @@ export interface Booking {
   holdExpiresAtUtc: Date | null;
   startAtUtc: Date;
   endAtUtc: Date;
+  originalProfessionalId?: string | null;
+  coverageId?: string | null;
   timezone: string;
   lateToleranceMinutes: number;
   recurrenceSeriesId: string | null;
@@ -158,7 +163,7 @@ export interface RecurrenceOccurrence {
   updatedAt: Date;
 }
 
-export type ExternalCalendarEventStatus = 'pending' | 'approved' | 'rejected';
+export type ExternalCalendarEventStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 
 export interface ExternalCalendarEvent {
   id: string;
@@ -190,8 +195,11 @@ export interface UpdateBookingStatusInput {
 export interface CreateHoldInput {
   tenantId: string;
   professionalId: string;
+  originalProfessionalId?: string | null;
+  coverageId?: string | null;
   clinicId: string;
   patientId: string;
+  serviceTypeId: string;
   startAtUtc: Date;
   endAtUtc: Date;
   ttlExpiresAtUtc: Date;

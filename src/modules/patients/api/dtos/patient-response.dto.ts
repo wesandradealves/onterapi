@@ -1,4 +1,4 @@
-﻿import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class PatientContinuousMedicationResponseDto {
   @ApiProperty({ description: 'Nome da medicacao', example: 'Losartana' })

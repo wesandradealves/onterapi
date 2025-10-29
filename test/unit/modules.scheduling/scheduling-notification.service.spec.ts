@@ -26,6 +26,8 @@ describe('SchedulingNotificationService', () => {
     tenantId: 'tenant-1',
     clinicId: 'clinic-1',
     professionalId: 'prof-1',
+    originalProfessionalId: 'prof-owner',
+    coverageId: 'coverage-1',
     patientId: 'patient-1',
   } as const;
 
@@ -46,6 +48,7 @@ describe('SchedulingNotificationService', () => {
           payload: {
             holdId: 'hold-1',
             ...baseContext,
+            serviceTypeId: 'service-1',
             startAtUtc: new Date('2025-10-10T10:00:00Z'),
             endAtUtc: new Date('2025-10-10T11:00:00Z'),
             ttlExpiresAtUtc: new Date('2025-10-10T09:45:00Z'),
@@ -171,7 +174,7 @@ describe('SchedulingNotificationService', () => {
           metadata: {},
         } as SchedulingPaymentStatusChangedEvent),
     },
-  ])('publica evento de notifica��o quando $description', async ({ invoke, expectedEventName }) => {
+  ])('publica evento de notificacao quando $description', async ({ invoke, expectedEventName }) => {
     messageBus.publish.mockClear();
 
     await invoke();
@@ -179,5 +182,8 @@ describe('SchedulingNotificationService', () => {
     expect(messageBus.publish).toHaveBeenCalledWith(
       expect.objectContaining({ eventName: expectedEventName }),
     );
+    const published = messageBus.publish.mock.calls[0][0];
+    expect(published.payload.originalProfessionalId).toBe('prof-owner');
+    expect(published.payload.coverageId).toBe('coverage-1');
   });
 });
