@@ -8,6 +8,18 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ### Added
 
+## [0.21.0] - 2025-10-29
+
+### Added
+
+- Exportacoes de auditoria por clinica em
+  `/clinics/{clinicId}/audit-logs/export[.xls|.pdf]`, alimentadas pelo mesmo guard
+  de escopo e com limite hard (`min(limit, 5000)`).
+- `ClinicAuditExportService` reutilizavel para CSV/Excel/PDF, compartilhando
+  helpers de serializacao com o modulo de management.
+- Testes de integracao cobrindo os novos formatos (CSV/XLS/PDF) garantindo headers
+  e conteudo esperado.
+
 ## [0.20.0] - 2025-10-29
 
 ### Added

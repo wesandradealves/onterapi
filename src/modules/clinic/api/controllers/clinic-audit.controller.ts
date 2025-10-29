@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Headers,
+  HttpStatus,
   Inject,
   Param,
   Query,
@@ -37,6 +38,7 @@ import {
   IListClinicAuditLogsUseCase as IListClinicAuditLogsUseCaseToken,
 } from '../../../../domain/clinic/interfaces/use-cases/list-clinic-audit-logs.use-case.interface';
 import { Response } from 'express';
+import { ClinicAuditExportService } from '../../services/clinic-audit-export.service';
 
 @ApiTags('Clinics')
 @ApiBearerAuth()
@@ -46,6 +48,7 @@ export class ClinicAuditController {
   constructor(
     @Inject(IListClinicAuditLogsUseCaseToken)
     private readonly listAuditLogsUseCase: IListClinicAuditLogsUseCase,
+    private readonly auditExportService: ClinicAuditExportService,
   ) {}
 
   @Get()
@@ -68,13 +71,7 @@ export class ClinicAuditController {
       throw new BadRequestException('Tenant nao informado');
     }
 
-    const result = await this.listAuditLogsUseCase.executeOrThrow({
-      tenantId,
-      clinicId,
-      events: query.events,
-      page: query.page,
-      limit: query.limit,
-    });
+    const result = await this.fetchAuditLogs(clinicId, tenantId, query, query.page, query.limit);
 
     return {
       data: result.data.map((item) => ({
@@ -113,58 +110,96 @@ export class ClinicAuditController {
 
     const limit = Math.min(query.limit ?? 1000, 5000);
     const page = query.page ?? 1;
-    const result = await this.listAuditLogsUseCase.executeOrThrow({
+    const result = await this.fetchAuditLogs(clinicId, tenantId, query, page, limit);
+    const csvContent = this.auditExportService.buildAuditLogsCsv(result.data).join('\n');
+    const filename = `clinic-audit-${clinicId}-${Date.now()}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csvContent);
+  }
+
+  @Get('export.xls')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Exportar logs de auditoria da clinica (Excel)' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiQuery({ name: 'events', required: false, description: 'Eventos separados por virgula' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false, description: 'Quantidade maxima a exportar' })
+  @ApiProduces('application/vnd.ms-excel')
+  async exportAuditLogsExcel(
+    @Param('clinicId') clinicId: string,
+    @Query(new ZodValidationPipe(listClinicAuditLogsSchema)) query: ListClinicAuditLogsSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    const tenantId = tenantHeader ?? query.tenantId ?? currentUser.tenantId;
+
+    if (!tenantId) {
+      throw new BadRequestException('Tenant nao informado');
+    }
+
+    const limit = Math.min(query.limit ?? 1000, 5000);
+    const page = query.page ?? 1;
+    const result = await this.fetchAuditLogs(clinicId, tenantId, query, page, limit);
+    const buffer = await this.auditExportService.buildAuditLogsExcel(result.data);
+    const filename = `clinic-audit-${clinicId}-${Date.now()}.xls`;
+
+    res
+      .status(HttpStatus.OK)
+      .setHeader('Content-Type', 'application/vnd.ms-excel')
+      .setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+      .send(buffer);
+  }
+
+  @Get('export.pdf')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Exportar logs de auditoria da clinica (PDF)' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiQuery({ name: 'events', required: false, description: 'Eventos separados por virgula' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false, description: 'Quantidade maxima a exportar' })
+  @ApiProduces('application/pdf')
+  async exportAuditLogsPdf(
+    @Param('clinicId') clinicId: string,
+    @Query(new ZodValidationPipe(listClinicAuditLogsSchema)) query: ListClinicAuditLogsSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    const tenantId = tenantHeader ?? query.tenantId ?? currentUser.tenantId;
+
+    if (!tenantId) {
+      throw new BadRequestException('Tenant nao informado');
+    }
+
+    const limit = Math.min(query.limit ?? 1000, 5000);
+    const page = query.page ?? 1;
+    const result = await this.fetchAuditLogs(clinicId, tenantId, query, page, limit);
+    const buffer = await this.auditExportService.buildAuditLogsPdf(result.data);
+    const filename = `clinic-audit-${clinicId}-${Date.now()}.pdf`;
+
+    res
+      .status(HttpStatus.OK)
+      .setHeader('Content-Type', 'application/pdf')
+      .setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+      .send(buffer);
+  }
+
+  private async fetchAuditLogs(
+    clinicId: string,
+    tenantId: string,
+    query: ListClinicAuditLogsSchema,
+    page?: number,
+    limit?: number,
+  ) {
+    return this.listAuditLogsUseCase.executeOrThrow({
       tenantId,
       clinicId,
       events: query.events,
       page,
       limit,
     });
-
-    const escapeCell = (value: unknown): string => {
-      if (value === null || value === undefined) {
-        return '""';
-      }
-
-      if (typeof value === 'string') {
-        const sanitized = value.replace(/"/g, '""');
-        return `"${sanitized}"`;
-      }
-
-      if (value instanceof Date) {
-        return `"${value.toISOString()}"`;
-      }
-
-      if (typeof value === 'object') {
-        const serialized = JSON.stringify(value);
-        return `"${serialized.replace(/"/g, '""')}"`;
-      }
-
-      return `"${String(value).replace(/"/g, '""')}"`;
-    };
-
-    const header = ['id', 'tenantId', 'clinicId', 'event', 'performedBy', 'createdAt', 'detail'];
-
-    const rows = result.data.map((item) => {
-      const createdAt =
-        item.createdAt instanceof Date ? item.createdAt.toISOString() : String(item.createdAt);
-
-      return [
-        escapeCell(item.id),
-        escapeCell(item.tenantId),
-        escapeCell(item.clinicId),
-        escapeCell(item.event),
-        escapeCell(item.performedBy),
-        escapeCell(createdAt),
-        escapeCell(item.detail),
-      ].join(',');
-    });
-
-    const csvContent = [header.join(','), ...rows].join('\n');
-    const filename = `clinic-audit-${clinicId}-${Date.now()}.csv`;
-
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.send(csvContent);
   }
 }

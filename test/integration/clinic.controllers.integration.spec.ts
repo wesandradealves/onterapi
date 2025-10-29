@@ -18,6 +18,7 @@ import { RolesGuard } from '@modules/auth/guards/roles.guard';
 import { ClinicScopeGuard } from '@modules/clinic/guards/clinic-scope.guard';
 import { ClinicManagementExportService } from '@modules/clinic/services/clinic-management-export.service';
 import { ClinicConfigurationExportService } from '@modules/clinic/services/clinic-configuration-export.service';
+import { ClinicAuditExportService } from '@modules/clinic/services/clinic-audit-export.service';
 import { UserEntity } from '@infrastructure/auth/entities/user.entity';
 import { RolesEnum } from '@domain/auth/enums/roles.enum';
 import { ICurrentUser } from '@domain/auth/interfaces/current-user.interface';
@@ -1909,7 +1910,10 @@ describe('ClinicAuditController (integration)', () => {
   beforeAll(async () => {
     const moduleRef: TestingModule = await Test.createTestingModule({
       controllers: [ClinicAuditController],
-      providers: [{ provide: IListClinicAuditLogsUseCaseToken, useValue: useCase }],
+      providers: [
+        { provide: IListClinicAuditLogsUseCaseToken, useValue: useCase },
+        ClinicAuditExportService,
+      ],
     })
       .overrideGuard(JwtAuthGuard)
       .useClass(guards.JwtAuthGuard as new () => JwtAuthGuard)
@@ -2008,9 +2012,82 @@ describe('ClinicAuditController (integration)', () => {
     expect(lines[0]).toBe('id,tenantId,clinicId,event,performedBy,createdAt,detail');
     expect(lines[1]).toContain('"audit-export-1"');
     expect(lines[1]).toContain(FIXTURES.clinic);
-    expect(lines[1]).toContain('"clinic.config.updated"');
-    expect(lines[1]).toContain(`"${currentUser.id}"`);
-    expect(lines[1]).toContain('"{""section"":""services"",""changeId"":""delta-1""}"');
+  expect(lines[1]).toContain('"clinic.config.updated"');
+  expect(lines[1]).toContain(`"${currentUser.id}"`);
+  expect(lines[1]).toContain('"{""section"":""services"",""changeId"":""delta-1""}"');
+});
+
+  it('GET /clinics/:id/audit-logs/export.xls entrega planilha com os logs', async () => {
+    const auditLog: ClinicAuditLog = {
+      id: 'audit-export-xls',
+      tenantId: FIXTURES.tenant,
+      clinicId: FIXTURES.clinic,
+      event: 'clinic.alert.published',
+      performedBy: currentUser.id,
+      detail: { alertId: 'alert-1', type: 'compliance' },
+      createdAt: new Date('2025-10-12T15:00:00.000Z'),
+    };
+    useCase.executeOrThrow.mockResolvedValue({ data: [auditLog], total: 1 });
+
+    const response = await request(app.getHttpServer())
+      .get(`/clinics/${FIXTURES.clinic}/audit-logs/export.xls`)
+      .set('x-tenant-id', FIXTURES.tenant)
+      .query({ events: 'clinic.alert.published', limit: 50 })
+      .buffer()
+      .parse(binaryParser)
+      .expect(200);
+
+    expect(useCase.executeOrThrow).toHaveBeenCalledWith({
+      tenantId: FIXTURES.tenant,
+      clinicId: FIXTURES.clinic,
+      events: ['clinic.alert.published'],
+      page: 1,
+      limit: 50,
+    });
+    expect(response.headers['content-type']).toContain('application/vnd.ms-excel');
+    expect(response.headers['content-disposition']).toMatch(
+      /attachment; filename="clinic-audit-.*\.xls"/,
+    );
+    expect(Buffer.isBuffer(response.body)).toBe(true);
+    const workbookXml = response.body.toString('utf-8');
+    expect(workbookXml).toContain('<Worksheet ss:Name="AuditLogs">');
+    expect(workbookXml).toContain('audit-export-xls');
+  });
+
+  it('GET /clinics/:id/audit-logs/export.pdf retorna resumo em PDF', async () => {
+    const auditLog: ClinicAuditLog = {
+      id: 'audit-export-pdf',
+      tenantId: FIXTURES.tenant,
+      clinicId: FIXTURES.clinic,
+      event: 'clinic.invitation.revoked',
+      performedBy: currentUser.id,
+      detail: { invitationId: 'inv-99', reason: 'test' },
+      createdAt: new Date('2025-10-12T16:00:00.000Z'),
+    };
+    useCase.executeOrThrow.mockResolvedValue({ data: [auditLog], total: 1 });
+
+    const response = await request(app.getHttpServer())
+      .get(`/clinics/${FIXTURES.clinic}/audit-logs/export.pdf`)
+      .set('x-tenant-id', FIXTURES.tenant)
+      .query({ events: 'clinic.invitation.revoked' })
+      .buffer()
+      .parse(binaryParser)
+      .expect(200);
+
+    expect(useCase.executeOrThrow).toHaveBeenCalledWith({
+      tenantId: FIXTURES.tenant,
+      clinicId: FIXTURES.clinic,
+      events: ['clinic.invitation.revoked'],
+      page: 1,
+      limit: 1000,
+    });
+    expect(response.headers['content-type']).toContain('application/pdf');
+    expect(response.headers['content-disposition']).toMatch(
+      /attachment; filename="clinic-audit-.*\.pdf"/,
+    );
+    const pdfText = response.body.toString('utf-8');
+    expect(pdfText).toContain('Relatorio de auditoria da clinica');
+    expect(pdfText).toContain('clinic.invitation.revoked');
   });
 
   it('GET /clinics/:id/audit-logs/export retorna 403 quando guard de escopo bloqueia', async () => {

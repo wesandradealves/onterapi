@@ -58,6 +58,7 @@ import { ClinicInvitationTokenService } from './services/clinic-invitation-token
 import { ClinicInvitationExpirationWorkerService } from './services/clinic-invitation-expiration-worker.service';
 import { ClinicTemplateOverrideService } from './services/clinic-template-override.service';
 import { ClinicManagementExportService } from './services/clinic-management-export.service';
+import { ClinicAuditExportService } from './services/clinic-audit-export.service';
 import { ClinicConfigurationExportService } from './services/clinic-configuration-export.service';
 import { ClinicConfigurationCacheService } from './services/clinic-configuration-cache.service';
 import { ClinicConfigurationTelemetryService } from './services/clinic-configuration-telemetry.service';
@@ -320,6 +321,7 @@ const serviceProviders: Provider[] = [
   ClinicAlertNotificationService,
   ClinicAlertMonitorService,
   ClinicManagementExportService,
+  ClinicAuditExportService,
   ClinicConfigurationExportService,
   ClinicTemplateOverrideService,
   ClinicNotificationContextService,

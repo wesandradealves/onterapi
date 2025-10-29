@@ -464,6 +464,10 @@ Use `AnamnesisMetricsService.getSnapshot([tenantId])` ou o endpoint `GET /anamne
   entregam CSV/Excel/PDF com paginacao segura, RBAC por papel e respeito ao escopo da clinica.
 - Exportacoes multi-clinica `GET /management/overview|comparisons|alerts/export[.xls|.pdf]`
   entregam CSV/Excel/PDF e retornam 403 quando o `ClinicAccessService` identifica escopo nao autorizado.
+- Exportacoes de auditoria `GET /clinics/:clinicId/audit-logs/export[.xls|.pdf]`
+  reutilizam os mesmos filtros (`events`, `page`, `limit`) e seguem os limites de paginaçao
+  protegidos (max 5k registros), mantendo o layout textual/CVS/Excel utilizado nos smoke
+  tests e logs de producao.
 - `GET /management/professional-coverages` fornece listagem paginada de coberturas multi-clinica,
   aplicando filtros de clinicas, profissionais, periodo e status com validação de escopo.
 - `GET /clinics/:clinicId/settings/security` e `PATCH /clinics/:clinicId/settings/security`
