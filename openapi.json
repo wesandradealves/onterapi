@@ -2870,6 +2870,188 @@
         ]
       }
     },
+    "/clinics/{clinicId}/settings/template-overrides": {
+      "get": {
+        "operationId": "listTemplateOverrides",
+        "summary": "Listar overrides de template da clinica",
+        "parameters": [
+          {
+            "name": "clinicId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-tenant-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "includeSuperseded",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "section",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "general",
+                "team",
+                "schedule",
+                "services",
+                "payments",
+                "integrations",
+                "notifications",
+                "branding"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClinicTemplateOverrideListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Clinics"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/clinics/{clinicId}/settings/template-overrides/export": {
+      "get": {
+        "operationId": "exportTemplateOverrides",
+        "summary": "Exportar overrides de template da clinica (CSV)",
+        "parameters": [
+          {
+            "name": "clinicId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "403": {
+            "description": "Acesso negado ao recurso"
+          }
+        },
+        "tags": [
+          "Clinics"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/clinics/{clinicId}/settings/template-overrides/export.xls": {
+      "get": {
+        "operationId": "exportTemplateOverridesExcel",
+        "summary": "Exportar overrides de template da clinica (Excel)",
+        "parameters": [
+          {
+            "name": "clinicId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "403": {
+            "description": "Acesso negado ao recurso"
+          }
+        },
+        "tags": [
+          "Clinics"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/clinics/{clinicId}/settings/template-overrides/export.pdf": {
+      "get": {
+        "operationId": "exportTemplateOverridesPdf",
+        "summary": "Exportar overrides de template da clinica (PDF)",
+        "parameters": [
+          {
+            "name": "clinicId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "403": {
+            "description": "Acesso negado ao recurso"
+          }
+        },
+        "tags": [
+          "Clinics"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/clinics/{clinicId}/settings/services": {
       "patch": {
         "operationId": "updateServiceSettings",
@@ -4020,6 +4202,349 @@
         ]
       }
     },
+    "/clinics/{clinicId}/settings/security": {
+      "patch": {
+        "operationId": "updateSecuritySettings",
+        "summary": "Atualizar configuracoes de seguranca da clinica",
+        "parameters": [
+          {
+            "name": "clinicId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-tenant-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Request payload",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenantId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "securitySettings": {
+                    "type": "object",
+                    "properties": {
+                      "twoFactor": {
+                        "type": "object",
+                        "properties": {
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "requiredRoles": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "SUPER_ADMIN",
+                                "ADMIN_FINANCEIRO",
+                                "ADMIN_SUPORTE",
+                                "ADMIN_EDITOR",
+                                "MARKETPLACE_MANAGER",
+                                "CLINIC_OWNER",
+                                "PROFESSIONAL",
+                                "SECRETARY",
+                                "MANAGER",
+                                "PATIENT",
+                                "VISITOR"
+                              ]
+                            },
+                            "default": []
+                          },
+                          "backupCodesEnabled": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "enabled",
+                          "backupCodesEnabled"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "passwordPolicy": {
+                        "type": "object",
+                        "properties": {
+                          "minLength": {
+                            "type": "integer",
+                            "minimum": 6,
+                            "maximum": 128
+                          },
+                          "requireUppercase": {
+                            "type": "boolean"
+                          },
+                          "requireLowercase": {
+                            "type": "boolean"
+                          },
+                          "requireNumbers": {
+                            "type": "boolean"
+                          },
+                          "requireSpecialCharacters": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "minLength",
+                          "requireUppercase",
+                          "requireLowercase",
+                          "requireNumbers",
+                          "requireSpecialCharacters"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "session": {
+                        "type": "object",
+                        "properties": {
+                          "idleTimeoutMinutes": {
+                            "type": "integer",
+                            "minimum": 5,
+                            "maximum": 1440
+                          },
+                          "absoluteTimeoutMinutes": {
+                            "type": "integer",
+                            "minimum": 30,
+                            "maximum": 10080
+                          }
+                        },
+                        "required": [
+                          "idleTimeoutMinutes",
+                          "absoluteTimeoutMinutes"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "loginAlerts": {
+                        "type": "object",
+                        "properties": {
+                          "email": {
+                            "type": "boolean"
+                          },
+                          "whatsapp": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "email",
+                          "whatsapp"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "ipRestrictions": {
+                        "type": "object",
+                        "properties": {
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "allowlist": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "maxItems": 64,
+                            "default": []
+                          },
+                          "blocklist": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "maxItems": 64,
+                            "default": []
+                          }
+                        },
+                        "required": [
+                          "enabled"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "audit": {
+                        "type": "object",
+                        "properties": {
+                          "retentionDays": {
+                            "type": "integer",
+                            "minimum": 30,
+                            "maximum": 3650
+                          },
+                          "exportEnabled": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "retentionDays",
+                          "exportEnabled"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "compliance": {
+                        "type": "object",
+                        "properties": {
+                          "documents": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "type": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "name": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "required": {
+                                  "type": "boolean"
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "valid",
+                                    "pending",
+                                    "expired",
+                                    "missing",
+                                    "submitted",
+                                    "review",
+                                    "unknown"
+                                  ]
+                                },
+                                "expiresAt": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "date-time"
+                                    },
+                                    {
+                                      "enum": [
+                                        "null"
+                                      ],
+                                      "nullable": true
+                                    }
+                                  ]
+                                },
+                                "metadata": {
+                                  "type": "object",
+                                  "additionalProperties": {}
+                                }
+                              },
+                              "required": [
+                                "type"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "maxItems": 200,
+                            "default": []
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    },
+                    "required": [
+                      "twoFactor",
+                      "passwordPolicy",
+                      "session",
+                      "loginAlerts",
+                      "ipRestrictions",
+                      "audit"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "tenantId",
+                  "securitySettings"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClinicSecuritySettingsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Clinics"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "getSecuritySettings",
+        "summary": "Obter configuracoes de seguranca da clinica",
+        "parameters": [
+          {
+            "name": "clinicId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-tenant-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClinicSecuritySettingsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Clinics"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/clinics/{clinicId}/settings/branding": {
       "patch": {
         "operationId": "updateBrandingSettings",
@@ -4888,6 +5413,7 @@
                         "payments",
                         "integrations",
                         "notifications",
+                        "security",
                         "branding"
                       ]
                     },
@@ -5062,6 +5588,93 @@
         ]
       }
     },
+    "/management/comparisons": {
+      "get": {
+        "operationId": "compareClinics",
+        "summary": "Comparar desempenho de clinicas por periodo",
+        "parameters": [
+          {
+            "name": "x-tenant-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Quantidade maxima de clinicas no ranking (1-200)",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "description": "Data final (ISO 8601)",
+            "schema": {}
+          },
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "description": "Data inicial (ISO 8601)",
+            "schema": {}
+          },
+          {
+            "name": "metric",
+            "required": false,
+            "in": "query",
+            "description": "Metrica para comparacao",
+            "schema": {
+              "enum": [
+                "revenue",
+                "appointments",
+                "patients",
+                "occupancy",
+                "satisfaction"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "clinicIds",
+            "required": false,
+            "in": "query",
+            "description": "IDs de clinicas (UUIDs) separados por virgula ou multiplos parametros",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClinicDashboardComparisonDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Clinic Management"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/management/overview/export": {
       "get": {
         "operationId": "exportOverview",
@@ -5165,6 +5778,234 @@
         "responses": {
           "200": {
             "description": ""
+          },
+          "403": {
+            "description": "Acesso negado ao recurso"
+          }
+        },
+        "tags": [
+          "Clinic Management"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/management/comparisons/export": {
+      "get": {
+        "operationId": "exportComparisons",
+        "summary": "Exportar comparativo de desempenho das clinicas (CSV)",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Quantidade maxima de clinicas no ranking (1-200)",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "description": "Data final (ISO 8601)",
+            "schema": {}
+          },
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "description": "Data inicial (ISO 8601)",
+            "schema": {}
+          },
+          {
+            "name": "metric",
+            "required": false,
+            "in": "query",
+            "description": "Metrica para comparacao",
+            "schema": {
+              "enum": [
+                "revenue",
+                "appointments",
+                "patients",
+                "occupancy",
+                "satisfaction"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "clinicIds",
+            "required": false,
+            "in": "query",
+            "description": "IDs de clinicas (UUIDs) separados por virgula ou multiplos parametros",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "403": {
+            "description": "Acesso negado ao recurso"
+          }
+        },
+        "tags": [
+          "Clinic Management"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/management/comparisons/export.xls": {
+      "get": {
+        "operationId": "exportComparisonsExcel",
+        "summary": "Exportar comparativo de desempenho das clinicas (Excel)",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Quantidade maxima de clinicas no ranking (1-200)",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "description": "Data final (ISO 8601)",
+            "schema": {}
+          },
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "description": "Data inicial (ISO 8601)",
+            "schema": {}
+          },
+          {
+            "name": "metric",
+            "required": false,
+            "in": "query",
+            "description": "Metrica para comparacao",
+            "schema": {
+              "enum": [
+                "revenue",
+                "appointments",
+                "patients",
+                "occupancy",
+                "satisfaction"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "clinicIds",
+            "required": false,
+            "in": "query",
+            "description": "IDs de clinicas (UUIDs) separados por virgula ou multiplos parametros",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "403": {
+            "description": "Acesso negado ao recurso"
+          }
+        },
+        "tags": [
+          "Clinic Management"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/management/comparisons/export.pdf": {
+      "get": {
+        "operationId": "exportComparisonsPdf",
+        "summary": "Exportar comparativo de desempenho das clinicas (PDF)",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Quantidade maxima de clinicas no ranking (1-200)",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "description": "Data final (ISO 8601)",
+            "schema": {}
+          },
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "description": "Data inicial (ISO 8601)",
+            "schema": {}
+          },
+          {
+            "name": "metric",
+            "required": false,
+            "in": "query",
+            "description": "Metrica para comparacao",
+            "schema": {
+              "enum": [
+                "revenue",
+                "appointments",
+                "patients",
+                "occupancy",
+                "satisfaction"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "clinicIds",
+            "required": false,
+            "in": "query",
+            "description": "IDs de clinicas (UUIDs) separados por virgula ou multiplos parametros",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "403": {
+            "description": "Acesso negado ao recurso"
           }
         },
         "tags": [
@@ -5185,6 +6026,9 @@
         "responses": {
           "200": {
             "description": ""
+          },
+          "403": {
+            "description": "Acesso negado ao recurso"
           }
         },
         "tags": [
@@ -5205,6 +6049,648 @@
         "responses": {
           "200": {
             "description": ""
+          },
+          "403": {
+            "description": "Acesso negado ao recurso"
+          }
+        },
+        "tags": [
+          "Clinic Management"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/management/professional-coverages": {
+      "get": {
+        "operationId": "listProfessionalCoverages",
+        "summary": "Listar coberturas temporarias de profissionais (multi-clinica)",
+        "parameters": [
+          {
+            "name": "x-tenant-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenantId",
+            "required": false,
+            "in": "query",
+            "description": "Identificador do tenant (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "clinicId",
+            "required": false,
+            "in": "query",
+            "description": "Clinica alvo (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "clinicIds",
+            "required": false,
+            "in": "query",
+            "description": "Clinicas alvo (UUIDs separados por virgula ou multiplos parametros)",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "professionalId",
+            "required": false,
+            "in": "query",
+            "description": "Profissional titular (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "coverageProfessionalId",
+            "required": false,
+            "in": "query",
+            "description": "Profissional de cobertura (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "statuses",
+            "required": false,
+            "in": "query",
+            "description": "Status aceitaveis (scheduled, active, completed, cancelled)",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "scheduled",
+                  "active",
+                  "completed",
+                  "cancelled"
+                ]
+              }
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Data inicial (ISO 8601)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Data final (ISO 8601)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeCancelled",
+            "required": false,
+            "in": "query",
+            "description": "Incluir coberturas canceladas",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Pagina inicial de consulta",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Tamanho da pagina (maximo 200)",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClinicProfessionalCoverageListResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Acesso negado ao recurso"
+          }
+        },
+        "tags": [
+          "Clinic Management"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/management/professional-coverages/export": {
+      "get": {
+        "operationId": "exportProfessionalCoverages",
+        "summary": "Exportar coberturas temporarias de profissionais (CSV)",
+        "parameters": [
+          {
+            "name": "x-tenant-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenantId",
+            "required": false,
+            "in": "query",
+            "description": "Identificador do tenant (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "clinicId",
+            "required": false,
+            "in": "query",
+            "description": "Clinica alvo (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "clinicIds",
+            "required": false,
+            "in": "query",
+            "description": "IDs de clinicas (UUIDs) separados por virgula ou multiplos parametros",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "professionalId",
+            "required": false,
+            "in": "query",
+            "description": "Profissional titular (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "coverageProfessionalId",
+            "required": false,
+            "in": "query",
+            "description": "Profissional de cobertura (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "statuses",
+            "required": false,
+            "in": "query",
+            "description": "Status das coberturas (scheduled, active, completed, cancelled)",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "scheduled",
+                  "active",
+                  "completed",
+                  "cancelled"
+                ]
+              }
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Data inicial (ISO 8601)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Data final (ISO 8601)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeCancelled",
+            "required": false,
+            "in": "query",
+            "description": "Incluir coberturas canceladas",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Pagina inicial para iteracao (>=1)",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Tamanho do lote por pagina (maximo 200)",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Acesso negado ao recurso"
+          }
+        },
+        "tags": [
+          "Clinic Management"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/management/professional-coverages/export.xls": {
+      "get": {
+        "operationId": "exportProfessionalCoveragesExcel",
+        "summary": "Exportar coberturas temporarias de profissionais (Excel)",
+        "parameters": [
+          {
+            "name": "x-tenant-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenantId",
+            "required": false,
+            "in": "query",
+            "description": "Identificador do tenant (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "clinicId",
+            "required": false,
+            "in": "query",
+            "description": "Clinica alvo (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "clinicIds",
+            "required": false,
+            "in": "query",
+            "description": "IDs de clinicas (UUIDs) separados por virgula ou multiplos parametros",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "professionalId",
+            "required": false,
+            "in": "query",
+            "description": "Profissional titular (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "coverageProfessionalId",
+            "required": false,
+            "in": "query",
+            "description": "Profissional de cobertura (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "statuses",
+            "required": false,
+            "in": "query",
+            "description": "Status das coberturas (scheduled, active, completed, cancelled)",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "scheduled",
+                  "active",
+                  "completed",
+                  "cancelled"
+                ]
+              }
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Data inicial (ISO 8601)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Data final (ISO 8601)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeCancelled",
+            "required": false,
+            "in": "query",
+            "description": "Incluir coberturas canceladas",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Pagina inicial para iteracao (>=1)",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Tamanho do lote por pagina (maximo 200)",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/vnd.ms-excel": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Acesso negado ao recurso"
+          }
+        },
+        "tags": [
+          "Clinic Management"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/management/professional-coverages/export.pdf": {
+      "get": {
+        "operationId": "exportProfessionalCoveragesPdf",
+        "summary": "Exportar coberturas temporarias de profissionais (PDF)",
+        "parameters": [
+          {
+            "name": "x-tenant-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenantId",
+            "required": false,
+            "in": "query",
+            "description": "Identificador do tenant (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "clinicId",
+            "required": false,
+            "in": "query",
+            "description": "Clinica alvo (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "clinicIds",
+            "required": false,
+            "in": "query",
+            "description": "IDs de clinicas (UUIDs) separados por virgula ou multiplos parametros",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "professionalId",
+            "required": false,
+            "in": "query",
+            "description": "Profissional titular (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "coverageProfessionalId",
+            "required": false,
+            "in": "query",
+            "description": "Profissional de cobertura (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "statuses",
+            "required": false,
+            "in": "query",
+            "description": "Status das coberturas (scheduled, active, completed, cancelled)",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "scheduled",
+                  "active",
+                  "completed",
+                  "cancelled"
+                ]
+              }
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Data inicial (ISO 8601)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Data final (ISO 8601)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeCancelled",
+            "required": false,
+            "in": "query",
+            "description": "Incluir coberturas canceladas",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Pagina inicial para iteracao (>=1)",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Tamanho do lote por pagina (maximo 200)",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Acesso negado ao recurso"
           }
         },
         "tags": [
@@ -5315,6 +6801,9 @@
         "responses": {
           "200": {
             "description": ""
+          },
+          "403": {
+            "description": "Acesso negado ao recurso"
           }
         },
         "tags": [
@@ -6490,91 +7979,6 @@
         ]
       }
     },
-    "/clinics/invitations/{invitationId}/onboarding": {
-      "post": {
-        "operationId": "completeInvitationOnboarding",
-        "summary": "Concluir onboarding de profissional convidado por e-mail",
-        "parameters": [
-          {
-            "name": "invitationId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "description": "Request payload",
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "tenantId": {
-                    "type": "string",
-                    "format": "uuid"
-                  },
-                  "token": {
-                    "type": "string",
-                    "minLength": 10
-                  },
-                  "name": {
-                    "type": "string",
-                    "minLength": 3,
-                    "maxLength": 120
-                  },
-                  "cpf": {
-                    "type": "string",
-                    "minLength": 11,
-                    "maxLength": 14
-                  },
-                  "phone": {
-                    "type": "string",
-                    "maxLength": 20
-                  },
-                  "password": {
-                    "type": "string",
-                    "minLength": 8,
-                    "maxLength": 128
-                  },
-                  "passwordConfirmation": {
-                    "type": "string",
-                    "minLength": 8,
-                    "maxLength": 128
-                  }
-                },
-                "required": [
-                  "tenantId",
-                  "token",
-                  "name",
-                  "cpf",
-                  "password",
-                  "passwordConfirmation"
-                ],
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ClinicInvitationOnboardingResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Clinics"
-        ]
-      }
-    },
     "/clinics/invitations/{invitationId}/decline": {
       "post": {
         "operationId": "declineInvitation",
@@ -6772,6 +8176,91 @@
         ]
       }
     },
+    "/clinics/invitations/{invitationId}/onboarding": {
+      "post": {
+        "operationId": "completeOnboarding",
+        "summary": "Concluir onboarding de profissional convidado por e-mail",
+        "parameters": [
+          {
+            "name": "invitationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Request payload",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenantId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "token": {
+                    "type": "string",
+                    "minLength": 10
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 120
+                  },
+                  "cpf": {
+                    "type": "string",
+                    "minLength": 11,
+                    "maxLength": 14
+                  },
+                  "phone": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 128
+                  },
+                  "passwordConfirmation": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 128
+                  }
+                },
+                "required": [
+                  "tenantId",
+                  "token",
+                  "name",
+                  "cpf",
+                  "password",
+                  "passwordConfirmation"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClinicInvitationOnboardingResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Clinics"
+        ]
+      }
+    },
     "/clinics/{clinicId}/members": {
       "get": {
         "operationId": "list",
@@ -6875,6 +8364,884 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ClinicProfessionalFinancialClearanceResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Clinics"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/clinics/{clinicId}/members/professional/{professionalId}/policy": {
+      "get": {
+        "operationId": "getProfessionalPolicy",
+        "summary": "Consultar politica clinica-profissional ativa",
+        "parameters": [
+          {
+            "name": "clinicId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "professionalId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenantId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-tenant-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClinicProfessionalPolicyResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Clinics"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/clinics/{clinicId}/members/professional-coverages": {
+      "post": {
+        "operationId": "createCoverage",
+        "summary": "Criar cobertura temporaria para um profissional",
+        "parameters": [
+          {
+            "name": "clinicId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-tenant-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Request payload",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenantId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "professionalId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "coverageProfessionalId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "startAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "endAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 255
+                  },
+                  "notes": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "professionalId",
+                  "coverageProfessionalId",
+                  "startAt",
+                  "endAt"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClinicProfessionalCoverageResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Clinics"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "listCoverages",
+        "summary": "Listar coberturas temporarias de profissionais",
+        "parameters": [
+          {
+            "name": "clinicId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-tenant-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClinicProfessionalCoverageListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Clinics"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/clinics/{clinicId}/members/professional-coverages/export": {
+      "get": {
+        "operationId": "exportProfessionalCoverages",
+        "summary": "Exportar coberturas temporarias de profissionais (CSV)",
+        "parameters": [
+          {
+            "name": "clinicId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-tenant-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenantId",
+            "required": false,
+            "in": "query",
+            "description": "Identificador do tenant (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "professionalId",
+            "required": false,
+            "in": "query",
+            "description": "Filtrar pelo profissional titular (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "coverageProfessionalId",
+            "required": false,
+            "in": "query",
+            "description": "Filtrar pelo profissional de cobertura (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "statuses",
+            "required": false,
+            "in": "query",
+            "description": "Status aceitaveis (scheduled, active, completed, cancelled)",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "scheduled",
+                  "active",
+                  "completed",
+                  "cancelled"
+                ]
+              }
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Data inicial (ISO 8601)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Data final (ISO 8601)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeCancelled",
+            "required": false,
+            "in": "query",
+            "description": "Incluir coberturas canceladas",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Pagina inicial para iteracao",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Tamanho do lote por pagina (maximo 200)",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Acesso negado ao recurso"
+          }
+        },
+        "tags": [
+          "Clinics"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/clinics/{clinicId}/invitations/addendums": {
+      "post": {
+        "operationId": "inviteAddendum",
+        "summary": "Emitir aditivo economico para profissional ja vinculado",
+        "parameters": [
+          {
+            "name": "clinicId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-tenant-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Request payload",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenantId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "professionalId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "email",
+                      "whatsapp"
+                    ]
+                  },
+                  "channelScope": {
+                    "type": "string",
+                    "enum": [
+                      "direct",
+                      "marketplace",
+                      "both"
+                    ]
+                  },
+                  "economicSummary": {
+                    "type": "object",
+                    "properties": {
+                      "items": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "serviceTypeId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "price": {
+                              "type": "number",
+                              "exclusiveMinimum": true,
+                              "minimum": 0
+                            },
+                            "currency": {
+                              "type": "string",
+                              "enum": [
+                                "BRL",
+                                "USD",
+                                "EUR"
+                              ]
+                            },
+                            "payoutModel": {
+                              "type": "string",
+                              "enum": [
+                                "fixed",
+                                "percentage"
+                              ]
+                            },
+                            "payoutValue": {
+                              "type": "number",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "serviceTypeId",
+                            "price",
+                            "currency",
+                            "payoutModel",
+                            "payoutValue"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "minItems": 1
+                      },
+                      "orderOfRemainders": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "taxes",
+                            "gateway",
+                            "clinic",
+                            "professional",
+                            "platform"
+                          ]
+                        },
+                        "minItems": 5,
+                        "maxItems": 5
+                      },
+                      "roundingStrategy": {
+                        "type": "string",
+                        "enum": [
+                          "half_even"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "items",
+                      "orderOfRemainders",
+                      "roundingStrategy"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "expiresAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "effectiveAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "tenantId",
+                  "professionalId",
+                  "channel",
+                  "economicSummary",
+                  "expiresAt"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClinicInvitationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Clinics"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/clinics/{clinicId}/members/professional-coverages/export.xls": {
+      "get": {
+        "operationId": "exportProfessionalCoveragesExcel",
+        "summary": "Exportar coberturas temporarias de profissionais (Excel)",
+        "parameters": [
+          {
+            "name": "clinicId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-tenant-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenantId",
+            "required": false,
+            "in": "query",
+            "description": "Identificador do tenant (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "professionalId",
+            "required": false,
+            "in": "query",
+            "description": "Filtrar pelo profissional titular (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "coverageProfessionalId",
+            "required": false,
+            "in": "query",
+            "description": "Filtrar pelo profissional de cobertura (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "statuses",
+            "required": false,
+            "in": "query",
+            "description": "Status aceitaveis (scheduled, active, completed, cancelled)",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "scheduled",
+                  "active",
+                  "completed",
+                  "cancelled"
+                ]
+              }
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Data inicial (ISO 8601)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Data final (ISO 8601)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeCancelled",
+            "required": false,
+            "in": "query",
+            "description": "Incluir coberturas canceladas",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Pagina inicial para iteracao",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Tamanho do lote por pagina (maximo 200)",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/vnd.ms-excel": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Acesso negado ao recurso"
+          }
+        },
+        "tags": [
+          "Clinics"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/clinics/{clinicId}/members/professional-coverages/export.pdf": {
+      "get": {
+        "operationId": "exportProfessionalCoveragesPdf",
+        "summary": "Exportar coberturas temporarias de profissionais (PDF)",
+        "parameters": [
+          {
+            "name": "clinicId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-tenant-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenantId",
+            "required": false,
+            "in": "query",
+            "description": "Identificador do tenant (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "professionalId",
+            "required": false,
+            "in": "query",
+            "description": "Filtrar pelo profissional titular (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "coverageProfessionalId",
+            "required": false,
+            "in": "query",
+            "description": "Filtrar pelo profissional de cobertura (UUID)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "statuses",
+            "required": false,
+            "in": "query",
+            "description": "Status aceitaveis (scheduled, active, completed, cancelled)",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "scheduled",
+                  "active",
+                  "completed",
+                  "cancelled"
+                ]
+              }
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "Data inicial (ISO 8601)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "Data final (ISO 8601)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeCancelled",
+            "required": false,
+            "in": "query",
+            "description": "Incluir coberturas canceladas",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Pagina inicial para iteracao",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Tamanho do lote por pagina (maximo 200)",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Acesso negado ao recurso"
+          }
+        },
+        "tags": [
+          "Clinics"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/clinics/{clinicId}/members/professional-coverages/{coverageId}/cancel": {
+      "patch": {
+        "operationId": "cancelCoverage",
+        "summary": "Cancelar cobertura temporaria",
+        "parameters": [
+          {
+            "name": "clinicId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "coverageId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-tenant-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Request payload",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenantId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "cancellationReason": {
+                    "type": "string",
+                    "maxLength": 255
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClinicProfessionalCoverageResponseDto"
                 }
               }
             }
@@ -7397,6 +9764,9 @@
         "responses": {
           "200": {
             "description": ""
+          },
+          "403": {
+            "description": "Acesso negado ao recurso"
           }
         },
         "tags": [
@@ -11810,6 +14180,105 @@
           "payload"
         ]
       },
+      "ClinicTemplateOverrideDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "clinicId": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "templateClinicId": {
+            "type": "string"
+          },
+          "section": {
+            "type": "string"
+          },
+          "overrideVersion": {
+            "type": "number"
+          },
+          "overridePayload": {
+            "type": "object"
+          },
+          "overrideHash": {
+            "type": "string"
+          },
+          "baseTemplateVersionId": {
+            "type": "string"
+          },
+          "baseTemplateVersionNumber": {
+            "type": "number"
+          },
+          "appliedConfigurationVersionId": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "supersededAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "supersededBy": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "clinicId",
+          "tenantId",
+          "templateClinicId",
+          "section",
+          "overrideVersion",
+          "overridePayload",
+          "overrideHash",
+          "baseTemplateVersionId",
+          "createdBy",
+          "createdAt"
+        ]
+      },
+      "ClinicTemplateOverrideListResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClinicTemplateOverrideDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "data",
+          "total",
+          "page",
+          "limit",
+          "hasNextPage"
+        ]
+      },
       "ClinicServiceSettingsItemDto": {
         "type": "object",
         "properties": {
@@ -12743,6 +15212,276 @@
           "payload"
         ]
       },
+      "ClinicSecurityTwoFactorSettingsDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "requiredRoles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "backupCodesEnabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled",
+          "requiredRoles",
+          "backupCodesEnabled"
+        ]
+      },
+      "ClinicSecurityPasswordPolicyDto": {
+        "type": "object",
+        "properties": {
+          "minLength": {
+            "type": "number"
+          },
+          "requireUppercase": {
+            "type": "boolean"
+          },
+          "requireLowercase": {
+            "type": "boolean"
+          },
+          "requireNumbers": {
+            "type": "boolean"
+          },
+          "requireSpecialCharacters": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "minLength",
+          "requireUppercase",
+          "requireLowercase",
+          "requireNumbers",
+          "requireSpecialCharacters"
+        ]
+      },
+      "ClinicSecuritySessionSettingsDto": {
+        "type": "object",
+        "properties": {
+          "idleTimeoutMinutes": {
+            "type": "number"
+          },
+          "absoluteTimeoutMinutes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "idleTimeoutMinutes",
+          "absoluteTimeoutMinutes"
+        ]
+      },
+      "ClinicSecurityLoginAlertsDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "boolean"
+          },
+          "whatsapp": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "email",
+          "whatsapp"
+        ]
+      },
+      "ClinicSecurityIpRestrictionsDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "allowlist": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "blocklist": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "enabled",
+          "allowlist",
+          "blocklist"
+        ]
+      },
+      "ClinicSecurityAuditSettingsDto": {
+        "type": "object",
+        "properties": {
+          "retentionDays": {
+            "type": "number"
+          },
+          "exportEnabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "retentionDays",
+          "exportEnabled"
+        ]
+      },
+      "ClinicSecurityComplianceDocumentDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "expiresAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "updatedBy": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "ClinicSecurityComplianceSettingsDto": {
+        "type": "object",
+        "properties": {
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClinicSecurityComplianceDocumentDto"
+            }
+          }
+        },
+        "required": [
+          "documents"
+        ]
+      },
+      "ClinicSecuritySettingsPayloadDto": {
+        "type": "object",
+        "properties": {
+          "twoFactor": {
+            "$ref": "#/components/schemas/ClinicSecurityTwoFactorSettingsDto"
+          },
+          "passwordPolicy": {
+            "$ref": "#/components/schemas/ClinicSecurityPasswordPolicyDto"
+          },
+          "session": {
+            "$ref": "#/components/schemas/ClinicSecuritySessionSettingsDto"
+          },
+          "loginAlerts": {
+            "$ref": "#/components/schemas/ClinicSecurityLoginAlertsDto"
+          },
+          "ipRestrictions": {
+            "$ref": "#/components/schemas/ClinicSecurityIpRestrictionsDto"
+          },
+          "audit": {
+            "$ref": "#/components/schemas/ClinicSecurityAuditSettingsDto"
+          },
+          "compliance": {
+            "$ref": "#/components/schemas/ClinicSecurityComplianceSettingsDto"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "twoFactor",
+          "passwordPolicy",
+          "session",
+          "loginAlerts",
+          "ipRestrictions",
+          "audit"
+        ]
+      },
+      "ClinicSecuritySettingsResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "clinicId": {
+            "type": "string"
+          },
+          "section": {
+            "type": "string"
+          },
+          "version": {
+            "type": "number"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "appliedAt": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "idle",
+              "saving",
+              "saved",
+              "error"
+            ]
+          },
+          "autoApply": {
+            "type": "boolean",
+            "description": "Indica se a configuracao e aplicada automaticamente"
+          },
+          "telemetry": {
+            "description": "Telemetria da configuracao",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ClinicConfigurationTelemetryResponseDto"
+              }
+            ]
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ClinicSecuritySettingsPayloadDto"
+          }
+        },
+        "required": [
+          "id",
+          "clinicId",
+          "section",
+          "version",
+          "createdBy",
+          "createdAt",
+          "state",
+          "autoApply",
+          "payload"
+        ]
+      },
       "ClinicBrandingPaletteDto": {
         "type": "object",
         "properties": {
@@ -13580,6 +16319,95 @@
           "count"
         ]
       },
+      "ClinicManagementComplianceNextExpirationDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "expiresAt"
+        ]
+      },
+      "ClinicManagementComplianceSummaryDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "valid": {
+            "type": "number"
+          },
+          "expiring": {
+            "type": "number"
+          },
+          "expired": {
+            "type": "number"
+          },
+          "missing": {
+            "type": "number"
+          },
+          "pending": {
+            "type": "number"
+          },
+          "review": {
+            "type": "number"
+          },
+          "submitted": {
+            "type": "number"
+          },
+          "unknown": {
+            "type": "number"
+          },
+          "nextExpiration": {
+            "$ref": "#/components/schemas/ClinicManagementComplianceNextExpirationDto"
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClinicSecurityComplianceDocumentDto"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "valid",
+          "expiring",
+          "expired",
+          "missing",
+          "pending",
+          "review",
+          "submitted",
+          "unknown"
+        ]
+      },
+      "ClinicManagementCoverageSummaryDto": {
+        "type": "object",
+        "properties": {
+          "scheduled": {
+            "type": "number"
+          },
+          "active": {
+            "type": "number"
+          },
+          "completedLast30Days": {
+            "type": "number"
+          },
+          "lastUpdatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheduled",
+          "active",
+          "completedLast30Days"
+        ]
+      },
       "ClinicManagementClinicSummaryDto": {
         "type": "object",
         "properties": {
@@ -13621,6 +16449,12 @@
           },
           "template": {
             "$ref": "#/components/schemas/ClinicTemplatePropagationResponseDto"
+          },
+          "compliance": {
+            "$ref": "#/components/schemas/ClinicManagementComplianceSummaryDto"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/ClinicManagementCoverageSummaryDto"
           }
         },
         "required": [
@@ -13672,6 +16506,26 @@
           },
           "rankingPosition": {
             "type": "number"
+          },
+          "trendDirection": {
+            "type": "string",
+            "enum": [
+              "upward",
+              "downward",
+              "stable"
+            ]
+          },
+          "trendPercentage": {
+            "type": "number"
+          },
+          "benchmarkValue": {
+            "type": "number"
+          },
+          "benchmarkGapPercentage": {
+            "type": "number"
+          },
+          "benchmarkPercentile": {
+            "type": "number"
           }
         },
         "required": [
@@ -13685,7 +16539,12 @@
           "activePatientsVariationPercentage",
           "occupancyRate",
           "occupancyVariationPercentage",
-          "rankingPosition"
+          "rankingPosition",
+          "trendDirection",
+          "trendPercentage",
+          "benchmarkValue",
+          "benchmarkGapPercentage",
+          "benchmarkPercentile"
         ]
       },
       "ClinicDashboardComparisonMetricDto": {
@@ -14621,6 +17480,24 @@
           "updatedAt"
         ]
       },
+      "ClinicInvitationListResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClinicInvitationResponseDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "data",
+          "total"
+        ]
+      },
       "ClinicInvitationOnboardingUserDto": {
         "type": "object",
         "properties": {
@@ -14657,24 +17534,6 @@
         "required": [
           "invitation",
           "user"
-        ]
-      },
-      "ClinicInvitationListResponseDto": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ClinicInvitationResponseDto"
-            }
-          },
-          "total": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "data",
-          "total"
         ]
       },
       "ClinicMemberListResponseDto": {
@@ -14727,6 +17586,176 @@
           "hasPendencies",
           "pendingCount",
           "statusesEvaluated"
+        ]
+      },
+      "ClinicProfessionalPolicyResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "clinicId": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "professionalId": {
+            "type": "string"
+          },
+          "channelScope": {
+            "type": "string",
+            "enum": [
+              "direct",
+              "marketplace",
+              "both"
+            ]
+          },
+          "economicSummary": {
+            "$ref": "#/components/schemas/ClinicInvitationEconomicSummaryDto"
+          },
+          "effectiveAt": {
+            "type": "string"
+          },
+          "endedAt": {
+            "type": "string"
+          },
+          "sourceInvitationId": {
+            "type": "string"
+          },
+          "acceptedBy": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "clinicId",
+          "tenantId",
+          "professionalId",
+          "channelScope",
+          "economicSummary",
+          "effectiveAt",
+          "sourceInvitationId",
+          "acceptedBy",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ClinicProfessionalCoverageResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "clinicId": {
+            "type": "string"
+          },
+          "professionalId": {
+            "type": "string"
+          },
+          "coverageProfessionalId": {
+            "type": "string"
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "scheduled",
+              "active",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "metadata": {
+            "type": "object",
+            "nullable": true
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedBy": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cancelledAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "cancelledBy": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "clinicId",
+          "professionalId",
+          "coverageProfessionalId",
+          "startAt",
+          "endAt",
+          "status",
+          "createdBy",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ClinicProfessionalCoverageListResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClinicProfessionalCoverageResponseDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "data",
+          "total",
+          "page",
+          "limit"
         ]
       },
       "ClinicListResponseDto": {

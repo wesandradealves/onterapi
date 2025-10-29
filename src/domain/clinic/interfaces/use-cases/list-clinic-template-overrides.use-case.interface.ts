@@ -13,6 +13,4 @@ export interface IListClinicTemplateOverridesUseCase {
   ): Promise<ClinicTemplateOverrideListResult>;
 }
 
-export const IListClinicTemplateOverridesUseCase = Symbol(
-  'IListClinicTemplateOverridesUseCase',
-);
+export const IListClinicTemplateOverridesUseCase = Symbol('IListClinicTemplateOverridesUseCase');

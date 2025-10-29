@@ -18,6 +18,8 @@ const buildRequest = (
   tenantId: 'tenant-1',
   clinicId: 'clinic-1',
   professionalId: 'professional-1',
+  originalProfessionalId: null,
+  coverageId: null,
   patientId: 'patient-1',
   holdId: 'hold-1',
   serviceTypeId: 'service-1',

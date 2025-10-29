@@ -70,6 +70,9 @@ export class RecordPaymentStatusUseCase
       paymentStatus,
     });
 
+    const originalProfessionalId = booking.originalProfessionalId ?? null;
+    const coverageId = booking.coverageId ?? null;
+
     await this.messageBus.publish(
       DomainEvents.schedulingPaymentStatusChanged(bookingId, {
         tenantId,
@@ -78,6 +81,8 @@ export class RecordPaymentStatusUseCase
         patientId: booking.patientId,
         previousStatus: booking.paymentStatus,
         newStatus: updatedBooking.paymentStatus,
+        originalProfessionalId: originalProfessionalId ?? undefined,
+        coverageId: coverageId ?? undefined,
       }),
     );
 

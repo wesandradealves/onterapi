@@ -372,6 +372,155 @@ describe('ClinicPresenter configuration settings mapping', () => {
     expect(dto.payload.metadata).toEqual({ theme: 'default' });
     expect(dto.telemetry).toBeUndefined();
   });
+
+  it('maps security settings payload with compliance documents and metadata', () => {
+    const version: ClinicConfigurationVersion = {
+      ...versionBase,
+      section: 'security',
+      payload: {
+        securitySettings: {
+          twoFactor: {
+            enabled: true,
+            requiredRoles: ['owner', 123],
+            backupCodesEnabled: true,
+          },
+          passwordPolicy: {
+            minLength: '12',
+            requireUppercase: true,
+            requireLowercase: true,
+            requireNumbers: true,
+            requireSpecialCharacters: false,
+          },
+          session: {
+            idleTimeoutMinutes: '30',
+            absoluteTimeoutMinutes: 180,
+          },
+          loginAlerts: {
+            email: true,
+            whatsapp: false,
+          },
+          ipRestrictions: {
+            enabled: true,
+            allowlist: ['10.0.0.1 ', 42],
+            blocklist: ['bad-device'],
+          },
+          audit: {
+            retentionDays: '45',
+            exportEnabled: true,
+          },
+          compliance: {
+            documents: [
+              {
+                id: 'doc-1',
+                type: 'crm',
+                name: 'CRM',
+                status: 'valid',
+                required: true,
+                expiresAt: '2025-12-01T00:00:00Z',
+                metadata: { level: 'gold' },
+                updatedAt: '2025-10-10T10:00:00Z',
+                updatedBy: 'admin',
+              },
+              {
+                id: 'doc-2',
+                type: 'lgpd',
+                status: 'expiring',
+                required: false,
+                expiresAt: null,
+              },
+              {
+                id: 'invalid',
+                type: '',
+              },
+            ],
+          },
+          metadata: { source: 'manual' },
+        },
+      },
+    };
+
+    const dto = ClinicPresenter.securitySettings(version);
+    expect(dto.payload.twoFactor).toEqual({
+      enabled: true,
+      requiredRoles: ['owner', '123'],
+      backupCodesEnabled: true,
+    });
+    expect(dto.payload.passwordPolicy.minLength).toBe(12);
+    expect(dto.payload.session).toEqual({
+      idleTimeoutMinutes: 30,
+      absoluteTimeoutMinutes: 180,
+    });
+    expect(dto.payload.ipRestrictions?.allowlist).toEqual(['10.0.0.1 ', '42']);
+    expect(dto.payload.audit).toEqual({
+      retentionDays: 45,
+      exportEnabled: true,
+    });
+
+    const documents = dto.payload.compliance?.documents ?? [];
+    expect(documents).toHaveLength(2);
+    const crm = documents.find((doc) => doc.type === 'crm');
+    const lgpd = documents.find((doc) => doc.type === 'lgpd');
+    expect(crm).toMatchObject({
+      id: 'doc-1',
+      name: 'CRM',
+      status: 'valid',
+      required: true,
+      updatedBy: 'admin',
+    });
+    expect(crm?.expiresAt).toBeInstanceOf(Date);
+    expect(crm?.metadata).toEqual({ level: 'gold' });
+    expect(lgpd).toMatchObject({
+      id: 'doc-2',
+      status: 'expiring',
+      required: false,
+    });
+    expect(lgpd?.expiresAt).toBeNull();
+    expect(lgpd?.metadata).toBeUndefined();
+    expect(dto.payload.metadata).toEqual({ source: 'manual' });
+  });
+
+  it('omits compliance data when no valid documents are present', () => {
+    const version: ClinicConfigurationVersion = {
+      ...versionBase,
+      section: 'security',
+      appliedAt: undefined,
+      notes: undefined,
+      payload: {
+        twoFactor: {
+          enabled: false,
+        },
+        compliance: {
+          documents: [{ id: 'doc-x' }],
+        },
+      },
+    };
+
+    const dto = ClinicPresenter.securitySettings(version);
+    expect(dto.payload.compliance).toBeUndefined();
+    expect(dto.payload.metadata).toBeUndefined();
+  });
+
+  it('utiliza defaults quando payload de seguranca nao existe', () => {
+    const version: ClinicConfigurationVersion = {
+      ...versionBase,
+      section: 'security',
+      payload: undefined,
+    };
+
+    const dto = ClinicPresenter.securitySettings(version);
+    expect(dto.payload.twoFactor).toEqual({
+      enabled: false,
+      requiredRoles: [],
+      backupCodesEnabled: false,
+    });
+    expect(dto.payload.passwordPolicy.minLength).toBe(0);
+    expect(dto.payload.session).toEqual({
+      idleTimeoutMinutes: 0,
+      absoluteTimeoutMinutes: 0,
+    });
+    expect(dto.payload.ipRestrictions?.allowlist).toEqual([]);
+    expect(dto.payload.compliance).toBeUndefined();
+  });
 });
 
 describe('ClinicPresenter general settings payload', () => {

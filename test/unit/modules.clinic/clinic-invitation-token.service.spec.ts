@@ -81,7 +81,12 @@ describe('ClinicInvitationTokenService', () => {
 
   it('should refuse operations when token secret is missing', () => {
     const insecureConfig = {
-      get: jest.fn(() => undefined),
+      get: jest.fn((key: string) => {
+        if (key === 'NODE_ENV') {
+          return 'production';
+        }
+        return undefined;
+      }),
     } as unknown as ConfigService;
 
     const insecureService = new ClinicInvitationTokenService(insecureConfig);

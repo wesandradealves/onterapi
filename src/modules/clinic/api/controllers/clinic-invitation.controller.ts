@@ -37,6 +37,8 @@ import { type ClinicInvitationEconomicSummary } from '../../../../domain/clinic/
 import {
   acceptClinicInvitationSchema,
   AcceptClinicInvitationSchema,
+  createClinicInvitationAddendumSchema,
+  CreateClinicInvitationAddendumSchema,
   declineClinicInvitationSchema,
   DeclineClinicInvitationSchema,
   inviteClinicProfessionalSchema,
@@ -74,6 +76,10 @@ import {
   type IReissueClinicInvitationUseCase,
   IReissueClinicInvitationUseCase as IReissueClinicInvitationUseCaseToken,
 } from '../../../../domain/clinic/interfaces/use-cases/reissue-clinic-invitation.use-case.interface';
+import {
+  type ICreateClinicInvitationAddendumUseCase,
+  ICreateClinicInvitationAddendumUseCase as ICreateClinicInvitationAddendumUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/create-clinic-invitation-addendum.use-case.interface';
 import { ZodApiBody } from '../../../../shared/decorators/zod-api-body.decorator';
 
 @ApiTags('Clinics')
@@ -94,6 +100,8 @@ export class ClinicInvitationController {
     private readonly revokeInvitationUseCase: IRevokeClinicInvitationUseCase,
     @Inject(IReissueClinicInvitationUseCaseToken)
     private readonly reissueInvitationUseCase: IReissueClinicInvitationUseCase,
+    @Inject(ICreateClinicInvitationAddendumUseCaseToken)
+    private readonly createAddendumInvitationUseCase: ICreateClinicInvitationAddendumUseCase,
   ) {}
 
   @Post(':clinicId/invitations')
@@ -134,6 +142,48 @@ export class ClinicInvitationController {
       channelScope: body.channelScope,
       economicSummary,
       expiresAt: new Date(body.expiresAt),
+      metadata: body.metadata,
+    });
+
+    const token = invitation.metadata?.issuedToken as string | undefined;
+
+    if (invitation.metadata?.issuedToken) {
+      delete invitation.metadata.issuedToken;
+    }
+
+    return ClinicPresenter.invitation(invitation, token);
+  }
+
+  @Post(':clinicId/invitations/addendums')
+  @HttpCode(HttpStatus.CREATED)
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Emitir aditivo economico para profissional ja vinculado' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiResponse({ status: 201, type: ClinicInvitationResponseDto })
+  @ZodApiBody({ schema: createClinicInvitationAddendumSchema })
+  async createAddendum(
+    @Param('clinicId') clinicId: string,
+    @Body(new ZodValidationPipe(createClinicInvitationAddendumSchema))
+    body: CreateClinicInvitationAddendumSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicInvitationResponseDto> {
+    const tenantId = tenantHeader ?? body.tenantId ?? currentUser.tenantId;
+
+    if (!tenantId) {
+      throw new BadRequestException('Tenant nao informado');
+    }
+
+    const invitation = await this.createAddendumInvitationUseCase.executeOrThrow({
+      clinicId,
+      tenantId,
+      issuedBy: currentUser.id,
+      professionalId: body.professionalId,
+      channel: body.channel,
+      channelScope: body.channelScope,
+      economicSummary: body.economicSummary,
+      expiresAt: new Date(body.expiresAt),
+      effectiveAt: body.effectiveAt ? new Date(body.effectiveAt) : undefined,
       metadata: body.metadata,
     });
 

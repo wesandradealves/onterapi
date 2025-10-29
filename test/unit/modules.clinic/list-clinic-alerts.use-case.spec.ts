@@ -43,6 +43,7 @@ describe('ListClinicAlertsUseCase', () => {
     clinicRepository = {
       findByIds: jest.fn(),
       list: jest.fn(),
+      listComplianceDocuments: jest.fn(),
     } as unknown as jest.Mocked<IClinicRepository>;
 
     useCase = new ListClinicAlertsUseCase(clinicMetricsRepository, clinicRepository);

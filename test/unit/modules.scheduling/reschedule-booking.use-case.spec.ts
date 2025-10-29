@@ -10,6 +10,8 @@ const baseBooking = () => ({
   id: 'booking-1',
   tenantId: 'tenant-1',
   professionalId: 'prof-1',
+  originalProfessionalId: null as string | null,
+  coverageId: null as string | null,
   clinicId: 'clinic-1',
   patientId: 'patient-1',
   source: 'clinic_portal',
@@ -130,6 +132,32 @@ describe('RescheduleBookingUseCase', () => {
         aggregateId: booking.id,
       }),
     );
+    const firstEvent = messageBus.publish.mock.calls[0][0];
+    expect(firstEvent.payload.originalProfessionalId).toBeUndefined();
+    expect(firstEvent.payload.coverageId).toBeUndefined();
+  });
+
+  it('propagates coverage metadata when booking possui substituto', async () => {
+    const booking = {
+      ...baseBooking(),
+      professionalId: 'prof-cover',
+      originalProfessionalId: 'prof-owner',
+      coverageId: 'coverage-1',
+    };
+    bookingRepository.findById.mockResolvedValue(booking);
+    bookingRepository.reschedule.mockResolvedValue({
+      ...booking,
+      startAtUtc: input.newStartAtUtc,
+      endAtUtc: input.newEndAtUtc,
+    });
+    recurrenceRepository.findSeriesById.mockResolvedValue(null);
+    recurrenceRepository.findOccurrenceByBooking.mockResolvedValue(null);
+
+    await useCase.executeOrThrow(input);
+
+    const event = messageBus.publish.mock.calls[0][0];
+    expect(event.payload.originalProfessionalId).toBe('prof-owner');
+    expect(event.payload.coverageId).toBe('coverage-1');
   });
 
   it('throws conflict when limits reached', async () => {

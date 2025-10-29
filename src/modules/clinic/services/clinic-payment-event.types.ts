@@ -14,6 +14,8 @@ export interface ClinicPaymentStatusChangedPayload {
   tenantId: string;
   clinicId: string;
   professionalId: string;
+  originalProfessionalId?: string | null;
+  coverageId?: string | null;
   patientId: string;
   holdId: string;
   serviceTypeId: string;
@@ -36,6 +38,8 @@ export interface ClinicPaymentSettledPayload {
   tenantId: string;
   clinicId: string;
   professionalId: string;
+  originalProfessionalId?: string | null;
+  coverageId?: string | null;
   patientId: string;
   holdId: string;
   serviceTypeId: string;
@@ -55,6 +59,8 @@ export interface ClinicPaymentRefundedPayload {
   tenantId: string;
   clinicId: string;
   professionalId: string;
+  originalProfessionalId?: string | null;
+  coverageId?: string | null;
   patientId: string;
   holdId: string;
   serviceTypeId: string;
@@ -74,6 +80,8 @@ export interface ClinicPaymentChargebackPayload {
   tenantId: string;
   clinicId: string;
   professionalId: string;
+  originalProfessionalId?: string | null;
+  coverageId?: string | null;
   patientId: string;
   holdId: string;
   serviceTypeId: string;
@@ -93,6 +101,8 @@ export interface ClinicPaymentFailedPayload {
   tenantId: string;
   clinicId: string;
   professionalId: string;
+  originalProfessionalId?: string | null;
+  coverageId?: string | null;
   patientId: string;
   holdId: string;
   serviceTypeId: string;
@@ -113,6 +123,8 @@ export interface ClinicPaymentPayoutRequestedPayload {
   tenantId: string;
   clinicId: string;
   professionalId: string;
+  originalProfessionalId?: string | null;
+  coverageId?: string | null;
   patientId: string;
   holdId: string;
   serviceTypeId: string;

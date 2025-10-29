@@ -2,6 +2,8 @@ import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
 import {
   ClinicAlertType,
   ClinicBrandingSettingsConfig,
+  ClinicComparisonQuery,
+  ClinicComplianceStatus,
   ClinicDashboardQuery,
   ClinicGeneralSettings,
   ClinicHoldConfirmationInput,
@@ -15,6 +17,8 @@ import {
   ClinicOverbookingReviewInput,
   ClinicPaymentSettings,
   ClinicScheduleSettings,
+  ClinicSecurityComplianceDocument,
+  ClinicSecuritySettings,
   ClinicServiceSettings,
   ClinicStaffRole,
   ClinicTeamSettings,
@@ -28,6 +32,7 @@ import {
   UpdateClinicNotificationSettingsInput,
   UpdateClinicPaymentSettingsInput,
   UpdateClinicScheduleSettingsInput,
+  UpdateClinicSecuritySettingsInput,
   UpdateClinicServiceSettingsInput,
   UpdateClinicTeamSettingsInput,
 } from '../../../../domain/clinic/types/clinic.types';
@@ -40,8 +45,10 @@ import { UpdateClinicPaymentSettingsSchema } from '../schemas/update-clinic-paym
 import { UpdateClinicIntegrationSettingsSchema } from '../schemas/update-clinic-integration-settings.schema';
 import { UpdateClinicNotificationSettingsSchema } from '../schemas/update-clinic-notification-settings.schema';
 import { UpdateClinicBrandingSettingsSchema } from '../schemas/update-clinic-branding-settings.schema';
+import { UpdateClinicSecuritySettingsSchema } from '../schemas/update-clinic-security-settings.schema';
 import { CreateClinicHoldSchema } from '../schemas/create-clinic-hold.schema';
 import { GetClinicDashboardSchema } from '../schemas/get-clinic-dashboard.schema';
+import { CompareClinicsSchema } from '../schemas/compare-clinics.schema';
 import { ConfirmClinicHoldSchema } from '../schemas/confirm-clinic-hold.schema';
 import { PropagateClinicTemplateSchema } from '../schemas/propagate-clinic-template.schema';
 import { TransferClinicProfessionalSchema } from '../schemas/clinic-professional-transfer.schema';
@@ -55,6 +62,18 @@ import { EvaluateClinicAlertsSchema } from '../schemas/evaluate-clinic-alerts.sc
 export interface ClinicRequestContext {
   tenantId: string;
   userId: string;
+}
+
+interface SecurityComplianceDocumentInput {
+  id?: string;
+  type: string;
+  name?: string;
+  required?: boolean;
+  status?: string;
+  expiresAt?: string | null;
+  metadata?: Record<string, unknown>;
+  updatedAt?: string;
+  updatedBy?: string;
 }
 
 export const toUpdateClinicGeneralSettingsInput = (
@@ -356,6 +375,56 @@ export const toUpdateClinicNotificationSettingsInput = (
   };
 };
 
+export const toUpdateClinicSecuritySettingsInput = (
+  clinicId: string,
+  body: UpdateClinicSecuritySettingsSchema,
+  context: ClinicRequestContext,
+): UpdateClinicSecuritySettingsInput => {
+  const requiredRoles = Array.from(
+    new Set(
+      (body.securitySettings.twoFactor.requiredRoles ?? []).map(
+        (role) => role as unknown as ClinicStaffRole,
+      ),
+    ),
+  );
+
+  const normalizeIpList = (entries: string[] | undefined): string[] =>
+    Array.from(
+      new Set((entries ?? []).map((entry) => entry.trim()).filter((entry) => entry.length > 0)),
+    );
+
+  const securitySettings: ClinicSecuritySettings = {
+    twoFactor: {
+      enabled: body.securitySettings.twoFactor.enabled,
+      requiredRoles,
+      backupCodesEnabled: body.securitySettings.twoFactor.backupCodesEnabled,
+    },
+    passwordPolicy: { ...body.securitySettings.passwordPolicy },
+    session: { ...body.securitySettings.session },
+    loginAlerts: { ...body.securitySettings.loginAlerts },
+    ipRestrictions: {
+      enabled: body.securitySettings.ipRestrictions.enabled,
+      allowlist: normalizeIpList(body.securitySettings.ipRestrictions.allowlist),
+      blocklist: normalizeIpList(body.securitySettings.ipRestrictions.blocklist),
+    },
+    audit: { ...body.securitySettings.audit },
+    metadata: body.securitySettings.metadata,
+  };
+  const complianceDocuments = normalizeComplianceDocuments(
+    body.securitySettings.compliance?.documents,
+  );
+  if (complianceDocuments.length > 0) {
+    securitySettings.compliance = { documents: complianceDocuments };
+  }
+
+  return {
+    clinicId,
+    tenantId: body.tenantId ?? context.tenantId,
+    requestedBy: context.userId,
+    securitySettings,
+  };
+};
+
 export const toUpdateClinicBrandingSettingsInput = (
   clinicId: string,
   body: UpdateClinicBrandingSettingsSchema,
@@ -447,6 +516,139 @@ export const toClinicDashboardQuery = (
   };
 };
 
+export const toCompareClinicsQuery = (
+  body: CompareClinicsSchema,
+  context: ClinicRequestContext,
+): ClinicComparisonQuery => {
+  const start = new Date(body.from);
+  const end = new Date(body.to);
+
+  const clinicIds =
+    body.clinicIds && body.clinicIds.length > 0 ? Array.from(new Set(body.clinicIds)) : undefined;
+  const limit = body.limit !== undefined ? Math.floor(body.limit) : undefined;
+
+  if (end < start) {
+    return {
+      tenantId: body.tenantId ?? context.tenantId,
+      clinicIds,
+      metric: body.metric,
+      limit,
+      period: {
+        start: end,
+        end: start,
+      },
+    };
+  }
+
+  return {
+    tenantId: body.tenantId ?? context.tenantId,
+    clinicIds,
+    metric: body.metric,
+    limit,
+    period: {
+      start,
+      end,
+    },
+  };
+};
+
+const normalizeComplianceDocuments = (
+  documents?: SecurityComplianceDocumentInput[],
+): ClinicSecurityComplianceDocument[] => {
+  if (!documents || documents.length === 0) {
+    return [];
+  }
+
+  const result: ClinicSecurityComplianceDocument[] = [];
+  const seen = new Set<string>();
+
+  documents.forEach((document) => {
+    if (!document || typeof document !== 'object') {
+      return;
+    }
+
+    const type = document.type?.trim();
+    if (!type) {
+      return;
+    }
+
+    const key = `${type.toLowerCase()}::${document.id ?? ''}`;
+    if (seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+
+    const normalized: ClinicSecurityComplianceDocument = {
+      type,
+      required: document.required ?? true,
+    };
+
+    if (document.id) {
+      normalized.id = document.id;
+    }
+
+    if (document.name) {
+      normalized.name = document.name.trim();
+    }
+
+    if (document.status) {
+      normalized.status = document.status as ClinicComplianceStatus;
+    }
+
+    const expiresAt = parseComplianceDate(document.expiresAt);
+    if (expiresAt !== undefined) {
+      normalized.expiresAt = expiresAt;
+    }
+
+    if (
+      document.metadata &&
+      typeof document.metadata === 'object' &&
+      !Array.isArray(document.metadata)
+    ) {
+      normalized.metadata = JSON.parse(JSON.stringify(document.metadata)) as Record<
+        string,
+        unknown
+      >;
+    }
+
+    if (document.updatedAt) {
+      const parsedUpdatedAt = parseComplianceDate(document.updatedAt);
+      if (parsedUpdatedAt instanceof Date) {
+        normalized.updatedAt = parsedUpdatedAt;
+      }
+    }
+
+    if (document.updatedBy && document.updatedBy.trim().length > 0) {
+      normalized.updatedBy = document.updatedBy.trim();
+    }
+
+    result.push(normalized);
+  });
+
+  return result;
+};
+
+const parseComplianceDate = (value: string | Date | null | undefined): Date | null | undefined => {
+  if (value === null) {
+    return null;
+  }
+
+  if (!value) {
+    return undefined;
+  }
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? undefined : value;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return undefined;
+  }
+
+  return parsed;
+};
+
 const normalizeBooleanFlag = (value: unknown): boolean | undefined => {
   if (typeof value === 'boolean') {
     return value;
@@ -499,6 +701,7 @@ export const toClinicManagementOverviewQuery = (
     includeAlerts: normalizeBooleanFlag(body.includeAlerts),
     includeTeamDistribution: normalizeBooleanFlag(body.includeTeamDistribution),
     includeFinancials: normalizeBooleanFlag(body.includeFinancials),
+    includeCoverageSummary: normalizeBooleanFlag(body.includeCoverageSummary),
   };
 };
 

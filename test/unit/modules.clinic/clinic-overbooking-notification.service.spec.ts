@@ -121,6 +121,7 @@ describe('ClinicOverbookingNotificationService', () => {
 
     clinicRepository = {
       findById: jest.fn().mockResolvedValue({ id: 'clinic-1', name: 'Clinica XPTO' } as any),
+      listComplianceDocuments: jest.fn(),
     } as unknown as Mocked<IClinicRepository>;
 
     emailService = {

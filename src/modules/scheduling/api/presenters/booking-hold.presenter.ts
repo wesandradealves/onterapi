@@ -7,6 +7,8 @@ export class BookingHoldPresenter {
       id: hold.id,
       clinicId: hold.clinicId,
       professionalId: hold.professionalId,
+      originalProfessionalId: hold.originalProfessionalId ?? null,
+      coverageId: hold.coverageId ?? null,
       patientId: hold.patientId,
       serviceTypeId: hold.serviceTypeId,
       status: hold.status,

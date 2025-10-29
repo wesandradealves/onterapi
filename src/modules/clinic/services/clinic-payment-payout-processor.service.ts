@@ -57,6 +57,8 @@ export class ClinicPaymentPayoutProcessorService {
       tenantId: payload.tenantId,
       clinicId: payload.clinicId,
       professionalId: payload.professionalId,
+      originalProfessionalId: payload.originalProfessionalId ?? null,
+      coverageId: payload.coverageId ?? null,
       patientId: payload.patientId,
       holdId: payload.holdId,
       serviceTypeId: payload.serviceTypeId,
@@ -113,6 +115,8 @@ export class ClinicPaymentPayoutProcessorService {
       sandbox: record.sandbox,
       settledAt: record.settledAt.toISOString(),
       requestedAt: record.requestedAt.toISOString(),
+      originalProfessionalId: record.originalProfessionalId,
+      coverageId: record.coverageId,
     };
   }
 }

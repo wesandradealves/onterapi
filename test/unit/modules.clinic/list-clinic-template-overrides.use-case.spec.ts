@@ -18,6 +18,7 @@ describe('ListClinicTemplateOverridesUseCase', () => {
   beforeEach(() => {
     clinicRepository = {
       findByTenant: jest.fn(),
+      listComplianceDocuments: jest.fn(),
     } as unknown as jest.Mocked<IClinicRepository>;
 
     overrideRepository = {

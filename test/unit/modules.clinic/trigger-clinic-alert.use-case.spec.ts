@@ -30,6 +30,7 @@ describe('TriggerClinicAlertUseCase', () => {
   beforeEach(() => {
     clinicRepository = {
       findById: jest.fn(),
+      listComplianceDocuments: jest.fn(),
     } as unknown as jest.Mocked<IClinicRepository>;
 
     clinicMetricsRepository = {

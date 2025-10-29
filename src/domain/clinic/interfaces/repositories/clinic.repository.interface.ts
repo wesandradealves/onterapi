@@ -1,8 +1,10 @@
 import {
   Clinic,
+  ClinicComplianceDocumentStatus,
   ClinicConfigurationSection,
   ClinicConfigurationTelemetry,
   ClinicGeneralSettings,
+  ClinicSecurityComplianceDocument,
   ClinicStatus,
   CreateClinicInput,
   UpdateClinicHoldSettingsInput,
@@ -82,11 +84,21 @@ export interface IClinicRepository {
       appliedConfigurationVersionId?: string | null;
     } | null;
   }): Promise<void>;
+  updateComplianceDocuments(params: {
+    clinicId: string;
+    tenantId: string;
+    documents: ClinicSecurityComplianceDocument[];
+    updatedBy: string;
+  }): Promise<void>;
   existsByDocument(
     tenantId: string,
     documentValue: string,
     excludeClinicId?: string,
   ): Promise<boolean>;
+  listComplianceDocuments(params: {
+    tenantId: string;
+    clinicIds: string[];
+  }): Promise<Record<string, ClinicComplianceDocumentStatus[]>>;
   listTenantIds(): Promise<string[]>;
 }
 

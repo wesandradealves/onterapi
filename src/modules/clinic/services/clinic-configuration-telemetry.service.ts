@@ -178,6 +178,8 @@ export class ClinicConfigurationTelemetryService {
           return this.computeIntegrationsScore(payload);
         case 'notifications':
           return this.computeNotificationsScore(payload);
+        case 'security':
+          return this.computeSecurityScore(payload);
         case 'branding':
           return this.computeBrandingScore(payload);
         default:
@@ -394,6 +396,108 @@ export class ClinicConfigurationTelemetryService {
     ];
 
     return this.computeScore(checks);
+  }
+
+  private computeSecurityScore(raw: Record<string, unknown>): number {
+    const settings = (
+      raw.securitySettings && typeof raw.securitySettings === 'object'
+        ? (raw.securitySettings as Record<string, unknown>)
+        : raw
+    ) as Record<string, unknown>;
+
+    const twoFactor = (settings.twoFactor ?? {}) as Record<string, unknown>;
+    const passwordPolicy = (settings.passwordPolicy ?? {}) as Record<string, unknown>;
+    const session = (settings.session ?? {}) as Record<string, unknown>;
+    const ipRestrictions = (settings.ipRestrictions ?? {}) as Record<string, unknown>;
+    const audit = (settings.audit ?? {}) as Record<string, unknown>;
+    const compliance = (settings.compliance ?? {}) as Record<string, unknown>;
+
+    let score = 0;
+
+    const twoFactorEnabled = Boolean(twoFactor.enabled);
+    const requiredRoles = Array.isArray(twoFactor.requiredRoles)
+      ? (twoFactor.requiredRoles as unknown[]).length
+      : 0;
+    if (twoFactorEnabled || requiredRoles > 0) {
+      score += 20;
+    }
+
+    const minLength = Number(passwordPolicy.minLength ?? 0);
+    const uppercase = Boolean(passwordPolicy.requireUppercase);
+    const lowercase = Boolean(passwordPolicy.requireLowercase);
+    const numbers = Boolean(passwordPolicy.requireNumbers);
+    const specials = Boolean(passwordPolicy.requireSpecialCharacters);
+    if (minLength >= 8 && uppercase && lowercase && numbers && specials) {
+      score += 20;
+    } else if (minLength >= 6 && uppercase && lowercase && numbers) {
+      score += 10;
+    }
+
+    const idleTimeout = Number(session.idleTimeoutMinutes ?? 0);
+    const absoluteTimeout = Number(session.absoluteTimeoutMinutes ?? 0);
+    if (idleTimeout >= 10 && absoluteTimeout >= idleTimeout) {
+      score += 20;
+    } else if (idleTimeout >= 5 && absoluteTimeout >= idleTimeout) {
+      score += 10;
+    }
+
+    const ipEnabled = Boolean(ipRestrictions.enabled);
+    const allowlistSize = Array.isArray(ipRestrictions.allowlist)
+      ? (ipRestrictions.allowlist as unknown[]).length
+      : 0;
+    if (ipEnabled && allowlistSize > 0) {
+      score += 20;
+    } else if (!ipEnabled) {
+      score += 10;
+    }
+
+    const retentionDays = Number(audit.retentionDays ?? 0);
+    if (retentionDays >= 180) {
+      score += 20;
+    } else if (retentionDays >= 90) {
+      score += 15;
+    } else if (retentionDays >= 30) {
+      score += 10;
+    }
+
+    score += this.computeSecurityComplianceScore(compliance['documents']);
+
+    return Math.min(score, 100);
+  }
+
+  private computeSecurityComplianceScore(raw: unknown): number {
+    if (!Array.isArray(raw) || raw.length === 0) {
+      return 0;
+    }
+
+    let validCount = 0;
+    let missingOrExpired = 0;
+
+    raw.forEach((entry) => {
+      if (!entry || typeof entry !== 'object') {
+        return;
+      }
+
+      const record = entry as Record<string, unknown>;
+      const statusValue =
+        typeof record.status === 'string' ? record.status.toLowerCase() : 'unknown';
+
+      if (statusValue === 'missing' || statusValue === 'expired') {
+        missingOrExpired += 1;
+      } else {
+        validCount += 1;
+      }
+    });
+
+    if (validCount > 0 && missingOrExpired === 0) {
+      return 20;
+    }
+
+    if (validCount > 0) {
+      return 10;
+    }
+
+    return 0;
   }
 
   private computeBrandingScore(payload: Record<string, unknown>): number {

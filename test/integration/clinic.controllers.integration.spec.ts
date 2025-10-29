@@ -1,4 +1,9 @@
-import { ConflictException, ExecutionContext, INestApplication } from '@nestjs/common';
+import {
+  ConflictException,
+  ExecutionContext,
+  ForbiddenException,
+  INestApplication,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
@@ -11,10 +16,13 @@ import { ClinicAuditController } from '@modules/clinic/api/controllers/clinic-au
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@modules/auth/guards/roles.guard';
 import { ClinicScopeGuard } from '@modules/clinic/guards/clinic-scope.guard';
+import { ClinicManagementExportService } from '@modules/clinic/services/clinic-management-export.service';
+import { ClinicConfigurationExportService } from '@modules/clinic/services/clinic-configuration-export.service';
 import { UserEntity } from '@infrastructure/auth/entities/user.entity';
 import { RolesEnum } from '@domain/auth/enums/roles.enum';
 import { ICurrentUser } from '@domain/auth/interfaces/current-user.interface';
 import {
+  CancelClinicProfessionalCoverageInput,
   CheckClinicProfessionalFinancialClearanceInput,
   ClinicAppointmentConfirmationResult,
   ClinicAuditLog,
@@ -24,14 +32,20 @@ import {
   ClinicInvitation,
   ClinicInvitationEconomicSummary,
   ClinicOverbookingReviewInput,
+  ClinicProfessionalCoverage,
   ClinicProfessionalFinancialClearanceStatus,
   ClinicProfessionalPolicy,
   ClinicTemplateOverride,
   ClinicTemplateOverrideListResult,
   ClinicTemplatePropagationInput,
+  CreateClinicProfessionalCoverageInput,
   DeclineClinicInvitationInput,
+  ListClinicProfessionalCoveragesQuery,
   ListClinicTemplateOverridesInput,
 } from '@domain/clinic/types/clinic.types';
+import { ICreateClinicProfessionalCoverageUseCase as ICreateClinicProfessionalCoverageUseCaseToken } from '@domain/clinic/interfaces/use-cases/create-clinic-professional-coverage.use-case.interface';
+import { IListClinicProfessionalCoveragesUseCase as IListClinicProfessionalCoveragesUseCaseToken } from '@domain/clinic/interfaces/use-cases/list-clinic-professional-coverages.use-case.interface';
+import { ICancelClinicProfessionalCoverageUseCase as ICancelClinicProfessionalCoverageUseCaseToken } from '@domain/clinic/interfaces/use-cases/cancel-clinic-professional-coverage.use-case.interface';
 import {
   CompleteClinicInvitationOnboardingInput,
   CompleteClinicInvitationOnboardingOutput,
@@ -70,6 +84,10 @@ import {
   UpdateClinicBrandingSettingsInput,
 } from '@domain/clinic/interfaces/use-cases/update-clinic-branding-settings.use-case.interface';
 import {
+  IUpdateClinicSecuritySettingsUseCase as IUpdateClinicSecuritySettingsUseCaseToken,
+  UpdateClinicSecuritySettingsInput,
+} from '@domain/clinic/interfaces/use-cases/update-clinic-security-settings.use-case.interface';
+import {
   IUpdateClinicScheduleSettingsUseCase as IUpdateClinicScheduleSettingsUseCaseToken,
   UpdateClinicScheduleSettingsInput,
 } from '@domain/clinic/interfaces/use-cases/update-clinic-schedule-settings.use-case.interface';
@@ -107,6 +125,10 @@ import {
   GetClinicBrandingSettingsInput,
   IGetClinicBrandingSettingsUseCase as IGetClinicBrandingSettingsUseCaseToken,
 } from '@domain/clinic/interfaces/use-cases/get-clinic-branding-settings.use-case.interface';
+import {
+  GetClinicSecuritySettingsInput,
+  IGetClinicSecuritySettingsUseCase as IGetClinicSecuritySettingsUseCaseToken,
+} from '@domain/clinic/interfaces/use-cases/get-clinic-security-settings.use-case.interface';
 import { IGetClinicUseCase as IGetClinicUseCaseToken } from '@domain/clinic/interfaces/use-cases/get-clinic.use-case.interface';
 import {
   IInviteClinicProfessionalUseCase as IInviteClinicProfessionalUseCaseToken,
@@ -128,6 +150,10 @@ import {
   IReissueClinicInvitationUseCase as IReissueClinicInvitationUseCaseToken,
   ReissueClinicInvitationInput,
 } from '@domain/clinic/interfaces/use-cases/reissue-clinic-invitation.use-case.interface';
+import {
+  CreateClinicInvitationAddendumInput,
+  ICreateClinicInvitationAddendumUseCase as ICreateClinicInvitationAddendumUseCaseToken,
+} from '@domain/clinic/interfaces/use-cases/create-clinic-invitation-addendum.use-case.interface';
 import { ICheckClinicProfessionalFinancialClearanceUseCase as ICheckClinicProfessionalFinancialClearanceUseCaseToken } from '@domain/clinic/interfaces/use-cases/check-clinic-professional-financial-clearance.use-case.interface';
 import {
   GetClinicProfessionalPolicyInput,
@@ -172,6 +198,18 @@ const currentUser: ICurrentUser = {
   metadata: {},
 };
 
+const binaryParser = (res: any, callback: (err: Error | null, body: Buffer) => void) => {
+  const chunks: Buffer[] = [];
+  res.on('data', (chunk: Buffer) => chunks.push(chunk));
+  res.on('end', () => callback(null, Buffer.concat(chunks)));
+  res.on('error', (err: Error) => callback(err, Buffer.alloc(0)));
+};
+
+const guardToggles: { allowRoles: boolean; allowScope: boolean } = {
+  allowRoles: true,
+  allowScope: true,
+};
+
 const guards = {
   JwtAuthGuard: class implements Partial<JwtAuthGuard> {
     canActivate(context: ExecutionContext) {
@@ -181,13 +219,13 @@ const guards = {
     }
   },
   RolesGuard: class implements Partial<RolesGuard> {
-    canActivate() {
-      return true;
+    canActivate(_context: ExecutionContext) {
+      return guardToggles.allowRoles;
     }
   },
   ClinicScopeGuard: class implements Partial<ClinicScopeGuard> {
-    canActivate() {
-      return true;
+    canActivate(_context: ExecutionContext) {
+      return guardToggles.allowScope;
     }
   },
 } as const;
@@ -225,6 +263,10 @@ describe('ClinicConfigurationController (integration)', () => {
       UpdateClinicNotificationSettingsInput,
       ClinicConfigurationVersion
     >(),
+    updateSecurity: createUseCaseMock<
+      UpdateClinicSecuritySettingsInput,
+      ClinicConfigurationVersion
+    >(),
     updateBranding: createUseCaseMock<
       UpdateClinicBrandingSettingsInput,
       ClinicConfigurationVersion
@@ -254,6 +296,7 @@ describe('ClinicConfigurationController (integration)', () => {
       GetClinicNotificationSettingsInput,
       ClinicConfigurationVersion
     >(),
+    getSecurity: createUseCaseMock<GetClinicSecuritySettingsInput, ClinicConfigurationVersion>(),
     getBranding: createUseCaseMock<GetClinicBrandingSettingsInput, ClinicConfigurationVersion>(),
     getClinic: createUseCaseMock<{ clinicId: string; tenantId: string }, unknown>(),
   };
@@ -275,6 +318,10 @@ describe('ClinicConfigurationController (integration)', () => {
           provide: IUpdateClinicNotificationSettingsUseCaseToken,
           useValue: useCases.updateNotifications,
         },
+        {
+          provide: IUpdateClinicSecuritySettingsUseCaseToken,
+          useValue: useCases.updateSecurity,
+        },
         { provide: IUpdateClinicBrandingSettingsUseCaseToken, useValue: useCases.updateBranding },
         { provide: IUpdateClinicScheduleSettingsUseCaseToken, useValue: useCases.updateSchedule },
         {
@@ -295,8 +342,13 @@ describe('ClinicConfigurationController (integration)', () => {
           provide: IGetClinicNotificationSettingsUseCaseToken,
           useValue: useCases.getNotifications,
         },
+        {
+          provide: IGetClinicSecuritySettingsUseCaseToken,
+          useValue: useCases.getSecurity,
+        },
         { provide: IGetClinicBrandingSettingsUseCaseToken, useValue: useCases.getBranding },
         { provide: IGetClinicUseCaseToken, useValue: useCases.getClinic },
+        ClinicConfigurationExportService,
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -316,6 +368,8 @@ describe('ClinicConfigurationController (integration)', () => {
       mock.execute.mockReset();
       mock.executeOrThrow.mockReset();
     });
+    guardToggles.allowRoles = true;
+    guardToggles.allowScope = true;
   });
 
   afterAll(async () => {
@@ -440,6 +494,192 @@ describe('ClinicConfigurationController (integration)', () => {
     });
   });
 
+  it('GET /clinics/:id/settings/template-overrides/export gera CSV agregando paginas', async () => {
+    const overrideA: ClinicTemplateOverride = {
+      id: 'override-a',
+      clinicId: FIXTURES.clinic,
+      tenantId: FIXTURES.tenant,
+      templateClinicId: 'template-root',
+      section: 'team',
+      overrideVersion: 2,
+      overridePayload: { quotas: [{ role: 'CLINIC_OWNER', limit: 1 }] },
+      overrideHash: 'hash-a',
+      baseTemplateVersionId: 'base-1',
+      baseTemplateVersionNumber: 1,
+      appliedConfigurationVersionId: 'config-1',
+      createdBy: currentUser.id,
+      createdAt: new Date('2025-09-10T12:00:00.000Z'),
+      updatedAt: new Date('2025-09-10T12:30:00.000Z'),
+    };
+    const overrideB: ClinicTemplateOverride = {
+      id: 'override-b',
+      clinicId: FIXTURES.clinic,
+      tenantId: FIXTURES.tenant,
+      templateClinicId: 'template-root',
+      section: 'team',
+      overrideVersion: 3,
+      overridePayload: { quotas: [{ role: 'CLINIC_MANAGER', limit: 2 }] },
+      overrideHash: 'hash-b',
+      baseTemplateVersionId: 'base-1',
+      baseTemplateVersionNumber: 1,
+      appliedConfigurationVersionId: 'config-2',
+      createdBy: currentUser.id,
+      createdAt: new Date('2025-09-11T08:00:00.000Z'),
+      updatedAt: new Date('2025-09-11T08:30:00.000Z'),
+      supersededAt: undefined,
+      supersededBy: undefined,
+    };
+
+    useCases.listTemplateOverrides.executeOrThrow
+      .mockResolvedValueOnce({
+        data: [overrideA],
+        total: 2,
+        page: 1,
+        limit: 1,
+      })
+      .mockResolvedValueOnce({
+        data: [overrideB],
+        total: 2,
+        page: 2,
+        limit: 1,
+      });
+
+    const response = await request(app.getHttpServer())
+      .get(`/clinics/${FIXTURES.clinic}/settings/template-overrides/export`)
+      .set('x-tenant-id', FIXTURES.tenant)
+      .query({ limit: 1, section: 'team' })
+      .expect(200);
+
+    expect(useCases.listTemplateOverrides.executeOrThrow).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        tenantId: FIXTURES.tenant,
+        clinicId: FIXTURES.clinic,
+        section: 'team',
+        includeSuperseded: undefined,
+        page: 1,
+        limit: 1,
+      }),
+    );
+    expect(useCases.listTemplateOverrides.executeOrThrow).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        tenantId: FIXTURES.tenant,
+        clinicId: FIXTURES.clinic,
+        section: 'team',
+        includeSuperseded: undefined,
+        page: 2,
+        limit: 1,
+      }),
+    );
+
+    expect(response.headers['content-type']).toContain('text/csv');
+    expect(response.headers['content-disposition']).toContain('clinic-template-overrides');
+    expect(response.text.split('\n')).toHaveLength(3);
+    expect(response.text).toContain('overrideId');
+    expect(response.text).toContain('override-a');
+    expect(response.text).toContain('override-b');
+  });
+
+  it('GET /clinics/:id/settings/template-overrides/export.xls entrega planilha em buffer', async () => {
+    const override: ClinicTemplateOverride = {
+      id: 'override-xls',
+      clinicId: FIXTURES.clinic,
+      tenantId: FIXTURES.tenant,
+      templateClinicId: 'template-root',
+      section: 'notifications',
+      overrideVersion: 5,
+      overridePayload: { quietHours: { enabled: true, start: '20:00', end: '07:00' } },
+      overrideHash: 'hash-xls',
+      baseTemplateVersionId: 'base-quiet',
+      baseTemplateVersionNumber: 4,
+      appliedConfigurationVersionId: 'config-quiet',
+      createdBy: currentUser.id,
+      createdAt: new Date('2025-09-12T09:00:00.000Z'),
+      updatedAt: new Date('2025-09-12T09:05:00.000Z'),
+    };
+
+    useCases.listTemplateOverrides.executeOrThrow.mockResolvedValueOnce({
+      data: [override],
+      total: 1,
+      page: 1,
+      limit: 100,
+    });
+
+    const response = await request(app.getHttpServer())
+      .get(`/clinics/${FIXTURES.clinic}/settings/template-overrides/export.xls`)
+      .set('x-tenant-id', FIXTURES.tenant)
+      .buffer()
+      .parse(binaryParser)
+      .expect(200);
+
+    expect(useCases.listTemplateOverrides.executeOrThrow).toHaveBeenCalledWith({
+      tenantId: FIXTURES.tenant,
+      clinicId: FIXTURES.clinic,
+      section: undefined,
+      includeSuperseded: undefined,
+      page: 1,
+      limit: 100,
+    });
+
+    expect(response.headers['content-type']).toContain('application/vnd.ms-excel');
+    expect(response.headers['content-disposition']).toContain('clinic-template-overrides');
+    expect(Buffer.isBuffer(response.body)).toBe(true);
+    expect(response.body.toString('utf-8')).toContain('<Worksheet ss:Name="TemplateOverrides">');
+  });
+
+  it('GET /clinics/:id/settings/template-overrides/export.pdf retorna resumo textual', async () => {
+    useCases.listTemplateOverrides.executeOrThrow.mockResolvedValueOnce({
+      data: [],
+      total: 0,
+      page: 1,
+      limit: 100,
+    });
+
+    const response = await request(app.getHttpServer())
+      .get(`/clinics/${FIXTURES.clinic}/settings/template-overrides/export.pdf`)
+      .set('x-tenant-id', FIXTURES.tenant)
+      .buffer()
+      .parse(binaryParser)
+      .expect(200);
+
+    expect(useCases.listTemplateOverrides.executeOrThrow).toHaveBeenCalledWith({
+      tenantId: FIXTURES.tenant,
+      clinicId: FIXTURES.clinic,
+      section: undefined,
+      includeSuperseded: undefined,
+      page: 1,
+      limit: 100,
+    });
+
+    expect(response.headers['content-type']).toContain('application/pdf');
+    expect(response.body.toString('utf-8')).toContain('Nenhum override encontrado');
+  });
+
+  it('GET /clinics/:id/settings/template-overrides/export retorna 403 para papel sem permissao', async () => {
+    guardToggles.allowRoles = false;
+
+    await request(app.getHttpServer())
+      .get(`/clinics/${FIXTURES.clinic}/settings/template-overrides/export`)
+      .set('x-tenant-id', FIXTURES.tenant)
+      .expect(403);
+
+    expect(useCases.listTemplateOverrides.executeOrThrow).not.toHaveBeenCalled();
+  });
+
+  it('GET /clinics/:id/settings/template-overrides/export.xls retorna 403 quando o escopo bloqueia a clinica', async () => {
+    guardToggles.allowScope = false;
+
+    await request(app.getHttpServer())
+      .get(`/clinics/${FIXTURES.clinic}/settings/template-overrides/export.xls`)
+      .set('x-tenant-id', FIXTURES.tenant)
+      .buffer()
+      .parse(binaryParser)
+      .expect(403);
+
+    expect(useCases.listTemplateOverrides.executeOrThrow).not.toHaveBeenCalled();
+  });
+
   it('PATCH /clinics/:id/settings/general deve mapear payload e aplicar versao', async () => {
     const requestPayload = {
       tenantId: FIXTURES.tenant,
@@ -504,6 +744,161 @@ describe('ClinicConfigurationController (integration)', () => {
     expect(response.body.createdAt).toBe(updatedVersion.createdAt.toISOString());
     expect(response.body.state).toBe('saved');
     expect(response.body.autoApply).toBe(true);
+  });
+
+  it('GET /clinics/:id/settings/security deve retornar configuracao atual', async () => {
+    const version: ClinicConfigurationVersion = {
+      id: 'security-version-1',
+      clinicId: FIXTURES.clinic,
+      section: 'security',
+      version: 2,
+      payload: {
+        securitySettings: {
+          twoFactor: { enabled: true, requiredRoles: ['CLINIC_OWNER'], backupCodesEnabled: false },
+          passwordPolicy: {
+            minLength: 12,
+            requireUppercase: true,
+            requireLowercase: true,
+            requireNumbers: true,
+            requireSpecialCharacters: false,
+          },
+          session: { idleTimeoutMinutes: 30, absoluteTimeoutMinutes: 240 },
+          loginAlerts: { email: true, whatsapp: false },
+          ipRestrictions: { enabled: false, allowlist: [], blocklist: [] },
+          audit: { retentionDays: 180, exportEnabled: true },
+          metadata: { source: 'defaults' },
+        },
+      },
+      createdBy: currentUser.id,
+      createdAt: new Date('2025-10-12T12:00:00.000Z'),
+      autoApply: false,
+    };
+    useCases.getSecurity.executeOrThrow.mockResolvedValue(version);
+
+    const response = await request(app.getHttpServer())
+      .get(`/clinics/${FIXTURES.clinic}/settings/security`)
+      .set('x-tenant-id', FIXTURES.tenant)
+      .expect(200);
+
+    expect(useCases.getSecurity.executeOrThrow).toHaveBeenCalledWith({
+      clinicId: FIXTURES.clinic,
+      tenantId: FIXTURES.tenant,
+    });
+
+    expect(response.body.id).toBe(version.id);
+    expect(response.body.section).toBe('security');
+    expect(response.body.payload.twoFactor.enabled).toBe(true);
+    expect(response.body.payload.passwordPolicy.minLength).toBe(12);
+  });
+
+  it('PATCH /clinics/:id/settings/security deve mapear payload e aplicar versao', async () => {
+    const requestPayload = {
+      tenantId: FIXTURES.tenant,
+      securitySettings: {
+        twoFactor: {
+          enabled: true,
+          requiredRoles: ['CLINIC_OWNER'],
+          backupCodesEnabled: true,
+        },
+        passwordPolicy: {
+          minLength: 14,
+          requireUppercase: true,
+          requireLowercase: true,
+          requireNumbers: true,
+          requireSpecialCharacters: true,
+        },
+        session: {
+          idleTimeoutMinutes: 25,
+          absoluteTimeoutMinutes: 180,
+        },
+        loginAlerts: {
+          email: true,
+          whatsapp: true,
+        },
+        ipRestrictions: {
+          enabled: true,
+          allowlist: ['10.0.0.0/24'],
+          blocklist: ['192.168.0.1'],
+        },
+        audit: {
+          retentionDays: 365,
+          exportEnabled: true,
+        },
+        compliance: {
+          documents: [
+            {
+              type: 'lgpd',
+              required: true,
+              status: 'pending',
+              expiresAt: '2025-12-01T00:00:00Z',
+            },
+          ],
+        },
+        metadata: {
+          source: 'manual-update',
+        },
+      },
+    };
+
+    const updatedVersion: ClinicConfigurationVersion = {
+      id: 'security-version-2',
+      clinicId: FIXTURES.clinic,
+      section: 'security',
+      version: 3,
+      payload: requestPayload.securitySettings,
+      createdBy: currentUser.id,
+      createdAt: new Date('2025-10-12T12:30:00.000Z'),
+      appliedAt: new Date('2025-10-12T12:31:00.000Z'),
+      notes: 'Atualizacao manual',
+      autoApply: false,
+    };
+    useCases.updateSecurity.executeOrThrow.mockResolvedValue(updatedVersion);
+
+    const response = await request(app.getHttpServer())
+      .patch(`/clinics/${FIXTURES.clinic}/settings/security`)
+      .set('x-tenant-id', FIXTURES.tenant)
+      .send(requestPayload)
+      .expect(200);
+
+    expect(useCases.updateSecurity.executeOrThrow).toHaveBeenCalledWith({
+      clinicId: FIXTURES.clinic,
+      tenantId: FIXTURES.tenant,
+      requestedBy: currentUser.id,
+      securitySettings: expect.objectContaining({
+        twoFactor: {
+          enabled: true,
+          requiredRoles: ['CLINIC_OWNER'],
+          backupCodesEnabled: true,
+        },
+        passwordPolicy: expect.objectContaining({
+          minLength: 14,
+          requireSpecialCharacters: true,
+        }),
+        session: expect.objectContaining({
+          idleTimeoutMinutes: 25,
+          absoluteTimeoutMinutes: 180,
+        }),
+        ipRestrictions: expect.objectContaining({
+          enabled: true,
+          allowlist: ['10.0.0.0/24'],
+          blocklist: ['192.168.0.1'],
+        }),
+        compliance: {
+          documents: [
+            expect.objectContaining({
+              type: 'lgpd',
+              required: true,
+              expiresAt: new Date('2025-12-01T00:00:00Z'),
+            }),
+          ],
+        },
+        metadata: { source: 'manual-update' },
+      }),
+    });
+
+    expect(response.body.section).toBe('security');
+    expect(response.body.version).toBe(updatedVersion.version);
+    expect(response.body.payload.twoFactor.backupCodesEnabled).toBe(true);
   });
 
   it('PATCH /clinics/:id/settings/propagate deve propagar template para as clinicas alvo', async () => {
@@ -704,6 +1099,7 @@ describe('ClinicInvitationController (integration)', () => {
     accept: createUseCaseMock<AcceptClinicInvitationInput, ClinicInvitation>(),
     revoke: createUseCaseMock<RevokeClinicInvitationInput, ClinicInvitation>(),
     reissue: createUseCaseMock<ReissueClinicInvitationInput, ClinicInvitation>(),
+    addendum: createUseCaseMock<CreateClinicInvitationAddendumInput, ClinicInvitation>(),
   };
 
   beforeAll(async () => {
@@ -716,6 +1112,10 @@ describe('ClinicInvitationController (integration)', () => {
         { provide: IRevokeClinicInvitationUseCaseToken, useValue: useCases.revoke },
         { provide: IDeclineClinicInvitationUseCaseToken, useValue: useCases.decline },
         { provide: IReissueClinicInvitationUseCaseToken, useValue: useCases.reissue },
+        {
+          provide: ICreateClinicInvitationAddendumUseCaseToken,
+          useValue: useCases.addendum,
+        },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -780,6 +1180,87 @@ describe('ClinicInvitationController (integration)', () => {
     });
     expect(response.body.token).toBe('token-123');
     expect(response.body.metadata).toEqual({ source: 'manager' });
+  });
+
+  it('POST /clinics/:id/invitations/addendums deve emitir aditivo com metadata addendum e token exposto', async () => {
+    const effectiveAt = new Date('2025-12-01T00:00:00.000Z');
+    const expiresAt = new Date('2025-12-31T12:00:00.000Z');
+    const addendumInvitation = buildInvitation({
+      metadata: {
+        issuedToken: 'token-addendum',
+        kind: 'addendum',
+        addendum: {
+          effectiveAt: effectiveAt.toISOString(),
+        },
+        source: 'finance',
+      },
+    });
+    useCases.addendum.executeOrThrow.mockResolvedValue(addendumInvitation);
+
+    const payload = {
+      tenantId: FIXTURES.tenant,
+      professionalId: FIXTURES.professional,
+      channel: 'email' as const,
+      channelScope: 'marketplace' as const,
+      economicSummary: {
+        items: economicSummary.items,
+        orderOfRemainders: economicSummary.orderOfRemainders,
+        roundingStrategy: 'half_even' as const,
+      },
+      expiresAt: expiresAt.toISOString(),
+      effectiveAt: effectiveAt.toISOString(),
+      metadata: { origin: 'dashboard-aditivo' },
+    };
+
+    const response = await request(app.getHttpServer())
+      .post(`/clinics/${FIXTURES.clinic}/invitations/addendums`)
+      .set('x-tenant-id', FIXTURES.tenant)
+      .send(payload)
+      .expect(201);
+
+    expect(useCases.addendum.executeOrThrow).toHaveBeenCalledWith({
+      clinicId: FIXTURES.clinic,
+      tenantId: FIXTURES.tenant,
+      issuedBy: currentUser.id,
+      professionalId: payload.professionalId,
+      channel: payload.channel,
+      channelScope: payload.channelScope,
+      economicSummary,
+      expiresAt,
+      effectiveAt,
+      metadata: payload.metadata,
+    });
+    expect(response.body.token).toBe('token-addendum');
+    expect(response.body.metadata).toEqual({
+      kind: 'addendum',
+      addendum: { effectiveAt: effectiveAt.toISOString() },
+      source: 'finance',
+    });
+    expect(response.body.status).toBe('pending');
+  });
+
+  it('POST /clinics/:id/invitations/addendums deve propagar 403 quando use case negar acesso', async () => {
+    useCases.addendum.executeOrThrow.mockRejectedValueOnce(
+      new ForbiddenException('Profissional nao pertence a clinica'),
+    );
+
+    await request(app.getHttpServer())
+      .post(`/clinics/${FIXTURES.clinic}/invitations/addendums`)
+      .set('x-tenant-id', FIXTURES.tenant)
+      .send({
+        tenantId: FIXTURES.tenant,
+        professionalId: FIXTURES.professional,
+        channel: 'email',
+        economicSummary: {
+          items: economicSummary.items,
+          orderOfRemainders: economicSummary.orderOfRemainders,
+          roundingStrategy: 'half_even',
+        },
+        expiresAt: new Date('2025-12-31T12:00:00.000Z').toISOString(),
+      })
+      .expect(403);
+
+    expect(useCases.addendum.executeOrThrow).toHaveBeenCalledTimes(1);
   });
 
   it('GET /clinics/:id/invitations deve respeitar filtros e mapear lista', async () => {
@@ -925,6 +1406,13 @@ describe('ClinicInvitationOnboardingController (integration)', () => {
   beforeEach(() => {
     useCase.execute.mockReset();
     useCase.executeOrThrow.mockReset();
+    guardToggles.allowRoles = true;
+    guardToggles.allowScope = true;
+  });
+
+  afterEach(() => {
+    guardToggles.allowRoles = true;
+    guardToggles.allowScope = true;
   });
 
   afterAll(async () => {
@@ -1234,6 +1722,18 @@ describe('ClinicMemberController (integration)', () => {
       ClinicProfessionalFinancialClearanceStatus
     >(),
     policy: createUseCaseMock<GetClinicProfessionalPolicyInput, ClinicProfessionalPolicy>(),
+    createCoverage: createUseCaseMock<
+      CreateClinicProfessionalCoverageInput,
+      ClinicProfessionalCoverage
+    >(),
+    listCoverages: createUseCaseMock<
+      ListClinicProfessionalCoveragesQuery,
+      { data: ClinicProfessionalCoverage[]; total: number }
+    >(),
+    cancelCoverage: createUseCaseMock<
+      CancelClinicProfessionalCoverageInput,
+      ClinicProfessionalCoverage
+    >(),
   };
 
   beforeAll(async () => {
@@ -1250,6 +1750,19 @@ describe('ClinicMemberController (integration)', () => {
           provide: IGetClinicProfessionalPolicyUseCaseToken,
           useValue: useCases.policy,
         },
+        {
+          provide: ICreateClinicProfessionalCoverageUseCaseToken,
+          useValue: useCases.createCoverage,
+        },
+        {
+          provide: IListClinicProfessionalCoveragesUseCaseToken,
+          useValue: useCases.listCoverages,
+        },
+        {
+          provide: ICancelClinicProfessionalCoverageUseCaseToken,
+          useValue: useCases.cancelCoverage,
+        },
+        ClinicManagementExportService,
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -1459,5 +1972,55 @@ describe('ClinicAuditController (integration)', () => {
         acceptedAt: '2025-10-12T12:00:00.000Z',
       }),
     );
+  });
+
+  it('GET /clinics/:id/audit-logs/export retorna CSV com registros auditados', async () => {
+    const auditLog: ClinicAuditLog = {
+      id: 'audit-export-1',
+      tenantId: FIXTURES.tenant,
+      clinicId: FIXTURES.clinic,
+      event: 'clinic.config.updated',
+      performedBy: currentUser.id,
+      detail: { section: 'services', changeId: 'delta-1' },
+      createdAt: new Date('2025-10-12T13:00:00.000Z'),
+    };
+    useCase.executeOrThrow.mockResolvedValue({ data: [auditLog], total: 1 });
+
+    const response = await request(app.getHttpServer())
+      .get(`/clinics/${FIXTURES.clinic}/audit-logs/export`)
+      .set('x-tenant-id', FIXTURES.tenant)
+      .query({ events: 'clinic.config.updated', limit: 50 })
+      .expect(200);
+
+    expect(useCase.executeOrThrow).toHaveBeenCalledWith({
+      tenantId: FIXTURES.tenant,
+      clinicId: FIXTURES.clinic,
+      events: ['clinic.config.updated'],
+      page: 1,
+      limit: 50,
+    });
+
+    expect(response.headers['content-type']).toContain('text/csv');
+    expect(response.headers['content-disposition']).toMatch(
+      /attachment; filename="clinic-audit-.*\.csv"/,
+    );
+    const lines = response.text.trim().split('\n');
+    expect(lines[0]).toBe('id,tenantId,clinicId,event,performedBy,createdAt,detail');
+    expect(lines[1]).toContain('"audit-export-1"');
+    expect(lines[1]).toContain(FIXTURES.clinic);
+    expect(lines[1]).toContain('"clinic.config.updated"');
+    expect(lines[1]).toContain(`"${currentUser.id}"`);
+    expect(lines[1]).toContain('"{""section"":""services"",""changeId"":""delta-1""}"');
+  });
+
+  it('GET /clinics/:id/audit-logs/export retorna 403 quando guard de escopo bloqueia', async () => {
+    guardToggles.allowScope = false;
+
+    await request(app.getHttpServer())
+      .get(`/clinics/${FIXTURES.clinic}/audit-logs/export`)
+      .set('x-tenant-id', FIXTURES.tenant)
+      .expect(403);
+
+    expect(useCase.executeOrThrow).not.toHaveBeenCalled();
   });
 });

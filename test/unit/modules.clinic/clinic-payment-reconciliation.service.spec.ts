@@ -15,23 +15,10 @@ import { DomainEvents } from '../../../src/shared/events/domain-events';
 
 type Mocked<T> = jest.Mocked<T>;
 
-const createAppointment = (overrides: Partial<ClinicAppointment> = {}): ClinicAppointment => ({
-  id: 'appointment-1',
-  clinicId: 'clinic-1',
-  tenantId: 'tenant-1',
-  holdId: 'hold-1',
-  professionalId: 'professional-1',
-  patientId: 'patient-1',
-  serviceTypeId: 'service-1',
-  start: new Date('2099-01-01T12:00:00Z'),
-  end: new Date('2099-01-01T13:00:00Z'),
-  status: 'scheduled',
-  paymentStatus: 'settled',
-  paymentTransactionId: 'pay-123',
-  confirmedAt: new Date('2099-01-01T11:00:00Z'),
-  createdAt: new Date('2099-01-01T10:30:00Z'),
-  updatedAt: new Date('2099-01-01T10:30:00Z'),
-  metadata: {
+const createAppointment = (overrides: Partial<ClinicAppointment> = {}): ClinicAppointment => {
+  const { metadata: metadataOverride, ...rest } = overrides;
+
+  const baseMetadata: Record<string, unknown> = {
     professionalPolicy: {
       policyId: 'policy-1',
       channelScope: 'direct',
@@ -53,9 +40,39 @@ const createAppointment = (overrides: Partial<ClinicAppointment> = {}): ClinicAp
         roundingStrategy: 'half_even',
       },
     },
-  },
-  ...overrides,
-});
+    coverage: {
+      coverageId: 'coverage-1',
+      originalProfessionalId: 'professional-owner',
+    },
+  };
+
+  const metadata =
+    metadataOverride && typeof metadataOverride === 'object'
+      ? { ...baseMetadata, ...metadataOverride }
+      : (JSON.parse(JSON.stringify(baseMetadata)) as Record<string, unknown>);
+
+  return {
+    id: 'appointment-1',
+    clinicId: 'clinic-1',
+    tenantId: 'tenant-1',
+    holdId: 'hold-1',
+    professionalId: 'professional-1',
+    originalProfessionalId: 'professional-owner',
+    coverageId: null,
+    patientId: 'patient-1',
+    serviceTypeId: 'service-1',
+    start: new Date('2099-01-01T12:00:00Z'),
+    end: new Date('2099-01-01T13:00:00Z'),
+    status: 'scheduled',
+    paymentStatus: 'settled',
+    paymentTransactionId: 'pay-123',
+    confirmedAt: new Date('2099-01-01T11:00:00Z'),
+    createdAt: new Date('2099-01-01T10:30:00Z'),
+    updatedAt: new Date('2099-01-01T10:30:00Z'),
+    metadata,
+    ...rest,
+  };
+};
 
 const createSettlementEvent = (): ClinicPaymentSettledEvent => ({
   eventId: 'evt-1',
@@ -281,6 +298,8 @@ describe('ClinicPaymentReconciliationService', () => {
         appointmentId: 'appointment-1',
         tenantId: 'tenant-1',
         clinicId: 'clinic-1',
+        originalProfessionalId: 'professional-owner',
+        coverageId: 'coverage-1',
         paymentTransactionId: 'pay-123',
         provider: 'asaas',
         settlement: expect.objectContaining({
@@ -299,6 +318,19 @@ describe('ClinicPaymentReconciliationService', () => {
         event: expect.objectContaining({ eventName: DomainEvents.CLINIC_PAYMENT_SETTLED }),
       }),
     );
+  });
+
+  it('propaga identificadores de cobertura nulos quando metadata nao possui coverage', async () => {
+    appointmentRepository.findById.mockResolvedValue(
+      createAppointment({ metadata: { coverage: null } }),
+    );
+
+    await service.handlePaymentSettled(createSettlementEvent());
+
+    expect(paymentPayoutService.requestPayout).toHaveBeenCalledTimes(1);
+    const payoutRequest = paymentPayoutService.requestPayout.mock.calls[0][0];
+    expect(payoutRequest.originalProfessionalId).toBeNull();
+    expect(payoutRequest.coverageId).toBeNull();
   });
 
   it('nao replica liquidacao com fingerprint repetido', async () => {

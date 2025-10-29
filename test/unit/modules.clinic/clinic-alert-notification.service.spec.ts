@@ -60,6 +60,8 @@ const createClinicRepositoryMock = (): jest.Mocked<IClinicRepository> =>
     updateTemplatePropagationMetadata: jest.fn(),
     updateTemplateOverrideMetadata: jest.fn(),
     existsByDocument: jest.fn(),
+    listTenantIds: jest.fn(),
+    listComplianceDocuments: jest.fn(),
   }) as unknown as jest.Mocked<IClinicRepository>;
 
 const createUserRepositoryMock = (): jest.Mocked<IUserRepository> =>

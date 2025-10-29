@@ -33,6 +33,18 @@ export class BookingResponseDto {
   @ApiProperty({ description: 'Identificador do profissional' })
   professionalId!: string;
 
+  @ApiPropertyOptional({
+    description: 'Identificador do profissional titular quando ha cobertura temporaria',
+    nullable: true,
+  })
+  originalProfessionalId?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Identificador da cobertura temporaria aplicada',
+    nullable: true,
+  })
+  coverageId?: string | null;
+
   @ApiProperty({ description: 'Identificador do paciente' })
   patientId!: string;
 

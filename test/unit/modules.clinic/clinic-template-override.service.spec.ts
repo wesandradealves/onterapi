@@ -104,6 +104,7 @@ describe('ClinicTemplateOverrideService', () => {
 
     clinicRepository = {
       updateTemplateOverrideMetadata: jest.fn(),
+      listComplianceDocuments: jest.fn(),
     } as unknown as Mocked<IClinicRepository>;
 
     auditService = {

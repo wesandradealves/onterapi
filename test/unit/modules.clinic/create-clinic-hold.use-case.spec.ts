@@ -5,11 +5,13 @@ import { IClinicRepository } from '../../../src/domain/clinic/interfaces/reposit
 import { IClinicHoldRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-hold.repository.interface';
 import { IClinicServiceTypeRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-service-type.repository.interface';
 import { IClinicProfessionalPolicyRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-professional-policy.repository.interface';
+import { IClinicProfessionalCoverageRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-professional-coverage.repository.interface';
 import { ClinicAuditService } from '../../../src/infrastructure/clinic/services/clinic-audit.service';
 import {
   Clinic,
   ClinicHold,
   ClinicInvitationEconomicSummary,
+  ClinicProfessionalCoverage,
   ClinicProfessionalPolicy,
   ClinicServiceTypeDefinition,
 } from '../../../src/domain/clinic/types/clinic.types';
@@ -116,6 +118,7 @@ describe('CreateClinicHoldUseCase', () => {
   let clinicHoldRepository: Mocked<IClinicHoldRepository>;
   let clinicServiceTypeRepository: Mocked<IClinicServiceTypeRepository>;
   let professionalPolicyRepository: Mocked<IClinicProfessionalPolicyRepository>;
+  let coverageRepository: Mocked<IClinicProfessionalCoverageRepository>;
   let auditService: ClinicAuditService;
   let clinicOverbookingEvaluator: Mocked<ClinicOverbookingEvaluatorService>;
   let messageBus: Mocked<MessageBus>;
@@ -140,6 +143,7 @@ describe('CreateClinicHoldUseCase', () => {
   beforeEach(() => {
     clinicRepository = {
       findByTenant: jest.fn(),
+      listComplianceDocuments: jest.fn(),
     } as unknown as Mocked<IClinicRepository>;
 
     clinicHoldRepository = {
@@ -171,6 +175,12 @@ describe('CreateClinicHoldUseCase', () => {
       findActivePolicy: jest.fn().mockResolvedValue(buildPolicy()),
       replacePolicy: jest.fn(),
     } as unknown as Mocked<IClinicProfessionalPolicyRepository>;
+
+    coverageRepository = {
+      findActiveOverlapping: jest.fn(),
+    } as unknown as Mocked<IClinicProfessionalCoverageRepository>;
+
+    coverageRepository.findActiveOverlapping.mockResolvedValue([]);
 
     clinicOverbookingEvaluator = {
       evaluate: jest.fn().mockResolvedValue({
@@ -249,6 +259,7 @@ describe('CreateClinicHoldUseCase', () => {
       clinicHoldRepository,
       clinicServiceTypeRepository,
       professionalPolicyRepository,
+      coverageRepository,
       externalCalendarEventsRepository,
       auditService,
       messageBus,
@@ -343,6 +354,80 @@ describe('CreateClinicHoldUseCase', () => {
       }),
     );
     expect(clinicOverbookingEvaluator.evaluate).not.toHaveBeenCalled();
+    expect(messageBus.publish).not.toHaveBeenCalled();
+  });
+
+  it('aplica cobertura temporaria substituindo profissional titular', async () => {
+    const coverage: ClinicProfessionalCoverage = {
+      id: 'coverage-1',
+      tenantId: 'tenant-1',
+      clinicId: 'clinic-1',
+      professionalId: baseInput.professionalId,
+      coverageProfessionalId: 'professional-2',
+      startAt: new Date('2099-01-01T00:00:00Z'),
+      endAt: new Date('2099-01-02T00:00:00Z'),
+      status: 'active',
+      reason: 'Ferias',
+      notes: null,
+      metadata: {},
+      createdBy: 'manager-1',
+      updatedBy: 'manager-1',
+      createdAt: new Date('2098-12-15T00:00:00Z'),
+      updatedAt: new Date('2098-12-15T00:00:00Z'),
+      cancelledAt: undefined,
+      cancelledBy: undefined,
+    };
+
+    clinicRepository.findByTenant.mockResolvedValue(buildClinic());
+    clinicHoldRepository.findByIdempotencyKey.mockResolvedValue(null);
+    clinicServiceTypeRepository.findById.mockResolvedValue(buildServiceType());
+    coverageRepository.findActiveOverlapping.mockResolvedValue([coverage]);
+    professionalPolicyRepository.findActivePolicy.mockResolvedValue(
+      buildPolicy({
+        id: 'policy-coverage',
+        professionalId: coverage.coverageProfessionalId,
+        acceptedBy: coverage.coverageProfessionalId,
+      }),
+    );
+
+    const result = await useCase.executeOrThrow(baseInput);
+
+    expect(coverageRepository.findActiveOverlapping).toHaveBeenCalledWith(
+      expect.objectContaining({
+        professionalId: baseInput.professionalId,
+        clinicId: baseInput.clinicId,
+      }),
+    );
+    expect(professionalPolicyRepository.findActivePolicy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        professionalId: coverage.coverageProfessionalId,
+      }),
+    );
+    expect(clinicHoldRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        professionalId: coverage.coverageProfessionalId,
+      }),
+    );
+    expect(result.professionalId).toBe(coverage.coverageProfessionalId);
+    expect(result.metadata?.coverage).toEqual(
+      expect.objectContaining({
+        coverageId: coverage.id,
+        originalProfessionalId: baseInput.professionalId,
+        coverageProfessionalId: coverage.coverageProfessionalId,
+        status: coverage.status,
+        startAt: coverage.startAt.toISOString(),
+        endAt: coverage.endAt.toISOString(),
+      }),
+    );
+
+    const [auditCall] = auditService.register.mock.calls;
+    expect(auditCall[0].detail.coverage).toEqual(
+      expect.objectContaining({
+        coverageId: coverage.id,
+        originalProfessionalId: baseInput.professionalId,
+        coverageProfessionalId: coverage.coverageProfessionalId,
+      }),
+    );
     expect(messageBus.publish).not.toHaveBeenCalled();
   });
 

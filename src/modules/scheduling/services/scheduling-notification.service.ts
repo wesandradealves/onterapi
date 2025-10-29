@@ -87,6 +87,8 @@ export class SchedulingNotificationService {
         professionalId: payload.professionalId,
         patientId: payload.patientId,
         confirmedAt: payload.confirmedAt,
+        originalProfessionalId: payload.originalProfessionalId ?? undefined,
+        coverageId: payload.coverageId ?? undefined,
       }),
     );
 
@@ -95,6 +97,8 @@ export class SchedulingNotificationService {
       tenantId: payload.tenantId,
       clinicId: payload.clinicId,
       professionalId: payload.professionalId,
+      originalProfessionalId: payload.originalProfessionalId ?? null,
+      coverageId: payload.coverageId ?? null,
       patientId: payload.patientId,
       confirmedAt: payload.confirmedAt.toISOString(),
     });
@@ -112,6 +116,8 @@ export class SchedulingNotificationService {
         previousStartAtUtc: payload.previousStartAtUtc,
         newStartAtUtc: payload.newStartAtUtc,
         newEndAtUtc: payload.newEndAtUtc,
+        originalProfessionalId: payload.originalProfessionalId ?? undefined,
+        coverageId: payload.coverageId ?? undefined,
       }),
     );
 
@@ -120,6 +126,8 @@ export class SchedulingNotificationService {
       tenantId: payload.tenantId,
       clinicId: payload.clinicId,
       professionalId: payload.professionalId,
+      originalProfessionalId: payload.originalProfessionalId ?? null,
+      coverageId: payload.coverageId ?? null,
       patientId: payload.patientId,
       previousStartAtUtc: payload.previousStartAtUtc.toISOString(),
       newStartAtUtc: payload.newStartAtUtc.toISOString(),
@@ -137,6 +145,8 @@ export class SchedulingNotificationService {
         patientId: payload.patientId,
         cancelledAt: payload.cancelledAt,
         reason: payload.reason,
+        originalProfessionalId: payload.originalProfessionalId ?? undefined,
+        coverageId: payload.coverageId ?? undefined,
       }),
     );
 
@@ -145,6 +155,8 @@ export class SchedulingNotificationService {
       tenantId: payload.tenantId,
       clinicId: payload.clinicId,
       professionalId: payload.professionalId,
+      originalProfessionalId: payload.originalProfessionalId ?? null,
+      coverageId: payload.coverageId ?? null,
       patientId: payload.patientId,
       reason: payload.reason ?? null,
     });
@@ -160,6 +172,8 @@ export class SchedulingNotificationService {
         professionalId: payload.professionalId,
         patientId: payload.patientId,
         markedAt: payload.markedAt,
+        originalProfessionalId: payload.originalProfessionalId ?? undefined,
+        coverageId: payload.coverageId ?? undefined,
       }),
     );
 
@@ -168,6 +182,8 @@ export class SchedulingNotificationService {
       tenantId: payload.tenantId,
       clinicId: payload.clinicId,
       professionalId: payload.professionalId,
+      originalProfessionalId: payload.originalProfessionalId ?? null,
+      coverageId: payload.coverageId ?? null,
       patientId: payload.patientId,
       markedAt: payload.markedAt.toISOString(),
     });
@@ -185,6 +201,8 @@ export class SchedulingNotificationService {
         previousStatus: payload.previousStatus,
         newStatus: payload.newStatus,
         changedAt: payload.changedAt,
+        originalProfessionalId: payload.originalProfessionalId ?? undefined,
+        coverageId: payload.coverageId ?? undefined,
       }),
     );
 
@@ -193,6 +211,8 @@ export class SchedulingNotificationService {
       tenantId: payload.tenantId,
       clinicId: payload.clinicId,
       professionalId: payload.professionalId,
+      originalProfessionalId: payload.originalProfessionalId ?? null,
+      coverageId: payload.coverageId ?? null,
       patientId: payload.patientId,
       previousStatus: payload.previousStatus,
       newStatus: payload.newStatus,

@@ -17,6 +17,8 @@ const createEvent = (
     tenantId: 'tenant-1',
     clinicId: 'clinic-1',
     professionalId: 'professional-1',
+    originalProfessionalId: 'professional-owner',
+    coverageId: 'coverage-1',
     patientId: 'patient-1',
     holdId: 'hold-1',
     serviceTypeId: 'service-1',
@@ -73,6 +75,8 @@ describe('ClinicPaymentPayoutProcessorService', () => {
       processedAt: null,
       status: 'pending',
       settledAt: input.settledAt,
+      originalProfessionalId: input.originalProfessionalId ?? null,
+      coverageId: input.coverageId ?? null,
       ...input,
     }));
   });
@@ -87,6 +91,8 @@ describe('ClinicPaymentPayoutProcessorService', () => {
     expect(repository.enqueue).toHaveBeenCalledWith(
       expect.objectContaining({
         appointmentId: 'appointment-1',
+        originalProfessionalId: 'professional-owner',
+        coverageId: 'coverage-1',
         paymentTransactionId: 'pay-123',
         settledAt: new Date('2099-01-01T12:00:00Z'),
         split: expect.arrayContaining([
@@ -103,6 +109,8 @@ describe('ClinicPaymentPayoutProcessorService', () => {
         detail: expect.objectContaining({
           payoutId: 'payout-1',
           paymentTransactionId: 'pay-123',
+          originalProfessionalId: 'professional-owner',
+          coverageId: 'coverage-1',
         }),
       }),
     );

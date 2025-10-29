@@ -27,6 +27,23 @@ export interface IBookingRepository {
   reschedule(data: RescheduleBookingInput): Promise<Booking>;
   recordPaymentStatus(data: RecordPaymentStatusInput): Promise<Booking>;
   markNoShow(data: MarkNoShowInput): Promise<Booking>;
+  reassignForCoverage(params: {
+    tenantId: string;
+    clinicId: string;
+    originalProfessionalId: string;
+    coverageProfessionalId: string;
+    coverageId: string;
+    startAtUtc: Date;
+    endAtUtc: Date;
+  }): Promise<Booking[]>;
+  releaseCoverageAssignments(params: {
+    tenantId: string;
+    clinicId: string;
+    coverageId: string;
+    referenceUtc: Date;
+    originalProfessionalId: string;
+    coverageProfessionalId: string;
+  }): Promise<Booking[]>;
 }
 
 export const IBookingRepositoryToken = Symbol('IBookingRepository');

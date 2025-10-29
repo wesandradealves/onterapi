@@ -106,6 +106,7 @@ describe('InviteClinicProfessionalUseCase', () => {
   beforeEach(() => {
     clinicRepository = {
       findByTenant: jest.fn(),
+      listComplianceDocuments: jest.fn(),
     } as unknown as Mocked<IClinicRepository>;
 
     invitationRepository = {
@@ -128,6 +129,7 @@ describe('InviteClinicProfessionalUseCase', () => {
     } as unknown as Mocked<ClinicAuditService>;
 
     tokenService = {
+      assertSecretConfigured: jest.fn(),
       hash: jest.fn((value: string) => `hash:${value}`),
       generateToken: jest.fn(() => ({ token: 'token-abc', hash: 'hash-updated' })),
     } as unknown as Mocked<ClinicInvitationTokenService>;

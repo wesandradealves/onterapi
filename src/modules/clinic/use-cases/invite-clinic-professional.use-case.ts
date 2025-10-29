@@ -49,6 +49,8 @@ export class InviteClinicProfessionalUseCase
   }
 
   protected async handle(input: InviteClinicProfessionalInput): Promise<ClinicInvitation> {
+    this.invitationTokenService.assertSecretConfigured();
+
     const clinic = await this.clinicRepository.findByTenant(input.tenantId, input.clinicId);
 
     if (!clinic) {

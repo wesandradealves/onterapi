@@ -65,6 +65,9 @@ export class RescheduleBookingUseCase
       await this.incrementOccurrenceRescheduleCounter(tenantId, occurrence);
     }
 
+    const originalProfessionalId = booking.originalProfessionalId ?? null;
+    const coverageId = booking.coverageId ?? null;
+
     await this.messageBus.publish(
       DomainEvents.schedulingBookingRescheduled(bookingId, {
         tenantId,
@@ -75,6 +78,8 @@ export class RescheduleBookingUseCase
         previousEndAtUtc: booking.endAtUtc,
         newStartAtUtc,
         newEndAtUtc,
+        originalProfessionalId: originalProfessionalId ?? undefined,
+        coverageId: coverageId ?? undefined,
       }),
     );
 

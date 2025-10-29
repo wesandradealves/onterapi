@@ -56,6 +56,23 @@ export interface IClinicAppointmentRepository {
     professionalId: string;
     statuses: ClinicPaymentStatus[];
   }): Promise<number>;
+  reassignForCoverage(params: {
+    tenantId: string;
+    clinicId: string;
+    originalProfessionalId: string;
+    coverageProfessionalId: string;
+    coverageId: string;
+    start: Date;
+    end: Date;
+  }): Promise<ClinicAppointment[]>;
+  releaseCoverageAssignments(params: {
+    tenantId: string;
+    clinicId: string;
+    coverageId: string;
+    reference: Date;
+    originalProfessionalId: string;
+    coverageProfessionalId: string;
+  }): Promise<ClinicAppointment[]>;
 }
 
 export const IClinicAppointmentRepository = Symbol('IClinicAppointmentRepository');

@@ -149,9 +149,7 @@ export class ClinicTemplateOverrideRepository implements IClinicTemplateOverride
     return entity ? ClinicMapper.toTemplateOverride(entity) : null;
   }
 
-  async list(
-    params: ListClinicTemplateOverridesInput,
-  ): Promise<ClinicTemplateOverrideListResult> {
+  async list(params: ListClinicTemplateOverridesInput): Promise<ClinicTemplateOverrideListResult> {
     const page = params.page && params.page > 0 ? params.page : 1;
     const limitCandidate = params.limit && params.limit > 0 ? params.limit : 20;
     const limit = Math.min(limitCandidate, 100);

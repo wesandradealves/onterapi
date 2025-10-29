@@ -9,6 +9,7 @@ import {
   toUpdateClinicNotificationSettingsInput,
   toUpdateClinicPaymentSettingsInput,
   toUpdateClinicScheduleSettingsInput,
+  toUpdateClinicSecuritySettingsInput,
   toUpdateClinicServiceSettingsInput,
 } from '../../../src/modules/clinic/api/mappers/clinic-request.mapper';
 import { UpdateClinicScheduleSettingsSchema } from '../../../src/modules/clinic/api/schemas/update-clinic-schedule-settings.schema';
@@ -16,6 +17,7 @@ import { UpdateClinicServiceSettingsSchema } from '../../../src/modules/clinic/a
 import { UpdateClinicPaymentSettingsSchema } from '../../../src/modules/clinic/api/schemas/update-clinic-payment-settings.schema';
 import { UpdateClinicIntegrationSettingsSchema } from '../../../src/modules/clinic/api/schemas/update-clinic-integration-settings.schema';
 import { UpdateClinicNotificationSettingsSchema } from '../../../src/modules/clinic/api/schemas/update-clinic-notification-settings.schema';
+import { UpdateClinicSecuritySettingsSchema } from '../../../src/modules/clinic/api/schemas/update-clinic-security-settings.schema';
 import { UpdateClinicBrandingSettingsSchema } from '../../../src/modules/clinic/api/schemas/update-clinic-branding-settings.schema';
 import { CreateClinicHoldSchema } from '../../../src/modules/clinic/api/schemas/create-clinic-hold.schema';
 import { ConfirmClinicHoldSchema } from '../../../src/modules/clinic/api/schemas/confirm-clinic-hold.schema';
@@ -188,6 +190,74 @@ describe('ClinicRequestMapper - notification settings', () => {
     expect(input.notificationSettings.templates[0].variables[0].name).toBe('patient');
     expect(input.notificationSettings.rules[0].event).toBe('booking.confirmed');
     expect(input.notificationSettings.events).toEqual(['booking.confirmed']);
+  });
+});
+
+describe('ClinicRequestMapper - security settings', () => {
+  const baseContext = { tenantId: 'tenant-sec', userId: 'user-sec' };
+
+  it('maps security payload into configuration object', () => {
+    const body: UpdateClinicSecuritySettingsSchema = {
+      tenantId: 'tenant-body',
+      securitySettings: {
+        twoFactor: {
+          enabled: true,
+          requiredRoles: ['CLINIC_OWNER'],
+          backupCodesEnabled: true,
+        },
+        passwordPolicy: {
+          minLength: 12,
+          requireUppercase: true,
+          requireLowercase: true,
+          requireNumbers: true,
+          requireSpecialCharacters: true,
+        },
+        session: { idleTimeoutMinutes: 15, absoluteTimeoutMinutes: 120 },
+        loginAlerts: { email: true, whatsapp: false },
+        ipRestrictions: { enabled: true, allowlist: [' 10.0.0.0/24 ', ''], blocklist: [] },
+        audit: { retentionDays: 180, exportEnabled: true },
+        compliance: {
+          documents: [
+            {
+              id: 'doc-1',
+              type: 'CRM',
+              required: true,
+              status: 'valid',
+              expiresAt: '2025-12-31T00:00:00.000Z',
+              metadata: { issuer: 'CRM-SP' },
+            },
+            {
+              type: 'LGPD',
+              status: 'pending',
+              expiresAt: null,
+            },
+          ],
+        },
+        metadata: { source: 'spec' },
+      },
+    };
+
+    const input = toUpdateClinicSecuritySettingsInput('clinic-sec', body, baseContext);
+
+    expect(input.clinicId).toBe('clinic-sec');
+    expect(input.tenantId).toBe('tenant-body');
+    expect(input.securitySettings.twoFactor.enabled).toBe(true);
+    expect(input.securitySettings.twoFactor.requiredRoles).toEqual(['CLINIC_OWNER']);
+    expect(input.securitySettings.passwordPolicy.minLength).toBe(12);
+    expect(input.securitySettings.session.idleTimeoutMinutes).toBe(15);
+    expect(input.securitySettings.ipRestrictions.allowlist).toEqual(['10.0.0.0/24']);
+    expect(input.securitySettings.audit.retentionDays).toBe(180);
+    expect(input.securitySettings.metadata).toEqual({ source: 'spec' });
+    expect(input.securitySettings.compliance?.documents).toHaveLength(2);
+
+    const [firstDoc, secondDoc] = input.securitySettings.compliance?.documents ?? [];
+    expect(firstDoc?.type).toBe('CRM');
+    expect(firstDoc?.status).toBe('valid');
+    expect(firstDoc?.expiresAt).toBeInstanceOf(Date);
+    expect(firstDoc?.metadata).toEqual({ issuer: 'CRM-SP' });
+    expect(secondDoc?.type).toBe('LGPD');
+    expect(secondDoc?.expiresAt).toBeNull();
+    expect(secondDoc?.status).toBe('pending');
   });
 });
 
@@ -528,6 +598,8 @@ describe('ClinicRequestMapper - management overview query', () => {
       includeComparisons: true,
       includeAlerts: 'false',
       includeTeamDistribution: 'true',
+      includeFinancials: 'false',
+      includeCoverageSummary: 'false',
     };
 
     const query = toClinicManagementOverviewQuery(body, context);
@@ -541,6 +613,8 @@ describe('ClinicRequestMapper - management overview query', () => {
     expect(query.includeComparisons).toBe(true);
     expect(query.includeAlerts).toBe(false);
     expect(query.includeTeamDistribution).toBe(true);
+    expect(query.includeFinancials).toBe(false);
+    expect(query.includeCoverageSummary).toBe(false);
   });
 
   it('usa tenant do contexto e remove filtros vazios', () => {
@@ -554,5 +628,7 @@ describe('ClinicRequestMapper - management overview query', () => {
     expect(query.includeComparisons).toBeUndefined();
     expect(query.includeAlerts).toBeUndefined();
     expect(query.includeTeamDistribution).toBeUndefined();
+    expect(query.includeFinancials).toBeUndefined();
+    expect(query.includeCoverageSummary).toBeUndefined();
   });
 });

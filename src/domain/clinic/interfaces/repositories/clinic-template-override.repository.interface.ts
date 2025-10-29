@@ -1,9 +1,9 @@
 import {
   ClinicConfigurationSection,
   ClinicTemplateOverride,
+  ClinicTemplateOverrideListResult,
   CreateClinicTemplateOverrideInput,
   FindClinicTemplateOverrideParams,
-  ClinicTemplateOverrideListResult,
   ListClinicTemplateOverridesInput,
   SupersedeClinicTemplateOverrideInput,
   UpdateClinicTemplateOverrideAppliedInput,
@@ -28,9 +28,7 @@ export interface IClinicTemplateOverrideRepository {
   updateBaseTemplateVersion(
     params: UpdateClinicTemplateOverrideBaseVersionInput,
   ): Promise<ClinicTemplateOverride | null>;
-  list(
-    params: ListClinicTemplateOverridesInput,
-  ): Promise<ClinicTemplateOverrideListResult>;
+  list(params: ListClinicTemplateOverridesInput): Promise<ClinicTemplateOverrideListResult>;
 }
 
 export const IClinicTemplateOverrideRepository = Symbol('IClinicTemplateOverrideRepository');

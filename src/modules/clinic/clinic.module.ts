@@ -34,6 +34,7 @@ import { ClinicFinancialSnapshotEntity } from '../../infrastructure/clinic/entit
 import { ClinicPaymentWebhookEventEntity } from '../../infrastructure/clinic/entities/clinic-payment-webhook-event.entity';
 import { ClinicPaymentPayoutRequestEntity } from '../../infrastructure/clinic/entities/clinic-payment-payout-request.entity';
 import { ClinicProfessionalPolicyEntity } from '../../infrastructure/clinic/entities/clinic-professional-policy.entity';
+import { ClinicProfessionalCoverageEntity } from '../../infrastructure/clinic/entities/clinic-professional-coverage.entity';
 import { ClinicRepository } from '../../infrastructure/clinic/repositories/clinic.repository';
 import { ClinicConfigurationRepository } from '../../infrastructure/clinic/repositories/clinic-configuration.repository';
 import { ClinicServiceTypeRepository } from '../../infrastructure/clinic/repositories/clinic-service-type.repository';
@@ -47,6 +48,7 @@ import { ClinicAuditLogRepository } from '../../infrastructure/clinic/repositori
 import { ClinicTemplateOverrideRepository } from '../../infrastructure/clinic/repositories/clinic-template-override.repository';
 import { ClinicPaymentWebhookEventRepository } from '../../infrastructure/clinic/repositories/clinic-payment-webhook-event.repository';
 import { ClinicPaymentPayoutRequestRepository } from '../../infrastructure/clinic/repositories/clinic-payment-payout-request.repository';
+import { ClinicProfessionalCoverageRepository } from '../../infrastructure/clinic/repositories/clinic-professional-coverage.repository';
 import { ClinicAuditService } from '../../infrastructure/clinic/services/clinic-audit.service';
 import { ClinicPaymentCredentialsService } from '../../infrastructure/clinic/services/clinic-payment-credentials.service';
 import { ClinicAsaasGatewayService } from '../../infrastructure/clinic/services/clinic-asaas-gateway.service';
@@ -56,6 +58,7 @@ import { ClinicInvitationTokenService } from './services/clinic-invitation-token
 import { ClinicInvitationExpirationWorkerService } from './services/clinic-invitation-expiration-worker.service';
 import { ClinicTemplateOverrideService } from './services/clinic-template-override.service';
 import { ClinicManagementExportService } from './services/clinic-management-export.service';
+import { ClinicConfigurationExportService } from './services/clinic-configuration-export.service';
 import { ClinicConfigurationCacheService } from './services/clinic-configuration-cache.service';
 import { ClinicConfigurationTelemetryService } from './services/clinic-configuration-telemetry.service';
 import { ClinicAccessService } from './services/clinic-access.service';
@@ -68,6 +71,10 @@ import { ClinicNotificationContextService } from './services/clinic-notification
 import { ClinicOverbookingNotificationService } from './services/clinic-overbooking-notification.service';
 import { ClinicOverbookingEventsSubscriber } from './subscribers/clinic-overbooking-events.subscriber';
 import { ClinicAlertMonitorService } from './services/clinic-alert-monitor.service';
+import { ClinicCoverageSchedulingService } from './services/clinic-coverage-scheduling.service';
+import { ClinicCoverageNotificationService } from './services/clinic-coverage-notification.service';
+import { ClinicProfessionalCoverageWorkerService } from './services/clinic-professional-coverage-worker.service';
+import { ClinicCoverageEventsSubscriber } from './subscribers/clinic-coverage-events.subscriber';
 import { UpdateClinicGeneralSettingsUseCase } from './use-cases/update-clinic-general-settings.use-case';
 import { UpdateClinicHoldSettingsUseCase } from './use-cases/update-clinic-hold-settings.use-case';
 import { UpdateClinicServiceSettingsUseCase } from './use-cases/update-clinic-service-settings.use-case';
@@ -99,6 +106,7 @@ import { UpsertClinicServiceTypeUseCase } from './use-cases/upsert-clinic-servic
 import { RemoveClinicServiceTypeUseCase } from './use-cases/remove-clinic-service-type.use-case';
 import { ListClinicServiceTypesUseCase } from './use-cases/list-clinic-service-types.use-case';
 import { InviteClinicProfessionalUseCase } from './use-cases/invite-clinic-professional.use-case';
+import { CreateClinicInvitationAddendumUseCase } from './use-cases/create-clinic-invitation-addendum.use-case';
 import { AcceptClinicInvitationUseCase } from './use-cases/accept-clinic-invitation.use-case';
 import { RevokeClinicInvitationUseCase } from './use-cases/revoke-clinic-invitation.use-case';
 import { ReissueClinicInvitationUseCase } from './use-cases/reissue-clinic-invitation.use-case';
@@ -116,6 +124,12 @@ import { GetClinicTeamSettingsUseCase } from './use-cases/get-clinic-team-settin
 import { GetClinicScheduleSettingsUseCase } from './use-cases/get-clinic-schedule-settings.use-case';
 import { GetClinicServiceSettingsUseCase } from './use-cases/get-clinic-service-settings.use-case';
 import { GetClinicPaymentSettingsUseCase } from './use-cases/get-clinic-payment-settings.use-case';
+import { UpdateClinicSecuritySettingsUseCase } from './use-cases/update-clinic-security-settings.use-case';
+import { CreateClinicProfessionalCoverageUseCase } from './use-cases/create-clinic-professional-coverage.use-case';
+import { ListClinicProfessionalCoveragesUseCase } from './use-cases/list-clinic-professional-coverages.use-case';
+import { CancelClinicProfessionalCoverageUseCase } from './use-cases/cancel-clinic-professional-coverage.use-case';
+import { CompareClinicsUseCase } from './use-cases/compare-clinics.use-case';
+import { GetClinicSecuritySettingsUseCase } from './use-cases/get-clinic-security-settings.use-case';
 import { GetClinicIntegrationSettingsUseCase } from './use-cases/get-clinic-integration-settings.use-case';
 import { GetClinicNotificationSettingsUseCase } from './use-cases/get-clinic-notification-settings.use-case';
 import { GetClinicBrandingSettingsUseCase } from './use-cases/get-clinic-branding-settings.use-case';
@@ -143,6 +157,7 @@ import { IClinicAppointmentRepository as IClinicAppointmentRepositoryToken } fro
 import { IClinicMetricsRepository as IClinicMetricsRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-metrics.repository.interface';
 import { IClinicPaymentWebhookEventRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-payment-webhook-event.repository.interface';
 import { IClinicPaymentPayoutRequestRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-payment-payout-request.repository.interface';
+import { IClinicProfessionalCoverageRepository as IClinicProfessionalCoverageRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-professional-coverage.repository.interface';
 import { IClinicInvitationRepository as IClinicInvitationRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-invitation.repository.interface';
 import { IClinicMemberRepository as IClinicMemberRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-member.repository.interface';
 import { IClinicAuditLogRepository as IClinicAuditLogRepositoryToken } from '../../domain/clinic/interfaces/repositories/clinic-audit-log.repository.interface';
@@ -158,6 +173,7 @@ import { IUpdateClinicPaymentSettingsUseCase as IUpdateClinicPaymentSettingsUseC
 import { IUpdateClinicIntegrationSettingsUseCase as IUpdateClinicIntegrationSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/update-clinic-integration-settings.use-case.interface';
 import { IUpdateClinicNotificationSettingsUseCase as IUpdateClinicNotificationSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/update-clinic-notification-settings.use-case.interface';
 import { IUpdateClinicBrandingSettingsUseCase as IUpdateClinicBrandingSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/update-clinic-branding-settings.use-case.interface';
+import { IUpdateClinicSecuritySettingsUseCase as IUpdateClinicSecuritySettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/update-clinic-security-settings.use-case.interface';
 import { IUpdateClinicScheduleSettingsUseCase as IUpdateClinicScheduleSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/update-clinic-schedule-settings.use-case.interface';
 import { IPropagateClinicTemplateUseCase as IPropagateClinicTemplateUseCaseToken } from '../../domain/clinic/interfaces/use-cases/propagate-clinic-template.use-case.interface';
 import { IGetClinicGeneralSettingsUseCase as IGetClinicGeneralSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic-general-settings.use-case.interface';
@@ -171,6 +187,7 @@ import { IGetClinicIntegrationSettingsUseCase as IGetClinicIntegrationSettingsUs
 import { IGetClinicNotificationSettingsUseCase as IGetClinicNotificationSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic-notification-settings.use-case.interface';
 import { IGetClinicProfessionalPolicyUseCase as IGetClinicProfessionalPolicyUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic-professional-policy.use-case.interface';
 import { IGetClinicBrandingSettingsUseCase as IGetClinicBrandingSettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic-branding-settings.use-case.interface';
+import { IGetClinicSecuritySettingsUseCase as IGetClinicSecuritySettingsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic-security-settings.use-case.interface';
 import { ICreateClinicUseCase as ICreateClinicUseCaseToken } from '../../domain/clinic/interfaces/use-cases/create-clinic.use-case.interface';
 import { ICreateClinicHoldUseCase as ICreateClinicHoldUseCaseToken } from '../../domain/clinic/interfaces/use-cases/create-clinic-hold.use-case.interface';
 import { IProcessClinicOverbookingUseCase as IProcessClinicOverbookingUseCaseToken } from '../../domain/clinic/interfaces/use-cases/process-clinic-overbooking.use-case.interface';
@@ -187,6 +204,7 @@ import { IUpsertClinicServiceTypeUseCase as IUpsertClinicServiceTypeUseCaseToken
 import { IRemoveClinicServiceTypeUseCase as IRemoveClinicServiceTypeUseCaseToken } from '../../domain/clinic/interfaces/use-cases/remove-clinic-service-type.use-case.interface';
 import { IListClinicServiceTypesUseCase as IListClinicServiceTypesUseCaseToken } from '../../domain/clinic/interfaces/use-cases/list-clinic-service-types.use-case.interface';
 import { IInviteClinicProfessionalUseCase as IInviteClinicProfessionalUseCaseToken } from '../../domain/clinic/interfaces/use-cases/invite-clinic-professional.use-case.interface';
+import { ICreateClinicInvitationAddendumUseCase as ICreateClinicInvitationAddendumUseCaseToken } from '../../domain/clinic/interfaces/use-cases/create-clinic-invitation-addendum.use-case.interface';
 import { IAcceptClinicInvitationUseCase as IAcceptClinicInvitationUseCaseToken } from '../../domain/clinic/interfaces/use-cases/accept-clinic-invitation.use-case.interface';
 import { IRevokeClinicInvitationUseCase as IRevokeClinicInvitationUseCaseToken } from '../../domain/clinic/interfaces/use-cases/revoke-clinic-invitation.use-case.interface';
 import { IReissueClinicInvitationUseCase as IReissueClinicInvitationUseCaseToken } from '../../domain/clinic/interfaces/use-cases/reissue-clinic-invitation.use-case.interface';
@@ -197,6 +215,10 @@ import { IListClinicMembersUseCase as IListClinicMembersUseCaseToken } from '../
 import { IManageClinicMemberUseCase as IManageClinicMemberUseCaseToken } from '../../domain/clinic/interfaces/use-cases/manage-clinic-member.use-case.interface';
 import { ITransferClinicProfessionalUseCase as ITransferClinicProfessionalUseCaseToken } from '../../domain/clinic/interfaces/use-cases/transfer-clinic-professional.use-case.interface';
 import { ICheckClinicProfessionalFinancialClearanceUseCase as ICheckClinicProfessionalFinancialClearanceUseCaseToken } from '../../domain/clinic/interfaces/use-cases/check-clinic-professional-financial-clearance.use-case.interface';
+import { ICreateClinicProfessionalCoverageUseCase as ICreateClinicProfessionalCoverageUseCaseToken } from '../../domain/clinic/interfaces/use-cases/create-clinic-professional-coverage.use-case.interface';
+import { IListClinicProfessionalCoveragesUseCase as IListClinicProfessionalCoveragesUseCaseToken } from '../../domain/clinic/interfaces/use-cases/list-clinic-professional-coverages.use-case.interface';
+import { ICancelClinicProfessionalCoverageUseCase as ICancelClinicProfessionalCoverageUseCaseToken } from '../../domain/clinic/interfaces/use-cases/cancel-clinic-professional-coverage.use-case.interface';
+import { ICompareClinicsUseCase as ICompareClinicsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/compare-clinics.use-case.interface';
 import { IListClinicsUseCase as IListClinicsUseCaseToken } from '../../domain/clinic/interfaces/use-cases/list-clinics.use-case.interface';
 import { IGetClinicUseCase as IGetClinicUseCaseToken } from '../../domain/clinic/interfaces/use-cases/get-clinic.use-case.interface';
 import { IUpdateClinicStatusUseCase as IUpdateClinicStatusUseCaseToken } from '../../domain/clinic/interfaces/use-cases/update-clinic-status.use-case.interface';
@@ -243,6 +265,10 @@ const repositoryProviders: Provider[] = [
   {
     provide: IClinicMemberRepositoryToken,
     useClass: ClinicMemberRepository,
+  },
+  {
+    provide: IClinicProfessionalCoverageRepositoryToken,
+    useClass: ClinicProfessionalCoverageRepository,
   },
   {
     provide: IClinicProfessionalPolicyRepositoryToken,
@@ -294,15 +320,20 @@ const serviceProviders: Provider[] = [
   ClinicAlertNotificationService,
   ClinicAlertMonitorService,
   ClinicManagementExportService,
+  ClinicConfigurationExportService,
   ClinicTemplateOverrideService,
   ClinicNotificationContextService,
   ClinicInvitationExpirationWorkerService,
   ClinicOverbookingEvaluatorService,
   ClinicOverbookingNotificationService,
+  ClinicCoverageSchedulingService,
+  ClinicCoverageNotificationService,
+  ClinicProfessionalCoverageWorkerService,
   ClinicPaymentEventsSubscriber,
   ClinicPaymentPayoutEventsSubscriber,
   ClinicAlertEventsSubscriber,
   ClinicOverbookingEventsSubscriber,
+  ClinicCoverageEventsSubscriber,
   ClinicConfigurationCacheService,
   ClinicConfigurationTelemetryService,
 ];
@@ -373,8 +404,16 @@ const useCaseProviders: Provider[] = [
     useClass: GetClinicBrandingSettingsUseCase,
   },
   {
+    provide: IGetClinicSecuritySettingsUseCaseToken,
+    useClass: GetClinicSecuritySettingsUseCase,
+  },
+  {
     provide: IUpdateClinicBrandingSettingsUseCaseToken,
     useClass: UpdateClinicBrandingSettingsUseCase,
+  },
+  {
+    provide: IUpdateClinicSecuritySettingsUseCaseToken,
+    useClass: UpdateClinicSecuritySettingsUseCase,
   },
   {
     provide: IUpdateClinicHoldSettingsUseCaseToken,
@@ -453,6 +492,10 @@ const useCaseProviders: Provider[] = [
     useClass: InviteClinicProfessionalUseCase,
   },
   {
+    provide: ICreateClinicInvitationAddendumUseCaseToken,
+    useClass: CreateClinicInvitationAddendumUseCase,
+  },
+  {
     provide: IAcceptClinicInvitationUseCaseToken,
     useClass: AcceptClinicInvitationUseCase,
   },
@@ -495,6 +538,22 @@ const useCaseProviders: Provider[] = [
   {
     provide: ICheckClinicProfessionalFinancialClearanceUseCaseToken,
     useClass: CheckClinicProfessionalFinancialClearanceUseCase,
+  },
+  {
+    provide: ICreateClinicProfessionalCoverageUseCaseToken,
+    useClass: CreateClinicProfessionalCoverageUseCase,
+  },
+  {
+    provide: IListClinicProfessionalCoveragesUseCaseToken,
+    useClass: ListClinicProfessionalCoveragesUseCase,
+  },
+  {
+    provide: ICancelClinicProfessionalCoverageUseCaseToken,
+    useClass: CancelClinicProfessionalCoverageUseCase,
+  },
+  {
+    provide: ICompareClinicsUseCaseToken,
+    useClass: CompareClinicsUseCase,
   },
   {
     provide: IListClinicsUseCaseToken,
@@ -541,6 +600,7 @@ const useCaseProviders: Provider[] = [
       ClinicFinancialSnapshotEntity,
       ClinicPaymentWebhookEventEntity,
       ClinicPaymentPayoutRequestEntity,
+      ClinicProfessionalCoverageEntity,
     ]),
   ],
   controllers: [

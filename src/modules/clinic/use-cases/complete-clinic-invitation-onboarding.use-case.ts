@@ -6,9 +6,9 @@ import {
   IClinicInvitationRepository as IClinicInvitationRepositoryToken,
 } from '../../../domain/clinic/interfaces/repositories/clinic-invitation.repository.interface';
 import {
-  ICompleteClinicInvitationOnboardingUseCase,
   CompleteClinicInvitationOnboardingInput,
   CompleteClinicInvitationOnboardingOutput,
+  ICompleteClinicInvitationOnboardingUseCase,
   ICompleteClinicInvitationOnboardingUseCase as ICompleteClinicInvitationOnboardingUseCaseToken,
 } from '../../../domain/clinic/interfaces/use-cases/complete-clinic-invitation-onboarding.use-case.interface';
 import { ClinicInvitationTokenService } from '../services/clinic-invitation-token.service';

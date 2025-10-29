@@ -11,6 +11,8 @@ const baseBooking = (overrides: Partial<Booking> = {}): Booking => ({
   tenantId: 'tenant-1',
   clinicId: 'clinic-1',
   professionalId: 'professional-1',
+  originalProfessionalId: null,
+  coverageId: null,
   patientId: 'patient-1',
   source: 'clinic_portal',
   status: 'scheduled',
@@ -85,6 +87,9 @@ describe('RecordPaymentStatusUseCase', () => {
         aggregateId: existingBooking.id,
       }),
     );
+    const event = messageBus.publish.mock.calls[0][0];
+    expect(event.payload.originalProfessionalId).toBeUndefined();
+    expect(event.payload.coverageId).toBeUndefined();
   });
 
   it('retorna o agendamento atual quando o status solicitado for o mesmo', async () => {
@@ -142,4 +147,29 @@ describe('RecordPaymentStatusUseCase', () => {
       expect(bookingRepository.recordPaymentStatus).not.toHaveBeenCalled();
     },
   );
+
+  it('propaga dados de cobertura ao atualizar pagamento de agendamento coberto', async () => {
+    const existingBooking = baseBooking({
+      professionalId: 'professional-cover',
+      originalProfessionalId: 'professional-owner',
+      coverageId: 'coverage-1',
+      paymentStatus: 'pending',
+    });
+    const updatedBooking = { ...existingBooking, paymentStatus: 'approved' as const };
+    bookingRepository.findById.mockResolvedValue(existingBooking);
+    bookingRepository.recordPaymentStatus.mockResolvedValue(updatedBooking);
+
+    await useCase.executeOrThrow({
+      tenantId: existingBooking.tenantId,
+      bookingId: existingBooking.id,
+      expectedVersion: 1,
+      paymentStatus: 'approved',
+      requesterId: 'user-1',
+      requesterRole: 'CLINIC_OWNER',
+    });
+
+    const event = messageBus.publish.mock.calls[0][0];
+    expect(event.payload.originalProfessionalId).toBe('professional-owner');
+    expect(event.payload.coverageId).toBe('coverage-1');
+  });
 });

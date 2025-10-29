@@ -6,6 +6,7 @@ import {
   ClinicDashboardForecastDto,
 } from './clinic-dashboard-response.dto';
 import { ClinicTemplatePropagationResponseDto } from './clinic-template-propagation-response.dto';
+import { ClinicSecurityComplianceDocumentDto } from './clinic-security-settings-response.dto';
 
 export class ClinicManagementTeamDistributionDto {
   @ApiProperty()
@@ -52,6 +53,63 @@ export class ClinicManagementClinicFinancialsDto {
   contributionPercentage!: number;
 }
 
+export class ClinicManagementComplianceNextExpirationDto {
+  @ApiProperty()
+  type!: string;
+
+  @ApiProperty({ type: String })
+  expiresAt!: Date;
+}
+
+export class ClinicManagementComplianceSummaryDto {
+  @ApiProperty()
+  total!: number;
+
+  @ApiProperty()
+  valid!: number;
+
+  @ApiProperty()
+  expiring!: number;
+
+  @ApiProperty()
+  expired!: number;
+
+  @ApiProperty()
+  missing!: number;
+
+  @ApiProperty()
+  pending!: number;
+
+  @ApiProperty()
+  review!: number;
+
+  @ApiProperty()
+  submitted!: number;
+
+  @ApiProperty()
+  unknown!: number;
+
+  @ApiPropertyOptional({ type: ClinicManagementComplianceNextExpirationDto })
+  nextExpiration?: ClinicManagementComplianceNextExpirationDto;
+
+  @ApiPropertyOptional({ type: [ClinicSecurityComplianceDocumentDto] })
+  documents?: ClinicSecurityComplianceDocumentDto[];
+}
+
+export class ClinicManagementCoverageSummaryDto {
+  @ApiProperty()
+  scheduled!: number;
+
+  @ApiProperty()
+  active!: number;
+
+  @ApiProperty()
+  completedLast30Days!: number;
+
+  @ApiPropertyOptional({ type: String })
+  lastUpdatedAt?: Date;
+}
+
 export class ClinicManagementClinicSummaryDto {
   @ApiProperty()
   clinicId!: string;
@@ -85,6 +143,12 @@ export class ClinicManagementClinicSummaryDto {
 
   @ApiPropertyOptional({ type: ClinicTemplatePropagationResponseDto })
   template?: ClinicTemplatePropagationResponseDto;
+
+  @ApiPropertyOptional({ type: ClinicManagementComplianceSummaryDto })
+  compliance?: ClinicManagementComplianceSummaryDto;
+
+  @ApiPropertyOptional({ type: ClinicManagementCoverageSummaryDto })
+  coverage?: ClinicManagementCoverageSummaryDto;
 }
 
 export class ClinicManagementFinancialSummaryDto {

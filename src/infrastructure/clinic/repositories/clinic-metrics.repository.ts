@@ -13,6 +13,7 @@ import {
   ClinicFinancialSnapshot,
   ClinicFinancialSummary,
   ClinicForecastProjection,
+  ClinicTrendDirection,
   TriggerClinicAlertInput,
 } from '../../../domain/clinic/types/clinic.types';
 import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
@@ -201,8 +202,24 @@ export class ClinicMetricsRepository implements IClinicMetricsRepository {
     entries.sort(
       (a, b) => this.metricValueByField(b, query.metric) - this.metricValueByField(a, query.metric),
     );
+
+    const metricValues = entries.map((entry) => this.metricValueByField(entry, query.metric));
+    const benchmarkAverage =
+      metricValues.length > 0
+        ? metricValues.reduce((sum, value) => sum + value, 0) / metricValues.length
+        : 0;
+
     entries.forEach((entry, index) => {
       entry.rankingPosition = index + 1;
+      const metricValue = metricValues[index];
+      const variation = this.metricVariationByField(entry, query.metric);
+      entry.trendPercentage = variation;
+      entry.trendDirection = this.resolveTrendDirection(variation);
+      entry.benchmarkValue = benchmarkAverage;
+      entry.benchmarkGapPercentage =
+        benchmarkAverage !== 0 ? ((metricValue - benchmarkAverage) / benchmarkAverage) * 100 : 0;
+      entry.benchmarkPercentile =
+        entries.length > 0 ? ((entries.length - index) / entries.length) * 100 : 0;
     });
 
     if (entries.length > 0) {
@@ -221,6 +238,10 @@ export class ClinicMetricsRepository implements IClinicMetricsRepository {
       entries.forEach((entry) => {
         entry.name = nameMap.get(entry.clinicId) ?? entry.clinicId;
       });
+    }
+
+    if (query.limit && query.limit > 0) {
+      return entries.slice(0, query.limit);
     }
 
     return entries;
@@ -450,6 +471,39 @@ export class ClinicMetricsRepository implements IClinicMetricsRepository {
       default:
         return entry.revenue;
     }
+  }
+
+  private metricVariationByField(
+    entry: ClinicComparisonEntry,
+    metric: ClinicComparisonQuery['metric'],
+  ): number {
+    switch (metric) {
+      case 'appointments':
+        return entry.appointmentsVariationPercentage;
+      case 'patients':
+        return entry.activePatientsVariationPercentage;
+      case 'occupancy':
+        return entry.occupancyVariationPercentage;
+      case 'satisfaction':
+        return entry.satisfactionVariationPercentage ?? 0;
+      default:
+        return entry.revenueVariationPercentage;
+    }
+  }
+
+  private resolveTrendDirection(change: number | undefined): ClinicTrendDirection {
+    if (change === undefined || Number.isNaN(change)) {
+      return 'stable';
+    }
+
+    const normalized = Number(change);
+    if (normalized > 0.1) {
+      return 'upward';
+    }
+    if (normalized < -0.1) {
+      return 'downward';
+    }
+    return 'stable';
   }
 
   private calculateVariation(current: number, previous?: number): number {

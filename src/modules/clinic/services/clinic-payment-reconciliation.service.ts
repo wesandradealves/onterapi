@@ -22,6 +22,7 @@ import {
 import { ClinicAuditService } from '../../../infrastructure/clinic/services/clinic-audit.service';
 import { parseClinicPaymentSettings } from '../utils/payment-settings.parser';
 import { extractClinicPaymentLedger } from '../utils/clinic-payment-ledger.util';
+import { extractAppointmentCoverageContext } from '../utils/clinic-appointment-metadata.util';
 import {
   ClinicPaymentChargebackEvent,
   ClinicPaymentFailedEvent,
@@ -232,6 +233,8 @@ export class ClinicPaymentReconciliationService {
 
     await this.persistLedger(appointment.id, nextLedger);
 
+    const { originalProfessionalId, coverageId } = extractAppointmentCoverageContext(appointment);
+
     await this.auditService.register({
       event: 'clinic.payment.settlement_recorded',
       tenantId: appointment.tenantId,
@@ -257,6 +260,8 @@ export class ClinicPaymentReconciliationService {
       tenantId: appointment.tenantId,
       clinicId: appointment.clinicId,
       professionalId: appointment.professionalId,
+      originalProfessionalId,
+      coverageId,
       patientId: appointment.patientId,
       holdId: appointment.holdId,
       serviceTypeId: appointment.serviceTypeId,

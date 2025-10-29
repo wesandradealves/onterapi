@@ -460,12 +460,33 @@ Use `AnamnesisMetricsService.getSnapshot([tenantId])` ou o endpoint `GET /anamne
   `CLINIC_CONFIGURATION_CACHE_TTL_SECONDS` ou `CLINIC_CONFIGURATION_CACHE_TTL_MS`.
 - Endpoint `GET /clinics/:clinicId/settings/template-overrides` lista overrides ativos e
   historicos por secao com paginacao e opcao de incluir registros superseded.
+- Exportacoes `GET /clinics/:clinicId/settings/template-overrides/export[.xls|.pdf]`
+  entregam CSV/Excel/PDF com paginacao segura, RBAC por papel e respeito ao escopo da clinica.
+- Exportacoes multi-clinica `GET /management/overview|comparisons|alerts/export[.xls|.pdf]`
+  entregam CSV/Excel/PDF e retornam 403 quando o `ClinicAccessService` identifica escopo nao autorizado.
+- `GET /management/professional-coverages` fornece listagem paginada de coberturas multi-clinica,
+  aplicando filtros de clinicas, profissionais, periodo e status com validação de escopo.
+- `GET /clinics/:clinicId/settings/security` e `PATCH /clinics/:clinicId/settings/security`
+  expoem a configuracao de seguranca (2FA obrigatorio por papel, politica de senhas,
+  sessao, alertas de login, restricoes de IP, auditoria e documentos de compliance),
+  sempre retornando payload normalizado e auditando a versao aplicada.
+- `POST /clinics/:clinicId/members/professional-coverages`, `GET
+  /clinics/:clinicId/members/professional-coverages`, `GET
+  /clinics/:clinicId/members/professional-coverages/export[.xls|.pdf]` e `PATCH
+  /clinics/:clinicId/members/professional-coverages/:coverageId/cancel` permitem criar,
+  listar, exportar (CSV/Excel/PDF) e cancelar coberturas temporárias de profissionais,
+  respeitando políticas da clínica, aplicando redistribuição imediata na agenda e
+  disparando notificações push/WhatsApp.
 - Convites com token de uso unico, TTL, resumo economico (tipos, preco, repasse
   fixo ou percentual), escopo de canais (`direct`/`marketplace`/`both`) e token
   vinculado ao profissional/email antes do aceite; aceite referencia a agenda do
   profissional, materializa a politica economica em `clinic_professional_policies`
   (snapshot por profissional/clinica/canal) e recusa gera auditoria
   (`clinic.invitation.declined`).
+- Endpoint `POST /clinics/:clinicId/invitations/addendums` gera aditivos economicos
+  para profissionais ativos, preserva historico de politicas com `effectiveAt`
+  opcional e expone o token do aditivo (mantendo o campo `metadata.kind` = `addendum`)
+  com auditoria `clinic.invitation.addendum_issued`.
 - Fluxo publico `POST /clinics/invitations/{invitationId}/onboarding` permite que
   profissionais convidados somente por email criem a conta (nome, CPF, senha) com
   rate limit configuravel; ao concluir o onboarding o endpoint retorna o snapshot
@@ -500,6 +521,9 @@ Use `AnamnesisMetricsService.getSnapshot([tenantId])` ou o endpoint `GET /anamne
   `skippedDetails` com clinica, tipo e motivo de cada alerta nao disparado.
 - Gestao multi-clinica com dashboard consolidado, comparativos, forecast,
   transferencias com data efetiva, export CSV/Excel/PDF e alertas push.
+  Exportacoes de coberturas temporarias estao disponiveis em
+  `/management/professional-coverages/export[.xls|.pdf]` com filtros por clinica,
+  profissionais, periodo e status, respeitando sempre o escopo autorizado.
 - RBAC multi-clinica (`ClinicScopeGuard` + `ClinicAccessService`), isolamento de
   dados e auditoria exportavel (`ClinicAuditController`).
 - Guia completo: ver `../docs/clinic-module-clarifications.md` (workspace externo)
@@ -511,6 +535,11 @@ Use `AnamnesisMetricsService.getSnapshot([tenantId])` ou o endpoint `GET /anamne
   receita/ocupacao conforme o perfil das clinicas. Logs aparecem como
   `Clinic alert monitor ...` e cada alerta ou motivo de skip e auditado em
   `clinic_audit_logs` (`clinic.alerts.*`).
+- `CLINIC_ALERT_COMPLIANCE_EXPIRY_DAYS` define a antecedencia (em dias) para sinalizar documentos de compliance prestes a expirar; padrao recomendado = 30.
+- `ClinicProfessionalCoverageWorkerService` utiliza
+  `CLINIC_COVERAGE_WORKER_ENABLED`, `CLINIC_COVERAGE_WORKER_INTERVAL_MS` e
+  `CLINIC_COVERAGE_WORKER_BATCH_LIMIT` para promover status `scheduled` -> `active`
+  -> `completed`, sempre registrando `clinic.staff.coverage_*` em auditoria.
 - `ClinicInvitationExpirationWorkerService` e ativado com
   `CLINIC_INVITATION_EXPIRATION_WORKER_ENABLED`; convites expirados geram
   `clinic.invitation.expired` com `performedBy=system:invitation-expiration-worker`,
@@ -588,6 +617,10 @@ CLINIC_ALERT_REVENUE_DROP_PERCENT=20
 CLINIC_ALERT_REVENUE_MIN=5000
 CLINIC_ALERT_OCCUPANCY_THRESHOLD=0.55
 CLINIC_ALERT_STAFF_MIN_PROFESSIONALS=0
+CLINIC_ALERT_COMPLIANCE_EXPIRY_DAYS=30
+CLINIC_COVERAGE_WORKER_ENABLED=false
+CLINIC_COVERAGE_WORKER_INTERVAL_MS=60000
+CLINIC_COVERAGE_WORKER_BATCH_LIMIT=50
 CLINIC_INVITATION_TOKEN_SECRET=changeme-dev-token-secret
 CLINIC_INVITATION_EXPIRATION_WORKER_ENABLED=false
 CLINIC_INVITATION_EXPIRATION_WORKER_INTERVAL_MS=300000
@@ -1080,3 +1113,5 @@ flowchart LR
 - **Token nao fornecido**: verifique header `Authorization: Bearer <accessToken>`.
 - **Tenant invalido**: sempre enviar o tenant real ou deixar o guard resolver via metadata. Execute `npm run assign-super-admin-tenant` apos criar/atualizar tenants internos para garantir que os SUPER_ADMIN recebam o tenant padrao.
 - **Emails/Resend**: conferir painel do Resend ou a caixa do destinat rio configurado para visualizar credenciais e c digos 2FA.
+
+

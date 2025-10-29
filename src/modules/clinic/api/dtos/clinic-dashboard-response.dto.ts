@@ -97,6 +97,21 @@ export class ClinicDashboardComparisonEntryDto {
 
   @ApiProperty()
   rankingPosition!: number;
+
+  @ApiProperty({ enum: ['upward', 'downward', 'stable'] })
+  trendDirection!: 'upward' | 'downward' | 'stable';
+
+  @ApiProperty()
+  trendPercentage!: number;
+
+  @ApiProperty()
+  benchmarkValue!: number;
+
+  @ApiProperty()
+  benchmarkGapPercentage!: number;
+
+  @ApiProperty()
+  benchmarkPercentile!: number;
 }
 
 export class ClinicDashboardComparisonMetricDto {

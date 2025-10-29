@@ -13,6 +13,7 @@ export const propagateClinicTemplateSchema = z.object({
         'payments',
         'integrations',
         'notifications',
+        'security',
         'branding',
       ]),
     )

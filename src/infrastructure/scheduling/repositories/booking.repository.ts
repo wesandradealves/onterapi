@@ -215,6 +215,90 @@ export class BookingRepository implements IBookingRepository {
     return this.loadBookingDomainOrThrow(tenantId, bookingId);
   }
 
+  async reassignForCoverage(params: {
+    tenantId: string;
+    clinicId: string;
+    originalProfessionalId: string;
+    coverageProfessionalId: string;
+    coverageId: string;
+    startAtUtc: Date;
+    endAtUtc: Date;
+  }): Promise<Booking[]> {
+    const entities = await this.repository
+      .createQueryBuilder('booking')
+      .where('booking.tenant_id = :tenantId', { tenantId: params.tenantId })
+      .andWhere('booking.clinic_id = :clinicId', { clinicId: params.clinicId })
+      .andWhere('booking.professional_id = :professionalId', {
+        professionalId: params.originalProfessionalId,
+      })
+      .andWhere('booking.status IN (:...statuses)', { statuses: ['scheduled', 'confirmed'] })
+      .andWhere('booking.start_at_utc < :endAt', { endAt: params.endAtUtc })
+      .andWhere('booking.end_at_utc > :startAt', { startAt: params.startAtUtc })
+      .getMany();
+
+    const updated: Booking[] = [];
+
+    for (const entity of entities) {
+      if (entity.coverageId && entity.coverageId !== params.coverageId) {
+        continue;
+      }
+
+      const alreadyAssigned =
+        entity.coverageId === params.coverageId &&
+        entity.professionalId === params.coverageProfessionalId;
+
+      if (alreadyAssigned) {
+        updated.push(mapBookingEntityToDomain(entity));
+        continue;
+      }
+
+      entity.originalProfessionalId = entity.originalProfessionalId ?? entity.professionalId;
+      entity.professionalId = params.coverageProfessionalId;
+      entity.coverageId = params.coverageId;
+
+      const saved = await this.repository.save(entity);
+      updated.push(mapBookingEntityToDomain(saved));
+    }
+
+    return updated;
+  }
+
+  async releaseCoverageAssignments(params: {
+    tenantId: string;
+    clinicId: string;
+    coverageId: string;
+    referenceUtc: Date;
+    originalProfessionalId: string;
+    coverageProfessionalId: string;
+  }): Promise<Booking[]> {
+    const entities = await this.repository
+      .createQueryBuilder('booking')
+      .where('booking.tenant_id = :tenantId', { tenantId: params.tenantId })
+      .andWhere('booking.clinic_id = :clinicId', { clinicId: params.clinicId })
+      .andWhere('booking.coverage_id = :coverageId', { coverageId: params.coverageId })
+      .andWhere('booking.status IN (:...statuses)', { statuses: ['scheduled', 'confirmed'] })
+      .andWhere('booking.start_at_utc >= :reference', { reference: params.referenceUtc })
+      .getMany();
+
+    const updated: Booking[] = [];
+
+    for (const entity of entities) {
+      const fallbackProfessionalId = entity.originalProfessionalId ?? params.originalProfessionalId;
+
+      if (!fallbackProfessionalId) {
+        continue;
+      }
+
+      entity.professionalId = fallbackProfessionalId;
+      entity.coverageId = null;
+
+      const saved = await this.repository.save(entity);
+      updated.push(mapBookingEntityToDomain(saved));
+    }
+
+    return updated;
+  }
+
   private async loadBookingDomainOrThrow(tenantId: string, bookingId: string): Promise<Booking> {
     const entity = await this.repository.findOne({ where: { tenantId, id: bookingId } });
 

@@ -2,6 +2,7 @@ import {
   Clinic,
   ClinicAlert,
   ClinicAppointmentConfirmationResult,
+  ClinicComplianceDocumentStatus,
   ClinicConfigurationTelemetry,
   ClinicConfigurationVersion,
   ClinicDashboardComparison,
@@ -13,17 +14,20 @@ import {
   ClinicHold,
   ClinicInvitation,
   ClinicManagementClinicSummary,
+  ClinicManagementComplianceSummary,
+  ClinicManagementCoverageSummary,
   ClinicManagementOverview,
   ClinicManagementTemplateInfo,
   ClinicMember,
   ClinicPaymentLedger,
   ClinicPaymentLedgerEventEntry,
   ClinicPaymentSplitAllocation,
+  ClinicProfessionalCoverage,
   ClinicProfessionalPolicy,
-  ClinicTemplateOverride,
   ClinicProfessionalTransferResult,
   ClinicServiceCustomField,
   ClinicServiceTypeDefinition,
+  ClinicTemplateOverride,
   ClinicPaymentLedgerChargeback as DomainClinicPaymentLedgerChargeback,
   ClinicPaymentLedgerRefund as DomainClinicPaymentLedgerRefund,
   ClinicPaymentLedgerSettlement as DomainClinicPaymentLedgerSettlement,
@@ -62,6 +66,10 @@ import {
   ClinicInvitationOnboardingUserDto,
 } from '../dtos/clinic-invitation-onboarding-response.dto';
 import { ClinicMemberResponseDto } from '../dtos/clinic-member-response.dto';
+import {
+  ClinicProfessionalCoverageListResponseDto,
+  ClinicProfessionalCoverageResponseDto,
+} from '../dtos/clinic-professional-coverage-response.dto';
 import { ClinicHoldSettingsResponseDto } from '../dtos/clinic-hold-settings-response.dto';
 import { ClinicTeamSettingsResponseDto } from '../dtos/clinic-team-settings-response.dto';
 import {
@@ -87,6 +95,11 @@ import {
   ClinicNotificationSettingsTemplateVariableDto,
 } from '../dtos/clinic-notification-settings-response.dto';
 import { ClinicBrandingSettingsResponseDto } from '../dtos/clinic-branding-settings-response.dto';
+import {
+  ClinicSecurityComplianceDocumentDto,
+  ClinicSecurityComplianceSettingsDto,
+  ClinicSecuritySettingsResponseDto,
+} from '../dtos/clinic-security-settings-response.dto';
 import { ClinicPaymentLedgerListResponseDto } from '../dtos/clinic-payment-ledger-list-response.dto';
 import {
   ClinicPaymentLedgerChargebackDto,
@@ -106,6 +119,8 @@ import {
   ClinicManagementClinicFinancialsDto,
   ClinicManagementClinicMetricsDto,
   ClinicManagementClinicSummaryDto,
+  ClinicManagementComplianceSummaryDto,
+  ClinicManagementCoverageSummaryDto,
   ClinicManagementFinancialSummaryDto,
   ClinicManagementOverviewResponseDto,
   ClinicManagementTeamDistributionDto,
@@ -435,6 +450,23 @@ export class ClinicPresenter {
     };
   }
 
+  static securitySettings(version: ClinicConfigurationVersion): ClinicSecuritySettingsResponseDto {
+    return {
+      id: version.id,
+      clinicId: version.clinicId,
+      section: version.section,
+      version: version.version,
+      createdBy: version.createdBy,
+      createdAt: version.createdAt,
+      appliedAt: version.appliedAt ?? undefined,
+      notes: version.notes ?? undefined,
+      state: ClinicPresenter.resolveConfigurationState(version),
+      autoApply: version.autoApply,
+      telemetry: ClinicPresenter.mapTelemetry(version.telemetry),
+      payload: ClinicPresenter.mapSecuritySettingsPayload(version.payload ?? {}),
+    };
+  }
+
   static brandingSettings(version: ClinicConfigurationVersion): ClinicBrandingSettingsResponseDto {
     return {
       id: version.id,
@@ -631,6 +663,47 @@ export class ClinicPresenter {
       endedAt: member.endedAt ?? undefined,
       createdAt: member.createdAt,
       updatedAt: member.updatedAt,
+    };
+  }
+
+  static professionalCoverage(
+    coverage: ClinicProfessionalCoverage,
+  ): ClinicProfessionalCoverageResponseDto {
+    return {
+      id: coverage.id,
+      tenantId: coverage.tenantId,
+      clinicId: coverage.clinicId,
+      professionalId: coverage.professionalId,
+      coverageProfessionalId: coverage.coverageProfessionalId,
+      startAt: coverage.startAt,
+      endAt: coverage.endAt,
+      status: coverage.status,
+      reason: coverage.reason ?? undefined,
+      notes: coverage.notes ?? undefined,
+      metadata:
+        coverage.metadata && Object.keys(coverage.metadata).length > 0
+          ? coverage.metadata
+          : undefined,
+      createdBy: coverage.createdBy,
+      createdAt: coverage.createdAt,
+      updatedBy: coverage.updatedBy ?? undefined,
+      updatedAt: coverage.updatedAt,
+      cancelledAt: coverage.cancelledAt ?? undefined,
+      cancelledBy: coverage.cancelledBy ?? undefined,
+    };
+  }
+
+  static professionalCoverageList(input: {
+    data: ClinicProfessionalCoverage[];
+    total: number;
+    page: number;
+    limit: number;
+  }): ClinicProfessionalCoverageListResponseDto {
+    return {
+      data: input.data.map((coverage) => ClinicPresenter.professionalCoverage(coverage)),
+      total: input.total,
+      page: input.page,
+      limit: input.limit,
     };
   }
 
@@ -893,6 +966,8 @@ export class ClinicPresenter {
       alerts: summary.alerts.map((alert) => ClinicPresenter.alert(alert)),
       teamDistribution: ClinicPresenter.mapTeamDistribution(summary.teamDistribution),
       template: ClinicPresenter.mapManagementTemplateInfo(summary.template),
+      compliance: ClinicPresenter.mapManagementComplianceSummary(summary.compliance),
+      coverage: ClinicPresenter.mapManagementCoverageSummary(summary.coverage),
     };
   }
 
@@ -936,6 +1011,21 @@ export class ClinicPresenter {
       role: entry.role,
       count: entry.count,
     }));
+  }
+
+  private static mapManagementCoverageSummary(
+    coverage?: ClinicManagementCoverageSummary,
+  ): ClinicManagementCoverageSummaryDto | undefined {
+    if (!coverage) {
+      return undefined;
+    }
+
+    return {
+      scheduled: coverage.scheduled,
+      active: coverage.active,
+      completedLast30Days: coverage.completedLast30Days,
+      lastUpdatedAt: coverage.lastUpdatedAt,
+    };
   }
 
   private static mapManagementTemplateInfo(
@@ -982,6 +1072,51 @@ export class ClinicPresenter {
       lastPropagationAt: template.lastPropagationAt,
       lastTriggeredBy: template.lastTriggeredBy,
       sections,
+    };
+  }
+
+  private static mapManagementComplianceSummary(
+    compliance?: ClinicManagementComplianceSummary,
+  ): ClinicManagementComplianceSummaryDto | undefined {
+    if (!compliance) {
+      return undefined;
+    }
+
+    return {
+      total: compliance.total,
+      valid: compliance.valid,
+      expiring: compliance.expiring,
+      expired: compliance.expired,
+      missing: compliance.missing,
+      pending: compliance.pending,
+      review: compliance.review,
+      submitted: compliance.submitted,
+      unknown: compliance.unknown,
+      nextExpiration: compliance.nextExpiration
+        ? {
+            type: compliance.nextExpiration.type,
+            expiresAt: compliance.nextExpiration.expiresAt,
+          }
+        : undefined,
+      documents: compliance.documents.map((document) =>
+        ClinicPresenter.mapComplianceDocumentStatus(document),
+      ),
+    };
+  }
+
+  private static mapComplianceDocumentStatus(
+    document: ClinicComplianceDocumentStatus,
+  ): ClinicSecurityComplianceDocumentDto {
+    return {
+      id: document.id,
+      type: document.type,
+      name: document.name,
+      required: document.required,
+      status: document.status,
+      expiresAt: document.expiresAt ?? undefined,
+      metadata: document.metadata,
+      updatedAt: document.updatedAt ?? undefined,
+      updatedBy: document.updatedBy,
     };
   }
 
@@ -1663,6 +1798,162 @@ export class ClinicPresenter {
     };
   }
 
+  private static mapSecuritySettingsPayload(
+    raw: Record<string, unknown>,
+  ): ClinicSecuritySettingsResponseDto['payload'] {
+    const settings =
+      raw.securitySettings && typeof raw.securitySettings === 'object'
+        ? (raw.securitySettings as Record<string, unknown>)
+        : raw;
+
+    const asRecord = (value: unknown): Record<string, unknown> =>
+      value && typeof value === 'object' && !Array.isArray(value)
+        ? (value as Record<string, unknown>)
+        : {};
+
+    const toStringArray = (value: unknown): string[] =>
+      Array.isArray(value) ? value.map((item) => String(item)) : [];
+
+    const toNumber = (value: unknown): number => {
+      const parsed = Number(value);
+      return Number.isNaN(parsed) ? 0 : parsed;
+    };
+
+    const twoFactorRaw = asRecord(settings['twoFactor']);
+    const passwordPolicyRaw = asRecord(settings['passwordPolicy']);
+    const sessionRaw = asRecord(settings['session']);
+    const loginAlertsRaw = asRecord(settings['loginAlerts']);
+    const ipRestrictionsRaw = asRecord(settings['ipRestrictions']);
+    const auditRaw = asRecord(settings['audit']);
+    const complianceRaw = asRecord(settings['compliance']);
+    const complianceDocuments = ClinicPresenter.mapSecurityComplianceDocuments(
+      complianceRaw['documents'],
+    );
+
+    const metadataRaw = settings['metadata'];
+    const metadata =
+      metadataRaw && typeof metadataRaw === 'object' && !Array.isArray(metadataRaw)
+        ? (metadataRaw as Record<string, unknown>)
+        : undefined;
+
+    return {
+      twoFactor: {
+        enabled: Boolean(twoFactorRaw['enabled']),
+        requiredRoles: toStringArray(twoFactorRaw['requiredRoles']),
+        backupCodesEnabled: Boolean(twoFactorRaw['backupCodesEnabled']),
+      },
+      passwordPolicy: {
+        minLength: toNumber(passwordPolicyRaw['minLength']),
+        requireUppercase: Boolean(passwordPolicyRaw['requireUppercase']),
+        requireLowercase: Boolean(passwordPolicyRaw['requireLowercase']),
+        requireNumbers: Boolean(passwordPolicyRaw['requireNumbers']),
+        requireSpecialCharacters: Boolean(passwordPolicyRaw['requireSpecialCharacters']),
+      },
+      session: {
+        idleTimeoutMinutes: toNumber(sessionRaw['idleTimeoutMinutes']),
+        absoluteTimeoutMinutes: toNumber(sessionRaw['absoluteTimeoutMinutes']),
+      },
+      loginAlerts: {
+        email: Boolean(loginAlertsRaw['email']),
+        whatsapp: Boolean(loginAlertsRaw['whatsapp']),
+      },
+      ipRestrictions: {
+        enabled: Boolean(ipRestrictionsRaw['enabled']),
+        allowlist: toStringArray(ipRestrictionsRaw['allowlist']),
+        blocklist: toStringArray(ipRestrictionsRaw['blocklist']),
+      },
+      audit: {
+        retentionDays: toNumber(auditRaw['retentionDays']),
+        exportEnabled: Boolean(auditRaw['exportEnabled']),
+      },
+      compliance:
+        complianceDocuments.length > 0
+          ? ({ documents: complianceDocuments } as ClinicSecurityComplianceSettingsDto)
+          : undefined,
+      metadata,
+    };
+  }
+
+  private static mapSecurityComplianceDocuments(
+    raw: unknown,
+  ): ClinicSecurityComplianceDocumentDto[] {
+    if (!Array.isArray(raw)) {
+      return [];
+    }
+
+    const documents: ClinicSecurityComplianceDocumentDto[] = [];
+
+    raw.forEach((entry) => {
+      const mapped = ClinicPresenter.mapSecurityComplianceDocument(entry);
+      if (mapped) {
+        documents.push(mapped);
+      }
+    });
+
+    return documents;
+  }
+
+  private static mapSecurityComplianceDocument(
+    raw: unknown,
+  ): ClinicSecurityComplianceDocumentDto | null {
+    if (!raw || typeof raw !== 'object') {
+      return null;
+    }
+
+    const record = raw as Record<string, unknown>;
+    const typeValue = record.type;
+
+    if (typeof typeValue !== 'string' || typeValue.trim().length === 0) {
+      return null;
+    }
+
+    const document: ClinicSecurityComplianceDocumentDto = {
+      type: typeValue.trim(),
+    };
+
+    if (typeof record.id === 'string' && record.id.trim().length > 0) {
+      document.id = record.id.trim();
+    }
+
+    if (typeof record.name === 'string' && record.name.trim().length > 0) {
+      document.name = record.name.trim();
+    }
+
+    if (typeof record.status === 'string' && record.status.trim().length > 0) {
+      document.status = record.status.trim();
+    }
+
+    if (typeof record.required === 'boolean') {
+      document.required = record.required;
+    }
+
+    if (record.expiresAt === null) {
+      document.expiresAt = null;
+    } else if (typeof record.expiresAt === 'string') {
+      const parsed = new Date(record.expiresAt);
+      if (!Number.isNaN(parsed.getTime())) {
+        document.expiresAt = parsed;
+      }
+    }
+
+    if (record.metadata && typeof record.metadata === 'object' && !Array.isArray(record.metadata)) {
+      document.metadata = JSON.parse(JSON.stringify(record.metadata)) as Record<string, unknown>;
+    }
+
+    if (typeof record.updatedAt === 'string') {
+      const parsedUpdated = new Date(record.updatedAt);
+      if (!Number.isNaN(parsedUpdated.getTime())) {
+        document.updatedAt = parsedUpdated;
+      }
+    }
+
+    if (typeof record.updatedBy === 'string' && record.updatedBy.trim().length > 0) {
+      document.updatedBy = record.updatedBy.trim();
+    }
+
+    return document;
+  }
+
   private static mapNotificationSettingsPayload(
     raw: Record<string, unknown>,
   ): ClinicNotificationSettingsResponseDto['payload'] {
@@ -1909,9 +2200,9 @@ export class ClinicPresenter {
       appliedConfigurationVersionId: override.appliedConfigurationVersionId ?? undefined,
       createdBy: override.createdBy,
       createdAt: override.createdAt,
-      supersededAt: override.supersededAt ?? undefined,
-      supersededBy: override.supersededBy ?? undefined,
-      updatedAt: override.updatedAt ?? undefined,
+      supersededAt: override.supersededAt,
+      supersededBy: override.supersededBy,
+      updatedAt: override.updatedAt,
     };
   }
 

@@ -300,9 +300,7 @@ export class CreateHoldUseCase
       return { professionalId: params.professionalId };
     }
 
-    const [selected] = [...coverages].sort(
-      (a, b) => a.startAt.getTime() - b.startAt.getTime(),
-    );
+    const [selected] = [...coverages].sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
 
     if (
       !selected ||

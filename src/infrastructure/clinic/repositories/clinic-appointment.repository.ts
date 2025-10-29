@@ -192,6 +192,122 @@ export class ClinicAppointmentRepository implements IClinicAppointmentRepository
     return ClinicMapper.toAppointment(saved);
   }
 
+  async reassignForCoverage(params: {
+    tenantId: string;
+    clinicId: string;
+    originalProfessionalId: string;
+    coverageProfessionalId: string;
+    coverageId: string;
+    start: Date;
+    end: Date;
+  }): Promise<ClinicAppointment[]> {
+    const entities = await this.repository
+      .createQueryBuilder('appointment')
+      .where('appointment.tenant_id = :tenantId', { tenantId: params.tenantId })
+      .andWhere('appointment.clinic_id = :clinicId', { clinicId: params.clinicId })
+      .andWhere('appointment.professional_id = :professionalId', {
+        professionalId: params.originalProfessionalId,
+      })
+      .andWhere('appointment.status IN (:...statuses)', { statuses: ['scheduled', 'confirmed'] })
+      .andWhere('appointment.start_at < :endAt', { endAt: params.end })
+      .andWhere('appointment.end_at > :startAt', { startAt: params.start })
+      .getMany();
+
+    const updated: ClinicAppointment[] = [];
+
+    for (const entity of entities) {
+      const metadata =
+        entity.metadata && typeof entity.metadata === 'object'
+          ? { ...(entity.metadata as Record<string, unknown>) }
+          : {};
+
+      const alreadyAssigned =
+        metadata.coverage &&
+        typeof metadata.coverage === 'object' &&
+        (metadata.coverage as Record<string, unknown>).coverageId === params.coverageId &&
+        entity.professionalId === params.coverageProfessionalId;
+
+      if (alreadyAssigned) {
+        updated.push(ClinicMapper.toAppointment(entity));
+        continue;
+      }
+
+      metadata.coverage = {
+        coverageId: params.coverageId,
+        originalProfessionalId: params.originalProfessionalId,
+        coverageProfessionalId: params.coverageProfessionalId,
+        status: 'active',
+        startAt: params.start.toISOString(),
+        endAt: params.end.toISOString(),
+      };
+
+      entity.metadata = metadata;
+      entity.professionalId = params.coverageProfessionalId;
+
+      const saved = await this.repository.save(entity);
+      updated.push(ClinicMapper.toAppointment(saved));
+    }
+
+    return updated;
+  }
+
+  async releaseCoverageAssignments(params: {
+    tenantId: string;
+    clinicId: string;
+    coverageId: string;
+    reference: Date;
+    originalProfessionalId: string;
+    coverageProfessionalId: string;
+  }): Promise<ClinicAppointment[]> {
+    const entities = await this.repository
+      .createQueryBuilder('appointment')
+      .where('appointment.tenant_id = :tenantId', { tenantId: params.tenantId })
+      .andWhere('appointment.clinic_id = :clinicId', { clinicId: params.clinicId })
+      .andWhere("appointment.metadata -> 'coverage' ->> 'coverageId' = :coverageId", {
+        coverageId: params.coverageId,
+      })
+      .andWhere('appointment.start_at >= :reference', { reference: params.reference })
+      .getMany();
+
+    const updated: ClinicAppointment[] = [];
+
+    for (const entity of entities) {
+      const metadata =
+        entity.metadata && typeof entity.metadata === 'object'
+          ? { ...(entity.metadata as Record<string, unknown>) }
+          : {};
+
+      const coverageMetadata =
+        metadata.coverage && typeof metadata.coverage === 'object'
+          ? ({ ...(metadata.coverage as Record<string, unknown>) } as Record<string, unknown>)
+          : undefined;
+
+      const fallbackProfessionalId =
+        (coverageMetadata?.originalProfessionalId as string | undefined) ??
+        params.originalProfessionalId;
+
+      if (!fallbackProfessionalId) {
+        continue;
+      }
+
+      if (coverageMetadata) {
+        coverageMetadata.status = 'completed';
+        coverageMetadata.completedAt = params.reference.toISOString();
+        metadata.coverage = coverageMetadata;
+      } else {
+        delete metadata.coverage;
+      }
+
+      entity.professionalId = fallbackProfessionalId;
+      entity.metadata = metadata;
+
+      const saved = await this.repository.save(entity);
+      updated.push(ClinicMapper.toAppointment(saved));
+    }
+
+    return updated;
+  }
+
   async updateMetadata(params: {
     appointmentId: string;
     metadataPatch: Record<string, unknown>;

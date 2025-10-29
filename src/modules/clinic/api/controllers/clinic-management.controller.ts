@@ -36,9 +36,11 @@ import { ClinicPresenter } from '../presenters/clinic.presenter';
 import {
   ClinicAlertEvaluationResponseDto,
   ClinicDashboardAlertDto,
+  ClinicDashboardComparisonDto,
 } from '../dtos/clinic-dashboard-response.dto';
 import { ClinicProfessionalTransferResponseDto } from '../dtos/clinic-professional-transfer-response.dto';
 import { ClinicManagementOverviewResponseDto } from '../dtos/clinic-management-overview-response.dto';
+import { ClinicProfessionalCoverageListResponseDto } from '../dtos/clinic-professional-coverage-response.dto';
 import {
   transferClinicProfessionalSchema,
   TransferClinicProfessionalSchema,
@@ -47,6 +49,7 @@ import {
   ClinicRequestContext,
   toClinicManagementAlertsQuery,
   toClinicManagementOverviewQuery,
+  toCompareClinicsQuery,
   toEvaluateClinicAlertsInput,
   toResolveClinicAlertInput,
   toTransferClinicProfessionalInput,
@@ -56,9 +59,14 @@ import {
   GetClinicManagementOverviewSchema,
 } from '../schemas/get-clinic-management-overview.schema';
 import {
+  exportClinicProfessionalCoveragesSchema,
+  ExportClinicProfessionalCoveragesSchema,
+} from '../schemas/export-clinic-professional-coverages.schema';
+import {
   getClinicManagementAlertsSchema,
   GetClinicManagementAlertsSchema,
 } from '../schemas/get-clinic-management-alerts.schema';
+import { compareClinicsSchema, CompareClinicsSchema } from '../schemas/compare-clinics.schema';
 import {
   evaluateClinicAlertsSchema,
   EvaluateClinicAlertsSchema,
@@ -76,6 +84,14 @@ import {
   IGetClinicManagementOverviewUseCase as IGetClinicManagementOverviewUseCaseToken,
 } from '../../../../domain/clinic/interfaces/use-cases/get-clinic-management-overview.use-case.interface';
 import {
+  type ICompareClinicsUseCase,
+  ICompareClinicsUseCase as ICompareClinicsUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/compare-clinics.use-case.interface';
+import {
+  type IListClinicProfessionalCoveragesUseCase,
+  IListClinicProfessionalCoveragesUseCase as IListClinicProfessionalCoveragesUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/list-clinic-professional-coverages.use-case.interface';
+import {
   type IListClinicAlertsUseCase,
   IListClinicAlertsUseCase as IListClinicAlertsUseCaseToken,
 } from '../../../../domain/clinic/interfaces/use-cases/list-clinic-alerts.use-case.interface';
@@ -89,6 +105,10 @@ import {
 } from '../../../../domain/clinic/interfaces/use-cases/evaluate-clinic-alerts.use-case.interface';
 import { ClinicAccessService } from '../../services/clinic-access.service';
 import { ClinicManagementExportService } from '../../services/clinic-management-export.service';
+import {
+  ClinicComparisonEntry,
+  ClinicProfessionalCoverage,
+} from '../../../../domain/clinic/types/clinic.types';
 
 @ApiTags('Clinic Management')
 @ApiBearerAuth()
@@ -100,12 +120,16 @@ export class ClinicManagementController {
     private readonly transferClinicProfessionalUseCase: ITransferClinicProfessionalUseCase,
     @Inject(IGetClinicManagementOverviewUseCaseToken)
     private readonly getClinicManagementOverviewUseCase: IGetClinicManagementOverviewUseCase,
+    @Inject(ICompareClinicsUseCaseToken)
+    private readonly compareClinicsUseCase: ICompareClinicsUseCase,
     @Inject(IListClinicAlertsUseCaseToken)
     private readonly listClinicAlertsUseCase: IListClinicAlertsUseCase,
     @Inject(IResolveClinicAlertUseCaseToken)
     private readonly resolveClinicAlertUseCase: IResolveClinicAlertUseCase,
     @Inject(IEvaluateClinicAlertsUseCaseToken)
     private readonly evaluateClinicAlertsUseCase: IEvaluateClinicAlertsUseCase,
+    @Inject(IListClinicProfessionalCoveragesUseCaseToken)
+    private readonly listClinicProfessionalCoveragesUseCase: IListClinicProfessionalCoveragesUseCase,
     private readonly clinicAccessService: ClinicAccessService,
     private readonly exportService: ClinicManagementExportService,
   ) {}
@@ -187,6 +211,62 @@ export class ClinicManagementController {
     return ClinicPresenter.managementOverview(overview);
   }
 
+  @Get('comparisons')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Comparar desempenho de clinicas por periodo' })
+  @ApiQuery({
+    name: 'clinicIds',
+    required: false,
+    description: 'IDs de clinicas (UUIDs) separados por virgula ou multiplos parametros',
+    isArray: true,
+    type: String,
+  })
+  @ApiQuery({
+    name: 'metric',
+    required: false,
+    description: 'Metrica para comparacao',
+    enum: ['revenue', 'appointments', 'patients', 'occupancy', 'satisfaction'],
+  })
+  @ApiQuery({
+    name: 'from',
+    required: true,
+    description: 'Data inicial (ISO 8601)',
+  })
+  @ApiQuery({
+    name: 'to',
+    required: true,
+    description: 'Data final (ISO 8601)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Quantidade maxima de clinicas no ranking (1-200)',
+    type: Number,
+  })
+  @ApiResponse({ status: 200, type: ClinicDashboardComparisonDto })
+  async compareClinics(
+    @Query(new ZodValidationPipe(compareClinicsSchema)) query: CompareClinicsSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicDashboardComparisonDto> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const comparisonQuery = toCompareClinicsQuery(query, context);
+
+    const requestedClinicIds = comparisonQuery.clinicIds ?? query.clinicIds;
+    const authorizedClinicIds = await this.clinicAccessService.resolveAuthorizedClinicIds({
+      tenantId: context.tenantId,
+      user: currentUser,
+      requestedClinicIds,
+    });
+
+    if (authorizedClinicIds.length > 0) {
+      comparisonQuery.clinicIds = authorizedClinicIds;
+    }
+
+    const entries = await this.compareClinicsUseCase.executeOrThrow(comparisonQuery);
+
+    return this.buildComparisonDto(comparisonQuery, entries);
+  }
   @Get('overview/export')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
   @ApiOperation({ summary: 'Exportar visao consolidada das clinicas (CSV)' })
@@ -270,6 +350,195 @@ export class ClinicManagementController {
     res.send(csvLines.join('\n'));
   }
 
+  @Get('comparisons/export')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Exportar comparativo de desempenho das clinicas (CSV)' })
+  @ApiProduces('text/csv')
+  @ApiQuery({
+    name: 'clinicIds',
+    required: false,
+    description: 'IDs de clinicas (UUIDs) separados por virgula ou multiplos parametros',
+    isArray: true,
+    type: String,
+  })
+  @ApiQuery({
+    name: 'metric',
+    required: false,
+    description: 'Metrica para comparacao',
+    enum: ['revenue', 'appointments', 'patients', 'occupancy', 'satisfaction'],
+  })
+  @ApiQuery({
+    name: 'from',
+    required: true,
+    description: 'Data inicial (ISO 8601)',
+  })
+  @ApiQuery({
+    name: 'to',
+    required: true,
+    description: 'Data final (ISO 8601)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Quantidade maxima de clinicas no ranking (1-200)',
+    type: Number,
+  })
+  async exportComparisons(
+    @Query(new ZodValidationPipe(compareClinicsSchema)) query: CompareClinicsSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const comparisonQuery = toCompareClinicsQuery(query, context);
+
+    const requestedClinicIds = comparisonQuery.clinicIds ?? query.clinicIds;
+    const authorizedClinicIds = await this.clinicAccessService.resolveAuthorizedClinicIds({
+      tenantId: context.tenantId,
+      user: currentUser,
+      requestedClinicIds,
+    });
+
+    if (authorizedClinicIds.length > 0) {
+      comparisonQuery.clinicIds = authorizedClinicIds;
+    }
+
+    const entries = await this.compareClinicsUseCase.executeOrThrow(comparisonQuery);
+    const comparisonDto = this.buildComparisonDto(comparisonQuery, entries);
+    const csvLines = this.exportService.buildComparisonsCsv(comparisonDto);
+    const filename = `clinic-comparisons-${context.tenantId}-${Date.now()}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csvLines.join('\n'));
+  }
+
+  @Get('comparisons/export.xls')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Exportar comparativo de desempenho das clinicas (Excel)' })
+  @ApiProduces('application/vnd.ms-excel')
+  @ApiQuery({
+    name: 'clinicIds',
+    required: false,
+    description: 'IDs de clinicas (UUIDs) separados por virgula ou multiplos parametros',
+    isArray: true,
+    type: String,
+  })
+  @ApiQuery({
+    name: 'metric',
+    required: false,
+    description: 'Metrica para comparacao',
+    enum: ['revenue', 'appointments', 'patients', 'occupancy', 'satisfaction'],
+  })
+  @ApiQuery({
+    name: 'from',
+    required: true,
+    description: 'Data inicial (ISO 8601)',
+  })
+  @ApiQuery({
+    name: 'to',
+    required: true,
+    description: 'Data final (ISO 8601)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Quantidade maxima de clinicas no ranking (1-200)',
+    type: Number,
+  })
+  async exportComparisonsExcel(
+    @Query(new ZodValidationPipe(compareClinicsSchema)) query: CompareClinicsSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const comparisonQuery = toCompareClinicsQuery(query, context);
+
+    const requestedClinicIds = comparisonQuery.clinicIds ?? query.clinicIds;
+    const authorizedClinicIds = await this.clinicAccessService.resolveAuthorizedClinicIds({
+      tenantId: context.tenantId,
+      user: currentUser,
+      requestedClinicIds,
+    });
+
+    if (authorizedClinicIds.length > 0) {
+      comparisonQuery.clinicIds = authorizedClinicIds;
+    }
+
+    const entries = await this.compareClinicsUseCase.executeOrThrow(comparisonQuery);
+    const comparisonDto = this.buildComparisonDto(comparisonQuery, entries);
+    const workbook = await this.exportService.buildComparisonsExcel(comparisonDto);
+    const filename = `clinic-comparisons-${context.tenantId}-${Date.now()}.xls`;
+
+    res.setHeader('Content-Type', 'application/vnd.ms-excel');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(workbook);
+  }
+
+  @Get('comparisons/export.pdf')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Exportar comparativo de desempenho das clinicas (PDF)' })
+  @ApiProduces('application/pdf')
+  @ApiQuery({
+    name: 'clinicIds',
+    required: false,
+    description: 'IDs de clinicas (UUIDs) separados por virgula ou multiplos parametros',
+    isArray: true,
+    type: String,
+  })
+  @ApiQuery({
+    name: 'metric',
+    required: false,
+    description: 'Metrica para comparacao',
+    enum: ['revenue', 'appointments', 'patients', 'occupancy', 'satisfaction'],
+  })
+  @ApiQuery({
+    name: 'from',
+    required: true,
+    description: 'Data inicial (ISO 8601)',
+  })
+  @ApiQuery({
+    name: 'to',
+    required: true,
+    description: 'Data final (ISO 8601)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Quantidade maxima de clinicas no ranking (1-200)',
+    type: Number,
+  })
+  async exportComparisonsPdf(
+    @Query(new ZodValidationPipe(compareClinicsSchema)) query: CompareClinicsSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const comparisonQuery = toCompareClinicsQuery(query, context);
+
+    const requestedClinicIds = comparisonQuery.clinicIds ?? query.clinicIds;
+    const authorizedClinicIds = await this.clinicAccessService.resolveAuthorizedClinicIds({
+      tenantId: context.tenantId,
+      user: currentUser,
+      requestedClinicIds,
+    });
+
+    if (authorizedClinicIds.length > 0) {
+      comparisonQuery.clinicIds = authorizedClinicIds;
+    }
+
+    const entries = await this.compareClinicsUseCase.executeOrThrow(comparisonQuery);
+    const comparisonDto = this.buildComparisonDto(comparisonQuery, entries);
+    const pdfBuffer = await this.exportService.buildComparisonsPdf(comparisonDto);
+    const filename = `clinic-comparisons-${context.tenantId}-${Date.now()}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(pdfBuffer);
+  }
+
   @Get('overview/export.xls')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
   @ApiOperation({ summary: 'Exportar visao consolidada das clinicas (Excel)' })
@@ -303,6 +572,118 @@ export class ClinicManagementController {
     const filename = `clinic-management-overview-${context.tenantId}-${Date.now()}.xls`;
 
     res.setHeader('Content-Type', 'application/vnd.ms-excel');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
+  }
+
+  @Get('professional-coverages')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Listar coberturas temporarias de profissionais (multi-clinica)' })
+  @ApiProduces('application/json')
+  async listProfessionalCoverages(
+    @Query(new ZodValidationPipe(exportClinicProfessionalCoveragesSchema))
+    query: ExportClinicProfessionalCoveragesSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader: string | undefined,
+  ): Promise<ClinicProfessionalCoverageListResponseDto> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+
+    const requestedClinicIds = new Set<string>();
+    if (query.clinicIds && query.clinicIds.length > 0) {
+      query.clinicIds
+        .filter(
+          (clinicId): clinicId is string => typeof clinicId === 'string' && clinicId.length > 0,
+        )
+        .forEach((clinicId) => requestedClinicIds.add(clinicId));
+    }
+    if (query.clinicId) {
+      requestedClinicIds.add(query.clinicId);
+    }
+
+    const authorizedClinicIds = await this.clinicAccessService.resolveAuthorizedClinicIds({
+      tenantId: context.tenantId,
+      user: currentUser,
+      requestedClinicIds: requestedClinicIds.size > 0 ? Array.from(requestedClinicIds) : undefined,
+    });
+
+    const clinicIdsFilter = authorizedClinicIds.length > 0 ? authorizedClinicIds : query.clinicIds;
+
+    const result = await this.listClinicProfessionalCoveragesUseCase.executeOrThrow({
+      tenantId: context.tenantId,
+      clinicId: query.clinicId,
+      clinicIds: clinicIdsFilter,
+      professionalId: query.professionalId,
+      coverageProfessionalId: query.coverageProfessionalId,
+      statuses: query.statuses,
+      from: query.from ? new Date(query.from) : undefined,
+      to: query.to ? new Date(query.to) : undefined,
+      includeCancelled: query.includeCancelled ?? false,
+      page: query.page,
+      limit: query.limit,
+    });
+
+    return ClinicPresenter.professionalCoverageList(result);
+  }
+
+  @Get('professional-coverages/export')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Exportar coberturas temporarias de profissionais (multi-clinica)' })
+  @ApiProduces('text/csv')
+  async exportProfessionalCoverages(
+    @Query(new ZodValidationPipe(exportClinicProfessionalCoveragesSchema))
+    query: ExportClinicProfessionalCoveragesSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const coverages = await this.collectProfessionalCoveragesForExport(query, context, currentUser);
+    const csvLines = this.exportService.buildProfessionalCoveragesCsv(coverages);
+    const filename = `clinic-professional-coverages-${context.tenantId}-${Date.now()}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csvLines.join('\n'));
+  }
+
+  @Get('professional-coverages/export.xls')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Exportar coberturas temporarias de profissionais (Excel)' })
+  @ApiProduces('application/vnd.ms-excel')
+  async exportProfessionalCoveragesExcel(
+    @Query(new ZodValidationPipe(exportClinicProfessionalCoveragesSchema))
+    query: ExportClinicProfessionalCoveragesSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const coverages = await this.collectProfessionalCoveragesForExport(query, context, currentUser);
+    const buffer = await this.exportService.buildProfessionalCoveragesExcel(coverages);
+    const filename = `clinic-professional-coverages-${context.tenantId}-${Date.now()}.xls`;
+
+    res.setHeader('Content-Type', 'application/vnd.ms-excel');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
+  }
+
+  @Get('professional-coverages/export.pdf')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Exportar coberturas temporarias de profissionais (PDF)' })
+  @ApiProduces('application/pdf')
+  async exportProfessionalCoveragesPdf(
+    @Query(new ZodValidationPipe(exportClinicProfessionalCoveragesSchema))
+    query: ExportClinicProfessionalCoveragesSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const coverages = await this.collectProfessionalCoveragesForExport(query, context, currentUser);
+    const buffer = await this.exportService.buildProfessionalCoveragesPdf(coverages);
+    const filename = `clinic-professional-coverages-${context.tenantId}-${Date.now()}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(buffer);
   }
@@ -529,6 +910,89 @@ export class ClinicManagementController {
     };
   }
 
+  private resolvePreviousPeriod(start: Date, end: Date): { start: Date; end: Date } {
+    const normalizedStart = new Date(start);
+    const normalizedEnd = new Date(end);
+    const duration = Math.max(normalizedEnd.getTime() - normalizedStart.getTime(), 0);
+    const previousPeriodEnd = new Date(normalizedStart.getTime() - 1);
+    const previousPeriodStart = new Date(previousPeriodEnd.getTime() - duration);
+
+    if (previousPeriodStart > previousPeriodEnd) {
+      return {
+        start: previousPeriodEnd,
+        end: previousPeriodStart,
+      };
+    }
+
+    return {
+      start: previousPeriodStart,
+      end: previousPeriodEnd,
+    };
+  }
+
+  private async collectProfessionalCoveragesForExport(
+    query: ExportClinicProfessionalCoveragesSchema,
+    context: ClinicRequestContext,
+    currentUser: ICurrentUser,
+  ): Promise<ClinicProfessionalCoverage[]> {
+    const requestedClinicIdsSet = new Set<string>();
+    if (query.clinicIds && query.clinicIds.length > 0) {
+      query.clinicIds.forEach((clinicId) => requestedClinicIdsSet.add(clinicId));
+    }
+    if (query.clinicId) {
+      requestedClinicIdsSet.add(query.clinicId);
+    }
+
+    const requestedClinicIds =
+      requestedClinicIdsSet.size > 0 ? Array.from(requestedClinicIdsSet) : undefined;
+
+    const authorizedClinicIds = await this.clinicAccessService.resolveAuthorizedClinicIds({
+      tenantId: context.tenantId,
+      user: currentUser,
+      requestedClinicIds,
+    });
+
+    const clinicIdFilter =
+      query.clinicId && authorizedClinicIds.includes(query.clinicId) ? query.clinicId : undefined;
+
+    const baseQuery = {
+      tenantId: context.tenantId,
+      clinicIds: authorizedClinicIds.length > 0 ? authorizedClinicIds : undefined,
+      clinicId: clinicIdFilter,
+      professionalId: query.professionalId,
+      coverageProfessionalId: query.coverageProfessionalId,
+      statuses: query.statuses,
+      from: query.from ? new Date(query.from) : undefined,
+      to: query.to ? new Date(query.to) : undefined,
+      includeCancelled: query.includeCancelled ?? false,
+    };
+
+    const limit = query.limit && query.limit > 0 ? Math.min(Math.floor(query.limit), 200) : 200;
+    let page = query.page && query.page > 0 ? Math.floor(query.page) : 1;
+
+    const coverages: ClinicProfessionalCoverage[] = [];
+    let total = 0;
+
+    do {
+      const result = await this.listClinicProfessionalCoveragesUseCase.executeOrThrow({
+        ...baseQuery,
+        page,
+        limit,
+      });
+
+      total = result.total;
+      coverages.push(...result.data);
+
+      if (coverages.length >= total || result.data.length === 0) {
+        break;
+      }
+
+      page += 1;
+    } while (coverages.length < total);
+
+    return coverages;
+  }
+
   private resolveContext(currentUser: ICurrentUser, tenantId?: string): ClinicRequestContext {
     const resolvedTenantId = tenantId ?? currentUser.tenantId;
 
@@ -539,6 +1003,25 @@ export class ClinicManagementController {
     return {
       tenantId: resolvedTenantId,
       userId: currentUser.id,
+    };
+  }
+
+  private buildComparisonDto(
+    query: ReturnType<typeof toCompareClinicsQuery>,
+    entries: ClinicComparisonEntry[],
+  ): ClinicDashboardComparisonDto {
+    return {
+      period: {
+        start: new Date(query.period.start),
+        end: new Date(query.period.end),
+      },
+      previousPeriod: this.resolvePreviousPeriod(query.period.start, query.period.end),
+      metrics: [
+        {
+          metric: query.metric,
+          entries: entries.map((entry) => ({ ...entry })),
+        },
+      ],
     };
   }
 }

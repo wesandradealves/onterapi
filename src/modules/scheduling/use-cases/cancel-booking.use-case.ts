@@ -62,6 +62,9 @@ export class CancelBookingUseCase
       cancellationReason: reason ?? null,
     });
 
+    const originalProfessionalId = booking.originalProfessionalId ?? null;
+    const coverageId = booking.coverageId ?? null;
+
     await this.messageBus.publish(
       DomainEvents.schedulingBookingCancelled(bookingId, {
         tenantId,
@@ -70,6 +73,8 @@ export class CancelBookingUseCase
         patientId: booking.patientId,
         cancelledBy: requesterId,
         reason: reason ?? undefined,
+        originalProfessionalId: originalProfessionalId ?? undefined,
+        coverageId: coverageId ?? undefined,
       }),
     );
 

@@ -1,5 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
+import { ConfigService } from '@nestjs/config';
+
 import { BaseUseCase } from '../../../shared/use-cases/base.use-case';
 import {
   type IClinicMetricsRepository,
@@ -14,6 +16,14 @@ import {
   IClinicMemberRepository as IClinicMemberRepositoryToken,
 } from '../../../domain/clinic/interfaces/repositories/clinic-member.repository.interface';
 import {
+  type IClinicProfessionalCoverageRepository,
+  IClinicProfessionalCoverageRepository as IClinicProfessionalCoverageRepositoryToken,
+} from '../../../domain/clinic/interfaces/repositories/clinic-professional-coverage.repository.interface';
+import {
+  type ICompareClinicsUseCase,
+  ICompareClinicsUseCase as ICompareClinicsUseCaseToken,
+} from '../../../domain/clinic/interfaces/use-cases/compare-clinics.use-case.interface';
+import {
   type IGetClinicManagementOverviewUseCase,
   IGetClinicManagementOverviewUseCase as IGetClinicManagementOverviewUseCaseToken,
 } from '../../../domain/clinic/interfaces/use-cases/get-clinic-management-overview.use-case.interface';
@@ -21,6 +31,7 @@ import {
   Clinic,
   ClinicAlert,
   ClinicComparisonQuery,
+  ClinicComplianceDocumentStatus,
   ClinicDashboardComparison,
   ClinicDashboardForecast,
   ClinicDashboardMetric,
@@ -29,11 +40,14 @@ import {
   ClinicFinancialSnapshot,
   ClinicFinancialSummary,
   ClinicManagementClinicSummary,
+  ClinicManagementComplianceSummary,
+  ClinicManagementCoverageSummary,
   ClinicManagementOverview,
   ClinicManagementOverviewQuery,
   ClinicManagementTeamDistributionEntry,
   ClinicManagementTemplateInfo,
   ClinicManagementTemplateSectionInfo,
+  ClinicProfessionalCoverageClinicSummary,
   ClinicStaffRole,
 } from '../../../domain/clinic/types/clinic.types';
 import { RolesEnum } from '../../../domain/auth/enums/roles.enum';
@@ -72,6 +86,11 @@ export class GetClinicManagementOverviewUseCase
     private readonly clinicRepository: IClinicRepository,
     @Inject(IClinicMemberRepositoryToken)
     private readonly clinicMemberRepository: IClinicMemberRepository,
+    @Inject(IClinicProfessionalCoverageRepositoryToken)
+    private readonly clinicProfessionalCoverageRepository: IClinicProfessionalCoverageRepository,
+    @Inject(ICompareClinicsUseCaseToken)
+    private readonly compareClinicsUseCase: ICompareClinicsUseCase,
+    private readonly configService: ConfigService,
   ) {
     super();
   }
@@ -107,6 +126,14 @@ export class GetClinicManagementOverviewUseCase
       ? await this.resolveTeamDistributions(Array.from(allowedClinicIds))
       : new Map<string, Record<ClinicStaffRole, number>>();
 
+    const includeCoverageSummary = query.includeCoverageSummary ?? true;
+    const coverageSummaries = includeCoverageSummary
+      ? await this.resolveCoverageSummaries({
+          tenantId: query.tenantId,
+          clinicIds: Array.from(allowedClinicIds),
+        })
+      : new Map<string, ClinicManagementCoverageSummary>();
+
     const includeAlerts = query.includeAlerts ?? true;
     const filteredAlerts = includeAlerts
       ? snapshot.alerts.filter((alert) => allowedClinicIds.has(alert.clinicId))
@@ -114,6 +141,17 @@ export class GetClinicManagementOverviewUseCase
     const alertsByClinic = includeAlerts
       ? this.groupAlertsByClinic(filteredAlerts)
       : new Map<string, ClinicAlert[]>();
+
+    const complianceDocumentsRecord =
+      (await this.clinicRepository.listComplianceDocuments({
+        tenantId: query.tenantId,
+        clinicIds: Array.from(allowedClinicIds),
+      })) ?? {};
+    const complianceThresholdDays = this.resolveComplianceExpiryThreshold();
+    const complianceSummaries = this.buildComplianceSummaries(
+      complianceDocumentsRecord,
+      complianceThresholdDays,
+    );
 
     const clinicSummaries = await Promise.all(
       clinics.map(async (clinic) => {
@@ -127,6 +165,8 @@ export class GetClinicManagementOverviewUseCase
           teamDistribution: includeTeamDistribution
             ? this.normalizeTeamDistribution(teamDistributions.get(clinic.id))
             : undefined,
+          compliance: complianceSummaries.get(clinic.id),
+          coverage: includeCoverageSummary ? coverageSummaries.get(clinic.id) : undefined,
         });
       }),
     );
@@ -285,6 +325,37 @@ export class GetClinicManagementOverviewUseCase
     return new Map(entries);
   }
 
+  private async resolveCoverageSummaries(params: {
+    tenantId: string;
+    clinicIds: string[];
+  }): Promise<Map<string, ClinicManagementCoverageSummary>> {
+    if (params.clinicIds.length === 0) {
+      return new Map();
+    }
+
+    const entries = await this.clinicProfessionalCoverageRepository.getClinicCoverageSummaries({
+      tenantId: params.tenantId,
+      clinicIds: params.clinicIds,
+      reference: new Date(),
+    });
+
+    return this.buildCoverageSummaries(entries);
+  }
+
+  private buildCoverageSummaries(
+    entries: ClinicProfessionalCoverageClinicSummary[],
+  ): Map<string, ClinicManagementCoverageSummary> {
+    return entries.reduce<Map<string, ClinicManagementCoverageSummary>>((acc, entry) => {
+      acc.set(entry.clinicId, {
+        scheduled: entry.scheduled,
+        active: entry.active,
+        completedLast30Days: entry.completedLast30Days,
+        lastUpdatedAt: entry.lastUpdatedAt,
+      });
+      return acc;
+    }, new Map<string, ClinicManagementCoverageSummary>());
+  }
+
   private groupAlertsByClinic(alerts: ClinicAlert[]): Map<string, ClinicAlert[]> {
     return alerts.reduce<Map<string, ClinicAlert[]>>((acc, alert) => {
       const clinicAlerts = acc.get(alert.clinicId) ?? [];
@@ -351,7 +422,7 @@ export class GetClinicManagementOverviewUseCase
 
     const metricSnapshots = await Promise.all(
       metrics.map(async (metric) => {
-        const entries = await this.clinicMetricsRepository.getComparison({
+        const entries = await this.compareClinicsUseCase.executeOrThrow({
           tenantId: query.tenantId,
           clinicIds: query.filters?.clinicIds,
           metric,
@@ -472,12 +543,117 @@ export class GetClinicManagementOverviewUseCase
     return parsed;
   }
 
+  private resolveComplianceExpiryThreshold(): number {
+    const raw = this.configService.get<string | number>('CLINIC_ALERT_COMPLIANCE_EXPIRY_DAYS');
+    const parsed = typeof raw === 'string' ? Number(raw) : raw;
+
+    if (typeof parsed === 'number' && Number.isFinite(parsed) && parsed >= 0) {
+      return parsed;
+    }
+
+    return 30;
+  }
+
+  private buildComplianceSummaries(
+    record: Record<string, ClinicComplianceDocumentStatus[]>,
+    thresholdDays: number,
+  ): Map<string, ClinicManagementComplianceSummary> {
+    const summaries = new Map<string, ClinicManagementComplianceSummary>();
+
+    Object.entries(record ?? {}).forEach(([clinicId, documents]) => {
+      const summary = this.buildComplianceSummary(documents ?? [], thresholdDays);
+      if (summary) {
+        summaries.set(clinicId, summary);
+      }
+    });
+
+    return summaries;
+  }
+
+  private buildComplianceSummary(
+    documents: ClinicComplianceDocumentStatus[],
+    thresholdDays: number,
+  ): ClinicManagementComplianceSummary | undefined {
+    if (!documents || documents.length === 0) {
+      return undefined;
+    }
+
+    const now = new Date();
+    const summary: ClinicManagementComplianceSummary = {
+      total: documents.length,
+      valid: 0,
+      expiring: 0,
+      expired: 0,
+      missing: 0,
+      pending: 0,
+      review: 0,
+      submitted: 0,
+      unknown: 0,
+      documents,
+    };
+
+    let nextExpiration: { type: string; expiresAt: Date } | undefined;
+
+    documents.forEach((document) => {
+      let status = document.status ?? 'unknown';
+      const expiresAt = document.expiresAt instanceof Date ? document.expiresAt : undefined;
+
+      if (expiresAt && expiresAt.getTime() < now.getTime()) {
+        status = 'expired';
+      }
+
+      switch (status) {
+        case 'valid':
+          summary.valid += 1;
+          break;
+        case 'pending':
+          summary.pending += 1;
+          break;
+        case 'review':
+          summary.review += 1;
+          break;
+        case 'submitted':
+          summary.submitted += 1;
+          break;
+        case 'missing':
+          summary.missing += 1;
+          break;
+        case 'expired':
+          summary.expired += 1;
+          break;
+        default:
+          summary.unknown += 1;
+          break;
+      }
+
+      if (expiresAt && expiresAt.getTime() >= now.getTime()) {
+        const diffDays = Math.floor((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (diffDays <= thresholdDays) {
+          summary.expiring += 1;
+        }
+
+        if (!nextExpiration || expiresAt < nextExpiration.expiresAt) {
+          nextExpiration = { type: document.type, expiresAt };
+        }
+      }
+    });
+
+    if (nextExpiration) {
+      summary.nextExpiration = nextExpiration;
+    }
+
+    return summary;
+  }
+
   private async buildClinicSummary(params: {
     clinic: Clinic;
     metrics: AggregatedClinicMetrics;
     financial?: ClinicFinancialSnapshot;
     alerts: ClinicAlert[];
     teamDistribution?: ClinicManagementTeamDistributionEntry[];
+    compliance?: ClinicManagementComplianceSummary;
+    coverage?: ClinicManagementCoverageSummary;
   }): Promise<ClinicManagementClinicSummary> {
     const occupancyRate =
       params.metrics.periods > 0 ? params.metrics.occupancyTotal / params.metrics.periods : 0;
@@ -511,6 +687,8 @@ export class GetClinicManagementOverviewUseCase
       alerts: params.alerts,
       teamDistribution: params.teamDistribution,
       template,
+      compliance: params.compliance,
+      coverage: params.coverage,
     };
   }
 

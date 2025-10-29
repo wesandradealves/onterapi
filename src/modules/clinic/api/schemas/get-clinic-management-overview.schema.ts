@@ -51,6 +51,9 @@ export const getClinicManagementOverviewSchema = z.object({
     .preprocess((value) => toBoolean(value), z.boolean().optional())
     .optional(),
   includeFinancials: z.preprocess((value) => toBoolean(value), z.boolean().optional()).optional(),
+  includeCoverageSummary: z
+    .preprocess((value) => toBoolean(value), z.boolean().optional())
+    .optional(),
 });
 
 export type GetClinicManagementOverviewSchema = z.infer<typeof getClinicManagementOverviewSchema>;

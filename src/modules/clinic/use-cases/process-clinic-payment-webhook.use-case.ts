@@ -29,6 +29,7 @@ import {
   mapAsaasEventToPaymentStatus,
   mapAsaasPaymentStatus,
 } from '../utils/asaas-payment-status.mapper';
+import { extractAppointmentCoverageContext } from '../utils/clinic-appointment-metadata.util';
 
 @Injectable()
 export class ProcessClinicPaymentWebhookUseCase
@@ -91,6 +92,8 @@ export class ProcessClinicPaymentWebhookUseCase
         'Nenhum agendamento encontrado para o pagamento informado',
       );
     }
+
+    const { originalProfessionalId, coverageId } = extractAppointmentCoverageContext(appointment);
 
     const previousStatus = appointment.paymentStatus;
 
@@ -173,6 +176,8 @@ export class ProcessClinicPaymentWebhookUseCase
           tenantId: appointment.tenantId,
           clinicId: appointment.clinicId,
           professionalId: appointment.professionalId,
+          originalProfessionalId: originalProfessionalId ?? undefined,
+          coverageId: coverageId ?? undefined,
           patientId: appointment.patientId,
           holdId: appointment.holdId,
           serviceTypeId: appointment.serviceTypeId,
@@ -196,6 +201,8 @@ export class ProcessClinicPaymentWebhookUseCase
             tenantId: appointment.tenantId,
             clinicId: appointment.clinicId,
             professionalId: appointment.professionalId,
+            originalProfessionalId: originalProfessionalId ?? undefined,
+            coverageId: coverageId ?? undefined,
             patientId: appointment.patientId,
             holdId: appointment.holdId,
             serviceTypeId: appointment.serviceTypeId,
@@ -215,6 +222,8 @@ export class ProcessClinicPaymentWebhookUseCase
             tenantId: appointment.tenantId,
             clinicId: appointment.clinicId,
             professionalId: appointment.professionalId,
+            originalProfessionalId: originalProfessionalId ?? undefined,
+            coverageId: coverageId ?? undefined,
             patientId: appointment.patientId,
             holdId: appointment.holdId,
             serviceTypeId: appointment.serviceTypeId,
@@ -234,6 +243,8 @@ export class ProcessClinicPaymentWebhookUseCase
             tenantId: appointment.tenantId,
             clinicId: appointment.clinicId,
             professionalId: appointment.professionalId,
+            originalProfessionalId: originalProfessionalId ?? undefined,
+            coverageId: coverageId ?? undefined,
             patientId: appointment.patientId,
             holdId: appointment.holdId,
             serviceTypeId: appointment.serviceTypeId,
@@ -253,6 +264,8 @@ export class ProcessClinicPaymentWebhookUseCase
             tenantId: appointment.tenantId,
             clinicId: appointment.clinicId,
             professionalId: appointment.professionalId,
+            originalProfessionalId: originalProfessionalId ?? undefined,
+            coverageId: coverageId ?? undefined,
             patientId: appointment.patientId,
             holdId: appointment.holdId,
             serviceTypeId: appointment.serviceTypeId,

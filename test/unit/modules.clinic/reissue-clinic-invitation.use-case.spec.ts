@@ -57,6 +57,7 @@ describe('ReissueClinicInvitationUseCase', () => {
     } as unknown as jest.Mocked<ClinicAuditService>;
 
     tokenService = {
+      assertSecretConfigured: jest.fn(),
       generateToken: jest.fn().mockReturnValue({
         token: 'new-token',
         hash: 'hash-new',

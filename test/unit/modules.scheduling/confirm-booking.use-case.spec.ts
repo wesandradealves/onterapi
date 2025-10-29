@@ -16,6 +16,8 @@ function baseBooking() {
     id: 'booking-1',
     tenantId: 'tenant-1',
     professionalId: 'prof-1',
+    originalProfessionalId: null,
+    coverageId: null,
     clinicId: 'clinic-1',
     patientId: 'patient-1',
     source: 'clinic_portal',
@@ -132,6 +134,43 @@ describe('ConfirmBookingUseCase', () => {
         aggregateId: 'booking-1',
       }),
     );
+  });
+
+  it('propaga dados de cobertura ao confirmar agendamento coberto', async () => {
+    const booking = createBooking({
+      professionalId: 'prof-cover',
+      originalProfessionalId: 'prof-owner',
+      coverageId: 'coverage-1',
+    });
+    const hold = {
+      id: 'hold-1',
+      tenantId: 'tenant-1',
+      clinicId: 'clinic-1',
+      professionalId: 'prof-cover',
+      patientId: 'patient-1',
+      serviceTypeId: 'service-1',
+      startAtUtc: booking.startAtUtc,
+      endAtUtc: booking.endAtUtc,
+      ttlExpiresAtUtc: new Date('2025-10-08T09:55:00Z'),
+      status: 'active',
+      createdAt: new Date('2025-10-08T09:00:00Z'),
+      updatedAt: new Date('2025-10-08T09:00:00Z'),
+      version: 1,
+    };
+
+    bookingRepository.findById.mockResolvedValue(booking);
+    holdRepository.findById.mockResolvedValue(hold);
+    bookingRepository.updateStatus.mockResolvedValue({
+      ...booking,
+      status: 'confirmed',
+      paymentStatus: 'approved',
+    });
+
+    await useCase.executeOrThrow(createInput());
+
+    const event = messageBus.publish.mock.calls[0][0];
+    expect(event.payload.originalProfessionalId).toBe('prof-owner');
+    expect(event.payload.coverageId).toBe('coverage-1');
   });
 
   it('lan a not found quando o agendamento n o existe', async () => {

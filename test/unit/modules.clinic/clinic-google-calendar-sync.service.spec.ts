@@ -55,6 +55,7 @@ describe('ClinicGoogleCalendarSyncService', () => {
 
     clinicRepository = {
       findById: jest.fn().mockResolvedValue(null),
+      listComplianceDocuments: jest.fn().mockResolvedValue({}),
     } as unknown as Mocked<IClinicRepository>;
 
     patientRepository = {

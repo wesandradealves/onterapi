@@ -63,6 +63,7 @@ describe('PropagateClinicTemplateUseCase', () => {
       setCurrentConfigurationVersion: jest.fn(),
       updateTemplatePropagationMetadata: jest.fn(),
       updateTemplateOverrideMetadata: jest.fn(),
+      listComplianceDocuments: jest.fn(),
     } as unknown as Mocked<IClinicRepository>;
 
     configurationRepository = {

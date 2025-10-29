@@ -19,7 +19,7 @@ interface InvitationTokenPayload {
 @Injectable()
 export class ClinicInvitationTokenService {
   private readonly logger = new Logger(ClinicInvitationTokenService.name);
-  private readonly secret: string | null;
+  private secret: string | null;
   private readonly maxAttempts: number;
   private readonly windowMs: number;
   private readonly blockDurationMs: number;
@@ -30,24 +30,18 @@ export class ClinicInvitationTokenService {
 
   constructor(@Inject(ConfigService) private readonly configService: ConfigService) {
     const configuredSecret = this.configService.get<string>('CLINIC_INVITATION_TOKEN_SECRET');
+    const trimmedSecret = configuredSecret?.trim();
 
-    this.secret =
-      configuredSecret && configuredSecret.trim().length > 0
-        ? configuredSecret.trim()
-        : null;
-
-    if (!this.secret) {
+    if (trimmedSecret && trimmedSecret.length > 0) {
+      this.secret = trimmedSecret;
+    } else {
+      this.secret = null;
       this.logger.error(
         'CLINIC_INVITATION_TOKEN_SECRET nao configurado. Convites permanecerao bloqueados ate que o segredo seja definido.',
       );
     }
 
-    this.maxAttempts = this.resolveNumber(
-      'CLINIC_INVITATION_TOKEN_MAX_ATTEMPTS',
-      5,
-      1,
-      100,
-    );
+    this.maxAttempts = this.resolveNumber('CLINIC_INVITATION_TOKEN_MAX_ATTEMPTS', 5, 1, 100);
     this.windowMs = this.resolveNumber(
       'CLINIC_INVITATION_TOKEN_WINDOW_MS',
       10 * 60_000,
@@ -163,6 +157,10 @@ export class ClinicInvitationTokenService {
 
   hash(token: string): string {
     return createHash('sha256').update(token).digest('hex');
+  }
+
+  assertSecretConfigured(): void {
+    this.ensureSecret();
   }
 
   private sign(content: string): string {

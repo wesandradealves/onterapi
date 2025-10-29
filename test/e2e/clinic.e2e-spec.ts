@@ -8,6 +8,8 @@ import { ClinicInvitationController } from '@modules/clinic/api/controllers/clin
 import { ClinicHoldController } from '@modules/clinic/api/controllers/clinic-hold.controller';
 import { ClinicAuditController } from '@modules/clinic/api/controllers/clinic-audit.controller';
 import { ClinicMemberController } from '@modules/clinic/api/controllers/clinic-member.controller';
+import { ClinicConfigurationExportService } from '@modules/clinic/services/clinic-configuration-export.service';
+import { ClinicManagementExportService } from '@modules/clinic/services/clinic-management-export.service';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@modules/auth/guards/roles.guard';
 import { ClinicScopeGuard } from '@modules/clinic/guards/clinic-scope.guard';
@@ -15,6 +17,7 @@ import { ClinicAccessService } from '@modules/clinic/services/clinic-access.serv
 import { RolesEnum } from '@domain/auth/enums/roles.enum';
 import { ICurrentUser } from '@domain/auth/interfaces/current-user.interface';
 import {
+  CancelClinicProfessionalCoverageInput,
   CheckClinicProfessionalFinancialClearanceInput,
   Clinic,
   ClinicAppointmentConfirmationResult,
@@ -27,15 +30,17 @@ import {
   ClinicInvitationEconomicSummary,
   ClinicMember,
   ClinicOverbookingReviewInput,
+  ClinicProfessionalCoverage,
   ClinicProfessionalFinancialClearanceStatus,
   ClinicProfessionalPolicy,
   ClinicStaffRole,
-  ClinicTemplatePropagationInput,
-  ClinicTemplateOverride,
   ClinicTemplateOverrideListResult,
+  ClinicTemplatePropagationInput,
   CreateClinicInput,
-  ListClinicTemplateOverridesInput,
+  CreateClinicProfessionalCoverageInput,
   DeclineClinicInvitationInput,
+  ListClinicProfessionalCoveragesQuery,
+  ListClinicTemplateOverridesInput,
 } from '@domain/clinic/types/clinic.types';
 import { IListClinicsUseCase as IListClinicsUseCaseToken } from '@domain/clinic/interfaces/use-cases/list-clinics.use-case.interface';
 import { IGetClinicUseCase as IGetClinicUseCaseToken } from '@domain/clinic/interfaces/use-cases/get-clinic.use-case.interface';
@@ -65,6 +70,10 @@ import { IUpdateClinicNotificationSettingsUseCase as IUpdateClinicNotificationSe
 import { IUpdateClinicBrandingSettingsUseCase as IUpdateClinicBrandingSettingsUseCaseToken } from '@domain/clinic/interfaces/use-cases/update-clinic-branding-settings.use-case.interface';
 import { IUpdateClinicScheduleSettingsUseCase as IUpdateClinicScheduleSettingsUseCaseToken } from '@domain/clinic/interfaces/use-cases/update-clinic-schedule-settings.use-case.interface';
 import {
+  IUpdateClinicSecuritySettingsUseCase as IUpdateClinicSecuritySettingsUseCaseToken,
+  UpdateClinicSecuritySettingsInput,
+} from '@domain/clinic/interfaces/use-cases/update-clinic-security-settings.use-case.interface';
+import {
   GetClinicScheduleSettingsInput,
   IGetClinicScheduleSettingsUseCase as IGetClinicScheduleSettingsUseCaseToken,
 } from '@domain/clinic/interfaces/use-cases/get-clinic-schedule-settings.use-case.interface';
@@ -88,6 +97,10 @@ import {
   GetClinicBrandingSettingsInput,
   IGetClinicBrandingSettingsUseCase as IGetClinicBrandingSettingsUseCaseToken,
 } from '@domain/clinic/interfaces/use-cases/get-clinic-branding-settings.use-case.interface';
+import {
+  GetClinicSecuritySettingsInput,
+  IGetClinicSecuritySettingsUseCase as IGetClinicSecuritySettingsUseCaseToken,
+} from '@domain/clinic/interfaces/use-cases/get-clinic-security-settings.use-case.interface';
 import { IPropagateClinicTemplateUseCase as IPropagateClinicTemplateUseCaseToken } from '@domain/clinic/interfaces/use-cases/propagate-clinic-template.use-case.interface';
 import { IListClinicTemplateOverridesUseCase as IListClinicTemplateOverridesUseCaseToken } from '@domain/clinic/interfaces/use-cases/list-clinic-template-overrides.use-case.interface';
 import {
@@ -95,6 +108,10 @@ import {
   InviteClinicProfessionalInput,
 } from '@domain/clinic/interfaces/use-cases/invite-clinic-professional.use-case.interface';
 import { IListClinicInvitationsUseCase as IListClinicInvitationsUseCaseToken } from '@domain/clinic/interfaces/use-cases/list-clinic-invitations.use-case.interface';
+import {
+  CreateClinicInvitationAddendumInput,
+  ICreateClinicInvitationAddendumUseCase as ICreateClinicInvitationAddendumUseCaseToken,
+} from '@domain/clinic/interfaces/use-cases/create-clinic-invitation-addendum.use-case.interface';
 import {
   AcceptClinicInvitationInput,
   IAcceptClinicInvitationUseCase as IAcceptClinicInvitationUseCaseToken,
@@ -118,6 +135,9 @@ import {
 import { IListClinicMembersUseCase as IListClinicMembersUseCaseToken } from '@domain/clinic/interfaces/use-cases/list-clinic-members.use-case.interface';
 import { IManageClinicMemberUseCase as IManageClinicMemberUseCaseToken } from '@domain/clinic/interfaces/use-cases/manage-clinic-member.use-case.interface';
 import { ICheckClinicProfessionalFinancialClearanceUseCase as ICheckClinicProfessionalFinancialClearanceUseCaseToken } from '@domain/clinic/interfaces/use-cases/check-clinic-professional-financial-clearance.use-case.interface';
+import { ICreateClinicProfessionalCoverageUseCase as ICreateClinicProfessionalCoverageUseCaseToken } from '@domain/clinic/interfaces/use-cases/create-clinic-professional-coverage.use-case.interface';
+import { IListClinicProfessionalCoveragesUseCase as IListClinicProfessionalCoveragesUseCaseToken } from '@domain/clinic/interfaces/use-cases/list-clinic-professional-coverages.use-case.interface';
+import { ICancelClinicProfessionalCoverageUseCase as ICancelClinicProfessionalCoverageUseCaseToken } from '@domain/clinic/interfaces/use-cases/cancel-clinic-professional-coverage.use-case.interface';
 import {
   GetClinicProfessionalPolicyInput,
   IGetClinicProfessionalPolicyUseCase as IGetClinicProfessionalPolicyUseCaseToken,
@@ -302,6 +322,14 @@ describe('Clinic module (e2e)', () => {
   const notificationSettingsUseCase = createUseCaseMock<unknown, ClinicConfigurationVersion>();
   const brandingSettingsUseCase = createUseCaseMock<unknown, ClinicConfigurationVersion>();
   const scheduleSettingsUseCase = createUseCaseMock<unknown, ClinicConfigurationVersion>();
+  const getSecuritySettingsUseCase = createUseCaseMock<
+    GetClinicSecuritySettingsInput,
+    ClinicConfigurationVersion
+  >();
+  const updateSecuritySettingsUseCase = createUseCaseMock<
+    UpdateClinicSecuritySettingsInput,
+    ClinicConfigurationVersion
+  >();
 
   const inviteUseCase = createUseCaseMock<InviteClinicProfessionalInput, ClinicInvitation>();
   const listInvitationsUseCase = createUseCaseMock<
@@ -322,6 +350,10 @@ describe('Clinic module (e2e)', () => {
   >();
   const declineInvitationUseCase = createUseCaseMock<
     DeclineClinicInvitationInput,
+    ClinicInvitation
+  >();
+  const createInvitationAddendumUseCase = createUseCaseMock<
+    CreateClinicInvitationAddendumInput,
     ClinicInvitation
   >();
 
@@ -347,6 +379,23 @@ describe('Clinic module (e2e)', () => {
   const getProfessionalPolicyUseCase = createUseCaseMock<
     GetClinicProfessionalPolicyInput,
     ClinicProfessionalPolicy
+  >();
+  const createProfessionalCoverageUseCase = createUseCaseMock<
+    CreateClinicProfessionalCoverageInput,
+    ClinicProfessionalCoverage
+  >();
+  const listProfessionalCoveragesUseCase = createUseCaseMock<
+    ListClinicProfessionalCoveragesQuery,
+    {
+      data: ClinicProfessionalCoverage[];
+      total: number;
+      page: number;
+      limit: number;
+    }
+  >();
+  const cancelProfessionalCoverageUseCase = createUseCaseMock<
+    CancelClinicProfessionalCoverageInput,
+    ClinicProfessionalCoverage
   >();
 
   beforeAll(async () => {
@@ -388,6 +437,7 @@ describe('Clinic module (e2e)', () => {
           useValue: getNotificationSettingsUseCase,
         },
         { provide: IGetClinicBrandingSettingsUseCaseToken, useValue: getBrandingSettingsUseCase },
+        { provide: IGetClinicSecuritySettingsUseCaseToken, useValue: getSecuritySettingsUseCase },
         { provide: IUpdateClinicHoldSettingsUseCaseToken, useValue: holdSettingsUseCase },
         { provide: IUpdateClinicServiceSettingsUseCaseToken, useValue: serviceSettingsUseCase },
         { provide: IUpdateClinicPaymentSettingsUseCaseToken, useValue: paymentSettingsUseCase },
@@ -401,12 +451,20 @@ describe('Clinic module (e2e)', () => {
         },
         { provide: IUpdateClinicBrandingSettingsUseCaseToken, useValue: brandingSettingsUseCase },
         { provide: IUpdateClinicScheduleSettingsUseCaseToken, useValue: scheduleSettingsUseCase },
+        {
+          provide: IUpdateClinicSecuritySettingsUseCaseToken,
+          useValue: updateSecuritySettingsUseCase,
+        },
         { provide: IInviteClinicProfessionalUseCaseToken, useValue: inviteUseCase },
         { provide: IListClinicInvitationsUseCaseToken, useValue: listInvitationsUseCase },
         { provide: IAcceptClinicInvitationUseCaseToken, useValue: acceptInvitationUseCase },
         { provide: IRevokeClinicInvitationUseCaseToken, useValue: revokeInvitationUseCase },
         { provide: IReissueClinicInvitationUseCaseToken, useValue: reissueInvitationUseCase },
         { provide: IDeclineClinicInvitationUseCaseToken, useValue: declineInvitationUseCase },
+        {
+          provide: ICreateClinicInvitationAddendumUseCaseToken,
+          useValue: createInvitationAddendumUseCase,
+        },
         { provide: ICreateClinicHoldUseCaseToken, useValue: createHoldUseCase },
         { provide: IProcessClinicOverbookingUseCaseToken, useValue: processOverbookingUseCase },
         { provide: IConfirmClinicAppointmentUseCaseToken, useValue: confirmAppointmentUseCase },
@@ -421,6 +479,20 @@ describe('Clinic module (e2e)', () => {
           provide: IGetClinicProfessionalPolicyUseCaseToken,
           useValue: getProfessionalPolicyUseCase,
         },
+        {
+          provide: ICreateClinicProfessionalCoverageUseCaseToken,
+          useValue: createProfessionalCoverageUseCase,
+        },
+        {
+          provide: IListClinicProfessionalCoveragesUseCaseToken,
+          useValue: listProfessionalCoveragesUseCase,
+        },
+        {
+          provide: ICancelClinicProfessionalCoverageUseCaseToken,
+          useValue: cancelProfessionalCoverageUseCase,
+        },
+        ClinicConfigurationExportService,
+        ClinicManagementExportService,
         { provide: ClinicAccessService, useValue: clinicAccessService },
       ],
     })
@@ -459,6 +531,7 @@ describe('Clinic module (e2e)', () => {
       getIntegrationSettingsUseCase,
       getNotificationSettingsUseCase,
       getBrandingSettingsUseCase,
+      getSecuritySettingsUseCase,
       updateGeneralSettingsUseCase,
       propagateTemplateUseCase,
       listTemplateOverridesUseCase,
@@ -469,12 +542,14 @@ describe('Clinic module (e2e)', () => {
       notificationSettingsUseCase,
       brandingSettingsUseCase,
       scheduleSettingsUseCase,
+      updateSecuritySettingsUseCase,
       inviteUseCase,
       listInvitationsUseCase,
       acceptInvitationUseCase,
       revokeInvitationUseCase,
       reissueInvitationUseCase,
       declineInvitationUseCase,
+      createInvitationAddendumUseCase,
       createHoldUseCase,
       processOverbookingUseCase,
       confirmAppointmentUseCase,
@@ -483,6 +558,9 @@ describe('Clinic module (e2e)', () => {
       manageMemberUseCase,
       checkFinancialClearanceUseCase,
       getProfessionalPolicyUseCase,
+      createProfessionalCoverageUseCase,
+      listProfessionalCoveragesUseCase,
+      cancelProfessionalCoverageUseCase,
     ].forEach((mock) => {
       mock.execute.mockReset();
       mock.executeOrThrow.mockReset();

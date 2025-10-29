@@ -3,6 +3,8 @@ import {
   ClinicAlert,
   ClinicAppointment,
   ClinicAppointmentChannel,
+  ClinicComplianceDocumentStatus,
+  ClinicComplianceStatus,
   ClinicConfigurationSection,
   ClinicConfigurationState,
   ClinicConfigurationTelemetry,
@@ -17,6 +19,7 @@ import {
   ClinicInvitationChannelScope,
   ClinicInvitationEconomicSummary,
   ClinicMember,
+  ClinicProfessionalCoverage,
   ClinicProfessionalPolicy,
   ClinicServiceTypeDefinition,
   ClinicTemplateOverride,
@@ -34,6 +37,7 @@ import { ClinicMemberEntity } from '../entities/clinic-member.entity';
 import { ClinicServiceTypeEntity } from '../entities/clinic-service-type.entity';
 import { ClinicTemplateOverrideEntity } from '../entities/clinic-template-override.entity';
 import { ClinicProfessionalPolicyEntity } from '../entities/clinic-professional-policy.entity';
+import { ClinicProfessionalCoverageEntity } from '../entities/clinic-professional-coverage.entity';
 
 export class ClinicMapper {
   static toClinic(entity: ClinicEntity): Clinic {
@@ -71,6 +75,79 @@ export class ClinicMapper {
     };
   }
 
+  static extractComplianceDocuments(
+    metadata: Record<string, unknown> | undefined,
+  ): ClinicComplianceDocumentStatus[] {
+    if (!metadata || typeof metadata !== 'object') {
+      return [];
+    }
+
+    const complianceRaw = (metadata as Record<string, unknown>)['compliance'];
+    if (!complianceRaw || typeof complianceRaw !== 'object') {
+      return [];
+    }
+
+    const documentsRaw = (complianceRaw as Record<string, unknown>)['documents'];
+    if (!Array.isArray(documentsRaw)) {
+      return [];
+    }
+
+    const documents: ClinicComplianceDocumentStatus[] = [];
+
+    for (const rawDocument of documentsRaw) {
+      if (!rawDocument || typeof rawDocument !== 'object') {
+        continue;
+      }
+
+      const raw = rawDocument as Record<string, unknown>;
+      const typeValue = raw.type;
+      if (typeof typeValue !== 'string' || typeValue.trim().length === 0) {
+        continue;
+      }
+
+      const expiresAtRaw = raw.expiresAt ?? raw.expirationDate;
+      const expiresAt =
+        expiresAtRaw === null ? null : (ClinicMapper.toDate(expiresAtRaw as unknown) ?? undefined);
+
+      const required = typeof raw.required === 'boolean' ? raw.required : true;
+      const status = ClinicMapper.normalizeComplianceStatus(raw.status);
+      const id = typeof raw.id === 'string' && raw.id.trim().length > 0 ? raw.id.trim() : undefined;
+      const name =
+        typeof raw.name === 'string' && raw.name.trim().length > 0 ? raw.name.trim() : undefined;
+
+      const document: ClinicComplianceDocumentStatus = {
+        id,
+        type: typeValue.trim(),
+        name,
+        required,
+        status,
+      };
+
+      if (expiresAt !== undefined) {
+        document.expiresAt = expiresAt;
+      }
+
+      if (raw.metadata && typeof raw.metadata === 'object') {
+        document.metadata = JSON.parse(JSON.stringify(raw.metadata)) as Record<string, unknown>;
+      }
+
+      if (typeof raw.updatedAt === 'string') {
+        const parsedUpdatedAt = ClinicMapper.toDate(raw.updatedAt);
+        if (parsedUpdatedAt) {
+          document.updatedAt = parsedUpdatedAt;
+        }
+      }
+
+      if (typeof raw.updatedBy === 'string' && raw.updatedBy.trim().length > 0) {
+        document.updatedBy = raw.updatedBy.trim();
+      }
+
+      documents.push(document);
+    }
+
+    return documents;
+  }
+
   static toConfigurationVersion(
     entity: ClinicConfigurationVersionEntity,
   ): ClinicConfigurationVersion {
@@ -103,6 +180,30 @@ export class ClinicMapper {
       preferences: entity.preferences ?? {},
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
+    };
+  }
+
+  static toProfessionalCoverage(
+    entity: ClinicProfessionalCoverageEntity,
+  ): ClinicProfessionalCoverage {
+    return {
+      id: entity.id,
+      tenantId: entity.tenantId,
+      clinicId: entity.clinicId,
+      professionalId: entity.professionalId,
+      coverageProfessionalId: entity.coverageProfessionalId,
+      startAt: entity.startAt,
+      endAt: entity.endAt,
+      status: entity.status,
+      reason: entity.reason ?? undefined,
+      notes: entity.notes ?? undefined,
+      metadata: entity.metadata ?? {},
+      createdBy: entity.createdBy,
+      createdAt: entity.createdAt,
+      updatedBy: entity.updatedBy ?? undefined,
+      updatedAt: entity.updatedAt,
+      cancelledAt: entity.cancelledAt ?? undefined,
+      cancelledBy: entity.cancelledBy ?? undefined,
     };
   }
 
@@ -141,7 +242,7 @@ export class ClinicMapper {
       name: entity.name,
       slug: entity.slug,
       durationMinutes: entity.durationMinutes,
-      price: this.toNumber(entity.price),
+      price: ClinicMapper.toNumber(entity.price),
       currency: entity.currency as ClinicServiceTypeDefinition['currency'],
       isActive: entity.isActive,
       requiresAnamnesis: entity.requiresAnamnesis,
@@ -236,12 +337,12 @@ export class ClinicMapper {
     return {
       clinicId: entity.clinicId,
       month: entity.month,
-      revenue: this.toNumber(entity.revenue),
+      revenue: ClinicMapper.toNumber(entity.revenue),
       appointments: entity.appointments,
       activePatients: entity.activePatients,
-      occupancyRate: this.toNumber(entity.occupancyRate),
-      satisfactionScore: this.toNullableNumber(entity.satisfactionScore),
-      contributionMargin: this.toNullableNumber(entity.contributionMargin),
+      occupancyRate: ClinicMapper.toNumber(entity.occupancyRate),
+      satisfactionScore: ClinicMapper.toNullableNumber(entity.satisfactionScore),
+      contributionMargin: ClinicMapper.toNullableNumber(entity.contributionMargin),
     };
   }
 
@@ -249,19 +350,19 @@ export class ClinicMapper {
     return {
       clinicId: entity.clinicId,
       month: entity.month,
-      projectedRevenue: this.toNumber(entity.projectedRevenue),
+      projectedRevenue: ClinicMapper.toNumber(entity.projectedRevenue),
       projectedAppointments: entity.projectedAppointments,
-      projectedOccupancyRate: this.toNumber(entity.projectedOccupancyRate),
+      projectedOccupancyRate: ClinicMapper.toNumber(entity.projectedOccupancyRate),
     };
   }
 
   static toFinancialSnapshot(entity: ClinicFinancialSnapshotEntity): ClinicFinancialSnapshot {
     return {
       clinicId: entity.clinicId,
-      revenue: this.toNumber(entity.revenue),
-      expenses: this.toNumber(entity.expenses),
-      profit: this.toNumber(entity.profit),
-      margin: this.toNumber(entity.margin),
+      revenue: ClinicMapper.toNumber(entity.revenue),
+      expenses: ClinicMapper.toNumber(entity.expenses),
+      profit: ClinicMapper.toNumber(entity.profit),
+      margin: ClinicMapper.toNumber(entity.margin),
       contributionPercentage: 0,
     };
   }
@@ -423,6 +524,42 @@ export class ClinicMapper {
         JSON.stringify(economicSummary),
       ) as ClinicInvitationEconomicSummary,
     };
+  }
+
+  private static normalizeComplianceStatus(value: unknown): ClinicComplianceStatus | undefined {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+
+    const normalized = value.trim().toLowerCase();
+
+    switch (normalized) {
+      case 'valid':
+      case 'compliant':
+      case 'ok':
+        return 'valid';
+      case 'pending':
+      case 'awaiting':
+      case 'processing':
+        return 'pending';
+      case 'expired':
+      case 'expirado':
+        return 'expired';
+      case 'missing':
+      case 'absent':
+      case 'incomplete':
+        return 'missing';
+      case 'submitted':
+        return 'submitted';
+      case 'review':
+      case 'in_review':
+      case 'under_review':
+        return 'review';
+      case 'unknown':
+        return 'unknown';
+      default:
+        return 'unknown';
+    }
   }
 
   private static toDate(value: unknown): Date | undefined {

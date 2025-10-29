@@ -10,6 +10,8 @@ const baseBooking = (overrides: Partial<Booking> = {}): Booking => ({
   tenantId: 'tenant-1',
   clinicId: 'clinic-1',
   professionalId: 'professional-1',
+  originalProfessionalId: null,
+  coverageId: null,
   patientId: 'patient-1',
   source: 'clinic_portal',
   status: 'confirmed',
@@ -80,6 +82,9 @@ describe('MarkBookingNoShowUseCase', () => {
       markedAtUtc: markedAt,
     });
     expect(messageBus.publish).toHaveBeenCalled();
+    const event = messageBus.publish.mock.calls[0][0];
+    expect(event.payload.originalProfessionalId).toBeUndefined();
+    expect(event.payload.coverageId).toBeUndefined();
   });
 
   it('lanca not found quando o agendamento nao existe', async () => {
@@ -136,5 +141,32 @@ describe('MarkBookingNoShowUseCase', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(bookingRepository.markNoShow).not.toHaveBeenCalled();
+  });
+
+  it('propaga dados de cobertura quando marca no-show de agendamento coberto', async () => {
+    const booking = baseBooking({
+      professionalId: 'professional-cover',
+      originalProfessionalId: 'professional-owner',
+      coverageId: 'coverage-1',
+    });
+    bookingRepository.findById.mockResolvedValue(booking);
+    bookingRepository.markNoShow.mockResolvedValue({
+      ...booking,
+      status: 'no_show',
+      noShowMarkedAtUtc: new Date(),
+    });
+
+    await useCase.executeOrThrow({
+      tenantId: booking.tenantId,
+      bookingId: booking.id,
+      expectedVersion: booking.version,
+      markedAtUtc: new Date(),
+      requesterId: 'user-1',
+      requesterRole: 'CLINIC_OWNER',
+    });
+
+    const event = messageBus.publish.mock.calls[0][0];
+    expect(event.payload.originalProfessionalId).toBe('professional-owner');
+    expect(event.payload.coverageId).toBe('coverage-1');
   });
 });

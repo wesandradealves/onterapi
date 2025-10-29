@@ -4,16 +4,19 @@ import {
   Controller,
   Get,
   Headers,
+  HttpStatus,
   Inject,
   Param,
   Patch,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiParam,
+  ApiProduces,
   ApiQuery,
   ApiResponse,
   ApiTags,
@@ -38,9 +41,12 @@ import { ClinicServiceSettingsResponseDto } from '../dtos/clinic-service-setting
 import { ClinicIntegrationSettingsResponseDto } from '../dtos/clinic-integration-settings-response.dto';
 import { ClinicNotificationSettingsResponseDto } from '../dtos/clinic-notification-settings-response.dto';
 import { ClinicBrandingSettingsResponseDto } from '../dtos/clinic-branding-settings-response.dto';
+import { ClinicSecuritySettingsResponseDto } from '../dtos/clinic-security-settings-response.dto';
 import { ClinicSummaryDto } from '../dtos/clinic-summary.dto';
 import { ClinicTemplatePropagationResponseDto } from '../dtos/clinic-template-propagation-response.dto';
 import { ClinicTemplateOverrideListResponseDto } from '../dtos/clinic-template-overrides-response.dto';
+import { Response } from 'express';
+import { ClinicConfigurationExportService } from '../../services/clinic-configuration-export.service';
 import {
   updateClinicGeneralSettingsSchema,
   UpdateClinicGeneralSettingsSchema,
@@ -77,6 +83,10 @@ import {
   updateClinicBrandingSettingsSchema,
   UpdateClinicBrandingSettingsSchema,
 } from '../schemas/update-clinic-branding-settings.schema';
+import {
+  updateClinicSecuritySettingsSchema,
+  UpdateClinicSecuritySettingsSchema,
+} from '../schemas/update-clinic-security-settings.schema';
 import { ClinicScopeGuard } from '@modules/clinic/guards/clinic-scope.guard';
 import {
   propagateClinicTemplateSchema,
@@ -86,6 +96,7 @@ import {
   listClinicTemplateOverridesSchema,
   ListClinicTemplateOverridesSchema,
 } from '../schemas/list-clinic-template-overrides.schema';
+import { ClinicTemplateOverride } from '../../../../domain/clinic/types/clinic.types';
 import {
   ClinicRequestContext,
   toPropagateClinicTemplateInput,
@@ -96,6 +107,7 @@ import {
   toUpdateClinicNotificationSettingsInput,
   toUpdateClinicPaymentSettingsInput,
   toUpdateClinicScheduleSettingsInput,
+  toUpdateClinicSecuritySettingsInput,
   toUpdateClinicServiceSettingsInput,
   toUpdateClinicTeamSettingsInput,
 } from '../mappers/clinic-request.mapper';
@@ -179,6 +191,14 @@ import {
   type IGetClinicBrandingSettingsUseCase,
   IGetClinicBrandingSettingsUseCase as IGetClinicBrandingSettingsUseCaseToken,
 } from '../../../../domain/clinic/interfaces/use-cases/get-clinic-branding-settings.use-case.interface';
+import {
+  type IGetClinicSecuritySettingsUseCase,
+  IGetClinicSecuritySettingsUseCase as IGetClinicSecuritySettingsUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/get-clinic-security-settings.use-case.interface';
+import {
+  type IUpdateClinicSecuritySettingsUseCase,
+  IUpdateClinicSecuritySettingsUseCase as IUpdateClinicSecuritySettingsUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/update-clinic-security-settings.use-case.interface';
 
 @ApiTags('Clinics')
 @ApiBearerAuth()
@@ -200,6 +220,8 @@ export class ClinicConfigurationController {
     private readonly updateClinicIntegrationSettingsUseCase: IUpdateClinicIntegrationSettingsUseCase,
     @Inject(IUpdateClinicNotificationSettingsUseCaseToken)
     private readonly updateClinicNotificationSettingsUseCase: IUpdateClinicNotificationSettingsUseCase,
+    @Inject(IUpdateClinicSecuritySettingsUseCaseToken)
+    private readonly updateClinicSecuritySettingsUseCase: IUpdateClinicSecuritySettingsUseCase,
     @Inject(IUpdateClinicBrandingSettingsUseCaseToken)
     private readonly updateClinicBrandingSettingsUseCase: IUpdateClinicBrandingSettingsUseCase,
     @Inject(IUpdateClinicScheduleSettingsUseCaseToken)
@@ -220,12 +242,15 @@ export class ClinicConfigurationController {
     private readonly getClinicIntegrationSettingsUseCase: IGetClinicIntegrationSettingsUseCase,
     @Inject(IGetClinicNotificationSettingsUseCaseToken)
     private readonly getClinicNotificationSettingsUseCase: IGetClinicNotificationSettingsUseCase,
+    @Inject(IGetClinicSecuritySettingsUseCaseToken)
+    private readonly getClinicSecuritySettingsUseCase: IGetClinicSecuritySettingsUseCase,
     @Inject(IGetClinicBrandingSettingsUseCaseToken)
     private readonly getClinicBrandingSettingsUseCase: IGetClinicBrandingSettingsUseCase,
     @Inject(IListClinicTemplateOverridesUseCaseToken)
     private readonly listClinicTemplateOverridesUseCase: IListClinicTemplateOverridesUseCase,
     @Inject(IGetClinicUseCaseToken)
     private readonly getClinicUseCase: IGetClinicUseCase,
+    private readonly configurationExportService: ClinicConfigurationExportService,
   ) {}
 
   @Get('general')
@@ -263,6 +288,7 @@ export class ClinicConfigurationController {
       'payments',
       'integrations',
       'notifications',
+      'security',
       'branding',
     ],
   })
@@ -297,6 +323,93 @@ export class ClinicConfigurationController {
       limit: result.limit,
       hasNextPage,
     };
+  }
+
+  @Get('template-overrides/export')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Exportar overrides de template da clinica (CSV)' })
+  @ApiProduces('text/csv')
+  async exportTemplateOverridesCsv(
+    @Param('clinicId') clinicId: string,
+    @Query(new ZodValidationPipe(listClinicTemplateOverridesSchema))
+    query: ListClinicTemplateOverridesSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Res() res: Response,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<void> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const overrides = await this.collectTemplateOverrides({
+      clinicId,
+      tenantId: context.tenantId,
+      query,
+    });
+
+    const csvLines = this.configurationExportService.buildTemplateOverridesCsv(overrides);
+    const filename = `clinic-template-overrides-${clinicId}-${Date.now()}.csv`;
+
+    res
+      .status(HttpStatus.OK)
+      .setHeader('Content-Type', 'text/csv; charset=utf-8')
+      .setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+      .send(csvLines.join('\n'));
+  }
+
+  @Get('template-overrides/export.xls')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Exportar overrides de template da clinica (Excel)' })
+  @ApiProduces('application/vnd.ms-excel')
+  async exportTemplateOverridesExcel(
+    @Param('clinicId') clinicId: string,
+    @Query(new ZodValidationPipe(listClinicTemplateOverridesSchema))
+    query: ListClinicTemplateOverridesSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Res() res: Response,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<void> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const overrides = await this.collectTemplateOverrides({
+      clinicId,
+      tenantId: context.tenantId,
+      query,
+    });
+
+    const buffer = await this.configurationExportService.buildTemplateOverridesExcel(overrides);
+    const filename = `clinic-template-overrides-${clinicId}-${Date.now()}.xls`;
+
+    res
+      .status(HttpStatus.OK)
+      .setHeader('Content-Type', 'application/vnd.ms-excel')
+      .setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+      .send(buffer);
+  }
+
+  @Get('template-overrides/export.pdf')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Exportar overrides de template da clinica (PDF)' })
+  @ApiProduces('application/pdf')
+  async exportTemplateOverridesPdf(
+    @Param('clinicId') clinicId: string,
+    @Query(new ZodValidationPipe(listClinicTemplateOverridesSchema))
+    query: ListClinicTemplateOverridesSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Res() res: Response,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<void> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const overrides = await this.collectTemplateOverrides({
+      clinicId,
+      tenantId: context.tenantId,
+      query,
+    });
+
+    const buffer = await this.configurationExportService.buildTemplateOverridesPdf(overrides);
+    const filename = `clinic-template-overrides-${clinicId}-${Date.now()}.pdf`;
+
+    res
+      .status(HttpStatus.OK)
+      .setHeader('Content-Type', 'application/pdf')
+      .setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+      .send(buffer);
   }
 
   @Patch('services')
@@ -381,6 +494,27 @@ export class ClinicConfigurationController {
     const version = await this.updateClinicNotificationSettingsUseCase.executeOrThrow(input);
 
     return ClinicPresenter.notificationSettings(version);
+  }
+
+  @Patch('security')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Atualizar configuracoes de seguranca da clinica' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiResponse({ status: 200, type: ClinicSecuritySettingsResponseDto })
+  @ZodApiBody({ schema: updateClinicSecuritySettingsSchema })
+  async updateSecuritySettings(
+    @Param('clinicId') clinicId: string,
+    @Body(new ZodValidationPipe(updateClinicSecuritySettingsSchema))
+    body: UpdateClinicSecuritySettingsSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicSecuritySettingsResponseDto> {
+    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
+
+    const input = toUpdateClinicSecuritySettingsInput(clinicId, body, context);
+    const version = await this.updateClinicSecuritySettingsUseCase.executeOrThrow(input);
+
+    return ClinicPresenter.securitySettings(version);
   }
 
   @Patch('branding')
@@ -544,6 +678,26 @@ export class ClinicConfigurationController {
     return ClinicPresenter.notificationSettings(version);
   }
 
+  @Get('security')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Obter configuracoes de seguranca da clinica' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiResponse({ status: 200, type: ClinicSecuritySettingsResponseDto })
+  async getSecuritySettings(
+    @Param('clinicId') clinicId: string,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicSecuritySettingsResponseDto> {
+    const context = this.resolveContext(currentUser, tenantHeader);
+
+    const version = await this.getClinicSecuritySettingsUseCase.executeOrThrow({
+      clinicId,
+      tenantId: context.tenantId,
+    });
+
+    return ClinicPresenter.securitySettings(version);
+  }
+
   @Get('branding')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
   @ApiOperation({ summary: 'Obter configuracoes de identidade visual da clinica' })
@@ -687,6 +841,40 @@ export class ClinicConfigurationController {
     const versions = await this.propagateClinicTemplateUseCase.executeOrThrow(input);
 
     return versions.map((version) => ClinicPresenter.configuration(version));
+  }
+
+  private async collectTemplateOverrides(params: {
+    clinicId: string;
+    tenantId: string;
+    query: ListClinicTemplateOverridesSchema;
+  }): Promise<ClinicTemplateOverride[]> {
+    const limitCandidate =
+      params.query.limit && params.query.limit > 0 ? Math.floor(params.query.limit) : 100;
+    const limit = Math.min(limitCandidate, 100);
+    let page = params.query.page && params.query.page > 0 ? Math.floor(params.query.page) : 1;
+
+    const overrides: ClinicTemplateOverride[] = [];
+
+    do {
+      const result = await this.listClinicTemplateOverridesUseCase.executeOrThrow({
+        tenantId: params.tenantId,
+        clinicId: params.clinicId,
+        section: params.query.section,
+        includeSuperseded: params.query.includeSuperseded,
+        page,
+        limit,
+      });
+
+      overrides.push(...result.data);
+
+      if (result.page * result.limit >= result.total || result.data.length === 0) {
+        break;
+      }
+
+      page += 1;
+    } while (overrides.length <= 100_000);
+
+    return overrides;
   }
 
   private resolveContext(currentUser: ICurrentUser, tenantId?: string): ClinicRequestContext {

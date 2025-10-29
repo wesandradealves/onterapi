@@ -60,12 +60,17 @@ export class MarkBookingNoShowUseCase
       markedAtUtc,
     });
 
+    const originalProfessionalId = booking.originalProfessionalId ?? null;
+    const coverageId = booking.coverageId ?? null;
+
     await this.messageBus.publish(
       DomainEvents.schedulingBookingNoShow(bookingId, {
         tenantId,
         professionalId: booking.professionalId,
         clinicId: booking.clinicId,
         patientId: booking.patientId,
+        originalProfessionalId: originalProfessionalId ?? undefined,
+        coverageId: coverageId ?? undefined,
       }),
     );
 

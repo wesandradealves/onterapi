@@ -231,6 +231,7 @@ describe('ClinicPaymentNotificationService', () => {
 
     clinicRepository = {
       findById: jest.fn(),
+      listComplianceDocuments: jest.fn(),
     } as unknown as Mocked<IClinicRepository>;
 
     emailService = {

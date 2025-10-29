@@ -1,4 +1,4 @@
-import { ClinicPresenter } from '../../../src/modules/clinic/api/presenters/clinic.presenter';
+﻿import { ClinicPresenter } from '../../../src/modules/clinic/api/presenters/clinic.presenter';
 import { RolesEnum } from '../../../src/domain/auth/enums/roles.enum';
 import {
   Clinic,
@@ -13,10 +13,13 @@ import {
   ClinicEconomicAgreement,
   ClinicHold,
   ClinicInvitation,
+  ClinicManagementComplianceSummary,
   ClinicManagementOverview,
   ClinicManagementTemplateInfo,
   ClinicPaymentLedger,
+  ClinicProfessionalCoverage,
   ClinicServiceTypeDefinition,
+  ClinicTemplateOverride,
 } from '../../../src/domain/clinic/types/clinic.types';
 
 describe('ClinicPresenter.invitation', () => {
@@ -914,6 +917,7 @@ describe('ClinicPresenter fallback normalization', () => {
     mapNotificationSettingsPayload: (raw: Record<string, unknown>) => any;
     mapBrandingSettingsPayload: (raw: Record<string, unknown>) => any;
     mapManagementTemplateInfo: (template?: ClinicManagementTemplateInfo) => any;
+    mapManagementComplianceSummary: (compliance?: ClinicManagementComplianceSummary) => any;
     mapTelemetry: (telemetry?: ClinicConfigurationTelemetry) => any;
   };
 
@@ -940,6 +944,76 @@ describe('ClinicPresenter fallback normalization', () => {
 
     expect(details.document).toBeUndefined();
     expect(details.metadata).toBeUndefined();
+  });
+
+  it('retorna undefined para resumo de compliance inexistente', () => {
+    expect(internals.mapManagementComplianceSummary(undefined)).toBeUndefined();
+  });
+
+  it('mapeia resumo de compliance sem proxima expiracao', () => {
+    const summary: ClinicManagementComplianceSummary = {
+      total: 4,
+      valid: 2,
+      expiring: 1,
+      expired: 1,
+      missing: 0,
+      pending: 0,
+      review: 0,
+      submitted: 0,
+      unknown: 0,
+      documents: [
+        {
+          id: 'doc-1',
+          type: 'crm',
+          status: 'valid',
+          required: true,
+          expiresAt: new Date('2025-12-01T00:00:00Z'),
+        },
+      ],
+    };
+
+    const dto = internals.mapManagementComplianceSummary(summary);
+    expect(dto).toMatchObject({
+      total: 4,
+      valid: 2,
+      nextExpiration: undefined,
+    });
+    expect(dto?.documents).toHaveLength(1);
+  });
+
+  it('mapeia resumo de compliance incluindo proxima expiracao', () => {
+    const summary: ClinicManagementComplianceSummary = {
+      total: 2,
+      valid: 1,
+      expiring: 1,
+      expired: 0,
+      missing: 0,
+      pending: 0,
+      review: 0,
+      submitted: 0,
+      unknown: 0,
+      nextExpiration: {
+        type: 'lgpd',
+        expiresAt: new Date('2025-11-01T00:00:00Z'),
+      },
+      documents: [
+        {
+          type: 'lgpd',
+          status: 'expiring',
+          metadata: { reminder: true },
+        },
+      ],
+    };
+
+    const dto = internals.mapManagementComplianceSummary(summary);
+    expect(dto?.nextExpiration).toEqual({
+      type: 'lgpd',
+      expiresAt: summary.nextExpiration?.expiresAt,
+    });
+    expect(dto?.documents?.[0]).toMatchObject({
+      type: 'lgpd',
+      status: 'expiring',
+    });
   });
 
   it('defaults configuration payloads when version payload is undefined', () => {
@@ -1364,5 +1438,146 @@ describe('ClinicPresenter fallback normalization', () => {
     expect(telemetry.lastAttemptAt).toBeUndefined();
     expect(telemetry.lastUpdatedBy).toBeUndefined();
     expect(telemetry.pendingConflicts).toBeUndefined();
+  });
+});
+
+describe('ClinicPresenter security compliance mapper', () => {
+  const securityInternals = ClinicPresenter as unknown as {
+    mapSecurityComplianceDocuments: (raw: unknown) => any[];
+    mapSecurityComplianceDocument: (raw: unknown) => any;
+  };
+
+  it('retorna null para entradas sem tipo valido', () => {
+    expect(securityInternals.mapSecurityComplianceDocument(undefined)).toBeNull();
+    expect(securityInternals.mapSecurityComplianceDocument({})).toBeNull();
+    expect(securityInternals.mapSecurityComplianceDocument({ type: '   ' })).toBeNull();
+  });
+
+  it('retorna lista vazia quando o payload nao e um array', () => {
+    expect(securityInternals.mapSecurityComplianceDocuments(undefined)).toEqual([]);
+    expect(securityInternals.mapSecurityComplianceDocuments('invalid')).toEqual([]);
+  });
+
+  it('ignora metadados invalidos e datas mal formatadas', () => {
+    const result = securityInternals.mapSecurityComplianceDocument({
+      type: 'lgpd',
+      metadata: 'invalid',
+      updatedAt: 'not-a-date',
+      expiresAt: 'invalid-date',
+    }) as Record<string, unknown> | null;
+
+    expect(result).toMatchObject({ type: 'lgpd' });
+    expect(result).not.toHaveProperty('metadata');
+    expect(result).not.toHaveProperty('updatedAt');
+    expect(result).not.toHaveProperty('expiresAt');
+  });
+});
+
+describe('ClinicPresenter.professionalCoverage', () => {
+  const baseCoverage: ClinicProfessionalCoverage = {
+    id: 'coverage-1',
+    tenantId: 'tenant-1',
+    clinicId: 'clinic-1',
+    professionalId: 'professional-1',
+    coverageProfessionalId: 'professional-2',
+    startAt: new Date('2025-03-10T08:00:00Z'),
+    endAt: new Date('2025-03-10T12:00:00Z'),
+    status: 'scheduled',
+    reason: null,
+    notes: null,
+    metadata: {},
+    createdBy: 'manager-1',
+    createdAt: new Date('2025-02-25T10:00:00Z'),
+    updatedBy: null,
+    updatedAt: new Date('2025-02-25T10:00:00Z'),
+    cancelledAt: null,
+    cancelledBy: null,
+  };
+
+  it('omits optional fields when metadata and audit details are absent', () => {
+    const dto = ClinicPresenter.professionalCoverage(baseCoverage);
+
+    expect(dto.metadata).toBeUndefined();
+    expect(dto.reason).toBeUndefined();
+    expect(dto.notes).toBeUndefined();
+    expect(dto.updatedBy).toBeUndefined();
+    expect(dto.cancelledAt).toBeUndefined();
+    expect(dto.cancelledBy).toBeUndefined();
+  });
+
+  it('maps professional coverage list preserving metadata and timestamps', () => {
+    const coverage: ClinicProfessionalCoverage = {
+      ...baseCoverage,
+      id: 'coverage-2',
+      status: 'active',
+      metadata: { priority: 'high' },
+      reason: 'Ferias',
+      notes: 'Cobertura parcial',
+      updatedBy: 'manager-2',
+      updatedAt: new Date('2025-03-10T08:05:00Z'),
+    };
+
+    const list = ClinicPresenter.professionalCoverageList({
+      data: [coverage],
+      total: 1,
+      page: 1,
+      limit: 10,
+    });
+
+    expect(list.total).toBe(1);
+    expect(list.data).toHaveLength(1);
+    const mapped = list.data[0];
+    expect(mapped.metadata).toEqual({ priority: 'high' });
+    expect(mapped.reason).toBe('Ferias');
+    expect(mapped.updatedBy).toBe('manager-2');
+    expect(mapped.status).toBe('active');
+    expect(mapped.updatedAt).toEqual(coverage.updatedAt);
+  });
+});
+
+describe('ClinicPresenter.templateOverride', () => {
+  const baseOverride: ClinicTemplateOverride = {
+    id: 'override-1',
+    clinicId: 'clinic-1',
+    tenantId: 'tenant-1',
+    templateClinicId: 'template-1',
+    section: 'notifications',
+    overrideVersion: 2,
+    overridePayload: { channels: ['email'] },
+    overrideHash: 'hash-1',
+    baseTemplateVersionId: 'template-version-1',
+    baseTemplateVersionNumber: 5,
+    appliedConfigurationVersionId: 'config-version-9',
+    createdBy: 'owner-1',
+    createdAt: new Date('2025-03-01T10:00:00Z'),
+    updatedAt: new Date('2025-03-02T10:00:00Z'),
+    supersededAt: new Date('2025-03-05T10:00:00Z'),
+    supersededBy: 'manager-1',
+  };
+
+  it('mapeia override com campos opcionais presentes', () => {
+    const dto = ClinicPresenter.templateOverride(baseOverride);
+
+    expect(dto.appliedConfigurationVersionId).toBe('config-version-9');
+    expect(dto.supersededAt).toEqual(baseOverride.supersededAt);
+    expect(dto.supersededBy).toBe('manager-1');
+    expect(dto.updatedAt).toEqual(baseOverride.updatedAt);
+  });
+
+  it('omite campos opcionais quando ausentes', () => {
+    const minimal: ClinicTemplateOverride = {
+      ...baseOverride,
+      appliedConfigurationVersionId: undefined,
+      updatedAt: undefined,
+      supersededAt: undefined,
+      supersededBy: undefined,
+    };
+
+    const dto = ClinicPresenter.templateOverride(minimal);
+
+    expect(dto.appliedConfigurationVersionId).toBeUndefined();
+    expect(dto.supersededAt).toBeUndefined();
+    expect(dto.supersededBy).toBeUndefined();
+    expect(dto.updatedAt).toBeUndefined();
   });
 });

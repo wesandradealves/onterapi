@@ -42,6 +42,8 @@ export class ReissueClinicInvitationUseCase
   }
 
   protected async handle(input: ReissueClinicInvitationInput): Promise<ClinicInvitation> {
+    this.invitationTokenService.assertSecretConfigured();
+
     const invitation = await this.invitationRepository.findById(input.invitationId);
 
     if (!invitation || invitation.tenantId !== input.tenantId) {

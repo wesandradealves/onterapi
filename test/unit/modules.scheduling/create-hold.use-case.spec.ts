@@ -8,7 +8,11 @@ import { IClinicRepository } from '@domain/clinic/interfaces/repositories/clinic
 import { IClinicServiceTypeRepository } from '@domain/clinic/interfaces/repositories/clinic-service-type.repository.interface';
 import { IClinicProfessionalCoverageRepository } from '@domain/clinic/interfaces/repositories/clinic-professional-coverage.repository.interface';
 import { RolesEnum } from '@domain/auth/enums/roles.enum';
-import { Clinic, ClinicProfessionalCoverage, ClinicServiceTypeDefinition } from '@domain/clinic/types/clinic.types';
+import {
+  Clinic,
+  ClinicProfessionalCoverage,
+  ClinicServiceTypeDefinition,
+} from '@domain/clinic/types/clinic.types';
 import { BookingValidationService } from '@domain/scheduling/services/booking-validation.service';
 
 const createInput = () => ({
@@ -202,7 +206,14 @@ describe('CreateHoldUseCase', () => {
       metadata: {},
     };
 
-    coverageRepository.findActiveOverlapping.mockResolvedValue([coverage]);
+    const laterCoverage: ClinicProfessionalCoverage = {
+      ...coverage,
+      id: 'coverage-2',
+      coverageProfessionalId: 'prof-cover-late',
+      startAt: new Date('2025-10-09T06:00:00Z'),
+    };
+
+    coverageRepository.findActiveOverlapping.mockResolvedValue([laterCoverage, coverage]);
     bookingRepository.listByProfessionalAndRange.mockResolvedValue([]);
     holdRepository.findActiveOverlap.mockResolvedValue([]);
     holdRepository.create.mockImplementation(async (payload) => ({
@@ -236,12 +247,70 @@ describe('CreateHoldUseCase', () => {
       input.startAtUtc,
       input.endAtUtc,
     );
-    expect(holdRepository.create.mock.calls[0][0].originalProfessionalId).toBe(input.professionalId);
+    expect(holdRepository.create.mock.calls[0][0].originalProfessionalId).toBe(
+      input.professionalId,
+    );
     expect(holdRepository.create.mock.calls[0][0].coverageId).toBe(coverage.id);
     const publishedEvent = messageBus.publish.mock.calls[0][0];
     expect(publishedEvent.payload.professionalId).toBe('prof-cover');
     expect(publishedEvent.payload.originalProfessionalId).toBe(input.professionalId);
     expect(publishedEvent.payload.coverageId).toBe(coverage.id);
+  });
+
+  it('keeps original professional when coverage does not provide substitute', async () => {
+    const input = createInput();
+
+    const invalidCoverage: ClinicProfessionalCoverage = {
+      id: 'coverage-invalid',
+      tenantId: input.tenantId,
+      clinicId: input.clinicId,
+      professionalId: input.professionalId,
+      coverageProfessionalId: input.professionalId,
+      startAt: new Date('2025-10-09T08:00:00Z'),
+      endAt: new Date('2025-10-11T08:00:00Z'),
+      status: 'active',
+      createdBy: 'manager-1',
+      createdAt: new Date('2025-09-20T10:00:00Z'),
+      updatedBy: 'manager-1',
+      updatedAt: new Date('2025-09-20T10:00:00Z'),
+    };
+
+    const fallbackCoverage: ClinicProfessionalCoverage = {
+      ...invalidCoverage,
+      id: 'coverage-valid',
+      coverageProfessionalId: 'prof-cover',
+      startAt: new Date('2025-10-09T09:00:00Z'),
+    };
+
+    coverageRepository.findActiveOverlapping.mockResolvedValue([invalidCoverage, fallbackCoverage]);
+    bookingRepository.listByProfessionalAndRange.mockResolvedValue([]);
+    holdRepository.findActiveOverlap.mockResolvedValue([]);
+    holdRepository.create.mockImplementation(async (payload) => ({
+      id: 'hold-1',
+      tenantId: payload.tenantId,
+      clinicId: payload.clinicId,
+      professionalId: payload.professionalId,
+      patientId: payload.patientId,
+      serviceTypeId: payload.serviceTypeId ?? null,
+      startAtUtc: payload.startAtUtc,
+      endAtUtc: payload.endAtUtc,
+      ttlExpiresAtUtc: payload.ttlExpiresAtUtc,
+      status: 'active',
+      createdAt: new Date('2025-10-08T10:00:00Z'),
+      updatedAt: new Date('2025-10-08T10:00:00Z'),
+      version: 1,
+    }));
+
+    const hold = await useCase.executeOrThrow(input);
+
+    expect(hold.professionalId).toBe(input.professionalId);
+    expect(holdRepository.create.mock.calls[0][0].professionalId).toBe(input.professionalId);
+    expect(holdRepository.create.mock.calls[0][0].originalProfessionalId).toBeNull();
+    expect(holdRepository.create.mock.calls[0][0].coverageId).toBeNull();
+    const publishedEvent = messageBus.publish.mock.calls[0][0];
+    expect(publishedEvent.payload.professionalId).toBe(input.professionalId);
+    expect(publishedEvent.payload.originalProfessionalId).toBeUndefined();
+    expect(publishedEvent.payload.coverageId).toBeUndefined();
   });
 
   it('throws conflict when professional already booked', async () => {

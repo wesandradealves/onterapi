@@ -12,6 +12,8 @@ export interface ClinicPaymentPayoutRequest {
   tenantId: string;
   clinicId: string;
   professionalId: string;
+  originalProfessionalId?: string | null;
+  coverageId?: string | null;
   patientId: string;
   holdId: string;
   serviceTypeId: string;
@@ -49,6 +51,8 @@ export class ClinicPaymentPayoutService {
         tenantId: request.tenantId,
         clinicId: request.clinicId,
         professionalId: request.professionalId,
+        originalProfessionalId: request.originalProfessionalId ?? undefined,
+        coverageId: request.coverageId ?? undefined,
         patientId: request.patientId,
         holdId: request.holdId,
         serviceTypeId: request.serviceTypeId,

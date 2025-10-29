@@ -112,6 +112,7 @@ describe('ConfirmClinicAppointmentUseCase', () => {
   beforeEach(() => {
     clinicRepository = {
       findByTenant: jest.fn(),
+      listComplianceDocuments: jest.fn(),
     } as unknown as Mocked<IClinicRepository>;
 
     clinicHoldRepository = {
@@ -362,21 +363,165 @@ describe('ConfirmClinicAppointmentUseCase', () => {
       paymentStatus: 'approved',
     });
 
-    expect(auditService.register).toHaveBeenCalledWith({
-      event: 'clinic.hold.confirmed',
-      tenantId: hold.tenantId,
-      clinicId: hold.clinicId,
-      performedBy: input.confirmedBy,
-      detail: {
-        holdId: hold.id,
-        appointmentId: appointment.id,
-        paymentTransactionId: input.paymentTransactionId,
-        paymentStatus: 'approved',
-        gatewayStatus: 'RECEIVED',
-        channel: 'direct',
-        professionalPolicyId: 'policy-1',
+    expect(auditService.register).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'clinic.hold.confirmed',
+        tenantId: hold.tenantId,
+        clinicId: hold.clinicId,
+        performedBy: input.confirmedBy,
+        detail: expect.objectContaining({
+          holdId: hold.id,
+          appointmentId: appointment.id,
+          paymentTransactionId: input.paymentTransactionId,
+          paymentStatus: 'approved',
+          gatewayStatus: 'RECEIVED',
+          channel: 'direct',
+          professionalPolicyId: 'policy-1',
+          coverage: null,
+        }),
+      }),
+    );
+  });
+
+  it('should propagate coverage metadata when hold has temporary coverage', async () => {
+    const clinic = createClinic();
+    const coverageMetadata = {
+      coverageId: 'coverage-1',
+      originalProfessionalId: 'professional-1',
+      coverageProfessionalId: 'professional-coverage',
+      status: 'active',
+      startAt: '2099-01-01T00:00:00.000Z',
+      endAt: '2099-01-02T00:00:00.000Z',
+    };
+    const hold = {
+      ...createHold(),
+      professionalId: 'professional-coverage',
+      metadata: {
+        coverage: coverageMetadata,
       },
+    };
+    const serviceType = createServiceType();
+    const appointment = {
+      ...createAppointment(),
+      professionalId: hold.professionalId,
+    };
+
+    professionalPolicyRepository.findActivePolicy.mockResolvedValue({
+      id: 'policy-coverage',
+      clinicId: clinic.id,
+      tenantId: clinic.tenantId,
+      professionalId: hold.professionalId,
+      channelScope: 'direct',
+      economicSummary: {
+        items: [
+          {
+            serviceTypeId: serviceType.id,
+            price: serviceType.price,
+            currency: serviceType.currency,
+            payoutModel: 'percentage',
+            payoutValue: 55,
+          },
+        ],
+        orderOfRemainders: ['taxes', 'gateway', 'clinic', 'professional', 'platform'],
+        roundingStrategy: 'half_even',
+      },
+      effectiveAt: new Date('2098-12-01T00:00:00Z'),
+      endedAt: undefined,
+      sourceInvitationId: 'inv-coverage',
+      acceptedBy: hold.professionalId,
+      createdAt: new Date('2098-12-01T00:00:00Z'),
+      updatedAt: new Date('2098-12-01T00:00:00Z'),
     });
+
+    clinicRepository.findByTenant.mockResolvedValue(clinic);
+    clinicHoldRepository.findById.mockResolvedValue(hold as ClinicHold);
+    clinicServiceTypeRepository.findById.mockResolvedValue(serviceType);
+    clinicHoldRepository.findActiveOverlapByProfessional.mockResolvedValue([]);
+    clinicAppointmentRepository.findActiveOverlap.mockResolvedValue([]);
+    clinicAppointmentRepository.findByHoldId.mockResolvedValue(null);
+    clinicConfigurationRepository.findLatestAppliedVersion.mockResolvedValue({
+      id: 'version-coverage',
+      clinicId: clinic.id,
+      tenantId: clinic.tenantId,
+      section: 'payments',
+      version: 1,
+      payload: {
+        paymentSettings: {
+          provider: 'asaas',
+          credentialsId: 'cred-coverage',
+          sandboxMode: true,
+          splitRules: [],
+          roundingStrategy: 'half_even',
+          antifraud: { enabled: false },
+          inadimplencyRule: { gracePeriodDays: 0, actions: [] },
+          refundPolicy: {
+            type: 'manual',
+            processingTimeHours: 0,
+            allowPartialRefund: false,
+          },
+          cancellationPolicies: [],
+        },
+      },
+      createdBy: 'user-config',
+      createdAt: new Date('2098-01-01T00:00:00Z'),
+      appliedAt: new Date('2098-01-02T00:00:00Z'),
+      notes: null,
+      autoApply: true,
+    });
+    clinicPaymentCredentialsService.resolveCredentials.mockResolvedValue({
+      provider: 'asaas',
+      productionApiKey: 'api-key',
+      sandboxApiKey: 'sandbox-key',
+    });
+    clinicPaymentGatewayService.verifyPayment.mockResolvedValue({
+      status: 'approved',
+      providerStatus: 'RECEIVED',
+      paidAt: new Date('2098-12-31T12:00:00Z'),
+      metadata: { provider: 'asaas' },
+    });
+    clinicAppointmentRepository.create.mockResolvedValue(appointment);
+    clinicHoldRepository.confirmHold.mockResolvedValue({
+      ...hold,
+      status: 'confirmed' as ClinicHold['status'],
+    });
+
+    const input = {
+      clinicId: clinic.id,
+      tenantId: clinic.tenantId,
+      holdId: hold.id,
+      confirmedBy: 'user-hold',
+      paymentTransactionId: 'trx-coverage',
+      idempotencyKey: 'idem-coverage',
+    };
+
+    await useCase.executeOrThrow(input);
+
+    expect(clinicAppointmentRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          coverage: expect.objectContaining({
+            coverageId: coverageMetadata.coverageId,
+            originalProfessionalId: coverageMetadata.originalProfessionalId,
+            coverageProfessionalId: coverageMetadata.coverageProfessionalId,
+            status: coverageMetadata.status,
+            startAt: coverageMetadata.startAt,
+            endAt: coverageMetadata.endAt,
+          }),
+        }),
+      }),
+    );
+
+    expect(auditService.register).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          coverage: expect.objectContaining({
+            coverageId: coverageMetadata.coverageId,
+            originalProfessionalId: coverageMetadata.originalProfessionalId,
+            coverageProfessionalId: coverageMetadata.coverageProfessionalId,
+          }),
+        }),
+      }),
+    );
   });
 
   it('should throw when professional policy is not found', async () => {

@@ -61,6 +61,7 @@ describe('AcceptClinicInvitationUseCase', () => {
         id: baseInvitation.clinicId,
         tenantId: baseInvitation.tenantId,
       }),
+      listComplianceDocuments: jest.fn(),
     } as unknown as jest.Mocked<IClinicRepository>;
 
     invitationRepository = {
@@ -79,6 +80,7 @@ describe('AcceptClinicInvitationUseCase', () => {
 
     memberRepository = {
       findByUser: jest.fn().mockResolvedValue(null),
+      findActiveByClinicAndUser: jest.fn().mockResolvedValue(null),
       addMember: jest.fn().mockResolvedValue({
         id: 'member-1',
         clinicId: baseInvitation.clinicId,
@@ -205,12 +207,92 @@ describe('AcceptClinicInvitationUseCase', () => {
           professionalId: 'professional-1',
           economicSnapshot: expect.any(Object),
           policyId: 'policy-1',
+          kind: 'standard',
         }),
       }),
     );
 
     const auditPayload = auditRegisterSpy.mock.calls[0][0];
     expect(auditPayload.detail?.economicSnapshot).toEqual(baseInvitation.economicSummary);
+  });
+
+  it('should accept addendum without re-adding member and honor effective date metadata', async () => {
+    const addendumInvitation: ClinicInvitation = {
+      ...baseInvitation,
+      metadata: {
+        kind: 'addendum',
+        addendum: {
+          effectiveAt: '2025-12-01T00:00:00.000Z',
+        },
+      },
+    };
+
+    invitationRepository.findById.mockResolvedValueOnce(addendumInvitation);
+    memberRepository.findByUser.mockResolvedValueOnce({
+      id: 'member-1',
+      clinicId: addendumInvitation.clinicId,
+      userId: 'professional-1',
+    } as any);
+    memberRepository.findActiveByClinicAndUser.mockResolvedValueOnce({
+      id: 'member-1',
+      clinicId: addendumInvitation.clinicId,
+      tenantId: addendumInvitation.tenantId,
+      userId: 'professional-1',
+      role: RolesEnum.PROFESSIONAL,
+      status: 'active',
+      scope: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as any);
+
+    const acceptedAddendum: ClinicInvitation = {
+      ...addendumInvitation,
+      status: 'accepted',
+      acceptedAt: new Date('2025-11-01T10:00:00.000Z'),
+      acceptedBy: 'professional-1',
+      acceptedEconomicSnapshot: addendumInvitation.economicSummary,
+    };
+
+    invitationRepository.markAccepted.mockResolvedValueOnce(acceptedAddendum);
+
+    const effectiveDate = new Date('2025-12-01T00:00:00.000Z');
+
+    professionalPolicyRepository.replacePolicy.mockResolvedValueOnce({
+      id: 'policy-2',
+      clinicId: addendumInvitation.clinicId,
+      tenantId: addendumInvitation.tenantId,
+      professionalId: addendumInvitation.professionalId!,
+      channelScope: addendumInvitation.channelScope,
+      economicSummary: addendumInvitation.economicSummary,
+      effectiveAt: effectiveDate,
+      endedAt: undefined,
+      sourceInvitationId: addendumInvitation.id,
+      acceptedBy: 'professional-1',
+      createdAt: effectiveDate,
+      updatedAt: effectiveDate,
+    } as any);
+
+    const result = await useCase.executeOrThrow({
+      invitationId: addendumInvitation.id,
+      tenantId: addendumInvitation.tenantId,
+      acceptedBy: 'professional-1',
+      token: 'signed-token',
+    });
+
+    expect(memberRepository.addMember).not.toHaveBeenCalled();
+    expect(professionalPolicyRepository.replacePolicy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        effectiveAt: effectiveDate,
+      }),
+    );
+    expect(result.metadata?.kind).toBe('addendum');
+    expect(auditRegisterSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          kind: 'addendum',
+        }),
+      }),
+    );
   });
 
   it('should reject acceptance when token does not match invited professional', async () => {

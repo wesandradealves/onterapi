@@ -10,6 +10,7 @@ export type ClinicConfigurationSection =
   | 'payments'
   | 'integrations'
   | 'notifications'
+  | 'security'
   | 'branding';
 
 export type ClinicConfigurationState = 'idle' | 'saving' | 'saved' | 'error';
@@ -62,6 +63,29 @@ export type ClinicHoldMergeStrategy = 'server_wins' | 'client_wins' | 'merge' | 
 export type ClinicAlertChannel = 'in_app' | 'email' | 'push';
 
 export type ClinicAlertType = 'revenue_drop' | 'low_occupancy' | 'staff_shortage' | 'compliance';
+
+export type ClinicTrendDirection = 'upward' | 'downward' | 'stable';
+
+export type ClinicComplianceStatus =
+  | 'valid'
+  | 'pending'
+  | 'expired'
+  | 'missing'
+  | 'submitted'
+  | 'review'
+  | 'unknown';
+
+export interface ClinicComplianceDocumentStatus {
+  id?: string;
+  type: string;
+  name?: string;
+  expiresAt?: Date | null;
+  required?: boolean;
+  status?: ClinicComplianceStatus;
+  metadata?: Record<string, unknown>;
+  updatedAt?: Date;
+  updatedBy?: string;
+}
 
 export type ClinicNotificationChannel = 'email' | 'whatsapp' | 'sms' | 'push';
 
@@ -282,6 +306,8 @@ export interface ClinicPaymentPayoutRequest {
   tenantId: string;
   clinicId: string;
   professionalId: string;
+  originalProfessionalId: string | null;
+  coverageId: string | null;
   patientId: string;
   holdId: string;
   serviceTypeId: string;
@@ -320,6 +346,8 @@ export interface EnqueueClinicPaymentPayoutRequestInput {
   tenantId: string;
   clinicId: string;
   professionalId: string;
+  originalProfessionalId?: string | null;
+  coverageId?: string | null;
   patientId: string;
   holdId: string;
   serviceTypeId: string;
@@ -548,6 +576,68 @@ export interface ClinicNotificationSettingsConfig {
     timezone?: string;
   };
   events?: string[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface ClinicSecurityTwoFactorSettings {
+  enabled: boolean;
+  requiredRoles: ClinicStaffRole[];
+  backupCodesEnabled: boolean;
+}
+
+export interface ClinicSecurityPasswordPolicy {
+  minLength: number;
+  requireUppercase: boolean;
+  requireLowercase: boolean;
+  requireNumbers: boolean;
+  requireSpecialCharacters: boolean;
+}
+
+export interface ClinicSecuritySessionSettings {
+  idleTimeoutMinutes: number;
+  absoluteTimeoutMinutes: number;
+}
+
+export interface ClinicSecurityComplianceDocument {
+  id?: string;
+  type: string;
+  name?: string;
+  required?: boolean;
+  status?: ClinicComplianceStatus;
+  expiresAt?: Date | null;
+  metadata?: Record<string, unknown>;
+  updatedAt?: Date;
+  updatedBy?: string;
+}
+
+export interface ClinicSecurityComplianceSettings {
+  documents: ClinicSecurityComplianceDocument[];
+}
+
+export interface ClinicSecurityLoginAlertSettings {
+  email: boolean;
+  whatsapp: boolean;
+}
+
+export interface ClinicSecurityIpRestrictionSettings {
+  enabled: boolean;
+  allowlist: string[];
+  blocklist: string[];
+}
+
+export interface ClinicSecurityAuditSettings {
+  retentionDays: number;
+  exportEnabled: boolean;
+}
+
+export interface ClinicSecuritySettings {
+  twoFactor: ClinicSecurityTwoFactorSettings;
+  passwordPolicy: ClinicSecurityPasswordPolicy;
+  session: ClinicSecuritySessionSettings;
+  loginAlerts: ClinicSecurityLoginAlertSettings;
+  ipRestrictions: ClinicSecurityIpRestrictionSettings;
+  audit: ClinicSecurityAuditSettings;
+  compliance?: ClinicSecurityComplianceSettings;
   metadata?: Record<string, unknown>;
 }
 
@@ -887,6 +977,8 @@ export interface ClinicAppointment {
   clinicId: string;
   tenantId: string;
   holdId: string;
+  originalProfessionalId?: string | null;
+  coverageId?: string | null;
   professionalId: string;
   patientId: string;
   serviceTypeId: string;
@@ -940,6 +1032,11 @@ export interface ClinicComparisonEntry {
   satisfactionScore?: number;
   satisfactionVariationPercentage?: number;
   rankingPosition: number;
+  trendDirection: ClinicTrendDirection;
+  trendPercentage: number;
+  benchmarkValue: number;
+  benchmarkGapPercentage: number;
+  benchmarkPercentile: number;
 }
 
 export interface ClinicForecastProjection {
@@ -992,6 +1089,7 @@ export interface ClinicManagementOverviewQuery {
   includeAlerts?: boolean;
   includeTeamDistribution?: boolean;
   includeFinancials?: boolean;
+  includeCoverageSummary?: boolean;
 }
 
 export interface ClinicManagementAlertsQuery {
@@ -1048,6 +1146,23 @@ export interface ClinicFinancialSummary {
   clinics: ClinicFinancialSnapshot[];
 }
 
+export interface ClinicManagementComplianceSummary {
+  total: number;
+  valid: number;
+  expiring: number;
+  expired: number;
+  missing: number;
+  pending: number;
+  review: number;
+  submitted: number;
+  unknown: number;
+  documents: ClinicComplianceDocumentStatus[];
+  nextExpiration?: {
+    type: string;
+    expiresAt: Date;
+  };
+}
+
 export interface ClinicManagementClinicSummary {
   clinicId: string;
   name: string;
@@ -1067,6 +1182,8 @@ export interface ClinicManagementClinicSummary {
   alerts: ClinicAlert[];
   teamDistribution?: ClinicManagementTeamDistributionEntry[];
   template?: ClinicManagementTemplateInfo;
+  compliance?: ClinicManagementComplianceSummary;
+  coverage?: ClinicManagementCoverageSummary;
 }
 
 export interface ClinicManagementOverview {
@@ -1077,6 +1194,13 @@ export interface ClinicManagementOverview {
   comparisons?: ClinicDashboardComparison;
   forecast?: ClinicDashboardForecast;
   financials?: ClinicFinancialSummary;
+}
+
+export interface ClinicManagementCoverageSummary {
+  scheduled: number;
+  active: number;
+  completedLast30Days: number;
+  lastUpdatedAt?: Date;
 }
 
 export interface CreateClinicInput {
@@ -1180,6 +1304,13 @@ export interface UpdateClinicNotificationSettingsInput {
   notificationSettings: ClinicNotificationSettingsConfig;
 }
 
+export interface UpdateClinicSecuritySettingsInput {
+  clinicId: string;
+  tenantId: string;
+  requestedBy: string;
+  securitySettings: ClinicSecuritySettings;
+}
+
 export interface UpdateClinicBrandingSettingsInput {
   clinicId: string;
   tenantId: string;
@@ -1234,6 +1365,19 @@ export interface InviteClinicProfessionalInput {
   channelScope: ClinicInvitationChannelScope;
   economicSummary: ClinicInvitationEconomicSummary;
   expiresAt: Date;
+  metadata?: Record<string, unknown>;
+}
+
+export interface CreateClinicInvitationAddendumInput {
+  clinicId: string;
+  tenantId: string;
+  issuedBy: string;
+  professionalId: string;
+  channel: ClinicInvitationChannel;
+  channelScope: ClinicInvitationChannelScope;
+  economicSummary: ClinicInvitationEconomicSummary;
+  expiresAt: Date;
+  effectiveAt?: Date;
   metadata?: Record<string, unknown>;
 }
 
@@ -1322,6 +1466,7 @@ export interface ClinicComparisonQuery {
   clinicIds?: string[];
   metric: 'revenue' | 'appointments' | 'patients' | 'occupancy' | 'satisfaction';
   period: { start: Date; end: Date };
+  limit?: number;
 }
 
 export interface ClinicTemplatePropagationInput {
@@ -1348,6 +1493,71 @@ export interface TransferClinicProfessionalInput {
   effectiveDate: Date;
   transferPatients: boolean;
   performedBy: string;
+}
+
+export type ClinicProfessionalCoverageStatus = 'scheduled' | 'active' | 'completed' | 'cancelled';
+
+export interface ClinicProfessionalCoverage {
+  id: string;
+  tenantId: string;
+  clinicId: string;
+  professionalId: string;
+  coverageProfessionalId: string;
+  startAt: Date;
+  endAt: Date;
+  status: ClinicProfessionalCoverageStatus;
+  reason?: string;
+  notes?: string;
+  createdBy: string;
+  createdAt: Date;
+  updatedBy?: string;
+  updatedAt: Date;
+  cancelledAt?: Date;
+  cancelledBy?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface CreateClinicProfessionalCoverageInput {
+  tenantId: string;
+  clinicId: string;
+  professionalId: string;
+  coverageProfessionalId: string;
+  startAt: Date;
+  endAt: Date;
+  reason?: string;
+  notes?: string;
+  performedBy: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface CancelClinicProfessionalCoverageInput {
+  tenantId: string;
+  clinicId: string;
+  coverageId: string;
+  cancelledBy: string;
+  cancellationReason?: string;
+}
+
+export interface ListClinicProfessionalCoveragesQuery {
+  tenantId: string;
+  clinicId?: string;
+  clinicIds?: string[];
+  professionalId?: string;
+  coverageProfessionalId?: string;
+  statuses?: ClinicProfessionalCoverageStatus[];
+  from?: Date;
+  to?: Date;
+  includeCancelled?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+export interface ClinicProfessionalCoverageClinicSummary {
+  clinicId: string;
+  scheduled: number;
+  active: number;
+  completedLast30Days: number;
+  lastUpdatedAt?: Date;
 }
 
 export interface ClinicTemplateOverride {

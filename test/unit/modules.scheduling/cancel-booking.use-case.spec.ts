@@ -11,6 +11,8 @@ const baseBooking = (overrides: Partial<Booking> = {}): Booking => ({
   tenantId: 'tenant-1',
   clinicId: 'clinic-1',
   professionalId: 'prof-1',
+  originalProfessionalId: null,
+  coverageId: null,
   patientId: 'patient-1',
   source: 'clinic_portal',
   status: 'scheduled',
@@ -94,6 +96,9 @@ describe('CancelBookingUseCase', () => {
         aggregateId: 'booking-1',
       }),
     );
+    const event = messageBus.publish.mock.calls[0][0];
+    expect(event.payload.originalProfessionalId).toBeUndefined();
+    expect(event.payload.coverageId).toBeUndefined();
   });
 
   it('lan a not found quando o agendamento n o existe', async () => {
@@ -146,6 +151,8 @@ describe('CancelBookingUseCase', () => {
     );
     const event = messageBus.publish.mock.calls[0][0];
     expect(event.payload.reason).toBeUndefined();
+    expect(event.payload.originalProfessionalId).toBeUndefined();
+    expect(event.payload.coverageId).toBeUndefined();
     expect(logSpy).toHaveBeenCalledWith(
       expect.stringContaining('Agendamento booking-1 cancelado'),
       expect.objectContaining({
@@ -154,5 +161,28 @@ describe('CancelBookingUseCase', () => {
       }),
     );
     logSpy.mockRestore();
+  });
+
+  it('propaga dados de cobertura ao cancelar agendamento coberto', async () => {
+    const booking = baseBooking({
+      professionalId: 'prof-cover',
+      originalProfessionalId: 'prof-owner',
+      coverageId: 'coverage-1',
+    });
+    const cancelled = baseBooking({
+      status: 'cancelled',
+      cancellationReason: 'patient_request',
+      originalProfessionalId: 'prof-owner',
+      coverageId: 'coverage-1',
+    });
+
+    bookingRepository.findById.mockResolvedValue(booking);
+    bookingRepository.updateStatus.mockResolvedValue(cancelled);
+
+    await useCase.executeOrThrow(createInput());
+
+    const event = messageBus.publish.mock.calls[0][0];
+    expect(event.payload.originalProfessionalId).toBe('prof-owner');
+    expect(event.payload.coverageId).toBe('coverage-1');
   });
 });

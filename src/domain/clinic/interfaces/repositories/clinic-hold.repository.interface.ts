@@ -60,6 +60,23 @@ export interface IClinicHoldRepository {
     holdId: string;
     metadata: Record<string, unknown>;
   }): Promise<ClinicHold>;
+  reassignForCoverage(params: {
+    tenantId: string;
+    clinicId: string;
+    originalProfessionalId: string;
+    coverageProfessionalId: string;
+    coverageId: string;
+    start: Date;
+    end: Date;
+  }): Promise<ClinicHold[]>;
+  releaseCoverageAssignments(params: {
+    tenantId: string;
+    clinicId: string;
+    coverageId: string;
+    reference: Date;
+    originalProfessionalId: string;
+    coverageProfessionalId: string;
+  }): Promise<ClinicHold[]>;
 }
 
 export const IClinicHoldRepository = Symbol('IClinicHoldRepository');

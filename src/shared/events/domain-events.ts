@@ -56,6 +56,8 @@ export class DomainEvents {
   static CLINIC_OVERBOOKING_REVIEW_REQUESTED = 'clinic.overbooking.review_requested';
   static CLINIC_OVERBOOKING_REVIEWED = 'clinic.overbooking.reviewed';
   static CLINIC_PROFESSIONAL_TRANSFERRED = 'clinic.professional.transferred';
+  static CLINIC_COVERAGE_APPLIED = 'clinic.coverage.applied';
+  static CLINIC_COVERAGE_RELEASED = 'clinic.coverage.released';
   static BILLING_INVOICE_REQUESTED = 'billing.invoice.requested';
   static BILLING_INVOICE_CANCELLATION_REQUESTED = 'billing.invoice.cancellation_requested';
   static BILLING_PAYMENT_STATUS_SYNC_REQUESTED = 'billing.payment.status_sync_requested';
@@ -79,6 +81,8 @@ export class DomainEvents {
   static NOTIFICATION_CLINIC_OVERBOOKING_REVIEW_REQUESTED =
     'notifications.clinic.overbooking.review_requested';
   static NOTIFICATION_CLINIC_OVERBOOKING_REVIEWED = 'notifications.clinic.overbooking.reviewed';
+  static NOTIFICATION_CLINIC_COVERAGE_APPLIED = 'notifications.clinic.coverage.applied';
+  static NOTIFICATION_CLINIC_COVERAGE_RELEASED = 'notifications.clinic.coverage.released';
 
   static createEvent<
     TPayload = Record<string, unknown>,
@@ -507,6 +511,8 @@ export class DomainEvents {
       startAtUtc: Date;
       endAtUtc: Date;
       source: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
     },
     metadata?: DomainEventMetadata,
   ): DomainEvent {
@@ -529,6 +535,8 @@ export class DomainEvents {
       previousEndAtUtc: Date;
       newStartAtUtc: Date;
       newEndAtUtc: Date;
+      originalProfessionalId?: string;
+      coverageId?: string;
     },
     metadata?: DomainEventMetadata,
   ): DomainEvent {
@@ -549,6 +557,8 @@ export class DomainEvents {
       patientId: string;
       cancelledBy: string;
       reason?: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
     },
     metadata?: DomainEventMetadata,
   ): DomainEvent {
@@ -562,7 +572,14 @@ export class DomainEvents {
 
   static schedulingBookingNoShow(
     bookingId: string,
-    data: { tenantId: string; professionalId: string; clinicId: string; patientId: string },
+    data: {
+      tenantId: string;
+      professionalId: string;
+      clinicId: string;
+      patientId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
+    },
     metadata?: DomainEventMetadata,
   ): DomainEvent {
     return this.createEvent(
@@ -582,6 +599,8 @@ export class DomainEvents {
       patientId: string;
       previousStatus: string;
       newStatus: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
     },
     metadata?: DomainEventMetadata,
   ): DomainEvent {
@@ -599,6 +618,8 @@ export class DomainEvents {
       tenantId: string;
       clinicId: string;
       professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
       patientId: string;
       holdId: string;
       serviceTypeId: string;
@@ -637,6 +658,8 @@ export class DomainEvents {
       tenantId: string;
       clinicId: string;
       professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
       patientId: string;
       holdId: string;
       serviceTypeId: string;
@@ -669,6 +692,8 @@ export class DomainEvents {
       tenantId: string;
       clinicId: string;
       professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
       patientId: string;
       holdId: string;
       serviceTypeId: string;
@@ -701,6 +726,8 @@ export class DomainEvents {
       tenantId: string;
       clinicId: string;
       professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
       patientId: string;
       holdId: string;
       serviceTypeId: string;
@@ -733,6 +760,8 @@ export class DomainEvents {
       tenantId: string;
       clinicId: string;
       professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
       patientId: string;
       holdId: string;
       serviceTypeId: string;
@@ -766,6 +795,8 @@ export class DomainEvents {
     data: {
       tenantId: string;
       professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
       clinicId: string;
       patientId: string;
       source: string;
@@ -788,6 +819,8 @@ export class DomainEvents {
     data: {
       tenantId: string;
       professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
       clinicId: string;
       patientId: string;
       cancelledAt: Date;
@@ -808,6 +841,8 @@ export class DomainEvents {
     data: {
       tenantId: string;
       professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
       clinicId: string;
       patientId: string;
       previousStatus: string;
@@ -830,6 +865,8 @@ export class DomainEvents {
       tenantId: string;
       clinicId: string;
       professionalId: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
       patientId: string;
       holdId: string;
       serviceTypeId: string;
@@ -870,6 +907,8 @@ export class DomainEvents {
       tenantId: string;
       clinicId?: string;
       professionalId?: string;
+      originalProfessionalId?: string;
+      coverageId?: string;
       patientId?: string;
       value?: number;
     },
@@ -1077,6 +1116,63 @@ export class DomainEvents {
     );
   }
 
+  static clinicCoverageApplied(
+    coverageId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      originalProfessionalId: string;
+      coverageProfessionalId: string;
+      startAt: Date;
+      endAt: Date;
+      triggerSource: 'manual' | 'automatic';
+      triggeredBy: string;
+      triggeredAt: Date;
+      summary: {
+        clinicHolds: number;
+        schedulingHolds: number;
+        bookings: number;
+        appointments: number;
+      };
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.CLINIC_COVERAGE_APPLIED,
+      coverageId,
+      { coverageId, ...data },
+      metadata,
+    );
+  }
+
+  static clinicCoverageReleased(
+    coverageId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      originalProfessionalId: string;
+      coverageProfessionalId: string;
+      reference: Date;
+      triggerSource: 'manual' | 'automatic';
+      triggeredBy: string;
+      triggeredAt: Date;
+      summary: {
+        clinicHolds: number;
+        schedulingHolds: number;
+        bookings: number;
+        appointments: number;
+      };
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.CLINIC_COVERAGE_RELEASED,
+      coverageId,
+      { coverageId, ...data },
+      metadata,
+    );
+  }
+
   static notificationsSchedulingBookingCreated(
     bookingId: string,
     data: {
@@ -1109,6 +1205,8 @@ export class DomainEvents {
       professionalId: string;
       patientId: string;
       confirmedAt: Date;
+      originalProfessionalId?: string;
+      coverageId?: string;
     },
     metadata?: DomainEventMetadata,
   ): DomainEvent {
@@ -1130,6 +1228,8 @@ export class DomainEvents {
       previousStartAtUtc: Date;
       newStartAtUtc: Date;
       newEndAtUtc: Date;
+      originalProfessionalId?: string;
+      coverageId?: string;
     },
     metadata?: DomainEventMetadata,
   ): DomainEvent {
@@ -1150,6 +1250,8 @@ export class DomainEvents {
       patientId: string;
       cancelledAt: Date;
       reason?: string | null;
+      originalProfessionalId?: string;
+      coverageId?: string;
     },
     metadata?: DomainEventMetadata,
   ): DomainEvent {
@@ -1169,6 +1271,8 @@ export class DomainEvents {
       professionalId: string;
       patientId: string;
       markedAt: Date;
+      originalProfessionalId?: string;
+      coverageId?: string;
     },
     metadata?: DomainEventMetadata,
   ): DomainEvent {
@@ -1190,6 +1294,8 @@ export class DomainEvents {
       previousStatus: string;
       newStatus: string;
       changedAt: Date;
+      originalProfessionalId?: string;
+      coverageId?: string;
     },
     metadata?: DomainEventMetadata,
   ): DomainEvent {
@@ -1401,6 +1507,67 @@ export class DomainEvents {
         ...data,
         queuedAt: new Date(),
       },
+      metadata,
+    );
+  }
+
+  static notificationsClinicCoverageApplied(
+    coverageId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      originalProfessionalId: string;
+      coverageProfessionalId: string;
+      startAt: Date;
+      endAt: Date;
+      triggerSource: 'manual' | 'automatic';
+      triggeredBy: string;
+      triggeredAt: Date;
+      channels: string[];
+      recipientIds: string[];
+      summary: {
+        clinicHolds: number;
+        schedulingHolds: number;
+        bookings: number;
+        appointments: number;
+      };
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_CLINIC_COVERAGE_APPLIED,
+      coverageId,
+      { coverageId, ...data, queuedAt: new Date() },
+      metadata,
+    );
+  }
+
+  static notificationsClinicCoverageReleased(
+    coverageId: string,
+    data: {
+      tenantId: string;
+      clinicId: string;
+      originalProfessionalId: string;
+      coverageProfessionalId: string;
+      reference: Date;
+      triggerSource: 'manual' | 'automatic';
+      triggeredBy: string;
+      triggeredAt: Date;
+      channels: string[];
+      recipientIds: string[];
+      summary: {
+        clinicHolds: number;
+        schedulingHolds: number;
+        bookings: number;
+        appointments: number;
+      };
+    },
+    metadata?: DomainEventMetadata,
+  ): DomainEvent {
+    return this.createEvent(
+      this.NOTIFICATION_CLINIC_COVERAGE_RELEASED,
+      coverageId,
+      { coverageId, ...data, queuedAt: new Date() },
       metadata,
     );
   }

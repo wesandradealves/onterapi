@@ -30,6 +30,40 @@ const invitationEconomicItemSchema = z
 
 const expectedRemainderOrder = ['taxes', 'gateway', 'clinic', 'professional', 'platform'] as const;
 
+const invitationEconomicSummarySchema = z
+  .object({
+    items: z.array(invitationEconomicItemSchema).min(1),
+    orderOfRemainders: z
+      .array(z.enum(expectedRemainderOrder))
+      .length(expectedRemainderOrder.length),
+    roundingStrategy: z.literal('half_even'),
+  })
+  .superRefine((summary, ctx) => {
+    const seen = new Set<string>();
+    for (const [index, item] of summary.items.entries()) {
+      if (seen.has(item.serviceTypeId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Tipos de servico duplicados no resumo economico',
+          path: ['items', index, 'serviceTypeId'],
+        });
+      }
+      seen.add(item.serviceTypeId);
+    }
+
+    const mismatched = expectedRemainderOrder.some(
+      (recipient, index) => summary.orderOfRemainders[index] !== recipient,
+    );
+
+    if (mismatched) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'orderOfRemainders deve seguir impostos>gateway>clinica>profissional>plataforma',
+        path: ['orderOfRemainders'],
+      });
+    }
+  });
+
 export const inviteClinicProfessionalSchema = z
   .object({
     tenantId: z.string().uuid(),
@@ -37,40 +71,7 @@ export const inviteClinicProfessionalSchema = z
     email: z.string().email().optional(),
     channel: z.enum(['email', 'whatsapp']),
     channelScope: z.enum(['direct', 'marketplace', 'both']),
-    economicSummary: z
-      .object({
-        items: z.array(invitationEconomicItemSchema).min(1),
-        orderOfRemainders: z
-          .array(z.enum(expectedRemainderOrder))
-          .length(expectedRemainderOrder.length),
-        roundingStrategy: z.literal('half_even'),
-      })
-      .superRefine((summary, ctx) => {
-        const seen = new Set<string>();
-        for (const [index, item] of summary.items.entries()) {
-          if (seen.has(item.serviceTypeId)) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: 'Tipos de servico duplicados no resumo economico',
-              path: ['items', index, 'serviceTypeId'],
-            });
-          }
-          seen.add(item.serviceTypeId);
-        }
-
-        const mismatched = expectedRemainderOrder.some(
-          (recipient, index) => summary.orderOfRemainders[index] !== recipient,
-        );
-
-        if (mismatched) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message:
-              'orderOfRemainders deve seguir impostos>gateway>clinica>profissional>plataforma',
-            path: ['orderOfRemainders'],
-          });
-        }
-      }),
+    economicSummary: invitationEconomicSummarySchema,
     expiresAt: z.string().datetime(),
     metadata: z.record(z.unknown()).optional(),
   })
@@ -85,6 +86,21 @@ export const inviteClinicProfessionalSchema = z
   });
 
 export type InviteClinicProfessionalSchema = z.infer<typeof inviteClinicProfessionalSchema>;
+
+export const createClinicInvitationAddendumSchema = z.object({
+  tenantId: z.string().uuid().optional(),
+  professionalId: z.string().uuid(),
+  channel: z.enum(['email', 'whatsapp']),
+  channelScope: z.enum(['direct', 'marketplace', 'both']).default('direct'),
+  economicSummary: invitationEconomicSummarySchema,
+  expiresAt: z.string().datetime(),
+  effectiveAt: z.string().datetime().optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+export type CreateClinicInvitationAddendumSchema = z.infer<
+  typeof createClinicInvitationAddendumSchema
+>;
 
 export const acceptClinicInvitationSchema = z.object({
   tenantId: z.string().uuid(),

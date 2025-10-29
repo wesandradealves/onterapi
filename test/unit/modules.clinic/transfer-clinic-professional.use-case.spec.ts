@@ -45,6 +45,7 @@ describe('TransferClinicProfessionalUseCase', () => {
   beforeEach(() => {
     clinicRepository = {
       findById: jest.fn(),
+      listComplianceDocuments: jest.fn(),
     } as unknown as Mocked<IClinicRepository>;
 
     memberRepository = {

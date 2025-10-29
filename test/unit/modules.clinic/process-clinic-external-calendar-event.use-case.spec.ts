@@ -73,6 +73,7 @@ describe('ProcessClinicExternalCalendarEventUseCase', () => {
           resourceMatchingStrict: true,
         },
       }),
+      listComplianceDocuments: jest.fn(),
     } as unknown as Mocked<IClinicRepository>;
 
     clinicConfigurationRepository = {

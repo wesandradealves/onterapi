@@ -5,6 +5,7 @@ import { ITriggerClinicAlertUseCase } from '../../../src/domain/clinic/interface
 import { ClinicAlert } from '../../../src/domain/clinic/types/clinic.types';
 import { IClinicMemberRepository } from '../../../src/domain/clinic/interfaces/repositories/clinic-member.repository.interface';
 import { ClinicAuditService } from '../../../src/infrastructure/clinic/services/clinic-audit.service';
+import { ICompareClinicsUseCase } from '../../../src/domain/clinic/interfaces/use-cases/compare-clinics.use-case.interface';
 
 type Mocked<T> = jest.Mocked<T>;
 
@@ -17,6 +18,7 @@ const createConfigServiceMock = (overrides: Record<string, unknown> = {}) => {
     CLINIC_ALERT_REVENUE_MIN: 5000,
     CLINIC_ALERT_OCCUPANCY_THRESHOLD: 0.55,
     CLINIC_ALERT_STAFF_MIN_PROFESSIONALS: 0,
+    CLINIC_ALERT_COMPLIANCE_EXPIRY_DAYS: 30,
   };
 
   return {
@@ -47,12 +49,18 @@ const baseComparisonEntry = () => ({
   satisfactionScore: 4.5,
   satisfactionVariationPercentage: 1,
   rankingPosition: 1,
+  trendDirection: 'downward',
+  trendPercentage: -5,
+  benchmarkValue: 9500,
+  benchmarkGapPercentage: 5.2631578947368425,
+  benchmarkPercentile: 90,
 });
 
 describe('ClinicAlertMonitorService', () => {
   let configService: ReturnType<typeof createConfigServiceMock>;
   let clinicRepository: Mocked<IClinicRepository>;
   let clinicMetricsRepository: Mocked<IClinicMetricsRepository>;
+  let compareUseCase: Mocked<ICompareClinicsUseCase>;
   let triggerAlertUseCase: Mocked<ITriggerClinicAlertUseCase>;
   let clinicMemberRepository: Mocked<IClinicMemberRepository>;
   let auditService: jest.Mocked<ClinicAuditService>;
@@ -63,12 +71,18 @@ describe('ClinicAlertMonitorService', () => {
 
     clinicRepository = {
       listTenantIds: jest.fn(),
+      listComplianceDocuments: jest.fn().mockResolvedValue({}),
     } as unknown as Mocked<IClinicRepository>;
 
     clinicMetricsRepository = {
       getComparison: jest.fn(),
       listAlerts: jest.fn(),
     } as unknown as Mocked<IClinicMetricsRepository>;
+
+    compareUseCase = {
+      execute: jest.fn(),
+      executeOrThrow: jest.fn(),
+    } as unknown as Mocked<ICompareClinicsUseCase>;
 
     clinicMemberRepository = {
       countActiveProfessionalsByClinics: jest.fn().mockResolvedValue({}),
@@ -87,13 +101,14 @@ describe('ClinicAlertMonitorService', () => {
       clinicRepository,
       clinicMetricsRepository,
       clinicMemberRepository,
+      compareUseCase,
       triggerAlertUseCase,
       auditService,
     );
   });
 
   it('dispara alerta de queda de receita quando variacao excede o limiar', async () => {
-    clinicMetricsRepository.getComparison.mockResolvedValueOnce([createComparisonEntry()]);
+    compareUseCase.executeOrThrow.mockResolvedValueOnce([createComparisonEntry()]);
     clinicMetricsRepository.listAlerts.mockResolvedValueOnce([]);
     triggerAlertUseCase.executeOrThrow.mockResolvedValueOnce({
       id: 'alert-revenue',
@@ -129,7 +144,7 @@ describe('ClinicAlertMonitorService', () => {
   });
 
   it('dispara alerta de baixa ocupacao quando abaixo do limiar', async () => {
-    clinicMetricsRepository.getComparison.mockResolvedValueOnce([
+    compareUseCase.executeOrThrow.mockResolvedValueOnce([
       createComparisonEntry({ occupancyRate: 0.4, revenueVariationPercentage: -5 }),
     ]);
     clinicMetricsRepository.listAlerts.mockResolvedValueOnce([]);
@@ -172,7 +187,7 @@ describe('ClinicAlertMonitorService', () => {
       payload: {},
     };
 
-    clinicMetricsRepository.getComparison.mockResolvedValueOnce([createComparisonEntry()]);
+    compareUseCase.executeOrThrow.mockResolvedValueOnce([createComparisonEntry()]);
     clinicMetricsRepository.listAlerts.mockResolvedValueOnce([activeAlert]);
 
     const result = await service.evaluateTenant({ tenantId: 'tenant-1' });
@@ -212,11 +227,12 @@ describe('ClinicAlertMonitorService', () => {
       clinicRepository,
       clinicMetricsRepository,
       clinicMemberRepository,
+      compareUseCase,
       triggerAlertUseCase,
       auditService,
     );
 
-    clinicMetricsRepository.getComparison.mockResolvedValueOnce([
+    compareUseCase.executeOrThrow.mockResolvedValueOnce([
       createComparisonEntry({ occupancyRate: 0.7, revenueVariationPercentage: -5 }),
     ]);
     clinicMetricsRepository.listAlerts.mockResolvedValueOnce([]);
@@ -230,6 +246,57 @@ describe('ClinicAlertMonitorService', () => {
       }),
     );
     expect(result.alerts.some((alert) => alert.type === 'staff_shortage')).toBe(true);
+    expect(result.skippedDetails).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'revenue_drop', reason: 'variation_within_threshold' }),
+        expect.objectContaining({ type: 'low_occupancy', reason: 'threshold_not_met' }),
+      ]),
+    );
+  });
+
+  it('dispara alerta de compliance quando documento esta prestes a expirar', async () => {
+    const now = new Date('2025-01-01T00:00:00Z');
+
+    compareUseCase.executeOrThrow.mockResolvedValueOnce([
+      createComparisonEntry({
+        revenueVariationPercentage: -5,
+        occupancyRate: 0.7,
+      }),
+    ]);
+
+    clinicRepository.listComplianceDocuments.mockResolvedValueOnce({
+      'clinic-1': [
+        {
+          type: 'cnpj',
+          required: true,
+          status: 'valid',
+          expiresAt: new Date('2025-01-20T00:00:00Z'),
+        },
+      ],
+    });
+
+    clinicMetricsRepository.listAlerts.mockResolvedValueOnce([]);
+
+    triggerAlertUseCase.executeOrThrow.mockResolvedValueOnce({
+      id: 'alert-compliance',
+      clinicId: 'clinic-1',
+      tenantId: 'tenant-1',
+      type: 'compliance',
+      channel: 'push',
+      triggeredBy: 'system',
+      triggeredAt: now,
+      payload: {},
+    } as ClinicAlert);
+
+    const result = await service.evaluateTenant({ tenantId: 'tenant-1', now });
+
+    expect(triggerAlertUseCase.executeOrThrow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'compliance',
+        clinicId: 'clinic-1',
+      }),
+    );
+    expect(result.alerts.some((alert) => alert.type === 'compliance')).toBe(true);
     expect(result.skippedDetails).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ type: 'revenue_drop', reason: 'variation_within_threshold' }),

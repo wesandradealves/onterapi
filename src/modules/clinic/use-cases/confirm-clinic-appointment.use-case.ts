@@ -112,6 +112,10 @@ export class ConfirmClinicAppointmentUseCase
       confirmationMetadata && typeof confirmationMetadata.idempotencyKey === 'string'
         ? (confirmationMetadata.idempotencyKey as string)
         : undefined;
+    const coverageMetadata =
+      metadata.coverage && typeof metadata.coverage === 'object'
+        ? (JSON.parse(JSON.stringify(metadata.coverage)) as Record<string, unknown>)
+        : undefined;
 
     if (hold.status === 'confirmed') {
       if (storedIdempotencyKey && storedIdempotencyKey === input.idempotencyKey) {
@@ -311,6 +315,17 @@ export class ConfirmClinicAppointmentUseCase
     const finalPaymentStatus = verification.status;
     const confirmedAt = now;
 
+    const appointmentMetadata: Record<string, unknown> = {
+      confirmationIdempotencyKey: input.idempotencyKey,
+      gatewayStatus: verification.providerStatus,
+      sandboxMode: paymentSettings.sandboxMode,
+      professionalPolicy: this.buildProfessionalPolicyMetadata(professionalPolicy),
+    };
+
+    if (coverageMetadata) {
+      appointmentMetadata.coverage = coverageMetadata;
+    }
+
     const appointment = await this.clinicAppointmentRepository.create({
       clinicId: hold.clinicId,
       tenantId: hold.tenantId,
@@ -323,12 +338,7 @@ export class ConfirmClinicAppointmentUseCase
       paymentTransactionId: input.paymentTransactionId,
       paymentStatus: finalPaymentStatus,
       confirmedAt,
-      metadata: {
-        confirmationIdempotencyKey: input.idempotencyKey,
-        gatewayStatus: verification.providerStatus,
-        sandboxMode: paymentSettings.sandboxMode,
-        professionalPolicy: this.buildProfessionalPolicyMetadata(professionalPolicy),
-      },
+      metadata: appointmentMetadata,
     });
 
     await this.clinicHoldRepository.confirmHold({
@@ -353,6 +363,7 @@ export class ConfirmClinicAppointmentUseCase
         gatewayStatus: verification.providerStatus,
         channel: holdChannel,
         professionalPolicyId: professionalPolicy.id,
+        coverage: coverageMetadata ?? null,
       },
     });
 

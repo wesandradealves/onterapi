@@ -35,6 +35,8 @@ export interface SchedulingBookingConfirmedPayload {
   tenantId: string;
   clinicId: string;
   professionalId: string;
+  originalProfessionalId?: string | null;
+  coverageId?: string | null;
   patientId: string;
   startAtUtc: Date;
   endAtUtc: Date;
@@ -47,6 +49,8 @@ export interface SchedulingBookingRescheduledPayload {
   tenantId: string;
   clinicId: string;
   professionalId: string;
+  originalProfessionalId?: string | null;
+  coverageId?: string | null;
   patientId: string;
   previousStartAtUtc: Date;
   previousEndAtUtc: Date;
@@ -60,6 +64,8 @@ export interface SchedulingBookingCancelledPayload {
   tenantId: string;
   clinicId: string;
   professionalId: string;
+  originalProfessionalId?: string | null;
+  coverageId?: string | null;
   patientId: string;
   cancelledBy: string;
   reason?: string;
@@ -71,6 +77,8 @@ export interface SchedulingBookingNoShowPayload {
   tenantId: string;
   clinicId: string;
   professionalId: string;
+  originalProfessionalId?: string | null;
+  coverageId?: string | null;
   patientId: string;
   markedAt: Date;
 }
@@ -80,6 +88,8 @@ export interface SchedulingPaymentStatusChangedPayload {
   tenantId: string;
   clinicId: string;
   professionalId: string;
+  originalProfessionalId?: string | null;
+  coverageId?: string | null;
   patientId: string;
   previousStatus: string;
   newStatus: string;

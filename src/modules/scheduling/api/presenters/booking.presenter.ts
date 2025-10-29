@@ -31,6 +31,8 @@ export class BookingPresenter {
       id: booking.id,
       clinicId: booking.clinicId,
       professionalId: booking.professionalId,
+      originalProfessionalId: booking.originalProfessionalId ?? null,
+      coverageId: booking.coverageId ?? null,
       patientId: booking.patientId,
       source: booking.source,
       status: booking.status,

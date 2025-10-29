@@ -257,6 +257,122 @@ export class ClinicHoldRepository implements IClinicHoldRepository {
     return ClinicMapper.toHold(saved);
   }
 
+  async reassignForCoverage(params: {
+    tenantId: string;
+    clinicId: string;
+    originalProfessionalId: string;
+    coverageProfessionalId: string;
+    coverageId: string;
+    start: Date;
+    end: Date;
+  }): Promise<ClinicHold[]> {
+    const entities = await this.repository
+      .createQueryBuilder('hold')
+      .where('hold.tenant_id = :tenantId', { tenantId: params.tenantId })
+      .andWhere('hold.clinic_id = :clinicId', { clinicId: params.clinicId })
+      .andWhere('hold.professional_id = :professionalId', {
+        professionalId: params.originalProfessionalId,
+      })
+      .andWhere('hold.status IN (:...statuses)', { statuses: ['pending', 'confirmed'] })
+      .andWhere('hold.start_at < :endAt', { endAt: params.end })
+      .andWhere('hold.end_at > :startAt', { startAt: params.start })
+      .getMany();
+
+    const updated: ClinicHold[] = [];
+
+    for (const entity of entities) {
+      const metadata =
+        entity.metadata && typeof entity.metadata === 'object'
+          ? { ...(entity.metadata as Record<string, unknown>) }
+          : {};
+
+      const alreadyAssigned =
+        metadata.coverage &&
+        typeof metadata.coverage === 'object' &&
+        (metadata.coverage as Record<string, unknown>).coverageId === params.coverageId &&
+        entity.professionalId === params.coverageProfessionalId;
+
+      if (alreadyAssigned) {
+        updated.push(ClinicMapper.toHold(entity));
+        continue;
+      }
+
+      metadata.coverage = {
+        coverageId: params.coverageId,
+        originalProfessionalId: params.originalProfessionalId,
+        coverageProfessionalId: params.coverageProfessionalId,
+        status: 'active',
+        startAt: params.start.toISOString(),
+        endAt: params.end.toISOString(),
+      };
+
+      entity.metadata = metadata;
+      entity.professionalId = params.coverageProfessionalId;
+
+      const saved = await this.repository.save(entity);
+      updated.push(ClinicMapper.toHold(saved));
+    }
+
+    return updated;
+  }
+
+  async releaseCoverageAssignments(params: {
+    tenantId: string;
+    clinicId: string;
+    coverageId: string;
+    reference: Date;
+    originalProfessionalId: string;
+    coverageProfessionalId: string;
+  }): Promise<ClinicHold[]> {
+    const entities = await this.repository
+      .createQueryBuilder('hold')
+      .where('hold.tenant_id = :tenantId', { tenantId: params.tenantId })
+      .andWhere('hold.clinic_id = :clinicId', { clinicId: params.clinicId })
+      .andWhere("hold.metadata -> 'coverage' ->> 'coverageId' = :coverageId", {
+        coverageId: params.coverageId,
+      })
+      .andWhere('hold.start_at >= :reference', { reference: params.reference })
+      .getMany();
+
+    const updated: ClinicHold[] = [];
+
+    for (const entity of entities) {
+      const metadata =
+        entity.metadata && typeof entity.metadata === 'object'
+          ? { ...(entity.metadata as Record<string, unknown>) }
+          : {};
+
+      const coverageMetadata =
+        metadata.coverage && typeof metadata.coverage === 'object'
+          ? ({ ...(metadata.coverage as Record<string, unknown>) } as Record<string, unknown>)
+          : undefined;
+
+      const fallbackProfessionalId =
+        (coverageMetadata?.originalProfessionalId as string | undefined) ??
+        params.originalProfessionalId;
+
+      if (!fallbackProfessionalId) {
+        continue;
+      }
+
+      if (coverageMetadata) {
+        coverageMetadata.status = 'completed';
+        coverageMetadata.completedAt = params.reference.toISOString();
+        metadata.coverage = coverageMetadata;
+      } else {
+        delete metadata.coverage;
+      }
+
+      entity.professionalId = fallbackProfessionalId;
+      entity.metadata = metadata;
+
+      const saved = await this.repository.save(entity);
+      updated.push(ClinicMapper.toHold(saved));
+    }
+
+    return updated;
+  }
+
   async updatePaymentStatus(params: {
     holdId: string;
     clinicId: string;

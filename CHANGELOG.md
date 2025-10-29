@@ -6,6 +6,30 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ## [Unreleased]
 
+### Added
+
+- Exportacoes de coberturas temporarias para CSV/Excel/PDF via
+  `/management/professional-coverages/export[.xls|.pdf]`, com filtros multi-clinica,
+  profissionais, periodo e status integrados ao RBAC vigente.
+- Exportacoes de coberturas temporarias por clinica em
+  `/clinics/{clinicId}/members/professional-coverages/export[.xls|.pdf]`,
+  respeitando o escopo da clinica, paginação protegida e RBAC de Owner/Gestor.
+- Endpoint `GET /management/professional-coverages` para listar coberturas temporarias
+  multi-clinica com filtros paginados e validação centralizada de escopo.
+- Exportacoes de overrides de template para CSV/Excel/PDF em
+  `/clinics/{clinicId}/settings/template-overrides/export[.xls|.pdf]`, com paginação
+  segura e reforço de RBAC/escopo.
+- Endpoint `POST /clinics/{clinicId}/invitations/addendums` para emitir aditivos economicos
+  versionados, respeitando profissionais ativos, `effectiveAt` opcional e auditoria
+  `clinic.invitation.addendum_issued`.
+- Testes unitarios e integracoes cobrindo o fluxo de aditivos (use case, controller e
+  schemas) garantindo RBAC e sanitizacao do token retornado.
+
+### Documentation
+
+- `docs/clinic-module-clarifications.md` atualizado com orientacao sobre os novos formatos de export de coberturas.
+- README atualizado com instrucoes do endpoint de aditivos (`/clinics/:clinicId/invitations/addendums`).
+
 ## [0.19.0] - 2025-10-24
 
 ### Added

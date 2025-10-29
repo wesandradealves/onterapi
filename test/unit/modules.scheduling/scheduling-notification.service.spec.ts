@@ -26,6 +26,8 @@ describe('SchedulingNotificationService', () => {
     tenantId: 'tenant-1',
     clinicId: 'clinic-1',
     professionalId: 'prof-1',
+    originalProfessionalId: 'prof-owner',
+    coverageId: 'coverage-1',
     patientId: 'patient-1',
   } as const;
 
@@ -180,5 +182,8 @@ describe('SchedulingNotificationService', () => {
     expect(messageBus.publish).toHaveBeenCalledWith(
       expect.objectContaining({ eventName: expectedEventName }),
     );
+    const published = messageBus.publish.mock.calls[0][0];
+    expect(published.payload.originalProfessionalId).toBe('prof-owner');
+    expect(published.payload.coverageId).toBe('coverage-1');
   });
 });

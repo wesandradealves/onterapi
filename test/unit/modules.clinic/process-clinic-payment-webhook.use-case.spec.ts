@@ -15,25 +15,43 @@ import { DomainEvents } from '../../../src/shared/events/domain-events';
 
 type Mocked<T> = jest.Mocked<T>;
 
-const createAppointment = (overrides: Partial<ClinicAppointment> = {}): ClinicAppointment => ({
-  id: 'appointment-1',
-  clinicId: 'clinic-1',
-  tenantId: 'tenant-1',
-  holdId: 'hold-1',
-  professionalId: 'professional-1',
-  patientId: 'patient-1',
-  serviceTypeId: 'service-1',
-  start: new Date('2099-01-01T12:00:00Z'),
-  end: new Date('2099-01-01T12:50:00Z'),
-  status: 'scheduled',
-  paymentStatus: 'approved',
-  paymentTransactionId: 'pay-123',
-  confirmedAt: new Date('2099-01-01T11:00:00Z'),
-  createdAt: new Date('2099-01-01T10:00:00Z'),
-  updatedAt: new Date('2099-01-01T10:00:00Z'),
-  metadata: {},
-  ...overrides,
-});
+const createAppointment = (overrides: Partial<ClinicAppointment> = {}): ClinicAppointment => {
+  const { metadata: metadataOverride, ...rest } = overrides;
+
+  const baseMetadata: Record<string, unknown> = {
+    coverage: {
+      coverageId: 'coverage-1',
+      originalProfessionalId: 'professional-owner',
+    },
+  };
+
+  const metadata =
+    metadataOverride && typeof metadataOverride === 'object'
+      ? { ...baseMetadata, ...metadataOverride }
+      : (JSON.parse(JSON.stringify(baseMetadata)) as Record<string, unknown>);
+
+  return {
+    id: 'appointment-1',
+    clinicId: 'clinic-1',
+    tenantId: 'tenant-1',
+    holdId: 'hold-1',
+    professionalId: 'professional-1',
+    originalProfessionalId: 'professional-owner',
+    coverageId: null,
+    patientId: 'patient-1',
+    serviceTypeId: 'service-1',
+    start: new Date('2099-01-01T12:00:00Z'),
+    end: new Date('2099-01-01T12:50:00Z'),
+    status: 'scheduled',
+    paymentStatus: 'approved',
+    paymentTransactionId: 'pay-123',
+    confirmedAt: new Date('2099-01-01T11:00:00Z'),
+    createdAt: new Date('2099-01-01T10:00:00Z'),
+    updatedAt: new Date('2099-01-01T10:00:00Z'),
+    metadata,
+    ...rest,
+  };
+};
 
 const baseHold: ClinicHold = {
   id: 'hold-1',
@@ -192,6 +210,12 @@ describe('ProcessClinicPaymentWebhookUseCase', () => {
     const eventNames = messageBus.publish.mock.calls.map(([event]) => event.eventName);
     expect(eventNames).toContain(DomainEvents.CLINIC_PAYMENT_STATUS_CHANGED);
     expect(eventNames).toContain(DomainEvents.CLINIC_PAYMENT_SETTLED);
+    const publishedPayloads = messageBus.publish.mock.calls.map(([event]) => event.payload);
+    expect(publishedPayloads).toHaveLength(2);
+    for (const payload of publishedPayloads) {
+      expect(payload.originalProfessionalId).toBe('professional-owner');
+      expect(payload.coverageId).toBe('coverage-1');
+    }
     expect(webhookEventRepository.record).toHaveBeenCalledWith(
       expect.objectContaining({
         tenantId: appointment.tenantId,
@@ -201,6 +225,43 @@ describe('ProcessClinicPaymentWebhookUseCase', () => {
       }),
     );
     expect(webhookEventRepository.purgeExpired).toHaveBeenCalledWith(input.receivedAt);
+  });
+
+  it('nao inclui dados de cobertura quando metadata nao possui coverage', async () => {
+    const appointment = createAppointment({
+      paymentStatus: 'approved',
+      metadata: { coverage: null },
+    });
+    appointmentRepository.findByPaymentTransactionId.mockResolvedValue(appointment);
+    appointmentRepository.updatePaymentStatus.mockImplementation(async () =>
+      createAppointment({ paymentStatus: 'settled', metadata: { coverage: null } }),
+    );
+    holdRepository.updatePaymentStatus.mockResolvedValue({
+      ...baseHold,
+      metadata: { paymentStatus: 'settled' },
+    } as ClinicHold);
+
+    const input = createInput({
+      payload: {
+        event: 'PAYMENT_RECEIVED_IN_ADVANCE',
+        payment: {
+          id: 'pay-123',
+          status: 'RECEIVED_IN_ADVANCE',
+          paymentDate: '2099-01-01T12:01:00Z',
+          value: 200,
+          netValue: 180,
+        },
+      },
+    });
+
+    await useCase.executeOrThrow(input);
+
+    const publishedPayloads = messageBus.publish.mock.calls.map(([event]) => event.payload);
+    expect(publishedPayloads).toHaveLength(2);
+    for (const payload of publishedPayloads) {
+      expect(payload.originalProfessionalId).toBeUndefined();
+      expect(payload.coverageId).toBeUndefined();
+    }
   });
 
   it('deve falhar quando status ASAAS for desconhecido', async () => {

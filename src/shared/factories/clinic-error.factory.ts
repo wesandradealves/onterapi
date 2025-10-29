@@ -95,6 +95,10 @@ export class ClinicErrorFactory {
     return new NotFoundException(this.sanitize(message));
   }
 
+  static coverageNotFound(message: string): NotFoundException {
+    return new NotFoundException(this.sanitize(message));
+  }
+
   static clinicSlugInUse(message: string): ConflictException {
     return new ConflictException(this.sanitize(message));
   }

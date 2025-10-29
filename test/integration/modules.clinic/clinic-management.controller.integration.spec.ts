@@ -1,4 +1,10 @@
-import { BadRequestException, CanActivate, ExecutionContext, ForbiddenException, INestApplication } from '@nestjs/common';
+import {
+  BadRequestException,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  INestApplication,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
@@ -9,6 +15,7 @@ import {
   ClinicManagementOverviewQuery,
   ClinicManagementTemplateInfo,
   ClinicMember,
+  ClinicProfessionalCoverage,
 } from '../../../src/domain/clinic/types/clinic.types';
 import {
   IGetClinicManagementOverviewUseCase,
@@ -30,6 +37,14 @@ import {
   IEvaluateClinicAlertsUseCase,
   IEvaluateClinicAlertsUseCase as IEvaluateClinicAlertsUseCaseToken,
 } from '../../../src/domain/clinic/interfaces/use-cases/evaluate-clinic-alerts.use-case.interface';
+import {
+  ICompareClinicsUseCase,
+  ICompareClinicsUseCase as ICompareClinicsUseCaseToken,
+} from '../../../src/domain/clinic/interfaces/use-cases/compare-clinics.use-case.interface';
+import {
+  IListClinicProfessionalCoveragesUseCase,
+  IListClinicProfessionalCoveragesUseCase as IListClinicProfessionalCoveragesUseCaseToken,
+} from '../../../src/domain/clinic/interfaces/use-cases/list-clinic-professional-coverages.use-case.interface';
 import { ClinicManagementController } from '../../../src/modules/clinic/api/controllers/clinic-management.controller';
 import { JwtAuthGuard } from '../../../src/modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../src/modules/auth/guards/roles.guard';
@@ -55,6 +70,8 @@ describe('ClinicManagementController (integration)', () => {
   let alertsUseCase: jest.Mocked<IListClinicAlertsUseCase>;
   let resolveAlertUseCase: jest.Mocked<IResolveClinicAlertUseCase>;
   let evaluateAlertsUseCase: jest.Mocked<IEvaluateClinicAlertsUseCase>;
+  let compareUseCase: jest.Mocked<ICompareClinicsUseCase>;
+  let listCoveragesUseCase: jest.Mocked<IListClinicProfessionalCoveragesUseCase>;
   let clinicAccessService: {
     resolveAuthorizedClinicIds: jest.Mock;
     assertClinicAccess: jest.Mock;
@@ -135,7 +152,42 @@ describe('ClinicManagementController (integration)', () => {
           { role: RolesEnum.PROFESSIONAL, count: 3 },
           { role: RolesEnum.SECRETARY, count: 1 },
         ],
+        coverage: {
+          scheduled: 1,
+          active: 2,
+          completedLast30Days: 1,
+          lastUpdatedAt: new Date('2025-01-12T09:00:00Z'),
+        },
         template: undefined,
+        compliance: {
+          total: 2,
+          valid: 1,
+          expiring: 1,
+          expired: 0,
+          missing: 0,
+          pending: 0,
+          review: 0,
+          submitted: 0,
+          unknown: 0,
+          nextExpiration: {
+            type: 'crm',
+            expiresAt: new Date('2025-02-01T12:00:00Z'),
+          },
+          documents: [
+            {
+              type: 'crm',
+              status: 'valid',
+              required: true,
+              expiresAt: new Date('2025-02-01T12:00:00Z'),
+            },
+            {
+              type: 'lgpd',
+              status: 'pending',
+              required: true,
+              expiresAt: null,
+            },
+          ],
+        },
       },
     ],
     alerts: [],
@@ -169,6 +221,16 @@ describe('ClinicManagementController (integration)', () => {
       execute: jest.fn(),
       executeOrThrow: jest.fn(),
     } as unknown as jest.Mocked<IEvaluateClinicAlertsUseCase>;
+
+    compareUseCase = {
+      execute: jest.fn(),
+      executeOrThrow: jest.fn(),
+    } as unknown as jest.Mocked<ICompareClinicsUseCase>;
+
+    listCoveragesUseCase = {
+      execute: jest.fn(),
+      executeOrThrow: jest.fn(),
+    } as unknown as jest.Mocked<IListClinicProfessionalCoveragesUseCase>;
 
     clinicAccessService = {
       resolveAuthorizedClinicIds: jest.fn(
@@ -211,6 +273,14 @@ describe('ClinicManagementController (integration)', () => {
           provide: IEvaluateClinicAlertsUseCaseToken,
           useValue: evaluateAlertsUseCase,
         },
+        {
+          provide: ICompareClinicsUseCaseToken,
+          useValue: compareUseCase,
+        },
+        {
+          provide: IListClinicProfessionalCoveragesUseCaseToken,
+          useValue: listCoveragesUseCase,
+        },
         { provide: ClinicAccessService, useValue: clinicAccessService },
         ClinicManagementExportService,
       ],
@@ -251,6 +321,7 @@ describe('ClinicManagementController (integration)', () => {
       .set('x-tenant-id', 'tenant-fin')
       .query({
         includeFinancials: 'false',
+        includeCoverageSummary: 'false',
       })
       .expect(200);
 
@@ -266,6 +337,7 @@ describe('ClinicManagementController (integration)', () => {
     )?.[0] as ClinicManagementOverviewQuery;
 
     expect(input.includeFinancials).toBe(false);
+    expect(input.includeCoverageSummary).toBe(false);
     expect(input.tenantId).toBe('tenant-fin');
     expect(response.body.financials).toBeUndefined();
     expect(response.body.totals.revenue).toBe(15000);
@@ -343,6 +415,19 @@ describe('ClinicManagementController (integration)', () => {
     expect(lines[1]).toContain('"manager-1"');
     expect(lines[1]).toContain('"2025-04-05T10:00:00.000Z"');
     expect(lines[1]).toContain('"{""delta"":-12.5}"');
+  });
+
+  it('retorna 403 ao exportar alertas sem escopo autorizado', async () => {
+    clinicAccessService.resolveAuthorizedClinicIds.mockRejectedValueOnce(
+      new ForbiddenException('Usuario nao possui acesso a uma ou mais clinicas solicitadas'),
+    );
+
+    await request(app.getHttpServer())
+      .get('/management/alerts/export')
+      .set('x-tenant-id', tenantCtx)
+      .expect(403);
+
+    expect(alertsUseCase.executeOrThrow).not.toHaveBeenCalled();
   });
 
   it('permite forcar avaliacao de alertas com escopo autorizado', async () => {
@@ -441,9 +526,42 @@ describe('ClinicManagementController (integration)', () => {
 
     const lines = response.text.trim().split('\n');
     expect(lines[0]).toBe(
-      'clinicId,nome,status,ultimoAtivoEm,receita,consultas,pacientesAtivos,ocupacao,satisfacao,margemContribuicao,alertasAtivos,tiposAlertasAtivos,owners,gestores,profissionais,secretarias',
+      'clinicId,nome,status,ultimoAtivoEm,receita,consultas,pacientesAtivos,ocupacao,satisfacao,margemContribuicao,alertasAtivos,tiposAlertasAtivos,owners,gestores,profissionais,secretarias,coverageScheduled,coverageActive,coverageCompleted30Dias,coverageUltimaAtualizacao,complianceTotal,complianceValid,complianceExpiring,complianceExpired,complianceMissing,compliancePending,complianceReview,complianceSubmitted,complianceUnknown,complianceNextExpirationTipo,complianceNextExpirationEm,complianceDocumentos',
     );
-    const expectedRow = `"${clinicOneId}","Clinic One","active","2025-01-15T12:00:00.000Z","10000","120","80","0.82","4.5","55","1","revenue_drop","1","2","3","1"`;
+    const expectedRow = [
+      `"${clinicOneId}"`,
+      '"Clinic One"',
+      '"active"',
+      '"2025-01-15T12:00:00.000Z"',
+      '"10000"',
+      '"120"',
+      '"80"',
+      '"0.82"',
+      '"4.5"',
+      '"55"',
+      '"1"',
+      '"revenue_drop"',
+      '"1"',
+      '"2"',
+      '"3"',
+      '"1"',
+      '"1"',
+      '"2"',
+      '"1"',
+      '"2025-01-12T09:00:00.000Z"',
+      '"2"',
+      '"1"',
+      '"1"',
+      '"0"',
+      '"0"',
+      '"0"',
+      '"0"',
+      '"0"',
+      '"0"',
+      '"crm"',
+      '"2025-02-01T12:00:00.000Z"',
+      '"crm:valid@2025-02-01T12:00:00.000Z|lgpd:pending"',
+    ].join(',');
     expect(lines[1]).toBe(expectedRow);
 
     expect(clinicAccessService.resolveAuthorizedClinicIds).toHaveBeenCalledWith({
@@ -469,6 +587,8 @@ describe('ClinicManagementController (integration)', () => {
     const xml = response.body.toString('utf-8');
     expect(xml).toContain('<Workbook');
     expect(xml).toContain('Clinic One');
+    expect(xml).toContain('coverageScheduled');
+    expect(xml).toContain('2025-01-12T09:00:00.000Z');
 
     expect(clinicAccessService.resolveAuthorizedClinicIds).toHaveBeenCalledWith({
       tenantId: tenantCtx,
@@ -492,6 +612,52 @@ describe('ClinicManagementController (integration)', () => {
     expect(response.headers['content-type']).toContain('application/pdf');
     expect(response.body.subarray(0, 4).toString()).toBe('%PDF');
     expect(response.body.toString('utf-8')).toContain('Clinic One');
+    expect(response.body.toString('utf-8')).toContain(
+      'Coberturas -> Programadas: 1 | Ativas: 2 | Concluidas \\(30d\\): 1 | Ultima atualizacao: 2025-01-12T09:00:00.000Z',
+    );
+  });
+
+  it('retorna 403 ao exportar overview CSV sem acesso autorizado', async () => {
+    clinicAccessService.resolveAuthorizedClinicIds.mockRejectedValueOnce(
+      new ForbiddenException('Usuario nao possui acesso a uma ou mais clinicas solicitadas'),
+    );
+
+    await request(app.getHttpServer())
+      .get('/management/overview/export')
+      .set('x-tenant-id', tenantCtx)
+      .expect(403);
+
+    expect(overviewUseCase.executeOrThrow).not.toHaveBeenCalled();
+  });
+
+  it('retorna 403 ao exportar overview Excel sem acesso autorizado', async () => {
+    clinicAccessService.resolveAuthorizedClinicIds.mockRejectedValueOnce(
+      new ForbiddenException('Usuario nao possui acesso a uma ou mais clinicas solicitadas'),
+    );
+
+    await request(app.getHttpServer())
+      .get('/management/overview/export.xls')
+      .set('x-tenant-id', tenantCtx)
+      .buffer()
+      .parse(binaryParser)
+      .expect(403);
+
+    expect(overviewUseCase.executeOrThrow).not.toHaveBeenCalled();
+  });
+
+  it('retorna 403 ao exportar overview PDF sem acesso autorizado', async () => {
+    clinicAccessService.resolveAuthorizedClinicIds.mockRejectedValueOnce(
+      new ForbiddenException('Usuario nao possui acesso a uma ou mais clinicas solicitadas'),
+    );
+
+    await request(app.getHttpServer())
+      .get('/management/overview/export.pdf')
+      .set('x-tenant-id', tenantCtx)
+      .buffer()
+      .parse(binaryParser)
+      .expect(403);
+
+    expect(overviewUseCase.executeOrThrow).not.toHaveBeenCalled();
   });
 
   afterEach(async () => {
@@ -570,6 +736,12 @@ describe('ClinicManagementController (integration)', () => {
             { role: RolesEnum.SECRETARY, count: 1 },
           ],
           template: templateInfo,
+          coverage: {
+            scheduled: 1,
+            active: 2,
+            completedLast30Days: 1,
+            lastUpdatedAt: new Date('2025-01-12T09:00:00Z'),
+          },
           financials: {
             clinicId: toClinicId,
             revenue: 8000,
@@ -577,6 +749,36 @@ describe('ClinicManagementController (integration)', () => {
             profit: 4000,
             margin: 50,
             contributionPercentage: 100,
+          },
+          compliance: {
+            total: 3,
+            valid: 1,
+            expiring: 1,
+            expired: 1,
+            missing: 0,
+            pending: 0,
+            review: 0,
+            submitted: 0,
+            unknown: 0,
+            nextExpiration: {
+              type: 'nr-32',
+              expiresAt: new Date('2025-02-05T10:00:00Z'),
+            },
+            documents: [
+              {
+                type: 'crm',
+                status: 'valid',
+                required: true,
+                expiresAt: new Date('2025-06-01T00:00:00Z'),
+              },
+              { type: 'lgpd', status: 'pending', required: true, expiresAt: null },
+              {
+                type: 'nr-32',
+                status: 'expired',
+                required: true,
+                expiresAt: new Date('2025-01-10T00:00:00Z'),
+              },
+            ],
           },
         },
       ],
@@ -618,6 +820,11 @@ describe('ClinicManagementController (integration)', () => {
                 satisfactionScore: 4.3,
                 satisfactionVariationPercentage: 1,
                 rankingPosition: 1,
+                trendDirection: 'upward',
+                trendPercentage: 5,
+                benchmarkValue: 7600,
+                benchmarkGapPercentage: 1.9736842105263157,
+                benchmarkPercentile: 100,
               },
             ],
           },
@@ -697,6 +904,7 @@ describe('ClinicManagementController (integration)', () => {
     expect(input.includeAlerts).toBe(false);
     expect(input.includeTeamDistribution).toBe(true);
     expect(input.includeFinancials).toBeUndefined();
+    expect(input.includeCoverageSummary).toBeUndefined();
 
     expect(response.body.financials?.totalRevenue).toBe(18000);
     expect(response.body.financials?.clinics).toEqual(
@@ -706,6 +914,26 @@ describe('ClinicManagementController (integration)', () => {
         }),
       ]),
     );
+    const clinicPayload = response.body.clinics?.[0];
+    expect(clinicPayload?.compliance).toMatchObject({
+      total: 3,
+      valid: 1,
+      expiring: 1,
+      expired: 1,
+    });
+    expect(clinicPayload?.compliance?.documents).toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: 'crm' })]),
+    );
+    expect(clinicPayload?.coverage).toEqual({
+      scheduled: 1,
+      active: 2,
+      completedLast30Days: 1,
+      lastUpdatedAt: '2025-01-12T09:00:00.000Z',
+    });
+    expect(clinicPayload?.compliance?.nextExpiration).toEqual({
+      type: 'nr-32',
+      expiresAt: '2025-02-05T10:00:00.000Z',
+    });
   });
 
   it('propaga excecoes do caso de uso', async () => {
@@ -788,6 +1016,625 @@ describe('ClinicManagementController (integration)', () => {
         activeOnly: undefined,
         limit: undefined,
       });
+    });
+
+    describe('GET /management/comparisons', () => {
+      it('retorna comparativo com metricas normalizadas e aplica filtro de acesso', async () => {
+        const start = '2025-04-01T00:00:00.000Z';
+        const end = '2025-04-10T00:00:00.000Z';
+
+        compareUseCase.executeOrThrow.mockResolvedValue([
+          {
+            clinicId: clinicOneId,
+            name: 'Clinic One',
+            revenue: 12000,
+            revenueVariationPercentage: 8.5,
+            appointments: 95,
+            appointmentsVariationPercentage: 6.2,
+            activePatients: 70,
+            activePatientsVariationPercentage: 5.1,
+            occupancyRate: 0.75,
+            occupancyVariationPercentage: 3.4,
+            satisfactionScore: 4.6,
+            satisfactionVariationPercentage: 1.2,
+            rankingPosition: 1,
+            trendDirection: 'upward',
+            trendPercentage: 6.2,
+            benchmarkValue: 10500,
+            benchmarkGapPercentage: 14.285714285714285,
+            benchmarkPercentile: 100,
+          },
+          {
+            clinicId: clinicTwoId,
+            name: 'Clinic Two',
+            revenue: 9000,
+            revenueVariationPercentage: -2.1,
+            appointments: 70,
+            appointmentsVariationPercentage: -5.4,
+            activePatients: 55,
+            activePatientsVariationPercentage: -4.8,
+            occupancyRate: 0.62,
+            occupancyVariationPercentage: -3.2,
+            satisfactionScore: 4.1,
+            satisfactionVariationPercentage: -1.0,
+            rankingPosition: 2,
+            trendDirection: 'downward',
+            trendPercentage: -5.4,
+            benchmarkValue: 10500,
+            benchmarkGapPercentage: -14.285714285714285,
+            benchmarkPercentile: 50,
+          },
+        ]);
+
+        clinicAccessService.resolveAuthorizedClinicIds.mockResolvedValueOnce([
+          clinicOneId,
+          clinicTwoId,
+        ]);
+
+        const response = await request(app.getHttpServer())
+          .get('/management/comparisons')
+          .set('x-tenant-id', tenantCtx)
+          .query({
+            clinicIds: `${clinicOneId},${clinicTwoId}`,
+            metric: 'appointments',
+            from: start,
+            to: end,
+            limit: 10,
+          })
+          .expect(200);
+
+        expect(clinicAccessService.resolveAuthorizedClinicIds).toHaveBeenCalledWith({
+          tenantId: tenantCtx,
+          user: expect.objectContaining({ id: 'user-ctx' }),
+          requestedClinicIds: [clinicOneId, clinicTwoId],
+        });
+        expect(compareUseCase.executeOrThrow).toHaveBeenCalledWith({
+          tenantId: tenantCtx,
+          clinicIds: [clinicOneId, clinicTwoId],
+          metric: 'appointments',
+          limit: 10,
+          period: {
+            start: new Date(start),
+            end: new Date(end),
+          },
+        });
+
+        const duration = new Date(end).getTime() - new Date(start).getTime();
+        const expectedPreviousEnd = new Date(new Date(start).getTime() - 1);
+        const expectedPreviousStart = new Date(expectedPreviousEnd.getTime() - duration);
+
+        expect(response.body.period.start).toBe(start);
+        expect(response.body.period.end).toBe(end);
+        expect(response.body.previousPeriod.start).toBe(expectedPreviousStart.toISOString());
+        expect(response.body.previousPeriod.end).toBe(expectedPreviousEnd.toISOString());
+        expect(response.body.metrics).toHaveLength(1);
+        expect(response.body.metrics[0].metric).toBe('appointments');
+        expect(response.body.metrics[0].entries).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ clinicId: clinicOneId, rankingPosition: 1 }),
+            expect.objectContaining({ clinicId: clinicTwoId, rankingPosition: 2 }),
+          ]),
+        );
+      });
+
+      it('deduplica clinicas e usa metrica padrao quando nao informada', async () => {
+        compareUseCase.executeOrThrow.mockResolvedValue([]);
+        clinicAccessService.resolveAuthorizedClinicIds.mockResolvedValueOnce([]);
+
+        await request(app.getHttpServer())
+          .get('/management/comparisons')
+          .query({
+            tenantId: tenantCtx,
+            clinicIds: `${clinicOneId},${clinicOneId}`,
+            from: '2025-05-01T00:00:00.000Z',
+            to: '2025-05-15T00:00:00.000Z',
+          })
+          .expect(200);
+
+        expect(compareUseCase.executeOrThrow).toHaveBeenCalledWith(
+          expect.objectContaining({
+            tenantId: tenantCtx,
+            clinicIds: [clinicOneId],
+            metric: 'revenue',
+            period: {
+              start: new Date('2025-05-01T00:00:00.000Z'),
+              end: new Date('2025-05-15T00:00:00.000Z'),
+            },
+          }),
+        );
+      });
+
+      it('exporta comparativo em CSV', async () => {
+        const start = '2025-06-01T00:00:00.000Z';
+        const end = '2025-06-15T00:00:00.000Z';
+
+        compareUseCase.executeOrThrow.mockResolvedValue([
+          {
+            clinicId: clinicOneId,
+            name: 'Clinic One',
+            revenue: 15000,
+            revenueVariationPercentage: 12.5,
+            appointments: 110,
+            appointmentsVariationPercentage: 4.2,
+            activePatients: 85,
+            activePatientsVariationPercentage: 3.8,
+            occupancyRate: 0.81,
+            occupancyVariationPercentage: 2.5,
+            satisfactionScore: 4.7,
+            satisfactionVariationPercentage: 1.4,
+            rankingPosition: 1,
+            trendDirection: 'upward',
+            trendPercentage: 12.5,
+            benchmarkValue: 15000,
+            benchmarkGapPercentage: 0,
+            benchmarkPercentile: 100,
+          },
+        ]);
+
+        clinicAccessService.resolveAuthorizedClinicIds.mockResolvedValueOnce([clinicOneId]);
+
+        const response = await request(app.getHttpServer())
+          .get('/management/comparisons/export')
+          .set('x-tenant-id', tenantCtx)
+          .query({
+            tenantId: tenantCtx,
+            clinicIds: clinicOneId,
+            metric: 'revenue',
+            from: start,
+            to: end,
+            limit: 5,
+          })
+          .buffer()
+          .parse((res, callback) => {
+            const chunks: Buffer[] = [];
+            res.on('data', (chunk) => chunks.push(chunk));
+            res.on('end', () => callback(null, Buffer.concat(chunks)));
+          })
+          .expect(200);
+
+        expect(response.headers['content-type']).toContain('text/csv');
+        const csv = response.body.toString('utf-8');
+        expect(csv).toContain('metrica,clinicId,nome,ranking');
+        expect(csv).toContain('"revenue"');
+        expect(csv).toContain('"Clinic One"');
+        expect(compareUseCase.executeOrThrow).toHaveBeenCalledWith({
+          tenantId: tenantCtx,
+          clinicIds: [clinicOneId],
+          metric: 'revenue',
+          limit: 5,
+          period: {
+            start: new Date(start),
+            end: new Date(end),
+          },
+        });
+      });
+
+      it('exporta comparativo em Excel', async () => {
+        const start = '2025-07-01T00:00:00.000Z';
+        const end = '2025-07-20T00:00:00.000Z';
+
+        compareUseCase.executeOrThrow.mockResolvedValue([
+          {
+            clinicId: clinicOneId,
+            name: 'Clinic One',
+            revenue: 20000,
+            revenueVariationPercentage: 15,
+            appointments: 130,
+            appointmentsVariationPercentage: 7.1,
+            activePatients: 95,
+            activePatientsVariationPercentage: 4.4,
+            occupancyRate: 0.83,
+            occupancyVariationPercentage: 2.8,
+            satisfactionScore: 4.9,
+            satisfactionVariationPercentage: 1.6,
+            rankingPosition: 1,
+            trendDirection: 'upward',
+            trendPercentage: 15,
+            benchmarkValue: 20000,
+            benchmarkGapPercentage: 0,
+            benchmarkPercentile: 100,
+          },
+        ]);
+
+        clinicAccessService.resolveAuthorizedClinicIds.mockResolvedValueOnce([clinicOneId]);
+
+        const response = await request(app.getHttpServer())
+          .get('/management/comparisons/export.xls')
+          .set('x-tenant-id', tenantCtx)
+          .query({
+            tenantId: tenantCtx,
+            clinicIds: clinicOneId,
+            metric: 'revenue',
+            from: start,
+            to: end,
+            limit: 15,
+          })
+          .buffer()
+          .parse((res, callback) => {
+            const chunks: Buffer[] = [];
+            res.on('data', (chunk) => chunks.push(chunk));
+            res.on('end', () => callback(null, Buffer.concat(chunks)));
+          })
+          .expect(200);
+
+        expect(response.headers['content-type']).toContain('application/vnd.ms-excel');
+        const xml = response.body.toString('utf-8');
+        expect(xml).toContain('<Workbook');
+        expect(xml).toContain('Clinic One');
+        expect(compareUseCase.executeOrThrow).toHaveBeenCalledWith({
+          tenantId: tenantCtx,
+          clinicIds: [clinicOneId],
+          metric: 'revenue',
+          limit: 15,
+          period: {
+            start: new Date(start),
+            end: new Date(end),
+          },
+        });
+      });
+
+      it('exporta comparativo em PDF', async () => {
+        const start = '2025-08-01T00:00:00.000Z';
+        const end = '2025-08-15T00:00:00.000Z';
+
+        compareUseCase.executeOrThrow.mockResolvedValue([
+          {
+            clinicId: clinicOneId,
+            name: 'Clinic One',
+            revenue: 18000,
+            revenueVariationPercentage: 9.2,
+            appointments: 125,
+            appointmentsVariationPercentage: 4.0,
+            activePatients: 88,
+            activePatientsVariationPercentage: 3.3,
+            occupancyRate: 0.8,
+            occupancyVariationPercentage: 1.9,
+            satisfactionScore: 4.6,
+            satisfactionVariationPercentage: 1.1,
+            rankingPosition: 1,
+            trendDirection: 'upward',
+            trendPercentage: 9.2,
+            benchmarkValue: 18000,
+            benchmarkGapPercentage: 0,
+            benchmarkPercentile: 100,
+          },
+        ]);
+
+        clinicAccessService.resolveAuthorizedClinicIds.mockResolvedValueOnce([clinicOneId]);
+
+        const response = await request(app.getHttpServer())
+          .get('/management/comparisons/export.pdf')
+          .set('x-tenant-id', tenantCtx)
+          .query({
+            tenantId: tenantCtx,
+            clinicIds: clinicOneId,
+            metric: 'revenue',
+            from: start,
+            to: end,
+            limit: 25,
+          })
+          .buffer()
+          .parse((res, callback) => {
+            const chunks: Buffer[] = [];
+            res.on('data', (chunk) => chunks.push(chunk));
+            res.on('end', () => callback(null, Buffer.concat(chunks)));
+          })
+          .expect(200);
+
+        expect(response.headers['content-type']).toContain('application/pdf');
+        expect(response.body.subarray(0, 4).toString()).toBe('%PDF');
+        expect(response.body.toString('utf-8')).toContain('Comparativo de Clinicas');
+        expect(compareUseCase.executeOrThrow).toHaveBeenCalledWith({
+          tenantId: tenantCtx,
+          clinicIds: [clinicOneId],
+          metric: 'revenue',
+          limit: 25,
+          period: {
+            start: new Date(start),
+            end: new Date(end),
+          },
+        });
+      });
+
+      it('retorna 403 ao exportar comparativo CSV sem acesso autorizado', async () => {
+        clinicAccessService.resolveAuthorizedClinicIds.mockRejectedValueOnce(
+          new ForbiddenException('Usuario nao possui acesso a uma ou mais clinicas solicitadas'),
+        );
+
+        await request(app.getHttpServer())
+          .get('/management/comparisons/export')
+          .set('x-tenant-id', tenantCtx)
+          .query({
+            tenantId: tenantCtx,
+            clinicIds: clinicOneId,
+            metric: 'revenue',
+            from: '2025-07-01T00:00:00.000Z',
+            to: '2025-07-20T00:00:00.000Z',
+            limit: 5,
+          })
+          .buffer()
+          .parse(binaryParser)
+          .expect(403);
+
+        expect(compareUseCase.executeOrThrow).not.toHaveBeenCalled();
+      });
+
+      it('retorna 403 ao exportar comparativo Excel sem acesso autorizado', async () => {
+        clinicAccessService.resolveAuthorizedClinicIds.mockRejectedValueOnce(
+          new ForbiddenException('Usuario nao possui acesso a uma ou mais clinicas solicitadas'),
+        );
+
+        await request(app.getHttpServer())
+          .get('/management/comparisons/export.xls')
+          .set('x-tenant-id', tenantCtx)
+          .query({
+            tenantId: tenantCtx,
+            clinicIds: clinicOneId,
+            metric: 'revenue',
+            from: '2025-07-01T00:00:00.000Z',
+            to: '2025-07-20T00:00:00.000Z',
+            limit: 5,
+          })
+          .buffer()
+          .parse(binaryParser)
+          .expect(403);
+
+        expect(compareUseCase.executeOrThrow).not.toHaveBeenCalled();
+      });
+
+      it('retorna 403 ao exportar comparativo PDF sem acesso autorizado', async () => {
+        clinicAccessService.resolveAuthorizedClinicIds.mockRejectedValueOnce(
+          new ForbiddenException('Usuario nao possui acesso a uma ou mais clinicas solicitadas'),
+        );
+
+        await request(app.getHttpServer())
+          .get('/management/comparisons/export.pdf')
+          .set('x-tenant-id', tenantCtx)
+          .query({
+            tenantId: tenantCtx,
+            clinicIds: clinicOneId,
+            metric: 'revenue',
+            from: '2025-07-01T00:00:00.000Z',
+            to: '2025-07-20T00:00:00.000Z',
+            limit: 5,
+          })
+          .buffer()
+          .parse(binaryParser)
+          .expect(403);
+
+        expect(compareUseCase.executeOrThrow).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('GET /management/professional-coverages', () => {
+    const coverageFixture: ClinicProfessionalCoverage = {
+      id: 'coverage-list',
+      tenantId: tenantCtx,
+      clinicId: clinicOneId,
+      professionalId: 'prof-list',
+      coverageProfessionalId: 'backup-list',
+      startAt: new Date('2025-03-01T08:00:00Z'),
+      endAt: new Date('2025-03-01T18:00:00Z'),
+      status: 'scheduled',
+      reason: 'Ferias',
+      notes: undefined,
+      metadata: { source: 'list-test' },
+      createdBy: 'manager-ctx',
+      createdAt: new Date('2025-02-15T10:00:00Z'),
+      updatedBy: 'manager-ctx',
+      updatedAt: new Date('2025-02-15T10:00:00Z'),
+      cancelledAt: undefined,
+      cancelledBy: undefined,
+    };
+
+    it('lista coberturas com filtros aplicados', async () => {
+      listCoveragesUseCase.executeOrThrow.mockResolvedValueOnce({
+        data: [coverageFixture],
+        total: 1,
+        page: 1,
+        limit: 25,
+      });
+
+      clinicAccessService.resolveAuthorizedClinicIds.mockResolvedValueOnce([clinicOneId]);
+
+      const response = await request(app.getHttpServer())
+        .get('/management/professional-coverages')
+        .set('x-tenant-id', tenantCtx)
+        .query({ clinicIds: clinicOneId, statuses: 'scheduled,active' })
+        .expect(200);
+
+      expect(clinicAccessService.resolveAuthorizedClinicIds).toHaveBeenCalledWith({
+        tenantId: tenantCtx,
+        user: expect.objectContaining({ id: 'user-ctx' }),
+        requestedClinicIds: [clinicOneId],
+      });
+
+      expect(listCoveragesUseCase.executeOrThrow).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: tenantCtx,
+          clinicIds: [clinicOneId],
+          statuses: ['scheduled', 'active'],
+        }),
+      );
+
+      expect(response.body.total).toBe(1);
+      expect(response.body.data[0].id).toBe(coverageFixture.id);
+    });
+
+    it('retorna 403 quando usuario nao possui acesso as clinicas solicitadas', async () => {
+      clinicAccessService.resolveAuthorizedClinicIds.mockRejectedValueOnce(
+        new ForbiddenException('Usuario nao possui acesso a uma ou mais clinicas solicitadas'),
+      );
+
+      await request(app.getHttpServer())
+        .get('/management/professional-coverages')
+        .set('x-tenant-id', tenantCtx)
+        .query({ clinicIds: clinicTwoId })
+        .expect(403);
+
+      expect(listCoveragesUseCase.executeOrThrow).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('GET /management/professional-coverages/export', () => {
+    it('exporta coberturas autorizadas em CSV', async () => {
+      const coverage: ClinicProfessionalCoverage = {
+        id: 'coverage-ctx',
+        tenantId: tenantCtx,
+        clinicId: clinicOneId,
+        professionalId: 'prof-ctx',
+        coverageProfessionalId: 'backup-ctx',
+        startAt: new Date('2025-02-10T09:00:00Z'),
+        endAt: new Date('2025-02-10T18:00:00Z'),
+        status: 'scheduled',
+        reason: 'Ferias',
+        notes: 'Cobertura integral',
+        createdBy: 'user-ctx',
+        createdAt: new Date('2025-01-25T10:00:00Z'),
+        updatedBy: 'user-ctx',
+        updatedAt: new Date('2025-01-25T10:00:00Z'),
+        metadata: { source: 'integration-test' },
+      };
+
+      listCoveragesUseCase.executeOrThrow.mockResolvedValueOnce({
+        data: [coverage],
+        total: 1,
+        page: 1,
+        limit: 200,
+      });
+
+      const response = await request(app.getHttpServer())
+        .get('/management/professional-coverages/export')
+        .set('x-tenant-id', tenantCtx)
+        .query({ statuses: 'scheduled,active' })
+        .expect(200);
+
+      expect(listCoveragesUseCase.executeOrThrow).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: tenantCtx,
+          clinicIds: [clinicOneId],
+          statuses: ['scheduled', 'active'],
+          page: 1,
+          limit: 200,
+        }),
+      );
+
+      expect(response.headers['content-type']).toContain('text/csv');
+      expect(response.headers['content-disposition']).toContain('clinic-professional-coverages');
+      expect(response.text).toContain('coverageId');
+      expect(response.text).toContain(coverage.id);
+    });
+
+    it('respeita filtro clinicId e valida acesso', async () => {
+      listCoveragesUseCase.executeOrThrow.mockResolvedValueOnce({
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 200,
+      });
+
+      clinicAccessService.resolveAuthorizedClinicIds.mockResolvedValueOnce([clinicTwoId]);
+
+      await request(app.getHttpServer())
+        .get('/management/professional-coverages/export')
+        .set('x-tenant-id', tenantCtx)
+        .query({ clinicId: clinicTwoId })
+        .expect(200);
+
+      expect(clinicAccessService.resolveAuthorizedClinicIds).toHaveBeenCalledWith({
+        tenantId: tenantCtx,
+        user: expect.objectContaining({ id: 'user-ctx' }),
+        requestedClinicIds: [clinicTwoId],
+      });
+
+      expect(listCoveragesUseCase.executeOrThrow).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: tenantCtx,
+          clinicIds: [clinicTwoId],
+        }),
+      );
+    });
+
+    it('retorna 403 quando usuario nao possui acesso as clinicas solicitadas', async () => {
+      clinicAccessService.resolveAuthorizedClinicIds.mockRejectedValueOnce(
+        new ForbiddenException('Usuario nao possui acesso a uma ou mais clinicas solicitadas'),
+      );
+
+      await request(app.getHttpServer())
+        .get('/management/professional-coverages/export')
+        .set('x-tenant-id', tenantCtx)
+        .expect(403);
+
+      expect(listCoveragesUseCase.executeOrThrow).not.toHaveBeenCalled();
+    });
+
+    it('retorna 403 no export.xls quando usuario nao possui acesso', async () => {
+      clinicAccessService.resolveAuthorizedClinicIds.mockRejectedValueOnce(
+        new ForbiddenException('Usuario nao possui acesso a uma ou mais clinicas solicitadas'),
+      );
+
+      await request(app.getHttpServer())
+        .get('/management/professional-coverages/export.xls')
+        .set('x-tenant-id', tenantCtx)
+        .buffer()
+        .parse(binaryParser)
+        .expect(403);
+
+      expect(listCoveragesUseCase.executeOrThrow).not.toHaveBeenCalled();
+    });
+
+    it('retorna 403 no export.pdf quando usuario nao possui acesso', async () => {
+      clinicAccessService.resolveAuthorizedClinicIds.mockRejectedValueOnce(
+        new ForbiddenException('Usuario nao possui acesso a uma ou mais clinicas solicitadas'),
+      );
+
+      await request(app.getHttpServer())
+        .get('/management/professional-coverages/export.pdf')
+        .set('x-tenant-id', tenantCtx)
+        .buffer()
+        .parse(binaryParser)
+        .expect(403);
+
+      expect(listCoveragesUseCase.executeOrThrow).not.toHaveBeenCalled();
+    });
+
+    it('exporta coberturas em Excel', async () => {
+      listCoveragesUseCase.executeOrThrow.mockResolvedValueOnce({
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 200,
+      });
+
+      const response = await request(app.getHttpServer())
+        .get('/management/professional-coverages/export.xls')
+        .set('x-tenant-id', tenantCtx)
+        .buffer()
+        .parse(binaryParser)
+        .expect(200);
+
+      expect(response.headers['content-type']).toContain('application/vnd.ms-excel');
+      expect(response.body.toString('utf-8')).toContain('<Workbook');
+    });
+
+    it('exporta coberturas em PDF', async () => {
+      listCoveragesUseCase.executeOrThrow.mockResolvedValueOnce({
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 200,
+      });
+
+      const response = await request(app.getHttpServer())
+        .get('/management/professional-coverages/export.pdf')
+        .set('x-tenant-id', tenantCtx)
+        .buffer()
+        .parse(binaryParser)
+        .expect(200);
+
+      expect(response.headers['content-type']).toContain('application/pdf');
+      expect(response.body.subarray(0, 4).toString()).toBe('%PDF');
     });
   });
 

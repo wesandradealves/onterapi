@@ -6,6 +6,10 @@ import {
   IClinicMetricsRepository as IClinicMetricsRepositoryToken,
 } from '../../../domain/clinic/interfaces/repositories/clinic-metrics.repository.interface';
 import {
+  type ICompareClinicsUseCase,
+  ICompareClinicsUseCase as ICompareClinicsUseCaseToken,
+} from '../../../domain/clinic/interfaces/use-cases/compare-clinics.use-case.interface';
+import {
   ClinicComparisonQuery,
   ClinicDashboardComparison,
   ClinicDashboardForecast,
@@ -31,6 +35,8 @@ export class GetClinicDashboardUseCase
   constructor(
     @Inject(IClinicMetricsRepositoryToken)
     private readonly clinicMetricsRepository: IClinicMetricsRepository,
+    @Inject(ICompareClinicsUseCaseToken)
+    private readonly compareClinicsUseCase: ICompareClinicsUseCase,
   ) {
     super();
   }
@@ -59,7 +65,7 @@ export class GetClinicDashboardUseCase
     const metrics = this.resolveComparisonMetrics(query);
     const metricSnapshots = await Promise.all(
       metrics.map(async (metric) => {
-        const entries = await this.clinicMetricsRepository.getComparison({
+        const entries = await this.compareClinicsUseCase.executeOrThrow({
           tenantId: query.tenantId,
           clinicIds: query.filters?.clinicIds,
           metric,

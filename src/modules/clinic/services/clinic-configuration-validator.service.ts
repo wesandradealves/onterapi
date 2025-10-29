@@ -4,11 +4,14 @@ import {
   Clinic,
   ClinicBrandingSettings,
   ClinicBrandingSettingsConfig,
+  ClinicComplianceStatus,
   ClinicGeneralSettings,
   ClinicIntegrationSettingsConfig,
   ClinicNotificationSettingsConfig,
   ClinicPaymentSettings,
   ClinicScheduleSettings,
+  ClinicSecurityComplianceDocument,
+  ClinicSecuritySettings,
   ClinicServiceSettings,
   ClinicStaffRole,
   ClinicTeamSettings,
@@ -47,6 +50,7 @@ const CONFIG_SECTIONS = {
   PAYMENTS: 'payments',
   INTEGRATIONS: 'integrations',
   NOTIFICATIONS: 'notifications',
+  SECURITY: 'security',
   BRANDING: 'branding',
 } as const;
 
@@ -497,6 +501,198 @@ export class ClinicConfigurationValidator {
     });
   }
 
+  validateSecuritySettings(settings: ClinicSecuritySettings): void {
+    const section = CONFIG_SECTIONS.SECURITY;
+
+    if (!settings) {
+      throw ClinicErrorFactory.invalidConfiguration(
+        section,
+        'configuracoes de seguranca obrigatorias',
+      );
+    }
+
+    const allowedRoles = new Set<ClinicStaffRole>([
+      RolesEnum.CLINIC_OWNER,
+      RolesEnum.MANAGER,
+      RolesEnum.PROFESSIONAL,
+      RolesEnum.SECRETARY,
+    ] as ClinicStaffRole[]);
+
+    const requiredRoles = settings.twoFactor.requiredRoles ?? [];
+
+    requiredRoles.forEach((role) => {
+      if (!allowedRoles.has(role)) {
+        throw ClinicErrorFactory.invalidConfiguration(
+          section,
+          'papel ' + role + ' nao pode ser configurado como obrigatorio para 2FA',
+        );
+      }
+    });
+
+    if (settings.passwordPolicy.minLength < 6 || settings.passwordPolicy.minLength > 128) {
+      throw ClinicErrorFactory.invalidConfiguration(
+        section,
+        'minLength da politica de senha deve estar entre 6 e 128',
+      );
+    }
+
+    const idleTimeoutMinutes = settings.session.idleTimeoutMinutes;
+    const absoluteTimeoutMinutes = settings.session.absoluteTimeoutMinutes;
+
+    if (idleTimeoutMinutes < 5) {
+      throw ClinicErrorFactory.invalidConfiguration(
+        section,
+        'idleTimeoutMinutes deve ser de pelo menos 5 minutos',
+      );
+    }
+
+    if (idleTimeoutMinutes > 1440) {
+      throw ClinicErrorFactory.invalidConfiguration(
+        section,
+        'idleTimeoutMinutes nao pode exceder 1440 minutos',
+      );
+    }
+
+    if (absoluteTimeoutMinutes < idleTimeoutMinutes) {
+      throw ClinicErrorFactory.invalidConfiguration(
+        section,
+        'absoluteTimeoutMinutes deve ser maior ou igual a idleTimeoutMinutes',
+      );
+    }
+
+    if (absoluteTimeoutMinutes > 10080) {
+      throw ClinicErrorFactory.invalidConfiguration(
+        section,
+        'absoluteTimeoutMinutes nao pode exceder 10080 minutos',
+      );
+    }
+
+    const ipRegex =
+      /^((25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\/(3[0-2]|[12]?\d))?$/;
+
+    const validateIpList = (entries: string[] | undefined, listName: string): void => {
+      if (!entries) {
+        return;
+      }
+
+      entries.forEach((entry) => {
+        if (!ipRegex.test(entry)) {
+          throw ClinicErrorFactory.invalidConfiguration(
+            section,
+            listName + ' contem IP/CIDR invalido: ' + entry,
+          );
+        }
+      });
+    };
+
+    validateIpList(settings.ipRestrictions?.allowlist, 'allowlist');
+    validateIpList(settings.ipRestrictions?.blocklist, 'blocklist');
+
+    const overlap = new Set(
+      (settings.ipRestrictions?.allowlist ?? []).filter((entry) =>
+        (settings.ipRestrictions?.blocklist ?? []).includes(entry),
+      ),
+    );
+
+    if (overlap.size > 0) {
+      throw ClinicErrorFactory.invalidConfiguration(
+        section,
+        'allowlist e blocklist nao podem conter os mesmos IPs: ' + Array.from(overlap).join(', '),
+      );
+    }
+
+    if ((settings.ipRestrictions?.allowlist?.length ?? 0) > 64) {
+      throw ClinicErrorFactory.invalidConfiguration(
+        section,
+        'allowlist suporta no maximo 64 entradas',
+      );
+    }
+
+    if ((settings.ipRestrictions?.blocklist?.length ?? 0) > 64) {
+      throw ClinicErrorFactory.invalidConfiguration(
+        section,
+        'blocklist suporta no maximo 64 entradas',
+      );
+    }
+
+    if (settings.audit.retentionDays < 30) {
+      throw ClinicErrorFactory.invalidConfiguration(
+        section,
+        'retentionDays deve ser de pelo menos 30 dias',
+      );
+    }
+
+    if (settings.audit.retentionDays > 3650) {
+      throw ClinicErrorFactory.invalidConfiguration(
+        section,
+        'retentionDays nao pode exceder 3650 dias',
+      );
+    }
+
+    if (settings.twoFactor.enabled && requiredRoles.length === 0) {
+      throw ClinicErrorFactory.invalidConfiguration(
+        section,
+        'requiredRoles nao pode ser vazio quando twoFactor estiver habilitado',
+      );
+    }
+
+    const complianceDocuments = settings.compliance?.documents ?? [];
+
+    if (complianceDocuments.length > 200) {
+      throw ClinicErrorFactory.invalidConfiguration(
+        section,
+        'numero maximo de documentos de compliance excedido',
+      );
+    }
+
+    if (complianceDocuments.length > 0) {
+      const allowedStatuses: ClinicComplianceStatus[] = [
+        'valid',
+        'pending',
+        'expired',
+        'missing',
+        'submitted',
+        'review',
+        'unknown',
+      ];
+      const seen = new Set<string>();
+
+      complianceDocuments.forEach((document) => {
+        ClinicConfigurationValidator.assertValidComplianceDocument(section, document);
+
+        const normalizedType = document.type.trim();
+        const key = `${normalizedType.toLowerCase()}::${document.id ?? ''}`;
+
+        if (seen.has(key)) {
+          throw ClinicErrorFactory.invalidConfiguration(
+            section,
+            `documento de compliance duplicado (${normalizedType})`,
+          );
+        }
+
+        seen.add(key);
+
+        if (document.status && !allowedStatuses.includes(document.status)) {
+          throw ClinicErrorFactory.invalidConfiguration(
+            section,
+            `status de compliance invalido (${document.status})`,
+          );
+        }
+
+        if (
+          document.expiresAt !== undefined &&
+          document.expiresAt !== null &&
+          !(document.expiresAt instanceof Date)
+        ) {
+          throw ClinicErrorFactory.invalidConfiguration(
+            section,
+            `expiresAt invalido para documento ${normalizedType}`,
+          );
+        }
+      });
+    }
+  }
+
   validateBrandingSettings(settings: ClinicBrandingSettings | ClinicBrandingSettingsConfig): void {
     const paletteColors: Array<{ name: string; value?: string }> = [
       { name: 'logoUrl', value: (settings as ClinicBrandingSettings).logoUrl },
@@ -559,6 +755,25 @@ export class ClinicConfigurationValidator {
     }
 
     return false;
+  }
+
+  private static assertValidComplianceDocument(
+    section: string,
+    document: ClinicSecurityComplianceDocument,
+  ): void {
+    if (!document.type || document.type.trim().length === 0) {
+      throw ClinicErrorFactory.invalidConfiguration(
+        section,
+        'documento de compliance deve possuir tipo',
+      );
+    }
+
+    if (document.name && document.name.trim().length === 0) {
+      throw ClinicErrorFactory.invalidConfiguration(
+        section,
+        'nome do documento de compliance nao pode ser vazio',
+      );
+    }
   }
 
   private extractPlanQuotas(clinic: Clinic): PlanQuotaConfig | undefined {

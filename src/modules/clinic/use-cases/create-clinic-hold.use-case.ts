@@ -18,6 +18,10 @@ import {
   IClinicProfessionalPolicyRepository as IClinicProfessionalPolicyRepositoryToken,
 } from '../../../domain/clinic/interfaces/repositories/clinic-professional-policy.repository.interface';
 import {
+  type IClinicProfessionalCoverageRepository,
+  IClinicProfessionalCoverageRepository as IClinicProfessionalCoverageRepositoryToken,
+} from '../../../domain/clinic/interfaces/repositories/clinic-professional-coverage.repository.interface';
+import {
   IExternalCalendarEventsRepository,
   IExternalCalendarEventsRepositoryToken,
 } from '../../../domain/scheduling/interfaces/repositories/external-calendar-events.repository.interface';
@@ -26,6 +30,7 @@ import {
   ClinicHold,
   ClinicHoldRequestInput,
   ClinicInvitationChannelScope,
+  ClinicProfessionalCoverage,
 } from '../../../domain/clinic/types/clinic.types';
 import {
   type ICreateClinicHoldUseCase,
@@ -64,6 +69,8 @@ export class CreateClinicHoldUseCase
     private readonly clinicServiceTypeRepository: IClinicServiceTypeRepository,
     @Inject(IClinicProfessionalPolicyRepositoryToken)
     private readonly professionalPolicyRepository: IClinicProfessionalPolicyRepository,
+    @Inject(IClinicProfessionalCoverageRepositoryToken)
+    private readonly coverageRepository: IClinicProfessionalCoverageRepository,
     @Inject(IExternalCalendarEventsRepositoryToken)
     private readonly externalCalendarEventsRepository: IExternalCalendarEventsRepository,
     private readonly auditService: ClinicAuditService,
@@ -101,43 +108,6 @@ export class CreateClinicHoldUseCase
       throw ClinicErrorFactory.serviceTypeNotFound('Tipo de servico nao encontrado');
     }
 
-    const professionalPolicy = await this.professionalPolicyRepository.findActivePolicy({
-      clinicId: input.clinicId,
-      tenantId: input.tenantId,
-      professionalId: input.professionalId,
-    });
-
-    if (!professionalPolicy) {
-      throw ClinicErrorFactory.invitationNotFound(
-        'Politica clinica-profissional nao encontrada para o profissional convidado',
-      );
-    }
-
-    if (!this.isChannelAllowed(professionalPolicy.channelScope, channel)) {
-      throw ClinicErrorFactory.invalidClinicData(
-        'Politica clinica-profissional nao permite agendamentos pelo canal informado',
-      );
-    }
-
-    const policyServiceType = professionalPolicy.economicSummary.items.find(
-      (item) => item.serviceTypeId === serviceType.id,
-    );
-
-    if (!policyServiceType) {
-      throw ClinicErrorFactory.invalidClinicData(
-        'Politica clinica-profissional nao contempla o tipo de servico selecionado',
-      );
-    }
-
-    if (
-      policyServiceType.price !== serviceType.price ||
-      policyServiceType.currency !== serviceType.currency
-    ) {
-      throw ClinicErrorFactory.invalidClinicData(
-        'Politica clinica-profissional divergente dos precos configurados para o servico',
-      );
-    }
-
     const now = new Date();
     const start = new Date(input.start);
     const end = new Date(input.end);
@@ -173,9 +143,57 @@ export class CreateClinicHoldUseCase
       ttlExpiresAt.setTime(start.getTime() - 60 * 1000);
     }
 
+    const { professionalId: resolvedProfessionalId, coverage } =
+      await this.resolveProfessionalCoverage({
+        tenantId: input.tenantId,
+        clinicId: input.clinicId,
+        professionalId: input.professionalId,
+        startAt: start,
+        endAt: end,
+      });
+
+    const professionalPolicy = await this.professionalPolicyRepository.findActivePolicy({
+      clinicId: input.clinicId,
+      tenantId: input.tenantId,
+      professionalId: resolvedProfessionalId,
+    });
+
+    if (!professionalPolicy) {
+      const message =
+        resolvedProfessionalId === input.professionalId
+          ? 'Politica clinica-profissional nao encontrada para o profissional convidado'
+          : 'Profissional de cobertura nao possui politica clinica ativa para o periodo informado';
+      throw ClinicErrorFactory.invitationNotFound(message);
+    }
+
+    if (!this.isChannelAllowed(professionalPolicy.channelScope, channel)) {
+      throw ClinicErrorFactory.invalidClinicData(
+        'Politica clinica-profissional nao permite agendamentos pelo canal informado',
+      );
+    }
+
+    const policyServiceType = professionalPolicy.economicSummary.items.find(
+      (item) => item.serviceTypeId === serviceType.id,
+    );
+
+    if (!policyServiceType) {
+      throw ClinicErrorFactory.invalidClinicData(
+        'Politica clinica-profissional nao contempla o tipo de servico selecionado',
+      );
+    }
+
+    if (
+      policyServiceType.price !== serviceType.price ||
+      policyServiceType.currency !== serviceType.currency
+    ) {
+      throw ClinicErrorFactory.invalidClinicData(
+        'Politica clinica-profissional divergente dos precos configurados para o servico',
+      );
+    }
+
     const overlappingHolds = await this.clinicHoldRepository.findActiveOverlapByProfessional({
       tenantId: input.tenantId,
-      professionalId: input.professionalId,
+      professionalId: resolvedProfessionalId,
       start,
       end,
     });
@@ -183,7 +201,7 @@ export class CreateClinicHoldUseCase
     const externalCalendarConflicts =
       await this.externalCalendarEventsRepository.findApprovedOverlap({
         tenantId: input.tenantId,
-        professionalId: input.professionalId,
+        professionalId: resolvedProfessionalId,
         start,
         end,
       });
@@ -213,13 +231,24 @@ export class CreateClinicHoldUseCase
     const metadata: Record<string, unknown> =
       input.metadata && typeof input.metadata === 'object' ? { ...input.metadata } : {};
 
+    if (coverage) {
+      metadata.coverage = {
+        coverageId: coverage.id,
+        originalProfessionalId: input.professionalId,
+        coverageProfessionalId: coverage.coverageProfessionalId,
+        status: coverage.status,
+        startAt: coverage.startAt.toISOString(),
+        endAt: coverage.endAt.toISOString(),
+      };
+    }
+
     let overbookingMetadata: OverbookingMetadata | undefined;
 
     if (overlappingHolds.length > 0) {
       const evaluation = await this.overbookingEvaluator.evaluate({
         tenantId: input.tenantId,
         clinicId: input.clinicId,
-        professionalId: input.professionalId,
+        professionalId: resolvedProfessionalId,
         serviceTypeId: input.serviceTypeId,
         start,
         overlaps: overlappingHolds.length,
@@ -298,6 +327,7 @@ export class CreateClinicHoldUseCase
 
     const hold = await this.clinicHoldRepository.create({
       ...input,
+      professionalId: resolvedProfessionalId,
       start,
       end,
       ttlExpiresAt,
@@ -312,7 +342,17 @@ export class CreateClinicHoldUseCase
       tenantId: input.tenantId,
       performedBy: input.requestedBy,
       detail: {
-        professionalId: input.professionalId,
+        professionalId: resolvedProfessionalId,
+        coverage: coverage
+          ? {
+              coverageId: coverage.id,
+              originalProfessionalId: input.professionalId,
+              coverageProfessionalId: coverage.coverageProfessionalId,
+              status: coverage.status,
+              startAt: coverage.startAt.toISOString(),
+              endAt: coverage.endAt.toISOString(),
+            }
+          : null,
         patientId: input.patientId,
         serviceTypeId: input.serviceTypeId,
         start,
@@ -343,7 +383,11 @@ export class CreateClinicHoldUseCase
       const baseEventPayload = {
         tenantId: input.tenantId,
         clinicId: input.clinicId,
-        professionalId: input.professionalId,
+        professionalId: resolvedProfessionalId,
+        originalProfessionalId:
+          coverage && coverage.coverageProfessionalId !== input.professionalId
+            ? input.professionalId
+            : undefined,
         patientId: input.patientId,
         serviceTypeId: input.serviceTypeId,
         professionalPolicyId: professionalPolicy.id,
@@ -378,6 +422,49 @@ export class CreateClinicHoldUseCase
     }
 
     return hold;
+  }
+
+  private async resolveProfessionalCoverage(params: {
+    tenantId: string;
+    clinicId: string;
+    professionalId: string;
+    startAt: Date;
+    endAt: Date;
+  }): Promise<{ professionalId: string; coverage?: ClinicProfessionalCoverage }> {
+    const coverages = await this.coverageRepository.findActiveOverlapping({
+      tenantId: params.tenantId,
+      clinicId: params.clinicId,
+      professionalId: params.professionalId,
+      startAt: params.startAt,
+      endAt: params.endAt,
+    });
+
+    if (!coverages || coverages.length === 0) {
+      return { professionalId: params.professionalId };
+    }
+
+    const [selected] = [...coverages].sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
+
+    if (
+      !selected ||
+      !selected.coverageProfessionalId ||
+      selected.coverageProfessionalId === params.professionalId
+    ) {
+      return { professionalId: params.professionalId };
+    }
+
+    this.logger.debug('Cobertura temporaria aplicada ao hold', {
+      clinicId: params.clinicId,
+      tenantId: params.tenantId,
+      professionalId: params.professionalId,
+      coverageProfessionalId: selected.coverageProfessionalId,
+      coverageId: selected.id,
+    });
+
+    return {
+      professionalId: selected.coverageProfessionalId,
+      coverage: selected,
+    };
   }
 
   private isChannelAllowed(

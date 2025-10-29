@@ -84,6 +84,8 @@ export class AcceptClinicInvitationUseCase
       throw ClinicErrorFactory.invitationExpired('Convite expirado');
     }
 
+    const isAddendum = invitation.metadata?.kind === 'addendum';
+
     const decodedToken = this.invitationTokenService.verifyToken(input.token);
 
     if (decodedToken.invitationId !== invitation.id) {
@@ -141,7 +143,20 @@ export class AcceptClinicInvitationUseCase
       invitation.clinicId,
       input.acceptedBy,
     );
-    if (existingMember) {
+
+    const activeMember = await this.memberRepository.findActiveByClinicAndUser({
+      clinicId: invitation.clinicId,
+      tenantId: invitation.tenantId,
+      userId: input.acceptedBy,
+    });
+
+    if (isAddendum) {
+      if (!activeMember) {
+        throw ClinicErrorFactory.memberNotFound(
+          'Profissional deve estar ativo na clinica para aceitar aditivo',
+        );
+      }
+    } else if (existingMember) {
       throw ClinicErrorFactory.memberAlreadyExists('Profissional ja vinculado a clinica');
     }
 
@@ -165,19 +180,29 @@ export class AcceptClinicInvitationUseCase
       }
     }
 
-    await this.memberRepository.addMember({
-      clinicId: invitation.clinicId,
-      tenantId: invitation.tenantId,
-      performedBy: input.acceptedBy,
-      userId: input.acceptedBy,
-      role: RolesEnum.PROFESSIONAL,
-      status: 'active',
-      scope: [],
-      joinedAt: new Date(),
-    });
+    if (!existingMember) {
+      await this.memberRepository.addMember({
+        clinicId: invitation.clinicId,
+        tenantId: invitation.tenantId,
+        performedBy: input.acceptedBy,
+        userId: input.acceptedBy,
+        role: RolesEnum.PROFESSIONAL,
+        status: 'active',
+        scope: [],
+        joinedAt: new Date(),
+      });
+    }
 
     const accepted = await this.invitationRepository.markAccepted(input);
     const economicSnapshot = accepted.acceptedEconomicSnapshot ?? accepted.economicSummary;
+
+    const addendumMetadata = isAddendum
+      ? (invitation.metadata?.addendum as { effectiveAt?: string } | undefined)
+      : undefined;
+
+    const addendumEffectiveAt = addendumMetadata?.effectiveAt
+      ? new Date(addendumMetadata.effectiveAt)
+      : undefined;
 
     const policy = await this.professionalPolicyRepository.replacePolicy({
       clinicId: invitation.clinicId,
@@ -185,7 +210,7 @@ export class AcceptClinicInvitationUseCase
       professionalId,
       channelScope: invitation.channelScope ?? 'direct',
       economicSummary: economicSnapshot,
-      effectiveAt: accepted.acceptedAt ?? new Date(),
+      effectiveAt: addendumEffectiveAt ?? accepted.acceptedAt ?? new Date(),
       sourceInvitationId: invitation.id,
       acceptedBy: input.acceptedBy,
     });
@@ -200,6 +225,7 @@ export class AcceptClinicInvitationUseCase
         professionalId: input.acceptedBy,
         economicSnapshot: this.cloneEconomicSnapshot(economicSnapshot),
         policyId: policy.id,
+        kind: isAddendum ? 'addendum' : 'standard',
       },
     });
 

@@ -8,6 +8,7 @@ const clinicConfigurationSectionEnum = z.enum([
   'payments',
   'integrations',
   'notifications',
+  'security',
   'branding',
 ]);
 

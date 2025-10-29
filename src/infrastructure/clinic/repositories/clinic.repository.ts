@@ -4,9 +4,11 @@ import { In, Repository } from 'typeorm';
 
 import {
   Clinic,
+  ClinicComplianceDocumentStatus,
   ClinicConfigurationSection,
   ClinicConfigurationTelemetry,
   ClinicGeneralSettings,
+  ClinicSecurityComplianceDocument,
   ClinicStatus,
   CreateClinicInput,
   UpdateClinicHoldSettingsInput,
@@ -395,6 +397,69 @@ export class ClinicRepository implements IClinicRepository {
     await this.repository.save(entity);
   }
 
+  async updateComplianceDocuments(params: {
+    clinicId: string;
+    tenantId: string;
+    documents: ClinicSecurityComplianceDocument[];
+    updatedBy: string;
+  }): Promise<void> {
+    const entity = await this.repository.findOne({
+      where: { id: params.clinicId, tenantId: params.tenantId },
+    });
+
+    if (!entity) {
+      throw new Error('Clinic not found');
+    }
+
+    const metadata = (entity.metadata ?? {}) as Record<string, unknown>;
+    const complianceRaw = (metadata.compliance ?? {}) as Record<string, unknown>;
+
+    complianceRaw.documents = params.documents.map((document) => {
+      const normalized: Record<string, unknown> = {
+        type: document.type.trim(),
+        required: document.required ?? true,
+        status: document.status ?? 'unknown',
+        metadata:
+          document.metadata && Object.keys(document.metadata).length > 0
+            ? JSON.parse(JSON.stringify(document.metadata))
+            : undefined,
+      };
+
+      if (document.id) {
+        normalized.id = document.id;
+      }
+
+      if (document.name) {
+        normalized.name = document.name.trim();
+      }
+
+      if (document.expiresAt === null) {
+        normalized.expiresAt = null;
+      } else if (document.expiresAt instanceof Date) {
+        normalized.expiresAt = document.expiresAt.toISOString();
+      }
+
+      const updatedAt = document.updatedAt instanceof Date ? document.updatedAt : new Date();
+      normalized.updatedAt = updatedAt.toISOString();
+
+      if (document.updatedBy) {
+        normalized.updatedBy = document.updatedBy;
+      } else {
+        normalized.updatedBy = params.updatedBy;
+      }
+
+      return normalized;
+    });
+
+    complianceRaw.updatedAt = new Date().toISOString();
+    complianceRaw.updatedBy = params.updatedBy;
+
+    metadata.compliance = complianceRaw;
+    entity.metadata = metadata;
+
+    await this.repository.save(entity);
+  }
+
   async existsByDocument(
     tenantId: string,
     documentValue: string,
@@ -414,6 +479,41 @@ export class ClinicRepository implements IClinicRepository {
     }
 
     return true;
+  }
+
+  async listComplianceDocuments(params: {
+    tenantId: string;
+    clinicIds: string[];
+  }): Promise<Record<string, ClinicComplianceDocumentStatus[]>> {
+    const uniqueIds = Array.from(
+      new Set(
+        (params.clinicIds ?? [])
+          .map((id) => id?.trim())
+          .filter((id): id is string => typeof id === 'string' && id.length > 0),
+      ),
+    );
+
+    if (uniqueIds.length === 0) {
+      return {};
+    }
+
+    const entities = await this.repository.find({
+      where: {
+        tenantId: params.tenantId,
+        id: In(uniqueIds),
+      },
+      select: ['id', 'metadata'],
+    });
+
+    const result: Record<string, ClinicComplianceDocumentStatus[]> = {};
+
+    entities.forEach((entity) => {
+      const metadata = (entity.metadata ?? {}) as Record<string, unknown>;
+      const documents = ClinicMapper.extractComplianceDocuments(metadata);
+      result[entity.id] = documents;
+    });
+
+    return result;
   }
 
   async listTenantIds(): Promise<string[]> {

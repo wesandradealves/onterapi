@@ -7,13 +7,16 @@ import {
   Inject,
   Param,
   Patch,
+  Post,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiParam,
+  ApiProduces,
   ApiQuery,
   ApiResponse,
   ApiTags,
@@ -33,6 +36,10 @@ import { ClinicMemberResponseDto } from '../dtos/clinic-member-response.dto';
 import { ClinicMemberListResponseDto } from '../dtos/clinic-member-list-response.dto';
 import { ClinicProfessionalFinancialClearanceResponseDto } from '../dtos/clinic-professional-financial-clearance-response.dto';
 import { ClinicProfessionalPolicyResponseDto } from '../dtos/clinic-professional-policy-response.dto';
+import {
+  ClinicProfessionalCoverageListResponseDto,
+  ClinicProfessionalCoverageResponseDto,
+} from '../dtos/clinic-professional-coverage-response.dto';
 import {
   listClinicMembersSchema,
   ListClinicMembersSchema,
@@ -55,7 +62,32 @@ import {
   type IGetClinicProfessionalPolicyUseCase,
   IGetClinicProfessionalPolicyUseCase as IGetClinicProfessionalPolicyUseCaseToken,
 } from '../../../../domain/clinic/interfaces/use-cases/get-clinic-professional-policy.use-case.interface';
-import { ClinicStaffRole } from '../../../../domain/clinic/types/clinic.types';
+import {
+  type ICreateClinicProfessionalCoverageUseCase,
+  ICreateClinicProfessionalCoverageUseCase as ICreateClinicProfessionalCoverageUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/create-clinic-professional-coverage.use-case.interface';
+import {
+  type IListClinicProfessionalCoveragesUseCase,
+  IListClinicProfessionalCoveragesUseCase as IListClinicProfessionalCoveragesUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/list-clinic-professional-coverages.use-case.interface';
+import {
+  type ICancelClinicProfessionalCoverageUseCase,
+  ICancelClinicProfessionalCoverageUseCase as ICancelClinicProfessionalCoverageUseCaseToken,
+} from '../../../../domain/clinic/interfaces/use-cases/cancel-clinic-professional-coverage.use-case.interface';
+import {
+  ClinicProfessionalCoverage,
+  ClinicStaffRole,
+} from '../../../../domain/clinic/types/clinic.types';
+import {
+  cancelClinicProfessionalCoverageSchema,
+  CancelClinicProfessionalCoverageSchema,
+  createClinicProfessionalCoverageSchema,
+  CreateClinicProfessionalCoverageSchema,
+  listClinicProfessionalCoveragesSchema,
+  ListClinicProfessionalCoveragesSchema,
+} from '../schemas/clinic-professional-coverage.schema';
+import { ClinicManagementExportService } from '../../services/clinic-management-export.service';
+import { Response } from 'express';
 
 @ApiTags('Clinics')
 @ApiBearerAuth()
@@ -71,6 +103,13 @@ export class ClinicMemberController {
     private readonly checkFinancialClearanceUseCase: ICheckClinicProfessionalFinancialClearanceUseCase,
     @Inject(IGetClinicProfessionalPolicyUseCaseToken)
     private readonly getProfessionalPolicyUseCase: IGetClinicProfessionalPolicyUseCase,
+    @Inject(ICreateClinicProfessionalCoverageUseCaseToken)
+    private readonly createCoverageUseCase: ICreateClinicProfessionalCoverageUseCase,
+    @Inject(IListClinicProfessionalCoveragesUseCaseToken)
+    private readonly listCoveragesUseCase: IListClinicProfessionalCoveragesUseCase,
+    @Inject(ICancelClinicProfessionalCoverageUseCaseToken)
+    private readonly cancelCoverageUseCase: ICancelClinicProfessionalCoverageUseCase,
+    private readonly exportService: ClinicManagementExportService,
   ) {}
 
   @Get()
@@ -172,6 +211,196 @@ export class ClinicMemberController {
     return ClinicPresenter.professionalPolicy(policy);
   }
 
+  @Post('professional-coverages')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Criar cobertura temporaria para um profissional' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiResponse({ status: 201, type: ClinicProfessionalCoverageResponseDto })
+  @ZodApiBody({ schema: createClinicProfessionalCoverageSchema })
+  async createCoverage(
+    @Param('clinicId') clinicId: string,
+    @Body(new ZodValidationPipe(createClinicProfessionalCoverageSchema))
+    body: CreateClinicProfessionalCoverageSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicProfessionalCoverageResponseDto> {
+    const tenantId = tenantHeader ?? body.tenantId ?? currentUser.tenantId;
+    if (!tenantId) {
+      throw new BadRequestException('Tenant nao informado');
+    }
+
+    const startAt = new Date(body.startAt);
+    const endAt = new Date(body.endAt);
+
+    const coverage = await this.createCoverageUseCase.executeOrThrow({
+      tenantId,
+      clinicId,
+      professionalId: body.professionalId,
+      coverageProfessionalId: body.coverageProfessionalId,
+      startAt,
+      endAt,
+      reason: body.reason,
+      notes: body.notes,
+      metadata: body.metadata,
+      performedBy: currentUser.id,
+    });
+
+    return ClinicPresenter.professionalCoverage(coverage);
+  }
+
+  @Get('professional-coverages')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Listar coberturas temporarias de profissionais' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiResponse({ status: 200, type: ClinicProfessionalCoverageListResponseDto })
+  async listCoverages(
+    @Param('clinicId') clinicId: string,
+    @Query(new ZodValidationPipe(listClinicProfessionalCoveragesSchema))
+    query: ListClinicProfessionalCoveragesSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicProfessionalCoverageListResponseDto> {
+    const tenantId = tenantHeader ?? query.tenantId ?? currentUser.tenantId;
+    if (!tenantId) {
+      throw new BadRequestException('Tenant nao informado');
+    }
+
+    const result = await this.listCoveragesUseCase.executeOrThrow({
+      tenantId,
+      clinicId,
+      professionalId: query.professionalId,
+      coverageProfessionalId: query.coverageProfessionalId,
+      statuses: query.statuses,
+      from: query.from ? new Date(query.from) : undefined,
+      to: query.to ? new Date(query.to) : undefined,
+      includeCancelled: query.includeCancelled,
+      page: query.page,
+      limit: query.limit,
+    });
+
+    return ClinicPresenter.professionalCoverageList(result);
+  }
+
+  @Get('professional-coverages/export')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Exportar coberturas temporarias de profissionais (CSV)' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiProduces('text/csv')
+  async exportProfessionalCoverages(
+    @Param('clinicId') clinicId: string,
+    @Query(new ZodValidationPipe(listClinicProfessionalCoveragesSchema))
+    query: ListClinicProfessionalCoveragesSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    const coverages = await this.collectProfessionalCoverages({
+      clinicId,
+      currentUser,
+      tenantHeader,
+      query,
+    });
+
+    const csvLines = this.exportService.buildProfessionalCoveragesCsv(coverages);
+    const payload = csvLines.join('\n');
+    const filename = `clinic-${clinicId}-professional-coverages-${Date.now()}.csv`;
+
+    res
+      .status(200)
+      .setHeader('Content-Type', 'text/csv; charset=utf-8')
+      .setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+      .send(payload);
+  }
+
+  @Get('professional-coverages/export.xls')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Exportar coberturas temporarias de profissionais (Excel)' })
+  @ApiProduces('application/vnd.ms-excel')
+  async exportProfessionalCoveragesExcel(
+    @Param('clinicId') clinicId: string,
+    @Query(new ZodValidationPipe(listClinicProfessionalCoveragesSchema))
+    query: ListClinicProfessionalCoveragesSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    const coverages = await this.collectProfessionalCoverages({
+      clinicId,
+      currentUser,
+      tenantHeader,
+      query,
+    });
+
+    const buffer = await this.exportService.buildProfessionalCoveragesExcel(coverages);
+    const filename = `clinic-${clinicId}-professional-coverages-${Date.now()}.xls`;
+
+    res
+      .status(200)
+      .setHeader('Content-Type', 'application/vnd.ms-excel')
+      .setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+      .send(buffer);
+  }
+
+  @Get('professional-coverages/export.pdf')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Exportar coberturas temporarias de profissionais (PDF)' })
+  @ApiProduces('application/pdf')
+  async exportProfessionalCoveragesPdf(
+    @Param('clinicId') clinicId: string,
+    @Query(new ZodValidationPipe(listClinicProfessionalCoveragesSchema))
+    query: ListClinicProfessionalCoveragesSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    const coverages = await this.collectProfessionalCoverages({
+      clinicId,
+      currentUser,
+      tenantHeader,
+      query,
+    });
+
+    const buffer = await this.exportService.buildProfessionalCoveragesPdf(coverages);
+    const filename = `clinic-${clinicId}-professional-coverages-${Date.now()}.pdf`;
+
+    res
+      .status(200)
+      .setHeader('Content-Type', 'application/pdf')
+      .setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+      .send(buffer);
+  }
+
+  @Patch('professional-coverages/:coverageId/cancel')
+  @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Cancelar cobertura temporaria' })
+  @ApiParam({ name: 'clinicId', type: String })
+  @ApiParam({ name: 'coverageId', type: String })
+  @ApiResponse({ status: 200, type: ClinicProfessionalCoverageResponseDto })
+  @ZodApiBody({ schema: cancelClinicProfessionalCoverageSchema })
+  async cancelCoverage(
+    @Param('clinicId') clinicId: string,
+    @Param('coverageId') coverageId: string,
+    @Body(new ZodValidationPipe(cancelClinicProfessionalCoverageSchema))
+    body: CancelClinicProfessionalCoverageSchema,
+    @CurrentUser() currentUser: ICurrentUser,
+    @Headers('x-tenant-id') tenantHeader?: string,
+  ): Promise<ClinicProfessionalCoverageResponseDto> {
+    const tenantId = tenantHeader ?? body.tenantId ?? currentUser.tenantId;
+    if (!tenantId) {
+      throw new BadRequestException('Tenant nao informado');
+    }
+
+    const coverage = await this.cancelCoverageUseCase.executeOrThrow({
+      tenantId,
+      clinicId,
+      coverageId,
+      cancelledBy: currentUser.id,
+      cancellationReason: body.cancellationReason,
+    });
+
+    return ClinicPresenter.professionalCoverage(coverage);
+  }
+
   @Patch(':memberId')
   @Roles(RolesEnum.CLINIC_OWNER, RolesEnum.MANAGER, RolesEnum.SUPER_ADMIN)
   @ApiOperation({ summary: 'Atualizar membro da clinica' })
@@ -204,6 +433,55 @@ export class ClinicMemberController {
     });
 
     return ClinicPresenter.member(member);
+  }
+
+  private async collectProfessionalCoverages(params: {
+    clinicId: string;
+    currentUser: ICurrentUser;
+    tenantHeader?: string;
+    query: ListClinicProfessionalCoveragesSchema;
+  }): Promise<ClinicProfessionalCoverage[]> {
+    const tenantId = params.tenantHeader ?? params.query.tenantId ?? params.currentUser.tenantId;
+    if (!tenantId) {
+      throw new BadRequestException('Tenant nao informado');
+    }
+
+    const limitCandidate =
+      params.query.limit && params.query.limit > 0
+        ? Math.min(Math.floor(params.query.limit), 200)
+        : 200;
+    let page = params.query.page && params.query.page > 0 ? Math.floor(params.query.page) : 1;
+
+    const baseQuery = {
+      tenantId,
+      clinicId: params.clinicId,
+      professionalId: params.query.professionalId,
+      coverageProfessionalId: params.query.coverageProfessionalId,
+      statuses: params.query.statuses,
+      from: params.query.from ? new Date(params.query.from) : undefined,
+      to: params.query.to ? new Date(params.query.to) : undefined,
+      includeCancelled: params.query.includeCancelled ?? false,
+    };
+
+    const coverages: ClinicProfessionalCoverage[] = [];
+
+    while (true) {
+      const result = await this.listCoveragesUseCase.executeOrThrow({
+        ...baseQuery,
+        page,
+        limit: limitCandidate,
+      });
+
+      coverages.push(...result.data);
+
+      if (result.data.length === 0 || result.page * result.limit >= result.total) {
+        break;
+      }
+
+      page += 1;
+    }
+
+    return coverages;
   }
 
   private mapRole(
