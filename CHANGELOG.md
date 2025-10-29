@@ -36,6 +36,8 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 - `docs/clinic-module-clarifications.md` atualizado com orientacao sobre os novos formatos de export de coberturas.
 - README atualizado com instrucoes do endpoint de aditivos (`/clinics/:clinicId/invitations/addendums`).
 - README atualizado com o fluxo de smoke tests automatizados (`scripts/smoke-clinic-module.cjs`).
+- Fluxograma do README expandido para mostrar o modulo de clinica, integracoes externas e os
+  smoke tests automatizados.
 
 ## [0.19.0] - 2025-10-24
 

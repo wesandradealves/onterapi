@@ -1100,23 +1100,49 @@ Este documento serve como baseline; reavalie os criterios depois de cada entrega
 
 ```mermaid
 flowchart LR
-    Client[Clientes Web/Mobile] --> API[NestJS API]
+    subgraph Clients
+        Client[Clientes Web/Mobile]
+    end
+
+    subgraph Platform["NestJS API"]
+        API
+    end
+
+    Client --> API
+
     API --> Auth[Auth Module]
     API --> Users[Users Module]
     API --> Patients[Patients Module]
     API --> Anamnesis[Anamnesis Module]
+    API --> Clinic[Clinic Module<br/>(Config/Convites/Management)]
+    API --> Scheduling[Scheduling Module]
     API --> Legal[Legal Module]
+    API --> Notifications[Notifications Module]
+
     Auth --> SupabaseAuth[(Supabase Auth)]
     Users --> SupabaseDB[(Supabase Postgres)]
     Patients --> SupabaseDB
+    Clinic --> SupabaseDB
+    Scheduling --> SupabaseDB
     Anamnesis --> SupabaseDB
     Legal --> SupabaseDB
+    Notifications --> SupabaseDB
+
     Anamnesis --> Storage[(Supabase Storage)]
     Anamnesis --> AIWorker[AI Worker/Webhooks]
     AIWorker --> API
-    Auth --> MessageBus[(MessageBus / Eventos)]
+
+    Clinic --> ASAAS[(ASAAS / Pagamentos)]
+    Clinic --> GoogleCal[(Google Calendar)]
+    Clinic --> WhatsApp[(WhatsApp API)]
+    Clinic --> MessageBus[(MessageBus / Eventos)]
+    Scheduling --> MessageBus
     Anamnesis --> MessageBus
-    API --> Tests[[Testes Automatizados]]
+    Notifications --> MessageBus
+    Auth --> MessageBus
+
+    Tests[[CI Tests<br/>(lint/unit/int/e2e)]] --> API
+    Smoke[[Smoke Tests<br/>(scripts/smoke-clinic-module.cjs)]] --> API
 ```
 
 ## Troubleshooting
