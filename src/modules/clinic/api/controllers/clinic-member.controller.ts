@@ -88,6 +88,7 @@ import {
 } from '../schemas/clinic-professional-coverage.schema';
 import { ClinicManagementExportService } from '../../services/clinic-management-export.service';
 import { Response } from 'express';
+import { resolveTenantContext } from '../../../../shared/utils/tenant-context.util';
 
 @ApiTags('Clinics')
 @ApiBearerAuth()
@@ -125,10 +126,11 @@ export class ClinicMemberController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicMemberListResponseDto> {
-    const tenantId = tenantHeader ?? query.tenantId ?? currentUser.tenantId;
-    if (!tenantId) {
-      throw new BadRequestException('Tenant nao informado');
-    }
+    const { tenantId } = resolveTenantContext({
+      currentUser,
+      tenantIdFromRequest: tenantHeader,
+      fallbackTenantId: query.tenantId,
+    });
 
     const roles =
       query.roles
@@ -164,10 +166,11 @@ export class ClinicMemberController {
     @Query('tenantId') tenantQuery?: string,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicProfessionalFinancialClearanceResponseDto> {
-    const tenantId = tenantHeader ?? tenantQuery ?? currentUser.tenantId;
-    if (!tenantId) {
-      throw new BadRequestException('Tenant nao informado');
-    }
+    const { tenantId } = resolveTenantContext({
+      currentUser,
+      tenantIdFromRequest: tenantHeader,
+      fallbackTenantId: tenantQuery,
+    });
 
     const status = await this.checkFinancialClearanceUseCase.executeOrThrow({
       clinicId,
@@ -197,10 +200,11 @@ export class ClinicMemberController {
     @Query('tenantId') tenantQuery?: string,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicProfessionalPolicyResponseDto> {
-    const tenantId = tenantHeader ?? tenantQuery ?? currentUser.tenantId;
-    if (!tenantId) {
-      throw new BadRequestException('Tenant nao informado');
-    }
+    const { tenantId } = resolveTenantContext({
+      currentUser,
+      tenantIdFromRequest: tenantHeader,
+      fallbackTenantId: tenantQuery,
+    });
 
     const policy = await this.getProfessionalPolicyUseCase.executeOrThrow({
       clinicId,
@@ -224,10 +228,11 @@ export class ClinicMemberController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicProfessionalCoverageResponseDto> {
-    const tenantId = tenantHeader ?? body.tenantId ?? currentUser.tenantId;
-    if (!tenantId) {
-      throw new BadRequestException('Tenant nao informado');
-    }
+    const { tenantId } = resolveTenantContext({
+      currentUser,
+      tenantIdFromRequest: tenantHeader,
+      fallbackTenantId: body.tenantId,
+    });
 
     const startAt = new Date(body.startAt);
     const endAt = new Date(body.endAt);
@@ -260,10 +265,11 @@ export class ClinicMemberController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicProfessionalCoverageListResponseDto> {
-    const tenantId = tenantHeader ?? query.tenantId ?? currentUser.tenantId;
-    if (!tenantId) {
-      throw new BadRequestException('Tenant nao informado');
-    }
+    const { tenantId } = resolveTenantContext({
+      currentUser,
+      tenantIdFromRequest: tenantHeader,
+      fallbackTenantId: query.tenantId,
+    });
 
     const result = await this.listCoveragesUseCase.executeOrThrow({
       tenantId,
@@ -385,10 +391,11 @@ export class ClinicMemberController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicProfessionalCoverageResponseDto> {
-    const tenantId = tenantHeader ?? body.tenantId ?? currentUser.tenantId;
-    if (!tenantId) {
-      throw new BadRequestException('Tenant nao informado');
-    }
+    const { tenantId } = resolveTenantContext({
+      currentUser,
+      tenantIdFromRequest: tenantHeader,
+      fallbackTenantId: body.tenantId,
+    });
 
     const coverage = await this.cancelCoverageUseCase.executeOrThrow({
       tenantId,
@@ -415,10 +422,11 @@ export class ClinicMemberController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicMemberResponseDto> {
-    const tenantId = tenantHeader ?? body.tenantId ?? currentUser.tenantId;
-    if (!tenantId) {
-      throw new BadRequestException('Tenant nao informado');
-    }
+    const { tenantId } = resolveTenantContext({
+      currentUser,
+      tenantIdFromRequest: tenantHeader,
+      fallbackTenantId: body.tenantId,
+    });
 
     const role = this.mapRole(body.role, 'role');
 
@@ -441,10 +449,11 @@ export class ClinicMemberController {
     tenantHeader?: string;
     query: ListClinicProfessionalCoveragesSchema;
   }): Promise<ClinicProfessionalCoverage[]> {
-    const tenantId = params.tenantHeader ?? params.query.tenantId ?? params.currentUser.tenantId;
-    if (!tenantId) {
-      throw new BadRequestException('Tenant nao informado');
-    }
+    const { tenantId } = resolveTenantContext({
+      currentUser: params.currentUser,
+      tenantIdFromRequest: params.tenantHeader,
+      fallbackTenantId: params.query.tenantId,
+    });
 
     const limitCandidate =
       params.query.limit && params.query.limit > 0

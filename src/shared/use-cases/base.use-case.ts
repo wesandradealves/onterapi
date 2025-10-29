@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { Result } from '../types/result.type';
+import { failure, Result } from '../types/result.type';
 import { ExecutableUseCase } from './executable.interface';
 
 export abstract class BaseUseCase<TInput, TOutput> implements ExecutableUseCase<TInput, TOutput> {
@@ -14,12 +14,17 @@ export abstract class BaseUseCase<TInput, TOutput> implements ExecutableUseCase<
         error instanceof Error ? error : new Error(String(error ?? 'Unknown error'));
 
       this.logger.error(`Error in ${this.constructor.name}`, normalizedError);
-      throw normalizedError;
+      return failure(normalizedError);
     }
   }
 
   async executeOrThrow(input: TInput): Promise<TOutput> {
     const result = await this.execute(input);
+
+    if ('error' in result && result.error) {
+      throw result.error;
+    }
+
     return result.data as TOutput;
   }
 

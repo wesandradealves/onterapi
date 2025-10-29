@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
@@ -47,6 +46,7 @@ import {
 } from '../schemas/clinic-professional-transfer.schema';
 import {
   ClinicRequestContext,
+  toClinicRequestContext,
   toClinicManagementAlertsQuery,
   toClinicManagementOverviewQuery,
   toCompareClinicsQuery,
@@ -190,7 +190,7 @@ export class ClinicManagementController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicManagementOverviewResponseDto> {
-    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const context = toClinicRequestContext(currentUser, tenantHeader, query.tenantId);
     const overviewQuery = toClinicManagementOverviewQuery(query, context);
     const requestedClinicIds = overviewQuery.filters?.clinicIds ?? query.clinicIds;
     const authorizedClinicIds = await this.clinicAccessService.resolveAuthorizedClinicIds({
@@ -249,7 +249,7 @@ export class ClinicManagementController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicDashboardComparisonDto> {
-    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const context = toClinicRequestContext(currentUser, tenantHeader, query.tenantId);
     const comparisonQuery = toCompareClinicsQuery(query, context);
 
     const requestedClinicIds = comparisonQuery.clinicIds ?? query.clinicIds;
@@ -324,7 +324,7 @@ export class ClinicManagementController {
     @Headers('x-tenant-id') tenantHeader: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
-    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const context = toClinicRequestContext(currentUser, tenantHeader, query.tenantId);
     const overviewQuery = toClinicManagementOverviewQuery(query, context);
     const requestedClinicIds = overviewQuery.filters?.clinicIds ?? query.clinicIds;
     const authorizedClinicIds = await this.clinicAccessService.resolveAuthorizedClinicIds({
@@ -389,7 +389,7 @@ export class ClinicManagementController {
     @Headers('x-tenant-id') tenantHeader: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
-    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const context = toClinicRequestContext(currentUser, tenantHeader, query.tenantId);
     const comparisonQuery = toCompareClinicsQuery(query, context);
 
     const requestedClinicIds = comparisonQuery.clinicIds ?? query.clinicIds;
@@ -452,7 +452,7 @@ export class ClinicManagementController {
     @Headers('x-tenant-id') tenantHeader: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
-    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const context = toClinicRequestContext(currentUser, tenantHeader, query.tenantId);
     const comparisonQuery = toCompareClinicsQuery(query, context);
 
     const requestedClinicIds = comparisonQuery.clinicIds ?? query.clinicIds;
@@ -515,7 +515,7 @@ export class ClinicManagementController {
     @Headers('x-tenant-id') tenantHeader: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
-    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const context = toClinicRequestContext(currentUser, tenantHeader, query.tenantId);
     const comparisonQuery = toCompareClinicsQuery(query, context);
 
     const requestedClinicIds = comparisonQuery.clinicIds ?? query.clinicIds;
@@ -550,7 +550,7 @@ export class ClinicManagementController {
     @Headers('x-tenant-id') tenantHeader: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
-    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const context = toClinicRequestContext(currentUser, tenantHeader, query.tenantId);
     const overviewQuery = toClinicManagementOverviewQuery(query, context);
     const requestedClinicIds = overviewQuery.filters?.clinicIds ?? query.clinicIds;
     const authorizedClinicIds = await this.clinicAccessService.resolveAuthorizedClinicIds({
@@ -586,7 +586,7 @@ export class ClinicManagementController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader: string | undefined,
   ): Promise<ClinicProfessionalCoverageListResponseDto> {
-    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const context = toClinicRequestContext(currentUser, tenantHeader, query.tenantId);
 
     const requestedClinicIds = new Set<string>();
     if (query.clinicIds && query.clinicIds.length > 0) {
@@ -636,7 +636,7 @@ export class ClinicManagementController {
     @Headers('x-tenant-id') tenantHeader: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
-    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const context = toClinicRequestContext(currentUser, tenantHeader, query.tenantId);
     const coverages = await this.collectProfessionalCoveragesForExport(query, context, currentUser);
     const csvLines = this.exportService.buildProfessionalCoveragesCsv(coverages);
     const filename = `clinic-professional-coverages-${context.tenantId}-${Date.now()}.csv`;
@@ -657,7 +657,7 @@ export class ClinicManagementController {
     @Headers('x-tenant-id') tenantHeader: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
-    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const context = toClinicRequestContext(currentUser, tenantHeader, query.tenantId);
     const coverages = await this.collectProfessionalCoveragesForExport(query, context, currentUser);
     const buffer = await this.exportService.buildProfessionalCoveragesExcel(coverages);
     const filename = `clinic-professional-coverages-${context.tenantId}-${Date.now()}.xls`;
@@ -678,7 +678,7 @@ export class ClinicManagementController {
     @Headers('x-tenant-id') tenantHeader: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
-    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const context = toClinicRequestContext(currentUser, tenantHeader, query.tenantId);
     const coverages = await this.collectProfessionalCoveragesForExport(query, context, currentUser);
     const buffer = await this.exportService.buildProfessionalCoveragesPdf(coverages);
     const filename = `clinic-professional-coverages-${context.tenantId}-${Date.now()}.pdf`;
@@ -699,7 +699,7 @@ export class ClinicManagementController {
     @Headers('x-tenant-id') tenantHeader: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
-    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const context = toClinicRequestContext(currentUser, tenantHeader, query.tenantId);
     const overviewQuery = toClinicManagementOverviewQuery(query, context);
     const requestedClinicIds = overviewQuery.filters?.clinicIds ?? query.clinicIds;
     const authorizedClinicIds = await this.clinicAccessService.resolveAuthorizedClinicIds({
@@ -767,7 +767,7 @@ export class ClinicManagementController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicDashboardAlertDto[]> {
-    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const context = toClinicRequestContext(currentUser, tenantHeader, query.tenantId);
     const alertsQuery = toClinicManagementAlertsQuery(query, context);
     const authorizedClinicIds = await this.clinicAccessService.resolveAuthorizedClinicIds({
       tenantId: context.tenantId,
@@ -795,7 +795,7 @@ export class ClinicManagementController {
     @Headers('x-tenant-id') tenantHeader: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
-    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const context = toClinicRequestContext(currentUser, tenantHeader, query.tenantId);
     const alertsQuery = toClinicManagementAlertsQuery(query, context);
     const authorizedClinicIds = await this.clinicAccessService.resolveAuthorizedClinicIds({
       tenantId: context.tenantId,
@@ -830,7 +830,7 @@ export class ClinicManagementController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicProfessionalTransferResponseDto> {
-    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
+    const context = toClinicRequestContext(currentUser, tenantHeader, body.tenantId);
 
     const input = toTransferClinicProfessionalInput(body, context);
     await this.clinicAccessService.assertClinicAccess({
@@ -860,7 +860,7 @@ export class ClinicManagementController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicDashboardAlertDto> {
-    const context = this.resolveContext(currentUser, tenantHeader);
+    const context = toClinicRequestContext(currentUser, tenantHeader);
     await this.clinicAccessService.assertAlertAccess({
       tenantId: context.tenantId,
       alertId,
@@ -883,7 +883,7 @@ export class ClinicManagementController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicAlertEvaluationResponseDto> {
-    const context = this.resolveContext(currentUser, tenantHeader ?? currentUser.tenantId);
+    const context = toClinicRequestContext(currentUser, tenantHeader, currentUser.tenantId);
 
     const authorizedClinicIds = await this.clinicAccessService.resolveAuthorizedClinicIds({
       tenantId: context.tenantId,
@@ -991,19 +991,6 @@ export class ClinicManagementController {
     } while (coverages.length < total);
 
     return coverages;
-  }
-
-  private resolveContext(currentUser: ICurrentUser, tenantId?: string): ClinicRequestContext {
-    const resolvedTenantId = tenantId ?? currentUser.tenantId;
-
-    if (!resolvedTenantId) {
-      throw new BadRequestException('Tenant nao informado');
-    }
-
-    return {
-      tenantId: resolvedTenantId,
-      userId: currentUser.id,
-    };
   }
 
   private buildComparisonDto(

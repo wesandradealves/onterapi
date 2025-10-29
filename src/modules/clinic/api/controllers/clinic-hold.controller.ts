@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Headers,
@@ -34,7 +33,7 @@ import {
   ConfirmClinicHoldSchema,
 } from '../schemas/confirm-clinic-hold.schema';
 import {
-  ClinicRequestContext,
+  toClinicRequestContext,
   toClinicOverbookingReviewInput,
   toConfirmClinicHoldInput,
   toCreateClinicHoldInput,
@@ -89,7 +88,7 @@ export class ClinicHoldController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicHoldResponseDto> {
-    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
+    const context = toClinicRequestContext(currentUser, tenantHeader, body.tenantId);
     const input = toCreateClinicHoldInput(clinicId, body, context);
 
     const hold = await this.createClinicHoldUseCase.executeOrThrow(input);
@@ -117,7 +116,7 @@ export class ClinicHoldController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicAppointmentConfirmationResponseDto> {
-    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
+    const context = toClinicRequestContext(currentUser, tenantHeader, body.tenantId);
     const input = toConfirmClinicHoldInput(clinicId, holdId, body, context);
 
     const confirmation = await this.confirmClinicAppointmentUseCase.executeOrThrow(input);
@@ -140,7 +139,7 @@ export class ClinicHoldController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicHoldResponseDto> {
-    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
+    const context = toClinicRequestContext(currentUser, tenantHeader, body.tenantId);
     const input = toClinicOverbookingReviewInput(clinicId, holdId, body, context);
 
     const hold = await this.processClinicOverbookingUseCase.executeOrThrow(input);
@@ -148,16 +147,4 @@ export class ClinicHoldController {
     return ClinicPresenter.hold(hold);
   }
 
-  private resolveContext(currentUser: ICurrentUser, tenantId?: string): ClinicRequestContext {
-    const resolvedTenantId = tenantId ?? currentUser.tenantId;
-
-    if (!resolvedTenantId) {
-      throw new BadRequestException('Tenant nao informado');
-    }
-
-    return {
-      tenantId: resolvedTenantId,
-      userId: currentUser.id,
-    };
-  }
 }

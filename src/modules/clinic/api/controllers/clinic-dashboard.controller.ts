@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Controller,
   Get,
   Headers,
@@ -22,7 +21,7 @@ import {
   getClinicDashboardSchema,
   GetClinicDashboardSchema,
 } from '../schemas/get-clinic-dashboard.schema';
-import { ClinicRequestContext, toClinicDashboardQuery } from '../mappers/clinic-request.mapper';
+import { toClinicRequestContext, toClinicDashboardQuery } from '../mappers/clinic-request.mapper';
 import { ClinicAccessService } from '../../services/clinic-access.service';
 import {
   type IGetClinicDashboardUseCase,
@@ -72,7 +71,7 @@ export class ClinicDashboardController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicDashboardResponseDto> {
-    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
+    const context = toClinicRequestContext(currentUser, tenantHeader, query.tenantId);
     const dashboardQuery = toClinicDashboardQuery(query, context);
     const requestedClinicIds = dashboardQuery.filters?.clinicIds ?? query.clinicIds;
     const authorizedClinicIds = await this.clinicAccessService.resolveAuthorizedClinicIds({
@@ -92,16 +91,4 @@ export class ClinicDashboardController {
     return ClinicPresenter.dashboard(snapshot);
   }
 
-  private resolveContext(currentUser: ICurrentUser, tenantId?: string): ClinicRequestContext {
-    const resolvedTenantId = tenantId ?? currentUser.tenantId;
-
-    if (!resolvedTenantId) {
-      throw new BadRequestException('Tenant nao informado');
-    }
-
-    return {
-      tenantId: resolvedTenantId,
-      userId: currentUser.id,
-    };
-  }
 }

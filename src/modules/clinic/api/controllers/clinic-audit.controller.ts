@@ -1,14 +1,4 @@
-import {
-  BadRequestException,
-  Controller,
-  Get,
-  Headers,
-  Inject,
-  Param,
-  Query,
-  Res,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Headers, Inject, Param, Query, Res, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -37,6 +27,7 @@ import {
   IListClinicAuditLogsUseCase as IListClinicAuditLogsUseCaseToken,
 } from '../../../../domain/clinic/interfaces/use-cases/list-clinic-audit-logs.use-case.interface';
 import { Response } from 'express';
+import { resolveTenantContext } from '../../../../shared/utils/tenant-context.util';
 
 @ApiTags('Clinics')
 @ApiBearerAuth()
@@ -62,11 +53,11 @@ export class ClinicAuditController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicAuditLogListResponseDto> {
-    const tenantId = tenantHeader ?? query.tenantId ?? currentUser.tenantId;
-
-    if (!tenantId) {
-      throw new BadRequestException('Tenant nao informado');
-    }
+    const { tenantId } = resolveTenantContext({
+      currentUser,
+      tenantIdFromRequest: tenantHeader,
+      fallbackTenantId: query.tenantId,
+    });
 
     const result = await this.listAuditLogsUseCase.executeOrThrow({
       tenantId,
@@ -105,11 +96,11 @@ export class ClinicAuditController {
     @Headers('x-tenant-id') tenantHeader: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
-    const tenantId = tenantHeader ?? query.tenantId ?? currentUser.tenantId;
-
-    if (!tenantId) {
-      throw new BadRequestException('Tenant nao informado');
-    }
+    const { tenantId } = resolveTenantContext({
+      currentUser,
+      tenantIdFromRequest: tenantHeader,
+      fallbackTenantId: query.tenantId,
+    });
 
     const limit = Math.min(query.limit ?? 1000, 5000);
     const page = query.page ?? 1;
