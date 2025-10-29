@@ -1,6 +1,4 @@
 import { RolesEnum } from '../../../../domain/auth/enums/roles.enum';
-import { ICurrentUser } from '../../../../domain/auth/interfaces/current-user.interface';
-import { resolveTenantContext } from '../../../../shared/utils/tenant-context.util';
 import {
   ClinicAlertType,
   ClinicBrandingSettingsConfig,
@@ -65,20 +63,6 @@ export interface ClinicRequestContext {
   tenantId: string;
   userId: string;
 }
-
-export const toClinicRequestContext = (
-  currentUser: ICurrentUser,
-  tenantIdFromRequest?: string | string[] | null,
-  fallbackTenantId?: string | null | undefined,
-): ClinicRequestContext => {
-  const { tenantId, userId } = resolveTenantContext({
-    currentUser,
-    tenantIdFromRequest,
-    fallbackTenantId,
-  });
-
-  return { tenantId, userId };
-};
 
 interface SecurityComplianceDocumentInput {
   id?: string;

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -97,7 +98,7 @@ import {
 } from '../schemas/list-clinic-template-overrides.schema';
 import { ClinicTemplateOverride } from '../../../../domain/clinic/types/clinic.types';
 import {
-  toClinicRequestContext,
+  ClinicRequestContext,
   toPropagateClinicTemplateInput,
   toUpdateClinicBrandingSettingsInput,
   toUpdateClinicGeneralSettingsInput,
@@ -262,7 +263,7 @@ export class ClinicConfigurationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicGeneralSettingsResponseDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader);
+    const context = this.resolveContext(currentUser, tenantHeader);
 
     const version = await this.getClinicGeneralSettingsUseCase.executeOrThrow({
       clinicId,
@@ -302,7 +303,7 @@ export class ClinicConfigurationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicTemplateOverrideListResponseDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader, query.tenantId);
+    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
 
     const result = await this.listClinicTemplateOverridesUseCase.executeOrThrow({
       tenantId: context.tenantId,
@@ -336,7 +337,7 @@ export class ClinicConfigurationController {
     @Res() res: Response,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<void> {
-    const context = toClinicRequestContext(currentUser, tenantHeader, query.tenantId);
+    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
     const overrides = await this.collectTemplateOverrides({
       clinicId,
       tenantId: context.tenantId,
@@ -365,7 +366,7 @@ export class ClinicConfigurationController {
     @Res() res: Response,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<void> {
-    const context = toClinicRequestContext(currentUser, tenantHeader, query.tenantId);
+    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
     const overrides = await this.collectTemplateOverrides({
       clinicId,
       tenantId: context.tenantId,
@@ -394,7 +395,7 @@ export class ClinicConfigurationController {
     @Res() res: Response,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<void> {
-    const context = toClinicRequestContext(currentUser, tenantHeader, query.tenantId);
+    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
     const overrides = await this.collectTemplateOverrides({
       clinicId,
       tenantId: context.tenantId,
@@ -424,7 +425,7 @@ export class ClinicConfigurationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicServiceSettingsResponseDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader, body.tenantId);
+    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
 
     const input = toUpdateClinicServiceSettingsInput(clinicId, body, context);
     const version = await this.updateClinicServiceSettingsUseCase.executeOrThrow(input);
@@ -445,7 +446,7 @@ export class ClinicConfigurationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicPaymentSettingsResponseDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader, body.tenantId);
+    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
 
     const input = toUpdateClinicPaymentSettingsInput(clinicId, body, context);
     const version = await this.updateClinicPaymentSettingsUseCase.executeOrThrow(input);
@@ -466,7 +467,7 @@ export class ClinicConfigurationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicIntegrationSettingsResponseDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader, body.tenantId);
+    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
 
     const input = toUpdateClinicIntegrationSettingsInput(clinicId, body, context);
     const version = await this.updateClinicIntegrationSettingsUseCase.executeOrThrow(input);
@@ -487,7 +488,7 @@ export class ClinicConfigurationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicNotificationSettingsResponseDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader, body.tenantId);
+    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
 
     const input = toUpdateClinicNotificationSettingsInput(clinicId, body, context);
     const version = await this.updateClinicNotificationSettingsUseCase.executeOrThrow(input);
@@ -508,7 +509,7 @@ export class ClinicConfigurationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicSecuritySettingsResponseDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader, body.tenantId);
+    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
 
     const input = toUpdateClinicSecuritySettingsInput(clinicId, body, context);
     const version = await this.updateClinicSecuritySettingsUseCase.executeOrThrow(input);
@@ -529,7 +530,7 @@ export class ClinicConfigurationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicBrandingSettingsResponseDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader, body.tenantId);
+    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
 
     const input = toUpdateClinicBrandingSettingsInput(clinicId, body, context);
     const version = await this.updateClinicBrandingSettingsUseCase.executeOrThrow(input);
@@ -547,7 +548,7 @@ export class ClinicConfigurationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicHoldSettingsResponseDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader);
+    const context = this.resolveContext(currentUser, tenantHeader);
 
     const clinic = await this.getClinicUseCase.executeOrThrow({
       clinicId,
@@ -567,7 +568,7 @@ export class ClinicConfigurationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicTeamSettingsResponseDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader);
+    const context = this.resolveContext(currentUser, tenantHeader);
 
     const version = await this.getClinicTeamSettingsUseCase.executeOrThrow({
       clinicId,
@@ -587,7 +588,7 @@ export class ClinicConfigurationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicScheduleSettingsResponseDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader);
+    const context = this.resolveContext(currentUser, tenantHeader);
 
     const version = await this.getClinicScheduleSettingsUseCase.executeOrThrow({
       clinicId,
@@ -607,7 +608,7 @@ export class ClinicConfigurationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicServiceSettingsResponseDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader);
+    const context = this.resolveContext(currentUser, tenantHeader);
 
     const version = await this.getClinicServiceSettingsUseCase.executeOrThrow({
       clinicId,
@@ -627,7 +628,7 @@ export class ClinicConfigurationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicPaymentSettingsResponseDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader);
+    const context = this.resolveContext(currentUser, tenantHeader);
 
     const version = await this.getClinicPaymentSettingsUseCase.executeOrThrow({
       clinicId,
@@ -647,7 +648,7 @@ export class ClinicConfigurationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicIntegrationSettingsResponseDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader);
+    const context = this.resolveContext(currentUser, tenantHeader);
 
     const version = await this.getClinicIntegrationSettingsUseCase.executeOrThrow({
       clinicId,
@@ -667,7 +668,7 @@ export class ClinicConfigurationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicNotificationSettingsResponseDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader);
+    const context = this.resolveContext(currentUser, tenantHeader);
 
     const version = await this.getClinicNotificationSettingsUseCase.executeOrThrow({
       clinicId,
@@ -687,7 +688,7 @@ export class ClinicConfigurationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicSecuritySettingsResponseDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader);
+    const context = this.resolveContext(currentUser, tenantHeader);
 
     const version = await this.getClinicSecuritySettingsUseCase.executeOrThrow({
       clinicId,
@@ -707,7 +708,7 @@ export class ClinicConfigurationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicBrandingSettingsResponseDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader);
+    const context = this.resolveContext(currentUser, tenantHeader);
 
     const version = await this.getClinicBrandingSettingsUseCase.executeOrThrow({
       clinicId,
@@ -727,7 +728,7 @@ export class ClinicConfigurationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicTemplatePropagationResponseDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader);
+    const context = this.resolveContext(currentUser, tenantHeader);
 
     const clinic = await this.getClinicUseCase.executeOrThrow({
       clinicId,
@@ -750,7 +751,7 @@ export class ClinicConfigurationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicConfigurationVersionResponseDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader, body.tenantId);
+    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
 
     const input = toUpdateClinicGeneralSettingsInput(clinicId, body, context);
     const version = await this.updateClinicGeneralSettingsUseCase.executeOrThrow(input);
@@ -771,7 +772,7 @@ export class ClinicConfigurationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicTeamSettingsResponseDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader, body.tenantId);
+    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
 
     const input = toUpdateClinicTeamSettingsInput(clinicId, body, context);
     const version = await this.updateClinicTeamSettingsUseCase.executeOrThrow(input);
@@ -792,7 +793,7 @@ export class ClinicConfigurationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicSummaryDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader, body.tenantId);
+    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
 
     const input = toUpdateClinicHoldSettingsInput(clinicId, body, context);
     const clinic = await this.updateClinicHoldSettingsUseCase.executeOrThrow(input);
@@ -813,7 +814,7 @@ export class ClinicConfigurationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicConfigurationVersionResponseDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader, body.tenantId);
+    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
 
     const input = toUpdateClinicScheduleSettingsInput(clinicId, body, context);
     const version = await this.updateClinicScheduleSettingsUseCase.executeOrThrow(input);
@@ -834,7 +835,7 @@ export class ClinicConfigurationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicConfigurationVersionResponseDto[]> {
-    const context = toClinicRequestContext(currentUser, tenantHeader, body.tenantId);
+    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
 
     const input = toPropagateClinicTemplateInput(clinicId, body, context);
     const versions = await this.propagateClinicTemplateUseCase.executeOrThrow(input);
@@ -876,4 +877,16 @@ export class ClinicConfigurationController {
     return overrides;
   }
 
+  private resolveContext(currentUser: ICurrentUser, tenantId?: string): ClinicRequestContext {
+    const resolvedTenantId = tenantId ?? currentUser.tenantId;
+
+    if (!resolvedTenantId) {
+      throw new BadRequestException('Tenant nao informado');
+    }
+
+    return {
+      tenantId: resolvedTenantId,
+      userId: currentUser.id,
+    };
+  }
 }

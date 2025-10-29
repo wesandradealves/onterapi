@@ -65,7 +65,6 @@ import {
   PatientTimelineEntry,
 } from '../../../../domain/patients/types/patient.types';
 import { PatientErrorFactory } from '../../../../shared/factories/patient-error.factory';
-import { resolveTenantContext } from '../../../../shared/utils/tenant-context.util';
 
 @ApiTags('Patients')
 @ApiBearerAuth()
@@ -115,10 +114,7 @@ export class PatientsController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<PatientsListResponseDto> {
-    const context = this.resolveContext(currentUser, {
-      tenantHeader,
-      tenantId: query.tenantId,
-    });
+    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
     const filters = toPatientListFilters(query);
     const payload = await this.listPatientsUseCase.executeOrThrow({
       tenantId: context.tenantId,
@@ -153,10 +149,7 @@ export class PatientsController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<PatientResponseDto> {
-    const context = this.resolveContext(currentUser, {
-      tenantHeader,
-      tenantId: body?.tenantId,
-    });
+    const context = this.resolveContext(currentUser, tenantHeader ?? body?.tenantId);
     const input = toCreatePatientInput(body, context);
 
     const patient = await this.createPatientUseCase.executeOrThrow(input);
@@ -189,7 +182,7 @@ export class PatientsController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<PatientDetailDto> {
-    const context = this.resolveContext(currentUser, { tenantHeader });
+    const context = this.resolveContext(currentUser, tenantHeader);
 
     const { patient, summary, timeline, insights, quickActions } =
       await this.getPatientUseCase.executeOrThrow({
@@ -249,7 +242,7 @@ export class PatientsController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<PatientResponseDto> {
-    const context = this.resolveContext(currentUser, { tenantHeader });
+    const context = this.resolveContext(currentUser, tenantHeader);
     const input = toUpdatePatientInput(patientSlug, body, context);
 
     const updated = await this.updatePatientUseCase.executeOrThrow(input);
@@ -275,7 +268,7 @@ export class PatientsController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<PatientResponseDto> {
-    const context = this.resolveContext(currentUser, { tenantHeader });
+    const context = this.resolveContext(currentUser, tenantHeader);
     const input = toTransferPatientInput(patientSlug, body, context);
 
     const transferred = await this.transferPatientUseCase.executeOrThrow(input);
@@ -330,7 +323,7 @@ export class PatientsController {
     @Body(new ZodValidationPipe(exportPatientsSchema)) body: ExportPatientsSchema,
     @CurrentUser() currentUser: ICurrentUser,
   ): Promise<{ fileUrl: string }> {
-    const context = this.resolveContext(currentUser, { tenantId: body?.tenantId });
+    const context = this.resolveContext(currentUser, body?.tenantId);
     const request = toExportPatientRequest(body, context);
 
     return await this.exportPatientsUseCase.executeOrThrow(request);
@@ -338,40 +331,18 @@ export class PatientsController {
 
   private resolveContext(
     currentUser: ICurrentUser,
-    options?: { tenantHeader?: string | null; tenantId?: string | null },
+    tenantOverride?: string | null,
   ): PatientRequestContext {
-    const tenantHeader = options?.tenantHeader ?? null;
-    const fallbackTenantId = options?.tenantId ?? null;
-    const overrideCandidate =
-      typeof tenantHeader === 'string' && tenantHeader.trim().length > 0
-        ? tenantHeader
-        : fallbackTenantId;
-
-    const baseContext = resolveTenantContext({
-      currentUser,
-      tenantIdFromRequest: tenantHeader ?? undefined,
-      fallbackTenantId: fallbackTenantId ?? undefined,
-      allowMissingTenant: true,
-    });
-
-    const tenantId = this.getTenant(currentUser, overrideCandidate, baseContext.tenantId);
-
     return {
-      tenantId,
+      tenantId: this.getTenant(currentUser, tenantOverride),
       userId: currentUser.id,
       role: currentUser.role,
     };
   }
 
-  private getTenant(
-    currentUser: ICurrentUser,
-    tenantOverride?: string | null,
-    candidateTenantId?: string | null,
-  ): string {
+  private getTenant(currentUser: ICurrentUser, tenantOverride?: string | null): string {
     const metadata = (currentUser.metadata ?? {}) as Record<string, unknown>;
     const normalizedOverride = typeof tenantOverride === 'string' ? tenantOverride.trim() : '';
-    const normalizedCandidate =
-      typeof candidateTenantId === 'string' ? candidateTenantId.trim() : '';
     const isSuperAdmin = currentUser.role === RolesEnum.SUPER_ADMIN;
 
     const metadataTenantIdRaw = metadata['tenantId'];
@@ -409,7 +380,7 @@ export class PatientsController {
       }
     }
 
-    const tenantId = normalizedCandidate || knownTenantIds[0] || '';
+    const tenantId = knownTenantIds[0] ?? '';
 
     this.logger.log('Resolvendo tenant do usuario', {
       userId: currentUser.id,
@@ -418,8 +389,6 @@ export class PatientsController {
       tokenTenantId: currentUser?.tenantId ?? null,
       metadataTenantId: metadataTenantId ?? null,
       metadataTenantLegacy: metadataTenantLegacy ?? null,
-      candidateTenantId: normalizedCandidate || null,
-      resolvedTenantId: tenantId || null,
     });
 
     if (!tenantId) {
@@ -427,8 +396,6 @@ export class PatientsController {
         'Usuario sem tenant associado' +
         ' | tenantOverride=' +
         String(normalizedOverride || 'null') +
-        ' | candidateTenantId=' +
-        String(normalizedCandidate || 'null') +
         ' | tokenTenantId=' +
         String(currentUser?.tenantId ?? 'null') +
         ' | metadataTenantId=' +

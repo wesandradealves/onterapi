@@ -1,4 +1,13 @@
-import { Controller, Get, Headers, Inject, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Headers,
+  Inject,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -31,7 +40,6 @@ import {
   ListClinicPaymentLedgersSchema,
 } from '../schemas/list-clinic-payment-ledgers.schema';
 import { ZodValidationPipe } from '../../../../shared/pipes/zod-validation.pipe';
-import { resolveTenantContext } from '../../../../shared/utils/tenant-context.util';
 
 @ApiTags('Clinics')
 @ApiBearerAuth()
@@ -88,11 +96,11 @@ export class ClinicPaymentController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicPaymentLedgerListResponseDto> {
-    const { tenantId } = resolveTenantContext({
-      currentUser,
-      tenantIdFromRequest: tenantHeader,
-      fallbackTenantId: query.tenantId,
-    });
+    const tenantId = tenantHeader ?? query.tenantId ?? currentUser.tenantId;
+
+    if (!tenantId) {
+      throw new BadRequestException('Tenant nao informado');
+    }
 
     const statuses =
       query.paymentStatus?.map(
@@ -124,10 +132,11 @@ export class ClinicPaymentController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicPaymentLedgerResponseDto> {
-    const { tenantId } = resolveTenantContext({
-      currentUser,
-      tenantIdFromRequest: tenantHeader,
-    });
+    const tenantId = tenantHeader ?? currentUser.tenantId;
+
+    if (!tenantId) {
+      throw new BadRequestException('Tenant nao informado');
+    }
 
     const result = await this.getClinicPaymentLedgerUseCase.executeOrThrow({
       clinicId,

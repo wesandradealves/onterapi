@@ -35,7 +35,7 @@ import { ZodApiBody } from '../../../../shared/decorators/zod-api-body.decorator
 import { ClinicScopeGuard } from '../../guards/clinic-scope.guard';
 import { ClinicPresenter } from '../presenters/clinic.presenter';
 import { ClinicServiceTypeResponseDto } from '../dtos/clinic-service-type-response.dto';
-import { toClinicRequestContext } from '../mappers/clinic-request.mapper';
+import { ClinicRequestContext } from '../mappers/clinic-request.mapper';
 import {
   ClinicCurrency,
   type ClinicServiceCustomField,
@@ -86,7 +86,7 @@ export class ClinicServiceTypeController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicServiceTypeResponseDto[]> {
-    const context = toClinicRequestContext(currentUser, tenantHeader, query.tenantId);
+    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
 
     const serviceTypes = await this.listServiceTypesUseCase.executeOrThrow({
       clinicId,
@@ -109,7 +109,7 @@ export class ClinicServiceTypeController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicServiceTypeResponseDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader, body.tenantId);
+    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
 
     const { service } = body;
 
@@ -166,7 +166,7 @@ export class ClinicServiceTypeController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<void> {
-    const context = toClinicRequestContext(currentUser, tenantHeader);
+    const context = this.resolveContext(currentUser, tenantHeader);
 
     await this.removeServiceTypeUseCase.executeOrThrow({
       clinicId,
@@ -174,6 +174,19 @@ export class ClinicServiceTypeController {
       requestedBy: context.userId,
       serviceTypeId,
     });
+  }
+
+  private resolveContext(currentUser: ICurrentUser, tenantId?: string): ClinicRequestContext {
+    const resolvedTenantId = tenantId ?? currentUser.tenantId;
+
+    if (!resolvedTenantId) {
+      throw new BadRequestException('Tenant nao informado');
+    }
+
+    return {
+      tenantId: resolvedTenantId,
+      userId: currentUser.id,
+    };
   }
 
   private mapCurrency(rawCurrency: string): ClinicCurrency {

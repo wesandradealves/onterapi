@@ -32,7 +32,7 @@ import { ClinicScopeGuard } from '../../guards/clinic-scope.guard';
 import { ClinicPresenter } from '../presenters/clinic.presenter';
 import { ClinicInvitationResponseDto } from '../dtos/clinic-invitation-response.dto';
 import { ClinicInvitationListResponseDto } from '../dtos/clinic-invitation-list-response.dto';
-import { toClinicRequestContext } from '../mappers/clinic-request.mapper';
+import { ClinicRequestContext } from '../mappers/clinic-request.mapper';
 import { type ClinicInvitationEconomicSummary } from '../../../../domain/clinic/types/clinic.types';
 import {
   acceptClinicInvitationSchema,
@@ -118,7 +118,7 @@ export class ClinicInvitationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicInvitationResponseDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader, body.tenantId);
+    const context = this.resolveContext(currentUser, tenantHeader ?? body.tenantId);
 
     const economicSummary: ClinicInvitationEconomicSummary = {
       items: body.economicSummary.items.map((item) => ({
@@ -208,7 +208,7 @@ export class ClinicInvitationController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicInvitationListResponseDto> {
-    const context = toClinicRequestContext(currentUser, tenantHeader, query.tenantId);
+    const context = this.resolveContext(currentUser, tenantHeader ?? query.tenantId);
 
     const result = await this.listInvitationsUseCase.executeOrThrow({
       clinicId,
@@ -350,4 +350,16 @@ export class ClinicInvitationController {
     return ClinicPresenter.invitation(invitation, token);
   }
 
+  private resolveContext(currentUser: ICurrentUser, tenantId?: string): ClinicRequestContext {
+    const resolvedTenantId = tenantId ?? currentUser.tenantId;
+
+    if (!resolvedTenantId) {
+      throw new BadRequestException('Tenant nao informado');
+    }
+
+    return {
+      tenantId: resolvedTenantId,
+      userId: currentUser.id,
+    };
+  }
 }

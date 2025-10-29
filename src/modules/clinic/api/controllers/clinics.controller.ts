@@ -1,4 +1,16 @@
-import { Body, Controller, Get, Headers, Inject, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Inject,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -42,7 +54,6 @@ import {
   type IUpdateClinicStatusUseCase,
   IUpdateClinicStatusUseCase as IUpdateClinicStatusUseCaseToken,
 } from '../../../../domain/clinic/interfaces/use-cases/update-clinic-status.use-case.interface';
-import { resolveTenantContext } from '../../../../shared/utils/tenant-context.util';
 
 @ApiTags('Clinics')
 @ApiBearerAuth()
@@ -69,10 +80,10 @@ export class ClinicsController {
     @Body(new ZodValidationPipe(createClinicSchema)) body: CreateClinicSchema,
     @CurrentUser() currentUser: ICurrentUser,
   ): Promise<ClinicSummaryDto> {
-    const { tenantId } = resolveTenantContext({
-      currentUser,
-      fallbackTenantId: body.tenantId,
-    });
+    const tenantId = body.tenantId ?? currentUser.tenantId;
+    if (!tenantId) {
+      throw new BadRequestException('Tenant nao informado');
+    }
 
     const clinic = await this.createClinicUseCase.executeOrThrow({
       tenantId,
@@ -101,11 +112,10 @@ export class ClinicsController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicListResponseDto> {
-    const { tenantId } = resolveTenantContext({
-      currentUser,
-      tenantIdFromRequest: tenantHeader,
-      fallbackTenantId: query.tenantId,
-    });
+    const tenantId = tenantHeader ?? query.tenantId ?? currentUser.tenantId;
+    if (!tenantId) {
+      throw new BadRequestException('Tenant nao informado');
+    }
 
     const result = await this.listClinicsUseCase.executeOrThrow({
       tenantId,
@@ -138,10 +148,10 @@ export class ClinicsController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicDetailsDto> {
-    const { tenantId } = resolveTenantContext({
-      currentUser,
-      tenantIdFromRequest: tenantHeader,
-    });
+    const tenantId = tenantHeader ?? currentUser.tenantId;
+    if (!tenantId) {
+      throw new BadRequestException('Tenant nao informado');
+    }
 
     const clinic = await this.getClinicUseCase.executeOrThrow({ clinicId, tenantId });
     return ClinicPresenter.details(clinic);
@@ -159,11 +169,10 @@ export class ClinicsController {
     @CurrentUser() currentUser: ICurrentUser,
     @Headers('x-tenant-id') tenantHeader?: string,
   ): Promise<ClinicSummaryDto> {
-    const { tenantId } = resolveTenantContext({
-      currentUser,
-      tenantIdFromRequest: tenantHeader,
-      fallbackTenantId: body.tenantId,
-    });
+    const tenantId = tenantHeader ?? body.tenantId ?? currentUser.tenantId;
+    if (!tenantId) {
+      throw new BadRequestException('Tenant nao informado');
+    }
 
     const clinic = await this.updateClinicStatusUseCase.executeOrThrow({
       clinicId,
