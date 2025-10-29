@@ -8,6 +8,10 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
 
 ### Added
 
+## [0.20.0] - 2025-10-29
+
+### Added
+
 - Exportacoes de coberturas temporarias para CSV/Excel/PDF via
   `/management/professional-coverages/export[.xls|.pdf]`, com filtros multi-clinica,
   profissionais, periodo e status integrados ao RBAC vigente.
@@ -24,11 +28,14 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e o 
   `clinic.invitation.addendum_issued`.
 - Testes unitarios e integracoes cobrindo o fluxo de aditivos (use case, controller e
   schemas) garantindo RBAC e sanitizacao do token retornado.
+- Script `scripts/smoke-clinic-module.cjs` para smoke tests automatizados (login 2FA, convites,
+  aditivos, coberturas temporarias e exports PDF/Excel/CSV) pos-deploy.
 
 ### Documentation
 
 - `docs/clinic-module-clarifications.md` atualizado com orientacao sobre os novos formatos de export de coberturas.
 - README atualizado com instrucoes do endpoint de aditivos (`/clinics/:clinicId/invitations/addendums`).
+- README atualizado com o fluxo de smoke tests automatizados (`scripts/smoke-clinic-module.cjs`).
 
 ## [0.19.0] - 2025-10-24
 

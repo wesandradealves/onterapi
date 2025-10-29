@@ -722,6 +722,18 @@ npm run migration:run -- -d src/infrastructure/database/data-source.ts
 
 Resultados recentes: `npm run test:cov` reportou 266 testes (unit + integracao) com cobertura global 100%. As suites dedicadas registraram 226 unit, 40 integracao e 27 e2e.
 
+## Smoke Tests (Convite/Aditivo/Coberturas)
+
+- Execute `node scripts/smoke-clinic-module.cjs` para validar login (2FA), convites, aditivos,
+  coberturas temporarias e exports de overrides/coberturas apos deploy.
+- Variaveis de ambiente esperadas:
+  - `SMOKE_BASE_URL` (default `https://onterapi.vercel.app`)
+  - `SMOKE_EMAIL` / `SMOKE_PASSWORD` (usuario com permissao de Owner/Gestor)
+  - Credenciais do Supabase (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ACCESS_TOKEN`)
+    devem estar presentes no `.env`.
+- O script usa `curl.exe`; execute em PowerShell com as variaveis configuradas ou exporte-as
+  diretamente antes do comando.
+
 ## Fluxo Completo de Teste via cURL
 
 > Observacoes:
